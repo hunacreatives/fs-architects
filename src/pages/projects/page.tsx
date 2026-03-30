@@ -203,6 +203,8 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState<typeof mockProjects[0] | null>(null);
   const [popupProject, setPopupProject] = useState<typeof mockProjects[0] | null>(null);
+  const [visibleCount, setVisibleCount] = useState(8);
+  const [showGoUp, setShowGoUp] = useState(false);
 
   // Read ?category= from URL on first mount
   useEffect(() => {
@@ -248,6 +250,18 @@ export default function ProjectsPage() {
       setSortOrder(newSortBy === 'date' ? 'desc' : 'asc');
     }
   };
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [activeLocation, activeCategory, sortBy, sortOrder, searchQuery]);
+
+  // Show/hide Go Up button
+  useEffect(() => {
+    const handleScroll = () => setShowGoUp(window.scrollY > 500);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Reset slide index when filters change
   useEffect(() => {
@@ -364,7 +378,7 @@ export default function ProjectsPage() {
             </h1>
             <p
               className="proj-header-item proj-header-d1 text-xs text-black/60 tracking-wide"
-              style={{ fontFamily: 'Geist, sans-serif' }}
+              style={{ fontFamily: 'Marcellus, serif' }}
             >
               {t('projects_count')}
             </p>
@@ -650,7 +664,7 @@ export default function ProjectsPage() {
         {/* ── PROJECT GRID ── */}
         <div className="px-4 md:px-16 lg:px-24">
           <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {sortedProjects.map((project) => (
+            {sortedProjects.slice(0, visibleCount).map((project) => (
               <div
                 key={project.id}
                 className={`proj-card group transition-all duration-300 ${
@@ -705,10 +719,37 @@ export default function ProjectsPage() {
               </div>
             ))}
           </div>
+
+          {/* Show More / Go Up row */}
+          <div className="flex items-center justify-end mt-8 mb-4 gap-4">
+            {visibleCount < sortedProjects.length && (
+              <button
+                onClick={() => setVisibleCount((prev) => Math.min(prev + 8, sortedProjects.length))}
+                className="flex items-center gap-2 px-6 py-2.5 border border-black/20 rounded-full text-sm tracking-widest text-black/70 hover:border-black hover:text-black transition-all duration-300 cursor-pointer whitespace-nowrap"
+                style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+              >
+                Show More Projects
+                <i className="ri-arrow-down-line text-base" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       <ContactFooter />
+
+      {/* Floating Go Up button */}
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className={`fixed bottom-8 right-8 z-40 w-11 h-11 flex items-center justify-center rounded-full bg-black text-white shadow-lg hover:bg-black/80 transition-all duration-400 cursor-pointer ${
+          showGoUp ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+        aria-label="Go to top"
+        title="Go to top"
+        style={{ transition: 'opacity 0.35s ease, transform 0.35s ease, background-color 0.2s ease' }}
+      >
+        <i className="ri-arrow-up-line text-base" />
+      </button>
 
       {/* Project Detail Popup */}
       {popupProject && (

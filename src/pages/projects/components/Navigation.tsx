@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -197,23 +196,23 @@ export default function Navigation() {
         <div className="w-full h-px bg-white/10 mb-2" />
 
         {/* Nav links */}
-        <nav className="flex-1 overflow-y-auto px-8 py-6">
+        <nav className="flex-1 overflow-y-auto px-8 py-4">
           {menuItems.map(({ label, href, sub }) => (
             <div key={href} className="mb-1">
               <button
                 onClick={() => handleNavClick(href)}
-                className="block w-full text-left text-white text-[18px] font-semibold tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                className="flex items-center w-full text-left text-white text-[17px] font-normal tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer"
                 style={{ fontFamily: 'Marcellus, serif', letterSpacing: '0.04em' }}
               >
-                {label}
+                <span className="whitespace-nowrap">{label}</span>
               </button>
               {sub.length > 0 && (
-                <div className="ml-3 mt-0.5 mb-2 flex flex-col gap-0.5">
+                <div className="mb-1.5 flex flex-col gap-0.5">
                   {sub.map((item) => (
                     <button
                       key={item.href}
                       onClick={() => handleNavClick(item.href)}
-                      className="block w-full text-left text-white/45 text-[12px] py-1 hover:text-white/75 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                      className="block w-full text-left text-white/45 text-[11px] py-0.5 hover:text-white/75 transition-colors duration-300 cursor-pointer whitespace-nowrap"
                       style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.03em' }}
                     >
                       {item.label}
@@ -226,7 +225,7 @@ export default function Navigation() {
         </nav>
 
         {/* Bottom strip */}
-        <div className="px-8 py-6 border-t border-white/10">
+        <div className="px-8 py-4 border-t border-white/10">
           <div className="flex flex-col gap-2 text-white/30 text-xs tracking-wider">
             <a href="#" className="hover:text-white/60 transition-colors duration-300 cursor-pointer whitespace-nowrap">{t('nav_instagram')}</a>
             <a href="#" className="hover:text-white/60 transition-colors duration-300 cursor-pointer whitespace-nowrap">{t('nav_linkedin')}</a>

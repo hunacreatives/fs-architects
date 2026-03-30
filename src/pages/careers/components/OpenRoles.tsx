@@ -122,18 +122,40 @@ export default function OpenRoles({ sectionRef, onApply }: OpenRolesProps) {
               {t('careers_roles_available', { count: OPEN_ROLES.length })}
             </h2>
           </div>
-          <p
+          <div
             style={{
-              fontFamily: 'Geist, sans-serif',
-              fontSize: '11px',
-              letterSpacing: '0.03em',
-              color: 'rgba(255,255,255,0.28)',
-              maxWidth: '300px',
-              lineHeight: 1.8,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
             }}
           >
-            We take on a select number of people each year. Every applicant is reviewed personally.
-          </p>
+            <p
+              style={{
+                fontFamily: 'Geist, sans-serif',
+                fontSize: '11px',
+                letterSpacing: '0.03em',
+                color: 'rgba(255,255,255,0.28)',
+                lineHeight: 1,
+                margin: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              We take on a select number of people each year.
+            </p>
+            <p
+              style={{
+                fontFamily: 'Geist, sans-serif',
+                fontSize: '11px',
+                letterSpacing: '0.03em',
+                color: 'rgba(255,255,255,0.28)',
+                lineHeight: 1,
+                margin: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Every applicant is reviewed personally.
+            </p>
+          </div>
         </div>
 
         {/* Roles list */}

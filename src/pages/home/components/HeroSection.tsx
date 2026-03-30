@@ -88,28 +88,17 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             }`}
           >
             <h1
-              className="text-xl md:text-2xl lg:text-3xl text-white mb-3"
+              className="text-2xl md:text-3xl lg:text-4xl flex flex-col text-white"
               style={{
                 fontFamily: 'Marcellus, serif',
                 letterSpacing: '-0.02em',
-                lineHeight: '1.1',
+                lineHeight: '1.12',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-              }}
-            >
-              {t('hero_title')}
-            </h1>
-            <h2
-              className="text-base md:text-lg lg:text-xl flex flex-col"
-              style={{
-                fontFamily: 'Marcellus, serif',
-                letterSpacing: '-0.01em',
-                color: '#f2f2f2',
-                textShadow: '0 2px 20px rgba(0,0,0,0.4)',
               }}
             >
               <span>{t('hero_tagline_line1')}</span>
               <span>{t('hero_tagline_line2')}</span>
-            </h2>
+            </h1>
           </div>
 
           {/* Right CTA */}

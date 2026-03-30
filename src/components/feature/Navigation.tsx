@@ -84,10 +84,8 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       };
       if (!path || window.location.pathname === path) {
-        // Already on the right page — just scroll
         setTimeout(scrollToSection, 100);
       } else {
-        // Navigate to page first, then scroll once it mounts
         navigate(path);
         setTimeout(scrollToSection, 500);
       }
@@ -113,7 +111,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         }`}
       >
 
-        <div className="relative w-full px-4 md:px-16 lg:px-24 flex items-center justify-between" style={{ height: '48px' }}>
+        <div className="relative w-full px-4 md:px-16 lg:px-24 flex items-center justify-between" style={{ height: '56px' }}>
 
           {/* Left — FS Logo morphs into hamburger lines on hover */}
           <div className="w-10 md:w-32 flex items-center gap-4">
@@ -159,15 +157,19 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
           </div>
 
           {/* Center — brand logo — absolutely centered so it's always pixel-perfect */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+          <button
+            onClick={() => handleNavClick('/')}
+            className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center cursor-pointer"
+            aria-label="Go to homepage"
+          >
             <img
               src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/ba19a8ad592864043ff2c21c8607c9c8.png"
               alt="FS Architects"
               className={`transition-all duration-700 ${isDark ? '' : 'brightness-0 invert'}`}
-              style={{ height: '44px', width: 'auto', objectFit: 'contain', display: 'block' }}
+              style={{ height: '62px', width: 'auto', objectFit: 'contain', display: 'block' }}
               draggable={false}
             />
-          </div>
+          </button>
 
           {/* Right — language selector */}
           <div className="flex items-center gap-1.5 md:gap-2 text-xs tracking-wider w-auto md:w-32 justify-end">
@@ -193,8 +195,8 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
         </div>
 
-        {/* Thin divider line */}
-        <div className="w-full px-4 md:px-16 lg:px-24 flex items-center">
+        {/* Thin divider line — full-width when scrolled, padded when at top */}
+        <div className={`w-full flex items-center transition-all duration-700 ${isScrolled ? 'px-0' : 'px-4 md:px-16 lg:px-24'}`}>
           <div className={`flex-1 h-px ${isDark ? 'bg-black/15' : 'bg-white/15'}`} />
         </div>
       </nav>
@@ -215,10 +217,10 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         style={{ width: '280px', backgroundColor: '#2b3640' }}
       >
         {/* Panel header */}
-        <div className="flex items-center justify-between px-8 py-5">
+        <div className="flex items-center pl-6 pr-8 py-5">
           <button
             onClick={() => setMenuOpen(false)}
-            className="flex items-center group cursor-pointer"
+            className="flex items-center group cursor-pointer p-0"
             aria-label="Close menu"
           >
             <div className="relative w-[36px] h-[36px] flex items-center justify-center">
@@ -242,23 +244,23 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         <div className="w-full h-px bg-white/10 mb-2" />
 
         {/* Nav links */}
-        <nav className="flex-1 overflow-y-auto px-8 py-6">
+        <nav className="flex-1 overflow-y-auto px-8 py-4">
           {menuItems.map(({ label, href, sub }) => (
             <div key={href} className="mb-1">
               <button
                 onClick={() => handleNavClick(href)}
-                className="block w-full text-left text-white text-[18px] font-semibold tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                className="flex items-center w-full text-left text-white text-[17px] font-normal tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer"
                 style={{ fontFamily: 'Marcellus, serif', letterSpacing: '0.04em' }}
               >
-                {label}
+                <span className="whitespace-nowrap">{label}</span>
               </button>
               {sub.length > 0 && (
-                <div className="ml-3 mt-0.5 mb-2 flex flex-col gap-0.5">
+                <div className="mb-1.5 flex flex-col gap-0.5">
                   {sub.map((item) => (
                     <button
                       key={item.href}
                       onClick={() => handleNavClick(item.href)}
-                      className="block w-full text-left text-white/45 text-[12px] py-1 hover:text-white/75 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                      className="block w-full text-left text-white/45 text-[11px] py-0.5 hover:text-white/75 transition-colors duration-300 cursor-pointer whitespace-nowrap"
                       style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.03em' }}
                     >
                       {item.label}
@@ -271,7 +273,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         </nav>
 
         {/* Bottom strip */}
-        <div className="px-8 py-6 border-t border-white/10">
+        <div className="px-8 py-4 border-t border-white/10">
           <div className="flex items-center gap-5">
             <a href="#" aria-label="Facebook" className="w-8 h-8 flex items-center justify-center text-white/35 hover:text-white/80 transition-colors duration-300 cursor-pointer">
               <i className="ri-facebook-fill text-lg" />

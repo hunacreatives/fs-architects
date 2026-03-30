@@ -18,7 +18,6 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
 
   const toggle = (i: number) => {
     if (openIndex === i) {
-      // closing — mark it so we apply fast ease-in transition
       closingSet.current.add(i);
       tick(n => n + 1);
       setOpenIndex(-1);
@@ -137,7 +136,6 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
             } as React.CSSProperties}>
               {t('studio_philosophy_p1')}
             </p>
-
           </div>
 
           {/* ── Divider ── */}
@@ -175,7 +173,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
 
           {/* ── Steps List ── */}
           <div>
-            <div style={{ height: '1px', backgroundColor: 'rgba(51,64,74,0.18)' }} />
+            <div style={{ height: '1px', backgroundColor: 'rgba(51,64,74,0.15)' }} />
 
             {STEPS.map(({ key, num }, i) => {
               const isOpen = openIndex === i;
@@ -183,16 +181,15 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                 <div key={key}>
                   <button
                     onClick={() => toggle(i)}
-                    className="w-full flex items-center justify-between cursor-pointer"
+                    className="w-full flex items-center justify-between cursor-pointer group"
                     style={{ background: 'none', border: 'none', outline: 'none', padding: '20px 0' }}
                   >
-                    {/* Left — number only */}
                     <span
                       style={{
                         fontFamily: 'Marcellus, serif',
                         fontSize: 'clamp(18px, 1.8vw, 26px)',
                         letterSpacing: '0.10em',
-                        color: isOpen ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.28)',
+                        color: isOpen ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.50)',
                         transition: 'color 0.25s ease',
                         flexShrink: 0,
                       }}
@@ -200,16 +197,16 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                       {num}
                     </span>
 
-                    {/* Right — title + toggle icon */}
                     <div className="flex items-center gap-5 ml-auto">
                       <span
                         style={{
                           fontFamily: 'Marcellus, serif',
                           fontSize: 'clamp(15px, 1.5vw, 20px)',
                           letterSpacing: '0.01em',
-                          color: isOpen ? 'rgba(51,64,74,0.95)' : 'rgba(51,64,74,0.62)',
+                          color: isOpen ? 'rgba(28,43,58,1)' : 'rgba(28,43,58,0.75)',
                           transition: 'color 0.25s ease',
                           textAlign: 'right',
+                          textShadow: '0 0 12px rgba(255,255,255,0.6)',
                         }}
                       >
                         {t(`studio_process_${key}_title`)}
@@ -218,11 +215,12 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                         style={{
                           fontFamily: 'Geist, sans-serif',
                           fontSize: '14px',
-                          color: isOpen ? 'rgba(51,64,74,0.75)' : 'rgba(51,64,74,0.30)',
+                          color: isOpen ? 'rgba(28,43,58,0.85)' : 'rgba(28,43,58,0.50)',
                           transition: 'color 0.25s ease, transform 0.25s ease',
                           display: 'inline-block',
                           transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
                           flexShrink: 0,
+                          textShadow: '0 0 10px rgba(255,255,255,0.5)',
                         }}
                       >
                         +
@@ -230,7 +228,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                     </div>
                   </button>
 
-                  {/* Expanded description — right-aligned */}
+                  {/* Expanded description */}
                   <div
                     style={{
                       display: 'grid',
@@ -238,19 +236,27 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                       transition: closingSet.current.has(i)
                         ? 'grid-template-rows 0.18s cubic-bezier(0.4,0,1,1)'
                         : 'grid-template-rows 0.30s cubic-bezier(0,0,0.2,1)',
+                      willChange: 'grid-template-rows',
+                      transform: 'translateZ(0)',
                     }}
                   >
                     <div style={{ overflow: 'hidden', minHeight: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: '20px' }}>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        paddingBottom: '20px',
+                        maxWidth: '680px',
+                        marginLeft: 'auto',
+                      }}>
                         <p
                           style={{
                             fontFamily: 'Geist, sans-serif',
                             fontSize: '12px',
                             lineHeight: '2',
                             letterSpacing: '0.02em',
-                            color: 'rgba(26,40,58,0.90)',
+                            color: 'rgba(28,43,58,0.85)',
                             textAlign: 'right',
-                            maxWidth: '780px',
+                            margin: 0,
                             textWrap: 'pretty',
                           } as React.CSSProperties}
                         >
@@ -260,7 +266,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                     </div>
                   </div>
 
-                  <div style={{ height: '1px', backgroundColor: 'rgba(51,64,74,0.18)' }} />
+                  <div style={{ height: '1px', backgroundColor: 'rgba(51,64,74,0.15)' }} />
                 </div>
               );
             })}

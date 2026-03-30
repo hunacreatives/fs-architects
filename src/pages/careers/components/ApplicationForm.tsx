@@ -114,7 +114,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
   const fileLabel   = dark ? 'text-white/35' : 'text-black/40';
   const btnClass    = dark ? 'bg-white text-black hover:bg-white/85' : 'bg-black text-white hover:bg-black/80';
   const successColor = dark ? 'text-white/50' : 'text-black/60';
-  const toggleBase  = `text-[10px] tracking-widest uppercase px-3 py-1 transition-all duration-200 cursor-pointer whitespace-nowrap`;
+  const toggleBase  = `text-[10px] tracking-widest uppercase px-3 py-1 rounded-full transition-all duration-200 cursor-pointer whitespace-nowrap`;
   const toggleActive = dark
     ? 'bg-white/12 text-white border border-white/25'
     : 'bg-black text-white border border-black';
@@ -334,7 +334,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
           </div>
           <button
             type="submit" disabled={isSubmitting}
-            className={`px-8 py-3 text-xs tracking-widest transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${btnClass}`}
+            className={`px-8 py-3 rounded-full text-xs tracking-widest transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${btnClass}`}
             style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
           >
             {isSubmitting ? t('careers_form_sending') : t('careers_form_send')}

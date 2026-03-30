@@ -84,63 +84,34 @@ export default function CareersPage() {
         className="w-full px-6 md:px-20 lg:px-28 flex flex-col md:flex-row md:items-start md:justify-between gap-8 md:gap-16"
         style={{ paddingTop: '100px', paddingBottom: '36px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}
       >
-        <div className="flex flex-col gap-4 md:gap-5 max-w-lg">
-          <h1
-            className={hi('delay-[0ms]')}
-            style={{
-              fontFamily: 'Marcellus, serif',
-              fontSize: 'clamp(28px, 3.6vw, 52px)',
-              letterSpacing: '-0.03em',
-              color: 'rgba(0,0,0,0.82)',
-              lineHeight: 1.05,
-              margin: 0,
-            }}
-          >
-            {t('careers_heading')}
-          </h1>
-          <p
-            className={hi('delay-[120ms]')}
-            style={{
-              fontFamily: 'Geist, sans-serif',
-              fontSize: '12px',
-              lineHeight: 1.9,
-              color: 'rgba(0,0,0,0.45)',
-              letterSpacing: '0.02em',
-              margin: 0,
-            }}
-          >
-            {t('careers_intro')}
-          </p>
-        </div>
+        <h1
+          className={hi('delay-[0ms]')}
+          style={{
+            fontFamily: 'Marcellus, serif',
+            fontSize: 'clamp(28px, 3.6vw, 52px)',
+            letterSpacing: '-0.03em',
+            color: 'rgba(0,0,0,0.82)',
+            lineHeight: 1.05,
+            margin: 0,
+          }}
+        >
+          {t('careers_heading')}
+        </h1>
 
-        <div className={`flex flex-row md:flex-col items-center md:items-end gap-3 md:gap-1 flex-shrink-0 ${hi('delay-[220ms]')}`}>
-          <span
-            style={{
-              fontFamily: 'Marcellus, serif',
-              fontSize: 'clamp(36px, 4.2vw, 60px)',
-              color: 'rgba(0,0,0,0.88)',
-              lineHeight: 1,
-              letterSpacing: '-0.04em',
-              textAlign: 'right',
-              display: 'block',
-            }}
-          >
-            {OPEN_ROLES.length}
-          </span>
-          <span
-            style={{
-              fontFamily: 'Geist, sans-serif',
-              fontSize: '8px',
-              letterSpacing: '0.24em',
-              color: 'rgba(0,0,0,0.30)',
-              textTransform: 'uppercase',
-              textAlign: 'right',
-              display: 'block',
-            }}
-          >
-            Open {OPEN_ROLES.length === 1 ? 'Position' : 'Positions'}
-          </span>
-        </div>
+        <p
+          className={`flex-shrink-0 md:text-right ${hi('delay-[120ms]')}`}
+          style={{
+            fontFamily: 'Geist, sans-serif',
+            fontSize: '12px',
+            lineHeight: 1.9,
+            color: 'rgba(0,0,0,0.45)',
+            letterSpacing: '0.02em',
+            margin: 0,
+            maxWidth: '320px',
+          }}
+        >
+          {t('careers_intro')}
+        </p>
       </div>
 
       {/* ── FULL-BLEED STUDIO IMAGE ── */}

@@ -119,7 +119,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
           }}
         />
 
-        {/* ── Content — extra top padding to clear the overlap ── */}
+        {/* ── Content ── */}
         <div
           className="relative px-4 md:px-20 lg:px-28 pb-14"
           style={{ paddingTop: '72px' }}
@@ -137,19 +137,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
             } as React.CSSProperties}>
               {t('studio_philosophy_p1')}
             </p>
-            <div style={{ width: '24px', height: '1px', backgroundColor: 'rgba(255,255,255,0.18)', margin: '2px auto 10px' }} />
-            <p style={{
-              fontFamily: 'Geist, sans-serif',
-              fontSize: '9px',
-              lineHeight: 1.8,
-              letterSpacing: '0.06em',
-              color: 'rgba(255,255,255,0.38)',
-              textTransform: 'uppercase',
-              maxWidth: '820px',
-              textWrap: 'pretty',
-            } as React.CSSProperties}>
-              {t('studio_accordion_commitment')}
-            </p>
+
           </div>
 
           {/* ── Divider ── */}
@@ -196,54 +184,53 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                   <button
                     onClick={() => toggle(i)}
                     className="w-full flex items-center justify-between cursor-pointer"
-                    style={{ background: 'none', border: 'none', outline: 'none', padding: '18px 0' }}
+                    style={{ background: 'none', border: 'none', outline: 'none', padding: '20px 0' }}
                   >
-                    {/* Left — number + title together */}
-                    <div className="flex items-center gap-5">
-                      <span
-                        style={{
-                          fontFamily: 'Geist, sans-serif',
-                          fontWeight: 600,
-                          fontSize: 'clamp(15px, 1.5vw, 20px)',
-                          letterSpacing: '0.08em',
-                          color: isOpen ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.28)',
-                          transition: 'color 0.25s ease',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {num}
-                      </span>
+                    {/* Left — number only */}
+                    <span
+                      style={{
+                        fontFamily: 'Marcellus, serif',
+                        fontSize: 'clamp(18px, 1.8vw, 26px)',
+                        letterSpacing: '0.10em',
+                        color: isOpen ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.28)',
+                        transition: 'color 0.25s ease',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {num}
+                    </span>
+
+                    {/* Right — title + toggle icon */}
+                    <div className="flex items-center gap-5 ml-auto">
                       <span
                         style={{
                           fontFamily: 'Marcellus, serif',
-                          fontWeight: 700,
                           fontSize: 'clamp(15px, 1.5vw, 20px)',
                           letterSpacing: '0.01em',
                           color: isOpen ? 'rgba(51,64,74,0.95)' : 'rgba(51,64,74,0.62)',
                           transition: 'color 0.25s ease',
+                          textAlign: 'right',
                         }}
                       >
                         {t(`studio_process_${key}_title`)}
                       </span>
+                      <span
+                        style={{
+                          fontFamily: 'Geist, sans-serif',
+                          fontSize: '14px',
+                          color: isOpen ? 'rgba(51,64,74,0.75)' : 'rgba(51,64,74,0.30)',
+                          transition: 'color 0.25s ease, transform 0.25s ease',
+                          display: 'inline-block',
+                          transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        +
+                      </span>
                     </div>
-
-                    {/* Right — toggle icon only */}
-                    <span
-                      style={{
-                        fontFamily: 'Geist, sans-serif',
-                        fontSize: '14px',
-                        color: isOpen ? 'rgba(51,64,74,0.75)' : 'rgba(51,64,74,0.30)',
-                        transition: 'color 0.25s ease, transform 0.25s ease',
-                        display: 'inline-block',
-                        transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      +
-                    </span>
                   </button>
 
-                  {/* Expanded description — direction-aware transition */}
+                  {/* Expanded description — right-aligned */}
                   <div
                     style={{
                       display: 'grid',
@@ -254,32 +241,16 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                     }}
                   >
                     <div style={{ overflow: 'hidden', minHeight: 0 }}>
-                      {/* Mirror indent — spacer matches number width + gap so description sits below title */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', paddingBottom: '20px', gap: '20px' }}>
-                        {/* Invisible spacer — same width as the number */}
-                        <span
-                          aria-hidden="true"
-                          style={{
-                            visibility: 'hidden',
-                            fontFamily: 'Geist, sans-serif',
-                            fontWeight: 600,
-                            fontSize: 'clamp(15px, 1.5vw, 20px)',
-                            letterSpacing: '0.08em',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {num}
-                        </span>
-                        {/* Description — below the title, left-aligned */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: '20px' }}>
                         <p
                           style={{
                             fontFamily: 'Geist, sans-serif',
                             fontSize: '12px',
                             lineHeight: '2',
                             letterSpacing: '0.02em',
-                            color: 'rgba(255,255,255,0.65)',
-                            textAlign: 'left',
-                            maxWidth: '540px',
+                            color: 'rgba(26,40,58,0.90)',
+                            textAlign: 'right',
+                            maxWidth: '780px',
                             textWrap: 'pretty',
                           } as React.CSSProperties}
                         >

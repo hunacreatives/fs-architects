@@ -85,7 +85,7 @@ export default function StudioCTA() {
             </p>
             <button
               onClick={() => navigate('/contact')}
-              className="cta-item cta-d2 group self-start lg:self-end inline-flex items-center gap-4 px-8 py-4 border text-white/50 text-[9px] tracking-widest uppercase hover:text-white/80 transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0"
+              className="cta-item cta-d2 group self-start lg:self-end inline-flex items-center gap-4 px-8 py-4 border rounded-full text-white/50 text-[9px] tracking-widest uppercase hover:text-white/80 transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0"
               style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.18em', borderColor: 'rgba(255,255,255,0.15)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.4)'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.15)'; }}

@@ -203,6 +203,7 @@ export default function OpenRoles({ sectionRef, onApply }: OpenRolesProps) {
                       width: '30px',
                       height: '30px',
                       border: '1px solid',
+                      borderRadius: '50%',
                       borderColor: isOpen ? 'rgba(255,255,255,0.40)' : 'rgba(255,255,255,0.15)',
                       display: 'flex',
                       alignItems: 'center',
@@ -305,6 +306,7 @@ export default function OpenRoles({ sectionRef, onApply }: OpenRolesProps) {
                             color: 'rgba(255,255,255,0.80)',
                             border: '1px solid rgba(255,255,255,0.20)',
                             padding: '14px 36px',
+                            borderRadius: '9999px',
                             background: 'rgba(255,255,255,0.05)',
                             transition: 'border-color 0.25s ease, color 0.25s ease, background 0.25s ease',
                           }}

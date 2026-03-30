@@ -113,7 +113,7 @@ export default function DesignProcessTeaser() {
           <div className="dpt-cta flex flex-col items-start md:items-end gap-5 flex-shrink-0">
             <button
               onClick={() => navigate('/process')}
-              className="group inline-flex items-center gap-3 px-8 py-4 border border-white/25 text-white/70 text-xs tracking-widest uppercase hover:border-white/60 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap"
+              className="group inline-flex items-center gap-3 px-8 py-4 border border-white/25 rounded-full text-white/70 text-xs tracking-widest uppercase hover:border-white/60 hover:text-white transition-all duration-300 cursor-pointer whitespace-nowrap"
               style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.14em' }}
             >
               {t('studio_teaser_cta')}

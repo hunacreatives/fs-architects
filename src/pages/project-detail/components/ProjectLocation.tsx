@@ -8,7 +8,7 @@ interface ProjectLocationProps {
 
 export default function ProjectLocation({ lat, lng, name }: ProjectLocationProps) {
   const { t } = useTranslation();
-  const mapSrc = `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d8000!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2s!4v1234567890`;
+  const mapSrc = `https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
 
   return (
     <section className="px-4 md:px-16 lg:px-24 pb-16 md:pb-24">

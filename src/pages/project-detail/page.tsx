@@ -6,7 +6,6 @@ import Navigation from '../../components/feature/Navigation';
 import ContactFooter from '../contact/components/ContactFooter';
 import ProjectHero from './components/ProjectHero';
 import ProjectInfo from './components/ProjectInfo';
-import FloorPlans from './components/FloorPlans';
 import ProjectLocation from './components/ProjectLocation';
 
 const projectsData = [
@@ -348,9 +347,8 @@ export default function ProjectDetailPage() {
         description={description}
         mainImage={project.mainImage}
         galleryImages={project.gallery}
+        plans={floorPlans}
       />
-
-      <FloorPlans plans={floorPlans} />
 
       <ProjectLocation
         lat={project.lat}

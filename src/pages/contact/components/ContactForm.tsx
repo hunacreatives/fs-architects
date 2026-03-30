@@ -58,7 +58,7 @@ export default function ContactForm() {
   };
 
   const inputClass =
-    'w-full border border-black/15 bg-white px-4 py-3 text-sm text-black placeholder-black/25 focus:outline-none focus:border-black/40 transition-colors duration-200';
+    'w-full border border-black/15 rounded-lg bg-white px-4 py-3 text-sm text-black placeholder-black/25 focus:outline-none focus:border-black/40 transition-colors duration-200';
 
   const contactDetails = [
     {
@@ -157,7 +157,7 @@ export default function ContactForm() {
         {/* ── RIGHT: Form ── */}
         <div className="cf-right lg:w-7/12">
           {status === 'success' ? (
-            <div className="border border-black/10 px-8 py-12 text-center flex flex-col items-center justify-center">
+            <div className="border border-black/10 rounded-xl px-8 py-12 text-center flex flex-col items-center justify-center">
               <i className="ri-check-line text-2xl text-black/30 mb-3 block" />
               <p className="text-sm text-black/50" style={{ fontFamily: 'Geist, sans-serif' }}>
                 {t('contact_form_success')}
@@ -262,10 +262,10 @@ export default function ContactForm() {
               )}
 
               <div className="pt-2">
-                <button
+                  <button
                   type="submit"
                   disabled={status === 'sending' || charCount > 500}
-                  className="px-8 py-3 bg-black text-white text-xs tracking-widest uppercase hover:bg-black/80 transition-colors duration-300 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-3 rounded-full bg-black text-white text-xs tracking-widest uppercase hover:bg-black/80 transition-colors duration-300 cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
                 >
                   {status === 'sending' ? t('contact_form_sending') : t('contact_form_submit')}

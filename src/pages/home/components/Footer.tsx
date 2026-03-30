@@ -134,15 +134,15 @@ export default function Footer() {
           {/* Left — Logo + divider + Get in Touch + social */}
           <div className="flex flex-row items-start gap-10">
             {/* Logo + tagline */}
-            <div className="flex flex-col gap-2 shrink-0 -mt-1">
+            <div className="shrink-0">
               <img
                 src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/4be8756dcc635c33ed68261c7a8f7244.png"
                 alt="FS Architects"
-                className="h-10 w-auto object-contain brightness-0 invert self-start"
+                className="h-10 w-auto object-contain object-top brightness-0 invert block -mt-3"
                 draggable={false}
               />
               <p
-                className="text-white/30 text-[11px] leading-relaxed max-w-[150px]"
+                className="text-white/30 text-[11px] leading-relaxed max-w-[150px] -mt-1"
                 style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.05em' }}
               >
                 {t('footer_tagline')}
@@ -154,7 +154,7 @@ export default function Footer() {
 
             {/* Get in Touch + social */}
             <div className="flex flex-col gap-2.5">
-              <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
+              <p className="text-white/70 text-[10px] leading-none tracking-widest uppercase" style={headingStyle}>
                 {t('footer_get_in_touch')}
               </p>
               <a
@@ -164,7 +164,7 @@ export default function Footer() {
               >
                 info@fsarchitects.ph
               </a>
-              <div className="flex items-center gap-2.5 mt-0.5">
+              <div className="flex items-center gap-3 mt-0.5">
                 {socialLinks.map(({ icon, label, href }) => (
                   <a
                     key={label}
@@ -172,7 +172,7 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/65 transition-colors duration-300 cursor-pointer"
+                    className="flex items-center justify-center text-white/30 hover:text-white/65 transition-colors duration-300 cursor-pointer"
                   >
                     <i className={`${icon} text-sm`} />
                   </a>
@@ -185,7 +185,7 @@ export default function Footer() {
           <div className="flex flex-col gap-5">
             {/* Projects — horizontal */}
             <div className="flex flex-col gap-2">
-              <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
+              <p className="text-white/70 text-[10px] leading-none tracking-widest uppercase" style={headingStyle}>
                 {t('footer_projects')}
               </p>
               <div className="flex flex-row flex-wrap gap-x-5 gap-y-1.5">
@@ -205,7 +205,7 @@ export default function Footer() {
 
             {/* Studio — horizontal */}
             <div className="flex flex-col gap-2">
-              <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
+              <p className="text-white/70 text-[10px] leading-none tracking-widest uppercase" style={headingStyle}>
                 {t('footer_studio')}
               </p>
               <div className="flex flex-row flex-wrap gap-x-5 gap-y-1.5">

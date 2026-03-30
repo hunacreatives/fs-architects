@@ -308,8 +308,8 @@ export default function ProjectsPage() {
   const currentSlide = sortedProjects[slideIndex] ?? null;
 
   const mapSrc = selectedProject
-    ? `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d15000!2d${selectedProject.lng}!3d${selectedProject.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2s!4v1234567890`
-    : `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d247925.16305118887!2d120.8294!3d14.5995!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397ca03571ec38b%3A0x69d1d5751069c11f!2sManila%2C%20Metro%20Manila%2C%20Philippines!5e0!3m2!1sen!2s!4v1234567890`;
+    ? `https://maps.google.com/maps?q=${selectedProject.lat},${selectedProject.lng}&z=16&output=embed`
+    : `https://maps.google.com/maps?q=14.5995,120.9842&z=11&output=embed`;
 
   return (
     <div className="min-h-screen bg-white">
@@ -435,7 +435,7 @@ export default function ProjectsPage() {
                 <div className="absolute top-4 left-0 z-10 px-4 md:px-16 lg:px-24">
                   <button
                     onClick={() => setViewMode('map')}
-                    className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs tracking-widest hover:bg-white/20 transition-all duration-300 cursor-pointer whitespace-nowrap"
+                    className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white text-xs tracking-widest hover:bg-white/20 transition-all duration-300 cursor-pointer whitespace-nowrap"
                     style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
                   >
                     <i className="ri-map-pin-line text-sm" />
@@ -475,7 +475,7 @@ export default function ProjectsPage() {
                     {/* View Full Project button */}
                     <button
                       onClick={() => currentSlide && navigate(`/projects/${currentSlide.slug}`)}
-                      className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-white text-black text-xs tracking-widest hover:bg-white/90 transition-all duration-300 cursor-pointer whitespace-nowrap"
+                      className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-full text-black text-xs tracking-widest hover:bg-white/90 transition-all duration-300 cursor-pointer whitespace-nowrap"
                       style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
                     >
                       VIEW PROJECT
@@ -487,14 +487,14 @@ export default function ProjectsPage() {
                 {/* Prev / Next arrows */}
                 <button
                   onClick={prevSlide}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 ml-3 md:ml-16 lg:ml-24 w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/25 transition-all duration-300 cursor-pointer"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 ml-3 md:ml-16 lg:ml-24 w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/25 transition-all duration-300 cursor-pointer"
                   aria-label="Previous project"
                 >
                   <i className="ri-arrow-left-line text-base md:text-lg" />
                 </button>
                 <button
                   onClick={nextSlide}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 mr-3 md:mr-16 lg:mr-24 w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/25 transition-all duration-300 cursor-pointer"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 mr-3 md:mr-16 lg:mr-24 w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/25 transition-all duration-300 cursor-pointer"
                   aria-label="Next project"
                 >
                   <i className="ri-arrow-right-line text-base md:text-lg" />
@@ -530,7 +530,7 @@ export default function ProjectsPage() {
                   setViewMode('slideshow');
                   setSelectedProject(null);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/90 backdrop-blur-sm border border-black/10 text-black text-xs tracking-widest hover:bg-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-sm"
+                className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/90 backdrop-blur-sm border border-black/10 rounded-full text-black text-xs tracking-widest hover:bg-white transition-all duration-300 cursor-pointer whitespace-nowrap shadow-sm"
                 style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
               >
                 <i className="ri-slideshow-line text-sm" />
@@ -538,7 +538,7 @@ export default function ProjectsPage() {
               </button>
 
               {selectedProject && (
-                <div className="bg-white/90 backdrop-blur-sm px-3 py-2 shadow-sm flex items-center gap-2">
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-sm flex items-center gap-2">
                   <div>
                     <p
                       className="text-xs text-black/50 tracking-wider uppercase"
@@ -582,31 +582,31 @@ export default function ProjectsPage() {
 
         {/* ── CATEGORY FILTERS, SORT & SEARCH ── */}
         <div className="px-4 md:px-16 lg:px-24 mb-8">
-          {/* Categories — always scrollable row */}
-          <div className="relative mb-3 md:mb-0">
-            <div className="flex items-center gap-4 md:gap-6 overflow-x-auto pb-3 scrollbar-hide">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`text-sm tracking-wider whitespace-nowrap transition-all duration-300 pb-1 border-b cursor-pointer ${
-                    activeCategory === category
-                      ? 'text-black border-black font-semibold'
-                      : 'text-black/40 border-transparent hover:text-black/70'
-                  }`}
-                  style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.04em' }}
-                >
-                  {categoryLabels[category]}
-                </button>
-              ))}
-            </div>
-            {/* Scroll hint fade — mobile only */}
-            <div className="absolute top-0 right-0 h-full w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none md:hidden" />
-          </div>
+          <div className="flex items-center justify-between gap-6" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
 
-          {/* Sort + Search — separate row on mobile, right-aligned on desktop */}
-          <div className="flex items-center justify-between md:justify-end gap-3 md:gap-4 md:-mt-9">
-            <div className="flex items-center gap-3">
+            {/* Categories — scrollable row */}
+            <div className="relative flex-1 min-w-0 overflow-hidden">
+              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className={`text-sm tracking-wider whitespace-nowrap flex-shrink-0 transition-all duration-300 pb-3 border-b-2 -mb-px cursor-pointer ${
+                      activeCategory === category
+                        ? 'text-black border-black font-semibold'
+                        : 'text-black/40 border-transparent hover:text-black/70'
+                    }`}
+                    style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.04em' }}
+                  >
+                    {categoryLabels[category]}
+                  </button>
+                ))}
+              </div>
+              <div className="absolute top-0 right-0 h-full w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none md:hidden" />
+            </div>
+
+            {/* Sort + Search — pinned right, same baseline */}
+            <div className="flex items-center gap-3 md:gap-4 flex-shrink-0 pb-3">
               <button
                 onClick={() => handleSortChange('date')}
                 className={`flex items-center gap-1 text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
@@ -631,18 +631,19 @@ export default function ProjectsPage() {
                   <i className={`text-xs ${sortOrder === 'asc' ? 'ri-arrow-down-s-line' : 'ri-arrow-up-s-line'}`} />
                 )}
               </button>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={t('projects_search')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-36 md:w-44 px-3 md:px-4 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-md focus:outline-none focus:border-black/30 transition-colors duration-300"
+                  style={{ fontFamily: 'Geist, sans-serif' }}
+                />
+                <i className="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-base w-4 h-4 flex items-center justify-center" />
+              </div>
             </div>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={t('projects_search')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-36 md:w-48 px-3 md:px-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-md focus:outline-none focus:border-black/30 transition-colors duration-300"
-                style={{ fontFamily: 'Geist, sans-serif' }}
-              />
-              <i className="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-black/40 text-base w-4 h-4 flex items-center justify-center" />
-            </div>
+
           </div>
         </div>
 
@@ -716,13 +717,13 @@ export default function ProjectsPage() {
           onClick={() => setPopupProject(null)}
         >
           <div
-            className="relative bg-white w-full max-w-3xl shadow-2xl overflow-hidden"
+            className="relative bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden"
             style={{ maxHeight: '90vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setPopupProject(null)}
-              className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center bg-white/90 hover:bg-white text-black/60 hover:text-black transition-colors duration-200 cursor-pointer"
+              className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-black/60 hover:text-black transition-colors duration-200 cursor-pointer"
               aria-label="Close"
             >
               <i className="ri-close-line text-lg" />
@@ -769,7 +770,7 @@ export default function ProjectsPage() {
                     setPopupProject(null);
                     navigate(`/projects/${popupProject.slug}`);
                   }}
-                  className="px-5 py-2.5 bg-black text-white text-sm tracking-wider hover:bg-black/80 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                  className="px-5 py-2.5 rounded-full bg-black text-white text-sm tracking-wider hover:bg-black/80 transition-colors duration-300 cursor-pointer whitespace-nowrap"
                   style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
                 >
                   View Full Project
@@ -781,7 +782,7 @@ export default function ProjectsPage() {
                     setViewMode('map');
                     window.scrollTo({ top: 300, behavior: 'smooth' });
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 border border-black/20 text-black/60 text-sm tracking-wider hover:border-black/60 hover:text-black transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-black/20 text-black/60 text-sm tracking-wider hover:border-black/60 hover:text-black transition-colors duration-300 cursor-pointer whitespace-nowrap"
                   style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
                 >
                   <i className="ri-map-pin-line text-base" />

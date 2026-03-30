@@ -1,4 +1,3 @@
-
 const translations = {
   // Navigation
   nav_home: 'Inicio',
@@ -167,7 +166,6 @@ const translations = {
 
   // ── Studio Page ──
   studio_about_eyebrow: 'Sobre el Estudio',
-
   studio_about_h2: 'Arquitectura profundamente humana, rigurosamente elaborada.',
   studio_team_strip_eyebrow: 'Conoce al Equipo',
   studio_team_heading1: 'Conoce las mentes',
@@ -209,7 +207,6 @@ const translations = {
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',
   studio_principal_name: 'Denza',
   studio_philosophy_label: 'Nuestra Filosofía',
-  studio_about_intro: 'Diseñamos para personas, no para portafolios. Cada proyecto comienza con un período sostenido de escucha — al cliente, al lugar, a la cultura del sitio — antes de trazar una sola línea. Esta metodología paciente produce obras que se sienten inevitables: arraigadas en lugar de pasajeras, con propósito en lugar de performativas.',
   studio_philosophy_p1: 'FS Architects es una firma de arquitectura arraigada en la creencia de que la arquitectura debe avanzar al ritmo de la vida: deliberada, reflexiva y centrada en el ser humano. Guiados por la filosofía de la Arquitectura Lenta, abordamos cada proyecto con cuidado y precisión, demostrando que el diseño exitoso se logra a través del oficio reflexivo equilibrado con una serena sofisticación cultural.',
   studio_philosophy_p2: 'Cada proyecto comienza con la escucha. Invertimos tiempo en comprender la vida de nuestros clientes, sus aspiraciones y las condiciones específicas de cada emplazamiento.',
   studio_quote: 'No diseñamos para la fotografía. Diseñamos para la vida que se vive en el interior.',
@@ -269,6 +266,7 @@ const translations = {
   studio_process_completion_tag: 'Fase 06',
   studio_process_cta_text: '¿Listo para iniciar una conversación sobre su proyecto? Estaremos encantados de escucharle.',
   studio_process_cta_btn: 'Iniciar una Conversación',
+  studio_process_view_full: 'Ver Proceso Completo',
 
   // ── Contact Page ──
   contact_footer_heading: 'Contáctanos',
@@ -295,27 +293,6 @@ const translations = {
   contact_form_sending: 'Enviando...',
   contact_form_success: 'Gracias. Nos pondremos en contacto pronto.',
   contact_form_error: 'Algo salió mal. Por favor, inténtalo de nuevo.',
-};
-
-export default {
-  ...translations,
-  
-  // Studio page - Design Process Teaser
-  studio_process_eyebrow: 'Cómo Trabajamos',
-  studio_process_headline: 'Nuestro Proceso de Diseño',
-  studio_process_discovery_title: 'Descubrimiento y Planificación',
-  studio_process_discovery_desc: 'Comenzamos entendiendo su visión, necesidades y condiciones del sitio. A través de consultas y análisis detallados, establecemos objetivos y viabilidad del proyecto.',
-  studio_process_concept_title: 'Diseño Conceptual',
-  studio_process_concept_desc: 'Exploramos opciones de diseño, forma y carácter general para encontrar la dirección de diseño adecuada para usted. Recibirá bocetos conceptuales, planos preliminares y visuales 3D iniciales.',
-  studio_process_design_title: 'Desarrollo del Diseño',
-  studio_process_design_desc: 'Refinamos el diseño, finalizamos materiales, sistemas y detalles. Esta fase asegura que cada elemento se alinee con su visión y presupuesto.',
-  studio_process_documentation_title: 'Documentación de Construcción',
-  studio_process_documentation_desc: 'Preparamos dibujos técnicos completos y especificaciones requeridas para permisos y construcción. Cada detalle está documentado para una ejecución precisa.',
-  studio_process_construction_title: 'Soporte de Construcción',
-  studio_process_construction_desc: 'Brindamos soporte continuo durante la construcción, respondiendo preguntas, revisando presentaciones y realizando visitas al sitio para garantizar la calidad.',
-  studio_process_completion_title: 'Finalización del Proyecto',
-  studio_process_completion_desc: 'Realizamos inspecciones finales, coordinamos elementos de lista de pendientes y aseguramos que su proyecto se complete con los más altos estándares.',
-  studio_process_view_full: 'Ver Proceso Completo',
 
   // ── Careers Page ──
   careers_heading: 'Carreras',
@@ -365,3 +342,5 @@ export default {
   careers_form_sending: 'Enviando…',
   careers_form_send: 'Enviar',
 };
+
+export default translations;

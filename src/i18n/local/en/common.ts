@@ -166,7 +166,6 @@ const translations = {
 
   // ── Studio Page ──
   studio_about_eyebrow: 'About the Studio',
-
   studio_about_h2: 'Architecture that is deeply human, rigorously crafted.',
   studio_team_strip_eyebrow: 'Meet The Team',
   studio_team_heading1: 'Meet the minds',
@@ -208,9 +207,8 @@ const translations = {
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',
   studio_principal_name: 'Denza',
   studio_philosophy_label: 'Our Philosophy',
-  studio_about_intro: 'We design for people, not portfolios. Every project begins with a sustained period of listening — to the client, to the site, to the culture of place — before a single line is drawn. This patient methodology produces work that feels inevitable: rooted rather than fashionable, purposeful rather than performative.',
   studio_philosophy_p1: 'FS Architects is an architectural firm rooted in the belief that architecture must move at the pace of life: deliberate, thoughtful, and human-centered. Guided by the philosophy of Slow Architecture, we approach every project with care and precision, proving that successful design is achieved through thoughtful craft balanced with calm cultural sophistication.',
-  studio_philosophy_p2: 'Every project begins with listening. We invest time in understanding our clients\' lives, their aspirations, and the specific conditions of each site. This rigorous process of inquiry informs every decision — from the orientation of a building to the selection of a door handle — ensuring that the final work is not merely beautiful, but genuinely useful and deeply meaningful.',
+  studio_philosophy_p2: "Every project begins with listening. We invest time in understanding our clients' lives, their aspirations, and the specific conditions of each site. This rigorous process of inquiry informs every decision — from the orientation of a building to the selection of a door handle — ensuring that the final work is not merely beautiful, but genuinely useful and deeply meaningful.",
   studio_quote: 'We do not design for the photograph. We design for the life lived within.',
 
   studio_founded_label: 'Year Founded',
@@ -230,16 +228,16 @@ const translations = {
   studio_principal_credentials_btn: 'See Credentials',
   studio_team_sofia_name: 'Sofia Reyes',
   studio_team_sofia_title: 'Design Principal',
-  studio_team_sofia_bio: 'Sofia leads the studio\'s design direction with a focus on spatial experience and human scale. A graduate of UP Diliman and the Architectural Association in London, she brings a global perspective to every project.',
+  studio_team_sofia_bio: "Sofia leads the studio's design direction with a focus on spatial experience and human scale. A graduate of UP Diliman and the Architectural Association in London, she brings a global perspective to every project.",
   studio_team_marco_name: 'Marco Villanueva',
   studio_team_marco_title: 'Project Architect',
-  studio_team_marco_bio: 'Marco oversees the technical development of the studio\'s most complex projects. His expertise in structural systems and building technology ensures that every design is as buildable as it is beautiful.',
+  studio_team_marco_bio: "Marco oversees the technical development of the studio's most complex projects. His expertise in structural systems and building technology ensures that every design is as buildable as it is beautiful.",
   studio_team_elena_name: 'Elena Cruz',
   studio_team_elena_title: 'Interior Design Lead',
   studio_team_elena_bio: 'Elena heads the interior design practice, crafting environments that are refined, tactile, and deeply considered. She has a particular expertise in bespoke furniture design and material curation.',
   studio_team_rafael_name: 'Rafael Mendoza',
   studio_team_rafael_title: 'Senior Associate',
-  studio_team_rafael_bio: 'Rafael manages client relationships and project delivery across the studio\'s healthcare and civic portfolio. His calm, methodical approach ensures that complex projects are delivered on time and to the highest standard.',
+  studio_team_rafael_bio: "Rafael manages client relationships and project delivery across the studio's healthcare and civic portfolio. His calm, methodical approach ensures that complex projects are delivered on time and to the highest standard.",
   studio_team_ana_name: 'Ana Lim',
   studio_team_ana_title: 'Architect',
   studio_team_ana_bio: 'Ana joined the studio in 2019 and has quickly established herself as a key creative voice. Her work on the Hillside Residences and Coastal Resort projects has been widely recognised for its sensitivity and precision.',
@@ -268,6 +266,7 @@ const translations = {
   studio_process_completion_tag: 'Phase 06',
   studio_process_cta_text: 'Ready to begin a conversation about your project? We would be glad to hear from you.',
   studio_process_cta_btn: 'Start a Conversation',
+  studio_process_view_full: 'View Full Process',
 
   // ── Contact Page ──
   contact_footer_heading: 'Contact Us',
@@ -294,23 +293,6 @@ const translations = {
   contact_form_sending: 'Sending...',
   contact_form_success: 'Thank you. We will be in touch shortly.',
   contact_form_error: 'Something went wrong. Please try again.',
-
-  // Studio page - Design Process Teaser
-  studio_process_eyebrow: 'How We Work',
-  studio_process_headline: 'Our Design Process',
-  studio_process_discovery_title: 'Discovery & Planning',
-  studio_process_discovery_desc: 'We begin by understanding your vision, needs, and site conditions. Through detailed consultations and analysis, we establish project goals and feasibility.',
-  studio_process_concept_title: 'Concept Design',
-  studio_process_concept_desc: 'We explore layout options, form, and overall character to find the right design direction for you. You’ll receive concept sketches, preliminary floor plans, and initial 3D visuals.',
-  studio_process_design_title: 'Design Development',
-  studio_process_design_desc: 'We refine the design, finalize materials, systems, and details. This phase ensures every element aligns with your vision and budget.',
-  studio_process_documentation_title: 'Construction Documentation',
-  studio_process_documentation_desc: 'We prepare comprehensive technical drawings and specifications required for permits and construction. Every detail is documented for accurate execution.',
-  studio_process_construction_title: 'Construction Support',
-  studio_process_construction_desc: 'We provide ongoing support during construction, answering questions, reviewing submittals, and conducting site visits to ensure quality.',
-  studio_process_completion_title: 'Project Completion',
-  studio_process_completion_desc: 'We conduct final inspections, coordinate punch list items, and ensure your project is completed to the highest standards.',
-  studio_process_view_full: 'View Full Process',
 
   // ── Careers Page ──
   careers_heading: 'Careers',

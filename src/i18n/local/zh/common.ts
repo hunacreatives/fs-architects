@@ -166,7 +166,6 @@ const translations = {
 
   // ── Studio Page ──
   studio_about_eyebrow: '关于工作室',
-
   studio_about_h2: '深刻人性，严谨雕琢的建筑。',
   studio_team_strip_eyebrow: '认识团队',
   studio_team_heading1: '认识塑造',
@@ -208,7 +207,6 @@ const translations = {
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',
   studio_principal_name: 'Denza',
   studio_philosophy_label: '我们的理念',
-  studio_about_intro: '我们为人而设计，而非为作品集。每个项目都始于一段持续的倾听——倾听客户、场地与地方文化——在落下第一根线条之前。这种耐心的方法论造就了感觉不可避免的作品：植根于场所而非追随潮流，目的明确而非流于表演。',
   studio_philosophy_p1: 'FS Architects 是一家建筑事务所，深信建筑必须以生命的节奏前行：从容、深思熟虑、以人为本。秉持慢建筑哲学，我们以用心与精准对待每一个项目，证明成功的设计源于深思熟虑的工艺与平静文化修养之间的平衡。',
   studio_philosophy_p2: '每个项目都从倾听开始。我们投入时间去理解客户的生活、他们的愿景，以及每个场地的具体条件。',
   studio_quote: '我们不为照片而设计，我们为其中的生活而设计。',
@@ -268,6 +266,7 @@ const translations = {
   studio_process_completion_tag: '阶段 06',
   studio_process_cta_text: '准备好就您的项目开始对话了吗？我们很乐意倾听。',
   studio_process_cta_btn: '开始对话',
+  studio_process_view_full: '查看完整流程',
 
   // ── Contact Page ──
   contact_footer_heading: '联系我们',
@@ -294,23 +293,6 @@ const translations = {
   contact_form_sending: '发送中...',
   contact_form_success: '感谢您。我们将尽快与您联系。',
   contact_form_error: '出现错误，请重试。',
-
-  // Studio page - Design Process Teaser
-  studio_process_eyebrow: '我们的工作方式',
-  studio_process_headline: '我们的设计流程',
-  studio_process_discovery_title: '发现与规划',
-  studio_process_discovery_desc: '我们首先了解您的愿景、需求和场地条件。通过详细的咨询和分析，我们确定项目目标和可行性。',
-  studio_process_concept_title: '概念设计',
-  studio_process_concept_desc: '我们探索布局选项、形式和整体特征，为您找到正确的设计方向。您将收到概念草图、初步平面图和初始3D视觉效果。',
-  studio_process_design_title: '设计开发',
-  studio_process_design_desc: '我们完善设计，确定材料、系统和细节。此阶段确保每个元素都符合您的愿景和预算。',
-  studio_process_documentation_title: '施工文档',
-  studio_process_documentation_desc: '我们准备许可和施工所需的全面技术图纸和规格。每个细节都被记录以确保准确执行。',
-  studio_process_construction_title: '施工支持',
-  studio_process_construction_desc: '我们在施工期间提供持续支持，回答问题，审查提交材料，并进行现场访问以确保质量。',
-  studio_process_completion_title: '项目完成',
-  studio_process_completion_desc: '我们进行最终检查，协调待办事项清单，并确保您的项目以最高标准完成。',
-  studio_process_view_full: '查看完整流程',
 
   // ── Careers Page ──
   careers_heading: '招聘',

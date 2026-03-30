@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navigation from '../../components/feature/Navigation';
@@ -168,6 +168,10 @@ export default function ProjectsPage() {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
 
+  // ── Animation state ──
+  const [headerVisible, setHeaderVisible] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+
   const locations = ['all', 'Manila', 'Leyte', 'Cebu', 'CDO', 'Davao', 'Zamboanga'];
 
   const categories = [
@@ -250,6 +254,29 @@ export default function ProjectsPage() {
     setSlideIndex(0);
   }, [activeLocation, activeCategory, sortBy, searchQuery]);
 
+  // ── Header entrance ──
+  useEffect(() => {
+    const t = setTimeout(() => setHeaderVisible(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ── Grid stagger reveal ──
+  useEffect(() => {
+    const container = gridRef.current;
+    if (!container) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          container.classList.add('grid-revealed');
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.08 }
+    );
+    obs.observe(container);
+    return () => obs.disconnect();
+  }, [sortedProjects]);
+
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning || sortedProjects.length === 0) return;
     setIsTransitioning(true);
@@ -286,20 +313,57 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <style>{`
+        @keyframes projFadeUp {
+          from { opacity: 0; transform: translateY(22px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .proj-header-item {
+          opacity: 0;
+          transform: translateY(18px);
+          transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1);
+        }
+        .proj-header-visible .proj-header-item { opacity: 1; transform: translateY(0); }
+        .proj-header-d0 { transition-delay: 0s; }
+        .proj-header-d1 { transition-delay: 0.1s; }
+        .proj-header-d2 { transition-delay: 0.18s; }
+
+        .proj-card {
+          opacity: 0;
+          transform: translateY(28px);
+          transition: opacity 0s, transform 0s;
+        }
+        .grid-revealed .proj-card {
+          animation: projFadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards;
+        }
+        .grid-revealed .proj-card:nth-child(1)  { animation-delay: 0.00s; }
+        .grid-revealed .proj-card:nth-child(2)  { animation-delay: 0.07s; }
+        .grid-revealed .proj-card:nth-child(3)  { animation-delay: 0.14s; }
+        .grid-revealed .proj-card:nth-child(4)  { animation-delay: 0.21s; }
+        .grid-revealed .proj-card:nth-child(5)  { animation-delay: 0.28s; }
+        .grid-revealed .proj-card:nth-child(6)  { animation-delay: 0.35s; }
+        .grid-revealed .proj-card:nth-child(7)  { animation-delay: 0.42s; }
+        .grid-revealed .proj-card:nth-child(8)  { animation-delay: 0.49s; }
+        .grid-revealed .proj-card:nth-child(9)  { animation-delay: 0.56s; }
+        .grid-revealed .proj-card:nth-child(10) { animation-delay: 0.60s; }
+        .grid-revealed .proj-card:nth-child(11) { animation-delay: 0.64s; }
+        .grid-revealed .proj-card:nth-child(12) { animation-delay: 0.68s; }
+      `}</style>
+
       <Navigation theme="dark" />
 
       <div className="pt-24 pb-16">
         {/* Header */}
         <div className="px-4 md:px-16 lg:px-24 mb-8">
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center justify-between ${headerVisible ? 'proj-header-visible' : ''}`}>
             <h1
-              className="text-xl font-light tracking-wide text-black"
+              className="proj-header-item proj-header-d0 text-xl font-light tracking-wide text-black"
               style={{ fontFamily: 'Marcellus, serif' }}
             >
               {t('projects_title')}
             </h1>
             <p
-              className="text-xs text-black/60 tracking-wide"
+              className="proj-header-item proj-header-d1 text-xs text-black/60 tracking-wide"
               style={{ fontFamily: 'Geist, sans-serif' }}
             >
               {t('projects_count')}
@@ -584,11 +648,11 @@ export default function ProjectsPage() {
 
         {/* ── PROJECT GRID ── */}
         <div className="px-4 md:px-16 lg:px-24">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {sortedProjects.map((project) => (
               <div
                 key={project.id}
-                className={`group transition-all duration-300 ${
+                className={`proj-card group transition-all duration-300 ${
                   selectedProject?.id === project.id ? 'opacity-100' : 'opacity-80 hover:opacity-100'
                 }`}
               >

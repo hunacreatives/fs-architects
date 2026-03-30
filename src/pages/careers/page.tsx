@@ -10,9 +10,11 @@ export default function CareersPage() {
   const { t } = useTranslation();
   const [navTheme, setNavTheme] = useState<'light' | 'dark'>('dark');
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
+  const [headerVisible, setHeaderVisible] = useState(false);
 
   const rolesSectionRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const quoteRef = useRef<HTMLDivElement>(null);
 
   const handleApply = (titleKey: string) => {
     setSelectedPosition(t(titleKey));
@@ -20,6 +22,11 @@ export default function CareersPage() {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => setHeaderVisible(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   /* Nav theme: dark on white, light inside dark open roles */
   useEffect(() => {
@@ -35,24 +42,51 @@ export default function CareersPage() {
     return () => window.removeEventListener('scroll', update);
   }, []);
 
+  // Quote scroll reveal
+  useEffect(() => {
+    const el = quoteRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('quote-visible');
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const positionOptions = OPEN_ROLES.map(r => t(r.titleKey));
+
+  const hi = (delay: string) =>
+    `transition-all duration-700 ease-out ${delay} ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`;
 
   return (
     <div className="w-full min-h-screen bg-white">
+      <style>{`
+        .quote-item {
+          opacity: 0;
+          transform: translateY(20px);
+          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
+        }
+        .quote-visible .quote-item { opacity: 1; transform: translateY(0); }
+        .quote-d0 { transition-delay: 0s; }
+        .quote-d1 { transition-delay: 0.14s; }
+      `}</style>
+
       <Navigation theme={navTheme} />
 
       {/* ── PAGE HEADER ── */}
       <div
         className="w-full px-6 md:px-20 lg:px-28 flex flex-col md:flex-row md:items-start md:justify-between gap-8 md:gap-16"
-        style={{
-          paddingTop: '100px',
-          paddingBottom: '36px',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
-        }}
+        style={{ paddingTop: '100px', paddingBottom: '36px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}
       >
-        {/* Left — title + intro */}
         <div className="flex flex-col gap-4 md:gap-5 max-w-lg">
           <h1
+            className={hi('delay-[0ms]')}
             style={{
               fontFamily: 'Marcellus, serif',
               fontSize: 'clamp(28px, 3.6vw, 52px)',
@@ -65,6 +99,7 @@ export default function CareersPage() {
             {t('careers_heading')}
           </h1>
           <p
+            className={hi('delay-[120ms]')}
             style={{
               fontFamily: 'Geist, sans-serif',
               fontSize: '12px',
@@ -78,8 +113,7 @@ export default function CareersPage() {
           </p>
         </div>
 
-        {/* Right — open positions counter */}
-        <div className="flex flex-row md:flex-col items-center md:items-end gap-3 md:gap-1 flex-shrink-0">
+        <div className={`flex flex-row md:flex-col items-center md:items-end gap-3 md:gap-1 flex-shrink-0 ${hi('delay-[220ms]')}`}>
           <span
             style={{
               fontFamily: 'Marcellus, serif',
@@ -119,10 +153,10 @@ export default function CareersPage() {
         />
       </div>
 
-      {/* ── VALUES MAGAZINE GRID ── */}
+      {/* ── VALUES ── */}
       <ValuesSection />
 
-      {/* ── OPEN ROLES (dark) ── */}
+      {/* ── OPEN ROLES ── */}
       <OpenRoles sectionRef={rolesSectionRef} onApply={handleApply} />
 
       {/* ── APPLICATION FORM ── */}
@@ -134,10 +168,12 @@ export default function CareersPage() {
 
       {/* ── PULL QUOTE ── */}
       <div
+        ref={quoteRef}
         className="w-full px-6 md:px-20 lg:px-28 py-14 md:py-20 flex flex-col items-center text-center overflow-hidden"
         style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}
       >
         <blockquote
+          className="quote-item quote-d0"
           style={{
             fontFamily: 'Marcellus, serif',
             fontSize: 'clamp(14px, 1.55vw, 22px)',
@@ -151,6 +187,7 @@ export default function CareersPage() {
           &ldquo;We do not hire for roles. We invite people into a practice.&rdquo;
         </blockquote>
         <p
+          className="quote-item quote-d1"
           style={{
             fontFamily: 'Geist, sans-serif',
             fontSize: '9px',

@@ -1,10 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export default function ContactForm() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [charCount, setCharCount] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('cf-visible');
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.08 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,11 +83,34 @@ export default function ContactForm() {
   ];
 
   return (
-    <section id="contact-form" className="w-full px-10 md:px-20 lg:px-28 pt-12 pb-20">
+    <section ref={sectionRef} id="contact-form" className="w-full px-10 md:px-20 lg:px-28 pt-12 pb-20">
+      <style>{`
+        .cf-item {
+          opacity: 0;
+          transform: translateY(20px);
+          transition: opacity 0.65s cubic-bezier(0.22,1,0.36,1), transform 0.65s cubic-bezier(0.22,1,0.36,1);
+        }
+        .cf-visible .cf-item { opacity: 1; transform: translateY(0); }
+        .cf-d0 { transition-delay: 0s; }
+        .cf-d1 { transition-delay: 0.08s; }
+        .cf-d2 { transition-delay: 0.16s; }
+        .cf-d3 { transition-delay: 0.24s; }
+        .cf-d4 { transition-delay: 0.32s; }
+        .cf-left {
+          opacity: 0;
+          transform: translateX(-18px);
+          transition: opacity 0.72s cubic-bezier(0.22,1,0.36,1), transform 0.72s cubic-bezier(0.22,1,0.36,1);
+        }
+        .cf-right {
+          opacity: 0;
+          transform: translateX(18px);
+          transition: opacity 0.72s cubic-bezier(0.22,1,0.36,1) 0.1s, transform 0.72s cubic-bezier(0.22,1,0.36,1) 0.1s;
+        }
+        .cf-visible .cf-left, .cf-visible .cf-right { opacity: 1; transform: translateX(0); }
+      `}</style>
 
-      {/* ── Heading above both columns ── */}
       <h1
-        className="mb-10 leading-tight"
+        className="cf-item cf-d0 mb-10 leading-tight"
         style={{
           fontFamily: 'Marcellus, serif',
           fontSize: 'clamp(26px, 2.8vw, 42px)',
@@ -84,8 +124,8 @@ export default function ContactForm() {
 
       <div className="flex flex-col lg:flex-row gap-16 lg:gap-24">
 
-        {/* ── LEFT: Contact Info — starts at same level as first form field ── */}
-        <div className="lg:w-5/12 flex flex-col">
+        {/* ── LEFT: Contact Info ── */}
+        <div className="cf-left lg:w-5/12 flex flex-col">
           <div className="flex flex-col gap-8">
             {contactDetails.map(({ label, icon, lines }) => (
               <div key={label} className="flex items-start gap-4">
@@ -115,7 +155,7 @@ export default function ContactForm() {
         </div>
 
         {/* ── RIGHT: Form ── */}
-        <div className="lg:w-7/12">
+        <div className="cf-right lg:w-7/12">
           {status === 'success' ? (
             <div className="border border-black/10 px-8 py-12 text-center flex flex-col items-center justify-center">
               <i className="ri-check-line text-2xl text-black/30 mb-3 block" />

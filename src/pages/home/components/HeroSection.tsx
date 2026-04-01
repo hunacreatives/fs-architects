@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navigation from '../../../components/feature/Navigation';
@@ -14,35 +14,70 @@ const SLIDES = [
   "https://readdy.ai/api/search-image?query=Luxury%20private%20villa%20architecture%20with%20long%20horizontal%20rooflines%2C%20infinity%20pool%20reflecting%20the%20sky%2C%20surrounded%20by%20manicured%20landscape%20and%20natural%20stone%20walls%2C%20architectural%20photography%20with%20golden%20hour%20light%2C%20serene%20and%20composed%20atmosphere&width=1920&height=1080&seq=fs-arch-slide-004&orientation=landscape",
 ];
 
+// Varied Ken Burns directions so each slide feels different
+const KENBURNS = [
+  { from: 'scale(1.07) translate(1%, 1%)',  to: 'scale(1.0)  translate(-1%, -1%)' },
+  { from: 'scale(1.0)  translate(-1%, -1%)', to: 'scale(1.07) translate(1%,  1%)' },
+  { from: 'scale(1.06) translate(0%,  1%)',  to: 'scale(1.0)  translate(0%,  -1%)' },
+  { from: 'scale(1.0)  translate(1%,  0%)',  to: 'scale(1.06) translate(-1%, 0%)' },
+];
+
+const CROSSFADE_MS = 1800;
+const HOLD_FIRST_MS = 9000;
+const HOLD_REST_MS  = 6000;
+
 export default function HeroSection({ isVisible }: HeroSectionProps) {
   const [showContent, setShowContent] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [nextSlide, setNextSlide] = useState(1);
-  const [transitioning, setTransitioning] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [kbActive, setKbActive] = useState<boolean[]>(SLIDES.map((_, i) => i === 0));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   useEffect(() => {
     if (isVisible) {
-      const timer = setTimeout(() => setShowContent(true), 100);
-      return () => clearTimeout(timer);
+      const t1 = setTimeout(() => setShowContent(true), 100);
+      return () => clearTimeout(t1);
     }
   }, [isVisible]);
 
-  useEffect(() => {
-    // First slide stays for 10s, subsequent slides 6s
-    const duration = currentSlide === 0 ? 10000 : 6000;
-    const interval = setTimeout(() => {
-      const next = (currentSlide + 1) % SLIDES.length;
-      setNextSlide(next);
-      setTransitioning(true);
+  const scheduleNext = (current: number, isFirst: boolean) => {
+    const hold = isFirst ? HOLD_FIRST_MS : HOLD_REST_MS;
+    timerRef.current = setTimeout(() => {
+      const next = (current + 1) % SLIDES.length;
+      setActiveSlide(next);
+      // Start Ken Burns on incoming slide shortly after crossfade begins
       setTimeout(() => {
-        setCurrentSlide(next);
-        setTransitioning(false);
-      }, 1800);
-    }, duration);
-    return () => clearTimeout(interval);
-  }, [currentSlide]);
+        setKbActive(prev => {
+          const updated = [...prev];
+          updated[next] = true;
+          return updated;
+        });
+      }, 100);
+      scheduleNext(next, false);
+    }, hold);
+  };
+
+  useEffect(() => {
+    scheduleNext(0, true);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const goToSlide = (i: number) => {
+    if (i === activeSlide) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setActiveSlide(i);
+    setTimeout(() => {
+      setKbActive(prev => {
+        const updated = [...prev];
+        // Reset outgoing, activate incoming
+        updated[activeSlide] = false;
+        updated[i] = true;
+        return updated;
+      });
+    }, 100);
+    scheduleNext(i, false);
+  };
 
   return (
     <div
@@ -50,38 +85,45 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         isVisible ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Slideshow Background */}
+      {/* Slideshow — all slides stacked, crossfade via opacity only, no React remounting */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Current slide — subtle scale-down entrance on first load */}
-        <img
-          key={`current-${currentSlide}`}
-          src={SLIDES[currentSlide]}
-          alt="Architectural work"
-          className={`absolute inset-0 w-full h-full object-cover object-top transition-transform duration-[3500ms] ease-out ${
-            isVisible ? 'scale-100' : 'scale-110'
-          }`}
-        />
-        {/* Next slide — fades in during transition */}
-        <img
-          key={`next-${nextSlide}`}
-          src={SLIDES[nextSlide]}
-          alt="Architectural work"
-          className="absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-[1800ms] ease-in-out"
-          style={{ opacity: transitioning ? 1 : 0 }}
-        />
-        {/* Dim overlay */}
-        <div className="absolute inset-0" style={{ backgroundColor: 'rgba(30, 36, 42, 0.58)' }} />
-        {/* Gradient for bottom legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
+        {SLIDES.map((src, i) => {
+          const kb = KENBURNS[i % KENBURNS.length];
+          const isActive = i === activeSlide;
+          const isMoving = kbActive[i];
+
+          return (
+            <img
+              key={i}
+              src={src}
+              alt={`Architectural work ${i + 1}`}
+              className="absolute inset-0 w-full h-full object-cover object-top"
+              style={{
+                opacity: isActive ? 1 : 0,
+                transform: isMoving ? kb.to : kb.from,
+                transition: [
+                  `opacity ${CROSSFADE_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
+                  `transform ${isMoving ? 10000 : 0}ms ease-in-out`,
+                ].join(', '),
+                willChange: 'opacity, transform',
+                zIndex: isActive ? 1 : 0,
+              }}
+            />
+          );
+        })}
+
+        {/* Overlay */}
+        <div className="absolute inset-0 z-10" style={{ backgroundColor: 'rgba(30, 36, 42, 0.55)' }} />
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
       </div>
 
       {/* Navigation */}
       <Navigation theme="light" showContent={showContent} />
 
       {/* Hero Content */}
-      <div className="relative z-10 h-screen flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-12 md:pb-20">
+      <div className="relative z-20 h-screen flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-12 md:pb-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 md:gap-0">
-          {/* Left Content */}
+          {/* Left */}
           <div
             className={`transition-all duration-1000 delay-300 ${
               showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
@@ -126,12 +168,12 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
           {SLIDES.map((_, i) => (
             <button
               key={i}
-              onClick={() => { setNextSlide(i); setTransitioning(true); setTimeout(() => { setCurrentSlide(i); setTransitioning(false); }, 1800); }}
+              onClick={() => goToSlide(i)}
               className="cursor-pointer transition-all duration-500"
               style={{
-                width: i === currentSlide ? '28px' : '8px',
+                width: i === activeSlide ? '28px' : '8px',
                 height: '2px',
-                backgroundColor: i === currentSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)',
+                backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)',
               }}
               aria-label={`Slide ${i + 1}`}
             />

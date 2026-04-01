@@ -105,11 +105,13 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         className={`fixed top-0 left-0 right-0 z-40 transition-all duration-700 overflow-visible ${
           showContent === false
             ? 'opacity-0'
-            : isScrolled
-              ? isDark
-                ? 'bg-white/95 backdrop-blur-sm'
-                : 'bg-black/20 backdrop-blur-sm'
-              : 'bg-transparent'
+            : isDark
+              ? isScrolled
+                ? 'bg-white/98 backdrop-blur-sm'
+                : 'bg-white'
+              : isScrolled
+                ? 'bg-black/20 backdrop-blur-sm'
+                : 'bg-transparent'
         }`}
       >
 

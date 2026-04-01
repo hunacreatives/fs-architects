@@ -48,41 +48,39 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
         id="design-process"
         className="w-full relative overflow-hidden"
         style={{
-          background: 'rgba(216, 232, 240, 0.62)',
-          backdropFilter: 'blur(36px) saturate(170%) brightness(1.04)',
-          WebkitBackdropFilter: 'blur(36px) saturate(170%) brightness(1.04)',
           marginTop: bioOpen ? '0px' : '-100px',
           transition: 'margin-top 0.55s cubic-bezier(0.4,0,0.2,1)',
           position: 'relative',
           zIndex: 2,
+          contain: 'paint',
+          transform: 'translateZ(0)',
         }}
       >
-        {/* ── Dark wash — diagonal flood from top-left ── */}
+        {/* ── Blurred background image layer ── */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
-            background: `linear-gradient(118deg, #33404a 0%, rgba(51,64,74,0.88) 18%, rgba(51,64,74,0.55) 38%, rgba(51,64,74,0.20) 58%, transparent 76%)`,
+            inset: '-12px',
+            backgroundImage: `url("https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/eb7aada1-d00d-4292-80c0-edc6a1b6afc1_Gemini_Generated_Image_tvv4zctvv4zctvv4.png?v=9aef8d8d87c7ef82c4fa4846fabccb67")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'left center',
+            backgroundRepeat: 'no-repeat',
+            filter: 'blur(8px)',
+            willChange: 'transform',
           }}
         />
 
-        {/* ── Depth layer — upper-left anchor ── */}
+        {/* ── Shimmer pulse — GPU composited opacity only ── */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(to bottom right, rgba(51,64,74,0.30) 0%, transparent 55%)`,
-          }}
-        />
-
-        {/* ── Glass surface highlight — diagonal sheen ── */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(132deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.02) 40%, rgba(255,255,255,0.08) 100%)',
+            background: 'linear-gradient(132deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.01) 40%, rgba(255,255,255,0.05) 100%)',
             animation: 'dpShimmer 10s ease-in-out infinite',
+            willChange: 'opacity',
           }}
         />
 
-        {/* ── Light sweep — ghost glint drifting across ── */}
+        {/* ── Light sweep — GPU composited transform only ── */}
         <div className="absolute inset-0 pointer-events-none" style={{ overflow: 'hidden' }}>
           <div
             style={{
@@ -94,29 +92,10 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
               background: 'linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.75) 50%, transparent 100%)',
               animation: 'dpSweep 18s ease-in-out infinite',
               opacity: 0.045,
+              willChange: 'transform',
             }}
           />
         </div>
-
-        {/* ── Grain layer 1 — overlay ── */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-            opacity: 0.62,
-            mixBlendMode: 'overlay' as const,
-          }}
-        />
-
-        {/* ── Grain layer 2 — soft-light for depth ── */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n2)'/%3E%3C/svg%3E")`,
-            opacity: 0.28,
-            mixBlendMode: 'soft-light' as const,
-          }}
-        />
 
         {/* ── Content ── */}
         <div

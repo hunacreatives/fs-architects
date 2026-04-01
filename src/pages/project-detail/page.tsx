@@ -7,6 +7,7 @@ import ContactFooter from '../contact/components/ContactFooter';
 import ProjectHero from './components/ProjectHero';
 import ProjectInfo from './components/ProjectInfo';
 import ProjectLocation from './components/ProjectLocation';
+import NextProject from './components/NextProject';
 
 const projectsData = [
   {
@@ -329,8 +330,14 @@ export default function ProjectDetailPage() {
     image: img,
   }));
 
+  const currentIndex = projectsData.findIndex((p) => p.slug === slug);
+  const nextProject = projectsData[(currentIndex + 1) % projectsData.length];
+  const prevProject = projectsData[(currentIndex - 1 + projectsData.length) % projectsData.length];
+  const nextName = t(`proj_${nextProject.translationKey}_name`);
+  const prevName = t(`proj_${prevProject.translationKey}_name`);
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       <Navigation theme="dark" />
 
       <ProjectHero
@@ -350,10 +357,21 @@ export default function ProjectDetailPage() {
         plans={floorPlans}
       />
 
+      <div className="pb-8 md:pb-14" />
+
       <ProjectLocation
         lat={project.lat}
         lng={project.lng}
         name={name}
+      />
+
+      <NextProject
+        slug={nextProject.slug}
+        name={nextName}
+        location={nextProject.location}
+        heroImage={nextProject.heroImage}
+        prevSlug={prevProject.slug}
+        prevName={prevName}
       />
 
       <ContactFooter />

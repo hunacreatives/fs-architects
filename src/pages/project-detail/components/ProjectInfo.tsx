@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface FloorPlan {
   label: string;
@@ -15,6 +15,33 @@ interface ProjectInfoProps {
   plans?: FloorPlan[];
 }
 
+function useReveal(threshold = 0.08) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('mag-revealed');
+          obs.disconnect();
+        }
+      },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return ref;
+}
+
+const EXTRA_PARAGRAPHS = [
+  'The materiality of the project responds to its surroundings through a careful selection of local elements — raw concrete, natural stone, and warm timber — establishing a dialogue between the built structure and the landscape that frames it.',
+  'Natural light becomes the primary architectural material. Strategically placed openings filter the changing quality of light throughout the day, transforming the interior atmosphere from the cool clarity of morning to the warm, raking light of late afternoon.',
+  'The spatial sequence from threshold to interior unfolds gradually, each transition revealing a new relationship between shelter and openness — between the private world within and the broader landscape it inhabits.',
+  'Every surface, joint, and edge has been considered with the same rigour as the overall form. The architecture does not impose itself on the site; instead, it settles quietly, as though it had always been there.',
+];
+
 export default function ProjectInfo({
   name,
   address,
@@ -24,257 +51,347 @@ export default function ProjectInfo({
   galleryImages,
   plans = [],
 }: ProjectInfoProps) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const galleryRef = useRef<HTMLDivElement>(null);
-  const activeIndexRef = useRef(0);
+  const infoRef = useReveal(0.05);
+  const imagesRef = useReveal(0.04);
+  const plansRef = useReveal(0.06);
+  const [activeSection, setActiveSection] = useState<'info' | 'images' | 'plans'>('info');
 
-  // All images: main first, then gallery
-  const allImages = useMemo(() => [mainImage, ...galleryImages], [mainImage, galleryImages]);
+  const infoAnchorRef = useRef<HTMLDivElement>(null);
+  const imagesAnchorRef = useRef<HTMLDivElement>(null);
+  const plansAnchorRef = useRef<HTMLDivElement>(null);
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [fading, setFading] = useState(false);
-
-  const goToIndex = useCallback((i: number) => {
-    if (i === activeIndexRef.current) return;
-    setFading(true);
-    setTimeout(() => {
-      setActiveIndex(i);
-      activeIndexRef.current = i;
-      setFading(false);
-    }, 280);
-  }, []);
-
-  // Auto-rotate every 8 seconds
+  // Track active nav section via scroll
   useEffect(() => {
-    const interval = setInterval(() => {
-      const next = (activeIndexRef.current + 1) % allImages.length;
-      goToIndex(next);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [allImages.length, goToIndex]);
+    const sections: { id: 'info' | 'images' | 'plans'; ref: React.RefObject<HTMLDivElement | null> }[] = [
+      { id: 'info', ref: infoAnchorRef },
+      { id: 'images', ref: imagesAnchorRef },
+      { id: 'plans', ref: plansAnchorRef },
+    ];
 
-  // Section + gallery reveal
-  useEffect(() => {
-    const section = sectionRef.current;
-    const gallery = galleryRef.current;
-    if (!section || !gallery) return;
-
-    const obs1 = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) { section.classList.add('proj-info-visible'); obs1.disconnect(); }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const found = sections.find((s) => s.ref.current === entry.target);
+            if (found) setActiveSection(found.id);
+          }
+        });
       },
-      { threshold: 0.06 }
-    );
-    const obs2 = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) { gallery.classList.add('gallery-visible'); obs2.disconnect(); }
-      },
-      { threshold: 0.08 }
+      { threshold: 0.25 }
     );
 
-    obs1.observe(section);
-    obs2.observe(gallery);
-    return () => { obs1.disconnect(); obs2.disconnect(); };
+    sections.forEach((s) => { if (s.ref.current) obs.observe(s.ref.current); });
+    return () => obs.disconnect();
   }, []);
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      const top = ref.current.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  };
+
+  const imgs = [mainImage, ...galleryImages];
+  const g = (i: number) => imgs[i % imgs.length];
+
+  // Split description into sentences for paragraph blocks
+  const sentences = description
+    .split(/(?<=[.!?])\s+/)
+    .filter(Boolean);
+
+  // Group into ~2 sentences per paragraph
+  const paragraphs: string[] = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    paragraphs.push(sentences.slice(i, i + 2).join(' '));
+  }
+  // Merge with extra paragraphs to reach at least 5 blocks
+  const allParagraphs = [
+    ...paragraphs,
+    ...EXTRA_PARAGRAPHS.slice(0, Math.max(0, 5 - paragraphs.length)),
+  ];
 
   return (
     <>
       <style>{`
-        .proj-info-left {
+        .mag-reveal {
           opacity: 0;
           transform: translateY(20px);
-          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
+          transition: opacity 0.9s cubic-bezier(0.22,1,0.36,1), transform 0.9s cubic-bezier(0.22,1,0.36,1);
         }
-        .proj-info-right {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1) 0.14s, transform 0.75s cubic-bezier(0.22,1,0.36,1) 0.14s;
+        .mag-revealed .mag-reveal { opacity: 1; transform: translateY(0); }
+
+        .mag-img {
+          overflow: hidden;
+          background: #f0eeeb;
         }
-        .proj-info-visible .proj-info-left,
-        .proj-info-visible .proj-info-right {
-          opacity: 1;
-          transform: translateY(0);
+        .mag-img img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: top;
+          display: block;
+          transition: transform 0.9s cubic-bezier(0.22,1,0.36,1);
         }
-        @keyframes galleryItemIn {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
+        .mag-img:hover img { transform: scale(1.03); }
+
+        .proj-nav-link {
+          font-family: 'Geist', sans-serif;
+          font-size: 9px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: rgba(0,0,0,0.35);
+          cursor: pointer;
+          transition: color 0.3s;
+          padding: 0;
+          background: none;
+          border: none;
+          outline: none;
+          white-space: nowrap;
         }
-        .gallery-item { opacity: 0; }
-        .gallery-visible .gallery-item {
-          animation: galleryItemIn 0.50s cubic-bezier(0.22,1,0.36,1) forwards;
+        .proj-nav-link:hover { color: rgba(0,0,0,0.85); }
+        .proj-nav-link.active { color: rgba(0,0,0,0.85); }
+        .proj-nav-sep {
+          color: rgba(0,0,0,0.18);
+          font-family: 'Geist', sans-serif;
+          font-size: 9px;
+          letter-spacing: 0;
+          user-select: none;
         }
-        .gallery-visible .gallery-item:nth-child(1) { animation-delay: 0.00s; }
-        .gallery-visible .gallery-item:nth-child(2) { animation-delay: 0.05s; }
-        .gallery-visible .gallery-item:nth-child(3) { animation-delay: 0.10s; }
-        .gallery-visible .gallery-item:nth-child(4) { animation-delay: 0.15s; }
-        .gallery-visible .gallery-item:nth-child(5) { animation-delay: 0.20s; }
-        .gallery-visible .gallery-item:nth-child(6) { animation-delay: 0.25s; }
       `}</style>
 
-      <section
-        ref={sectionRef}
-        className="px-4 md:px-16 lg:px-24 pt-14 md:pt-20 pb-10 md:pb-16"
+      {/* ── SECTION NAV: INFO | IMAGES | PLANS ─────────────────────────── */}
+      <div
+        className="sticky z-30 border-b"
+        style={{ top: '57px', backgroundColor: 'white', borderColor: 'rgba(0,0,0,0.07)' }}
       >
         <div
-          className="flex flex-col lg:grid lg:items-start gap-10 lg:gap-14"
-          style={{ gridTemplateColumns: '1fr 340px' }}
+          className="px-6 md:px-12 lg:px-16 flex items-center gap-4"
+          style={{ height: '44px' }}
         >
+          <button
+            className={`proj-nav-link${activeSection === 'info' ? ' active' : ''}`}
+            onClick={() => scrollTo(infoAnchorRef)}
+          >
+            Info
+          </button>
+          <span className="proj-nav-sep">|</span>
+          <button
+            className={`proj-nav-link${activeSection === 'images' ? ' active' : ''}`}
+            onClick={() => scrollTo(imagesAnchorRef)}
+          >
+            Images
+          </button>
+          <span className="proj-nav-sep">|</span>
+          <button
+            className={`proj-nav-link${activeSection === 'plans' ? ' active' : ''}`}
+            onClick={() => scrollTo(plansAnchorRef)}
+          >
+            Plans
+          </button>
+        </div>
+      </div>
 
-          {/* ── LEFT — Visual column ── */}
-          <div className="proj-info-left flex flex-col gap-3">
+      {/* ── INFO SECTION ───────────────────────────────────────────────── */}
+      <div ref={infoAnchorRef}>
+        <div
+          ref={infoRef}
+          className="px-6 md:px-12 lg:px-16 pt-16 md:pt-24 pb-20 md:pb-32"
+        >
+          <div
+            className="flex flex-col lg:flex-row lg:items-start"
+            style={{ gap: 'clamp(40px, 8vw, 120px)' }}
+          >
 
-            {/* Main display image with crossfade */}
+            {/* ── Left: meta sidebar ── */}
             <div
-              className="w-full overflow-hidden bg-stone-100 relative"
-              style={{ height: 'clamp(280px, 44vw, 580px)' }}
+              className="mag-reveal flex-shrink-0 flex flex-col gap-7"
+              style={{ width: 'clamp(160px, 18vw, 220px)' }}
             >
-              <img
-                src={allImages[activeIndex]}
-                alt={name}
-                className="w-full h-full object-cover object-top"
-                style={{
-                  opacity: fading ? 0 : 1,
-                  transition: 'opacity 0.28s ease',
-                }}
-              />
+              <div style={{ width: '20px', height: '1px', backgroundColor: 'rgba(0,0,0,0.2)' }} />
 
-              {/* Progress bar */}
-              <div
-                className="absolute bottom-0 left-0 right-0"
-                style={{ height: '2px', backgroundColor: 'rgba(0,0,0,0.10)' }}
-              >
-                <div
-                  key={activeIndex}
-                  style={{
-                    height: '100%',
-                    backgroundColor: 'rgba(0,0,0,0.35)',
-                    animation: 'imgProgress 8s linear forwards',
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Thumbnail strip — all images */}
-            <div
-              ref={galleryRef}
-              className="grid gap-2"
-              style={{ gridTemplateColumns: `repeat(${allImages.length}, 1fr)` }}
-            >
-              {allImages.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToIndex(i)}
-                  className="gallery-item overflow-hidden bg-stone-100 cursor-pointer group relative p-0 border-0 outline-none"
-                  style={{
-                    height: 'clamp(56px, 6.5vw, 88px)',
-                    flexShrink: 0,
-                  }}
-                >
-                  <img
-                    src={img}
-                    alt={`View ${i + 1}`}
-                    className="w-full h-full object-cover object-top transition-all duration-400"
-                    style={{
-                      filter: activeIndex === i ? 'brightness(1)' : 'brightness(0.65)',
-                      transform: activeIndex === i ? 'scale(1.03)' : 'scale(1)',
-                    }}
-                  />
-                  {/* Active bottom line */}
-                  <div
-                    className="absolute bottom-0 left-0 right-0 transition-all duration-300"
-                    style={{
-                      height: '2px',
-                      backgroundColor: activeIndex === i ? 'rgba(0,0,0,0.75)' : 'transparent',
-                    }}
-                  />
-                </button>
+              {[
+                { label: 'Project', value: name },
+                { label: 'Location', value: address },
+                { label: 'Year', value: year },
+                { label: 'Status', value: 'Completed' },
+              ].map((item) => (
+                <div key={item.label}>
+                  <p
+                    className="mb-1.5"
+                    style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)' }}
+                  >
+                    {item.label}
+                  </p>
+                  <p
+                    style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(0,0,0,0.7)', lineHeight: 1.6 }}
+                  >
+                    {item.value}
+                  </p>
+                </div>
               ))}
             </div>
-          </div>
 
-          {/* ── RIGHT — Info column ── */}
-          <div className="proj-info-right flex flex-col gap-7 lg:pt-0">
+            {/* ── Right: two-column editorial text ── */}
+            <div className="flex-1" style={{ maxWidth: '860px' }}>
+              {/* First paragraph spans full width — large intro statement */}
+              {allParagraphs[0] && (
+                <p
+                  className="mag-reveal"
+                  style={{
+                    fontFamily: 'Marcellus, serif',
+                    fontSize: 'clamp(18px, 2vw, 26px)',
+                    lineHeight: 1.65,
+                    color: 'rgba(0,0,0,0.82)',
+                    letterSpacing: '-0.01em',
+                    textAlign: 'justify',
+                    marginBottom: 'clamp(28px, 3.5vw, 52px)',
+                  }}
+                >
+                  {allParagraphs[0]}
+                </p>
+              )}
 
-            {/* Top rule */}
-            <div style={{ width: '32px', height: '1px', backgroundColor: 'rgba(0,0,0,0.18)' }} />
-
-            {/* Title */}
-            <h2
-              style={{
-                fontFamily: 'Marcellus, serif',
-                fontSize: 'clamp(22px, 2.4vw, 36px)',
-                lineHeight: 1.12,
-                letterSpacing: '-0.015em',
-                color: '#111',
-                margin: 0,
-              }}
-            >
-              {name}
-            </h2>
-
-            {/* Meta — year only */}
-            <div className="flex flex-col gap-1.5">
-              <p
-                style={{
-                  fontFamily: 'Geist, sans-serif',
-                  fontSize: '10px',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(0,0,0,0.28)',
-                  margin: 0,
-                }}
+              {/* Remaining paragraphs in two columns */}
+              <div
+                className="grid grid-cols-1 md:grid-cols-2"
+                style={{ gap: 'clamp(20px, 3vw, 48px) clamp(32px, 5vw, 80px)' }}
               >
-                {year}
-              </p>
+                {allParagraphs.slice(1).map((para, i) => (
+                  <p
+                    key={i}
+                    className="mag-reveal"
+                    style={{
+                      fontFamily: 'Geist, sans-serif',
+                      fontSize: 'clamp(13px, 1.05vw, 15px)',
+                      lineHeight: 2,
+                      color: 'rgba(0,0,0,0.52)',
+                      letterSpacing: '0.01em',
+                      textAlign: 'justify',
+                      transitionDelay: `${(i + 1) * 0.07}s`,
+                    }}
+                  >
+                    {para}
+                  </p>
+                ))}
+              </div>
             </div>
-
-            {/* Thin divider */}
-            <div style={{ height: '1px', backgroundColor: 'rgba(0,0,0,0.07)', width: '100%' }} />
-
-            {/* Description */}
-            <p
-              style={{
-                fontFamily: 'Geist, sans-serif',
-                fontSize: '12px',
-                lineHeight: '2',
-                letterSpacing: '0.02em',
-                color: 'rgba(0,0,0,0.58)',
-                margin: 0,
-              }}
-            >
-              {description}
-            </p>
           </div>
         </div>
+      </div>
 
-        {/* ── PLANS — full width below both columns ── */}
-        {plans.length > 0 && (
-          <div className="mt-8 md:mt-10">
-            <div className="h-px mb-6" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }} />
+      {/* ── IMAGES SECTION ─────────────────────────────────────────────── */}
+      <div ref={imagesAnchorRef}>
+        <div ref={imagesRef}>
+
+          {/* Full bleed image 1 */}
+          <div className="mag-reveal mag-img w-full" style={{ height: 'clamp(320px, 52vw, 760px)' }}>
+            <img src={g(0)} alt={name} />
+          </div>
+
+          {/* Asymmetric split */}
+          <div className="flex flex-col md:flex-row" style={{ gap: '3px', marginTop: '3px' }}>
             <div
-              className="grid gap-4"
-              style={{ gridTemplateColumns: `repeat(${plans.length}, 1fr)` }}
+              className="mag-reveal mag-img"
+              style={{ flex: '0 0 62%', height: 'clamp(240px, 36vw, 540px)', transitionDelay: '0s' }}
+            >
+              <img src={g(1)} alt={`${name} detail`} />
+            </div>
+            <div
+              className="mag-reveal mag-img"
+              style={{ flex: '1', height: 'clamp(240px, 36vw, 540px)', transitionDelay: '0.08s' }}
+            >
+              <img src={g(2)} alt={`${name} detail`} />
+            </div>
+          </div>
+
+          {/* Pull quote */}
+          <div className="px-6 md:px-12 lg:px-16 py-20 md:py-28 flex justify-end">
+            <div style={{ maxWidth: '500px' }}>
+              <div style={{ width: '1px', height: '52px', backgroundColor: 'rgba(0,0,0,0.13)', marginBottom: '28px' }} />
+              <p
+                style={{
+                  fontFamily: 'Marcellus, serif',
+                  fontSize: 'clamp(17px, 1.8vw, 24px)',
+                  color: 'rgba(0,0,0,0.68)',
+                  lineHeight: 1.6,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                "Architecture is not about form — it is the way a building responds to its context, its light, and the lives of the people who inhabit it."
+              </p>
+            </div>
+          </div>
+
+          {/* Three equal images */}
+          <div className="flex flex-col sm:flex-row" style={{ gap: '3px' }}>
+            {[g(3), g(4), g(5)].map((src, i) => (
+              <div
+                key={i}
+                className="mag-reveal mag-img"
+                style={{ flex: 1, height: 'clamp(200px, 26vw, 400px)', transitionDelay: `${i * 0.08}s` }}
+              >
+                <img src={src} alt={`${name} ${i + 3}`} />
+              </div>
+            ))}
+          </div>
+
+          {/* Final full bleed */}
+          <div
+            className="mag-reveal mag-img w-full"
+            style={{ height: 'clamp(280px, 45vw, 660px)', marginTop: '3px' }}
+          >
+            <img src={g(6 % imgs.length)} alt={`${name} overview`} style={{ objectPosition: 'center' }} />
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── PLANS SECTION ──────────────────────────────────────────────── */}
+      <div ref={plansAnchorRef}>
+        {plans.length > 0 && (
+          <div
+            ref={plansRef}
+            className="px-6 md:px-12 lg:px-16 pt-20 md:pt-28 pb-20 md:pb-28 border-t"
+            style={{ borderColor: 'rgba(0,0,0,0.06)' }}
+          >
+            <p
+              className="mag-reveal mb-10 md:mb-14"
+              style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)' }}
+            >
+              Floor Plans
+            </p>
+            <div
+              className="grid gap-4 md:gap-6"
+              style={{ gridTemplateColumns: `repeat(${Math.min(plans.length, 3)}, 1fr)` }}
             >
               {plans.map((plan, i) => (
-                <div key={i} className="flex flex-col gap-2">
+                <div
+                  key={i}
+                  className="mag-reveal flex flex-col gap-3"
+                  style={{ transitionDelay: `${i * 0.1}s` }}
+                >
                   <div
-                    className="w-full overflow-hidden bg-stone-50"
-                    style={{ height: 'clamp(130px, 14vw, 200px)', border: '1px solid rgba(0,0,0,0.07)' }}
+                    className="w-full mag-img"
+                    style={{
+                      height: 'clamp(150px, 16vw, 240px)',
+                      border: '1px solid rgba(0,0,0,0.06)',
+                      background: '#f9f8f7',
+                    }}
                   >
                     <img
                       src={plan.image}
                       alt={plan.label}
-                      className="w-full h-full object-cover object-top"
+                      style={{ objectFit: 'contain', padding: '16px', background: '#f9f8f7' }}
                     />
                   </div>
                   {plan.label && (
                     <p
                       style={{
                         fontFamily: 'Geist, sans-serif',
-                        fontSize: '9px',
-                        letterSpacing: '0.10em',
+                        fontSize: '8px',
+                        letterSpacing: '0.16em',
                         textTransform: 'uppercase',
-                        color: 'rgba(0,0,0,0.35)',
+                        color: 'rgba(0,0,0,0.3)',
                       }}
                     >
                       {plan.label}
@@ -285,14 +402,7 @@ export default function ProjectInfo({
             </div>
           </div>
         )}
-
-        <style>{`
-          @keyframes imgProgress {
-            from { width: 0%; }
-            to   { width: 100%; }
-          }
-        `}</style>
-      </section>
+      </div>
     </>
   );
 }

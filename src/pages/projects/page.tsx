@@ -227,12 +227,27 @@ export default function ProjectsPage() {
 
   // Full (unfiltered) per-city data for the map hover cards
   const cityProjectData = useMemo(() => {
-    const data: Record<string, { count: number; categories: string[] }> = {};
+    const data: Record<string, {
+      count: number;
+      categories: string[];
+      featuredProjects: { name: string; year: string; category: string }[];
+      yearRange: { min: string; max: string };
+    }> = {};
     locations.filter((l) => l !== 'all').forEach((loc) => {
       const cityProjs = mockProjects.filter((p) => p.location === loc);
+      const years = cityProjs.map((p) => p.year);
       data[loc] = {
         count: cityProjs.length,
         categories: [...new Set(cityProjs.map((p) => p.category))],
+        featuredProjects: cityProjs.slice(0, 3).map((p) => ({
+          name: p.name,
+          year: p.year,
+          category: p.category,
+        })),
+        yearRange: {
+          min: years.reduce((a, b) => (a < b ? a : b), years[0] ?? ''),
+          max: years.reduce((a, b) => (a > b ? a : b), years[0] ?? ''),
+        },
       };
     });
     return data;
@@ -374,19 +389,18 @@ export default function ProjectsPage() {
   const handleLocationChange = useCallback((loc: string) => {
     setActiveLocation(loc);
     setSlideIndex(0);
-    if (!projectsVisible) {
-      setProjectsVisible(true);
-      // Scroll to projects section after reveal starts
-      setTimeout(() => {
-        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 80);
-    } else {
-      // Already visible — just scroll back up to the projects area smoothly
-      setTimeout(() => {
-        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
-    }
-  }, [projectsVisible]);
+    setProjectsVisible(true);
+    setTimeout(() => {
+      projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }, []);
+
+  const handleViewAllProjects = useCallback(() => {
+    setProjectsVisible(true);
+    setTimeout(() => {
+      projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -441,6 +455,7 @@ export default function ProjectsPage() {
       <PhilippinesMap
         activeLocation={activeLocation}
         onLocationChange={handleLocationChange}
+        onViewAllProjects={handleViewAllProjects}
         projectCounts={projectCounts}
         cityProjectData={cityProjectData}
       />
@@ -467,143 +482,10 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          {/* ── SLIDESHOW MODE ── */}
-          {viewMode === 'slideshow' && (
-            <div className="w-full mb-12">
-              {sortedProjects.length === 0 ? (
-                <div className="w-full h-[520px] flex items-center justify-center bg-gray-50">
-                  <p className="text-navy/40 text-sm" style={{ fontFamily: 'Geist, sans-serif' }}>
-                    No projects found
-                  </p>
-                </div>
-              ) : (
-                <div className="relative w-full h-[280px] md:h-[520px] overflow-hidden bg-black">
-                  {/* Slide image */}
-                  <div
-                    className={`absolute inset-0 transition-opacity duration-500 ${
-                      isTransitioning ? 'opacity-0' : 'opacity-100'
-                    }`}
-                  >
-                    <img
-                      src={currentSlide?.image}
-                      alt={currentSlide?.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  </div>
-
-                  {/* Slide counter top-right */}
-                  <div className="absolute top-4 right-0 z-10 px-4 md:px-16 lg:px-24 flex items-center gap-2">
-                    <span
-                      className="text-white/60 text-xs tracking-widest"
-                      style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
-                    >
-                      {String(slideIndex + 1).padStart(2, '0')} / {String(sortedProjects.length).padStart(2, '0')}
-                    </span>
-                  </div>
-
-                  {/* View on Map button — top-left */}
-                  <div className="absolute top-4 left-0 z-10 px-4 md:px-16 lg:px-24">
-                    <button
-                      onClick={() => setViewMode('map')}
-                      className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white text-xs tracking-widest hover:bg-white/20 transition-all duration-300 cursor-pointer whitespace-nowrap"
-                      style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
-                    >
-                      <i className="ri-map-pin-line text-sm" />
-                      <span className="hidden sm:inline">VIEW ON MAP</span>
-                      <span className="sm:hidden">MAP</span>
-                    </button>
-                  </div>
-
-                  {/* Bottom info overlay */}
-                  <div
-                    className={`absolute bottom-0 left-0 right-0 z-10 px-4 md:px-16 lg:px-24 pb-8 md:pb-10 pt-10 md:pt-16 transition-opacity duration-500 ${
-                      isTransitioning ? 'opacity-0' : 'opacity-100'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-0">
-                      <div>
-                        <span
-                          className="inline-block text-white/50 text-xs tracking-widest uppercase mb-2 md:mb-3"
-                          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.14em' }}
-                        >
-                          {currentSlide?.category}
-                        </span>
-                        <h2
-                          className="text-base md:text-xl font-light text-white mb-1 md:mb-2 tracking-wide"
-                          style={{ fontFamily: 'Marcellus, serif' }}
-                        >
-                          {currentSlide ? t(`${currentSlide.translationKey}_name`) : ''}
-                        </h2>
-                        <p
-                          className="text-white/60 text-xs tracking-wide"
-                          style={{ fontFamily: 'Geist, sans-serif' }}
-                        >
-                          {currentSlide?.year} · {currentSlide ? t(`${currentSlide.translationKey}_address`) : ''}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => currentSlide && navigate(`/projects/${currentSlide.slug}`)}
-                        className="self-start sm:self-auto flex items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-white rounded-full text-navy text-xs tracking-widest hover:bg-white/90 transition-all duration-300 cursor-pointer whitespace-nowrap"
-                        style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
-                      >
-                        VIEW PROJECT
-                        <i className="ri-arrow-right-line text-sm" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Prev / Next arrows */}
-                  <button
-                    onClick={prevSlide}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 ml-3 md:ml-16 lg:ml-24 w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/25 transition-all duration-300 cursor-pointer"
-                    aria-label="Previous project"
-                  >
-                    <i className="ri-arrow-left-line text-base md:text-lg" />
-                  </button>
-                  <button
-                    onClick={nextSlide}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 mr-3 md:mr-16 lg:mr-24 w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/25 transition-all duration-300 cursor-pointer"
-                    aria-label="Next project"
-                  >
-                    <i className="ri-arrow-right-line text-base md:text-lg" />
-                  </button>
-
-                  {/* Dot indicators */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5">
-                    {sortedProjects.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => goToSlide(i)}
-                        className={`transition-all duration-300 cursor-pointer rounded-full ${
-                          i === slideIndex
-                            ? 'w-6 h-1.5 bg-white'
-                            : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
-                        }`}
-                        aria-label={`Go to slide ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ── MAP MODE ── */}
           {viewMode === 'map' && (
             <div className="w-full h-72 md:h-96 mb-12 relative">
               <div className="absolute top-4 left-4 z-10 flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={() => {
-                    setViewMode('slideshow');
-                    setSelectedProject(null);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/90 backdrop-blur-sm border border-black/10 rounded-full text-navy text-xs tracking-widest hover:bg-white transition-all duration-300 cursor-pointer whitespace-nowrap"
-                  style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
-                >
-                  <i className="ri-slideshow-line text-sm" />
-                  SLIDESHOW
-                </button>
                 {selectedProject && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2">
                     <div>

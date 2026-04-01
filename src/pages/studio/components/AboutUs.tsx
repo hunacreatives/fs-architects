@@ -39,6 +39,7 @@ export default function AboutUs() {
   const { t } = useTranslation();
 
   const overlayRef = useRef<HTMLDivElement>(null);
+  const cinematicRef = useRef<HTMLDivElement>(null);
   const quoteRef = useRef<HTMLDivElement>(null);
   const logosRef = useRef<HTMLDivElement>(null);
   const logosActiveRef = useRef(false);
@@ -47,6 +48,31 @@ export default function AboutUs() {
   const h2Ref = useReveal(0.2);
   const bodyRef = useReveal(0.2);
   const statsRef = useReveal(0.15);
+
+  // Cinematic intro: pitch black → words stagger in → slowly reveals background image
+  const quoteVisibleRef = useRef(false);
+  useEffect(() => {
+    // Phase 1: trigger word-by-word stagger (starts at 400ms)
+    const quoteTimeout = setTimeout(() => {
+      quoteVisibleRef.current = true;
+      if (quoteRef.current) {
+        quoteRef.current.classList.add('quote-words-active');
+      }
+    }, 400);
+
+    // Phase 2: cinematic fade out of black overlay (starts at ~1400ms)
+    const cinematicTimeout = setTimeout(() => {
+      if (cinematicRef.current) {
+        cinematicRef.current.style.transition = 'opacity 3.2s cubic-bezier(0.4, 0, 0.25, 1)';
+        cinematicRef.current.style.opacity = '0';
+      }
+    }, 1400);
+
+    return () => {
+      clearTimeout(quoteTimeout);
+      clearTimeout(cinematicTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -125,6 +151,42 @@ export default function AboutUs() {
         .stat-d2 { transition-delay: 0.24s; }
         .stat-d3 { transition-delay: 0.36s; }
 
+        /* ── Word-by-word quote stagger ── */
+        @keyframes quoteWordIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+            filter: blur(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0px);
+          }
+        }
+
+        .quote-word {
+          display: inline-block;
+          opacity: 0;
+        }
+
+        .quote-rule-line {
+          opacity: 0;
+        }
+
+        .quote-words-active .quote-word {
+          animation: quoteWordIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .quote-words-active .quote-w0 { animation-delay: 0s; }
+        .quote-words-active .quote-w1 { animation-delay: 0.24s; }
+        .quote-words-active .quote-w2 { animation-delay: 0.52s; }
+        .quote-words-active .quote-w3 { animation-delay: 0.76s; }
+
+        .quote-words-active .quote-rule-line {
+          animation: quoteWordIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          animation-delay: 1.05s;
+        }
+
         /* ── Logo reveal keyframe ── */
         @keyframes logoItemReveal {
           from {
@@ -178,7 +240,14 @@ export default function AboutUs() {
           style={{ opacity: 0, willChange: 'opacity' }}
         />
 
-        {/* ── QUOTE — two rows, smaller, with scrim ── */}
+        {/* Cinematic intro overlay — starts pitch black, fades out to reveal image */}
+        <div
+          ref={cinematicRef}
+          className="absolute inset-0 bg-black pointer-events-none"
+          style={{ opacity: 1, zIndex: 1, willChange: 'opacity' }}
+        />
+
+        {/* ── QUOTE — word-by-word stagger ── */}
         <div
           ref={quoteRef}
           className="absolute left-0 right-0 pointer-events-none flex flex-col items-center px-8"
@@ -187,9 +256,10 @@ export default function AboutUs() {
             transform: 'translateY(-50%)',
             willChange: 'opacity, transform',
             opacity: 1,
+            zIndex: 2,
           }}
         >
-          {/* Line 1 */}
+          {/* Line 1 — each word staggers in */}
           <p
             style={{
               fontFamily: 'Marcellus, serif',
@@ -198,14 +268,18 @@ export default function AboutUs() {
               color: 'rgba(255,255,255,0.9)',
               textAlign: 'center',
               lineHeight: 1.6,
-              textTransform: 'uppercase',
               textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
             }}
           >
-            {t('hero_tagline_line1')}
+            {t('hero_tagline_line1').split(' ').map((word, i) => (
+              <span key={i}>
+                <span className={`quote-word quote-w${i}`}>{word}</span>
+                {i < t('hero_tagline_line1').split(' ').length - 1 && ' '}
+              </span>
+            ))}
           </p>
 
-          {/* Line 2 */}
+          {/* Line 2 — words continue the global stagger index */}
           <p
             style={{
               fontFamily: 'Marcellus, serif',
@@ -214,15 +288,23 @@ export default function AboutUs() {
               color: 'rgba(255,255,255,0.72)',
               textAlign: 'center',
               lineHeight: 1.6,
-              textTransform: 'uppercase',
               textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
             }}
           >
-            {t('hero_tagline_line2')}
+            {t('hero_tagline_line2').split(' ').map((word, i) => {
+              const globalIdx = t('hero_tagline_line1').split(' ').length + i;
+              return (
+                <span key={i}>
+                  <span className={`quote-word quote-w${globalIdx}`}>{word}</span>
+                  {i < t('hero_tagline_line2').split(' ').length - 1 && ' '}
+                </span>
+              );
+            })}
           </p>
 
-          {/* Thin rule */}
+          {/* Thin rule — appears last */}
           <div
+            className="quote-rule-line"
             style={{
               marginTop: '18px',
               width: '28px',
@@ -243,6 +325,7 @@ export default function AboutUs() {
             willChange: 'opacity, transform',
             opacity: 0,
             padding: '0 48px',
+            zIndex: 2,
           }}
         >
           {/* Label */}

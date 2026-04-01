@@ -170,6 +170,13 @@ export default function ProjectsPage() {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
 
+  // ── Page entrance ──
+  const [pageLoaded, setPageLoaded] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setPageLoaded(true), 20);
+    return () => clearTimeout(timer);
+  }, []);
+
   // ── Animation state ──
   const [headerVisible, setHeaderVisible] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -254,14 +261,21 @@ export default function ProjectsPage() {
     return data;
   }, []);
 
-  // Read ?category= from URL on first mount
+  // Read ?category= from URL — re-runs whenever searchParams changes
+  // (handles both first load and navigating from the menu while already on this page)
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat && categories.includes(cat)) {
       setActiveCategory(cat);
+      setActiveLocation('all');
+      setProjectsVisible(true);
+      setTimeout(() => {
+        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
     }
+  // categories is a stable constant array defined in render — safe to omit
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   // Slideshow state
   const [viewMode, setViewMode] = useState<'slideshow' | 'map'>('slideshow');
@@ -405,7 +419,14 @@ export default function ProjectsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div
+      className="min-h-screen bg-white"
+      style={{
+        opacity: pageLoaded ? 1 : 0,
+        transform: pageLoaded ? 'translateY(0)' : 'translateY(10px)',
+        transition: 'opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1), transform 0.65s cubic-bezier(0.22, 1, 0.36, 1)',
+      }}
+    >
       <style>{`
         @keyframes projFadeUp {
           from { opacity: 0; transform: translateY(22px); }

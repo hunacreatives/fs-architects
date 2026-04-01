@@ -165,6 +165,13 @@ export default function PhilippinesMap({
     return () => { obs.disconnect(); clearTimeout(t); };
   }, []);
 
+  // ── Map mount transition (background bloom + SVG entrance) ──
+  const [mapMounted, setMapMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMapMounted(true), 40);
+    return () => clearTimeout(t);
+  }, []);
+
   // ── Pins visibility for entrance animation ──
   const mapColRef = useRef<HTMLDivElement>(null);
   const [pinsVisible, setPinsVisible] = useState(false);
@@ -187,10 +194,10 @@ export default function PhilippinesMap({
   }, []);
 
   const STATS = [
-    { target: 2021, suffix: '',  label: t('studio_founded_label'), delay: 100  },
-    { target: 100,  suffix: '+', label: t('map_project_plural'),   delay: 220  },
-    { target: 10,   suffix: '',  label: t('studio_offices_label'), delay: 340  },
-    { target: 5,    suffix: '',  label: t('studio_team_label'),    delay: 460  },
+    { target: 2021, suffix: '',  label: t('studio_founded_label'), delay: 600  },
+    { target: 100,  suffix: '+', label: t('map_project_plural'),   delay: 740  },
+    { target: 10,   suffix: '',  label: t('studio_offices_label'), delay: 880  },
+    { target: 5,    suffix: '',  label: t('studio_team_label'),    delay: 1020 },
   ];
 
   return (
@@ -209,9 +216,9 @@ export default function PhilippinesMap({
           60%  { transform: translate(-50%, -50%) scale(1.18); opacity: 1; }
           100% { transform: translate(-50%, -50%) scale(1);    opacity: 1; }
         }
-        .map-hero-title { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) both; }
-        .map-hero-hint  { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.24s both; }
-        .map-hero-cta   { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.38s both; }
+        .map-hero-title { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both; }
+        .map-hero-hint  { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.72s both; }
+        .map-hero-cta   { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.90s both; }
         .pin-pulse {
           position: absolute; top: 50%; left: 50%;
           width: 36px; height: 36px; border-radius: 50%;
@@ -253,9 +260,10 @@ export default function PhilippinesMap({
           style={{
             objectFit: 'cover',
             objectPosition: 'center center',
-            opacity: 0.55,
+            opacity: mapMounted ? 0.55 : 0,
             filter: 'blur(10px)',
             transform: 'scale(1.04)',
+            transition: 'opacity 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s',
           }}
           draggable={false}
         />
@@ -267,10 +275,11 @@ export default function PhilippinesMap({
           style={{
             objectFit: 'cover',
             objectPosition: 'center center',
-            opacity: 0.55,
+            opacity: mapMounted ? 0.55 : 0,
             filter: 'blur(0.5px)',
             maskImage: 'radial-gradient(ellipse 55% 52% at 50% 50%, black 15%, rgba(0,0,0,0.6) 42%, transparent 68%)',
             WebkitMaskImage: 'radial-gradient(ellipse 55% 52% at 50% 50%, black 15%, rgba(0,0,0,0.6) 42%, transparent 68%)',
+            transition: 'opacity 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s',
           }}
           draggable={false}
         />
@@ -283,8 +292,12 @@ export default function PhilippinesMap({
         style={{
           aspectRatio: '7 / 9',
           left: '50%',
-          transform: 'translateX(-50%) scale(1.14)',
+          transform: mapMounted
+            ? 'translateX(-50%) scale(1.14)'
+            : 'translateX(-50%) scale(1.08)',
           transformOrigin: 'center center',
+          opacity: mapMounted ? 1 : 0,
+          transition: 'opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.25s, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.25s',
         }}
       >
         {/* Base map image */}
@@ -476,6 +489,21 @@ export default function PhilippinesMap({
                 </div>
               )}
 
+              {/* Invisible hit-zone: extends hover area upward to cover the label */}
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: '-52px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '100px',
+                  height: '66px',
+                  pointerEvents: 'auto',
+                  zIndex: 0,
+                }}
+              />
+
               {/* Active pulse ring */}
               {isActive && <span className="pin-pulse" />}
 
@@ -498,12 +526,12 @@ export default function PhilippinesMap({
 
               {/* Label bubble */}
               <div
-                className={`pin-label absolute left-1/2 pointer-events-none whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] tracking-wider -translate-x-1/2 bottom-full mb-2 ${
+                className={`pin-label absolute left-1/2 whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] tracking-wider -translate-x-1/2 bottom-full mb-2 ${
                   isActive
                     ? 'bg-[#1c2b3a] text-white opacity-100'
                     : 'bg-white/95 text-[#1c2b3a] border border-black/10 opacity-70'
                 }`}
-                style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
+                style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em', pointerEvents: 'none' }}
               >
                 {pin.label}
                 {pin.count > 0 && (

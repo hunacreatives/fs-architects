@@ -7,6 +7,7 @@ import Studio from "../pages/studio/page";
 import Contact from "../pages/contact/page";
 import Process from "../pages/process/page";
 import Careers from "../pages/careers/page";
+import Consultation from "../pages/consultation/page";
 
 const routes: RouteObject[] = [
   {
@@ -36,6 +37,10 @@ const routes: RouteObject[] = [
   {
     path: "/careers",
     element: <Careers />,
+  },
+  {
+    path: "/consultation",
+    element: <Consultation />,
   },
   {
     path: "*",

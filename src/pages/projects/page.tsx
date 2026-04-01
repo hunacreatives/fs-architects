@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Navigation from '../../components/feature/Navigation';
 import ContactFooter from '../contact/components/ContactFooter';
 import PhilippinesMap from './components/PhilippinesMap';
+import StudioCTA from '../studio/components/StudioCTA';
 
 const mockProjects = [
   {
@@ -267,7 +268,7 @@ export default function ProjectsPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const filteredProjects = mockProjects.filter((project) => {
+  const filteredProjects = useMemo(() => mockProjects.filter((project) => {
     const matchesLocation = activeLocation === 'all' || project.location === activeLocation;
     const matchesCategory = activeCategory === 'all' || project.category === activeCategory;
     const translatedName = t(`${project.translationKey}_name`);
@@ -278,16 +279,16 @@ export default function ProjectsPage() {
       translatedAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.address.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesLocation && matchesCategory && matchesSearch;
-  });
+  }), [activeLocation, activeCategory, searchQuery, t]);
 
-  const sortedProjects = [...filteredProjects].sort((a, b) => {
+  const sortedProjects = useMemo(() => [...filteredProjects].sort((a, b) => {
     if (sortBy === 'date') {
       const result = b.year.localeCompare(a.year);
       return sortOrder === 'desc' ? result : -result;
     }
     const result = a.name.localeCompare(b.name);
     return sortOrder === 'asc' ? result : -result;
-  });
+  }), [filteredProjects, sortBy, sortOrder]);
 
   const handleSortChange = (newSortBy: 'date' | 'alphabetical') => {
     if (newSortBy === sortBy) {
@@ -322,17 +323,17 @@ export default function ProjectsPage() {
   }, []);
 
   // ── Grid stagger reveal ──
+  // Dependency uses actual filter/sort state values — NOT sortedProjects reference,
+  // which is a new array on every render and would cause constant flickering.
   useEffect(() => {
     const container = gridRef.current;
     if (!container) return;
 
-    // Remove and re-add class so animation replays when filters change
     container.classList.remove('grid-revealed');
 
     const trigger = () => container.classList.add('grid-revealed');
 
-    // Use IntersectionObserver but always fall back after 200ms
-    const fallback = setTimeout(trigger, 200);
+    const fallback = setTimeout(trigger, 120);
 
     const obs = new IntersectionObserver(
       ([entry]) => {
@@ -350,7 +351,8 @@ export default function ProjectsPage() {
       clearTimeout(fallback);
       obs.disconnect();
     };
-  }, [sortedProjects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLocation, activeCategory, sortBy, sortOrder, searchQuery, projectsVisible]);
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning || sortedProjects.length === 0) return;
@@ -659,7 +661,8 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      <ContactFooter />
+      {projectsVisible && <StudioCTA />}
+      <ContactFooter hideContactBar />
 
       {/* Floating Go Up button */}
       <button

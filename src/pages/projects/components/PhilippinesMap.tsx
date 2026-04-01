@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface FeaturedProject {
   name: string;
@@ -31,13 +32,21 @@ interface LocationPin {
 }
 
 // ── Pin positions (% within the 7:9 map column) ──
+// Cebu is the fixed reference. All others positioned relative to it.
+// Conversion: 1px ≈ 0.143% x, 0.111% y  (700×900 working space)
 const CITY_PINS: { id: string; label: string; x: number; y: number; goLeft: boolean }[] = [
-  { id: 'Manila',    label: 'Manila',    x: 40, y: 35, goLeft: true  },
-  { id: 'Cebu',      label: 'Cebu',      x: 61, y: 60, goLeft: false },
-  { id: 'Leyte',     label: 'Leyte',     x: 69, y: 54, goLeft: false },
-  { id: 'CDO',       label: 'CDO',       x: 65, y: 72, goLeft: false },
-  { id: 'Davao',     label: 'Davao',     x: 71, y: 81, goLeft: false },
-  { id: 'Zamboanga', label: 'Zamboanga', x: 47, y: 81, goLeft: true  },
+  // Manila     — NCR / Manila Bay area, central-west Luzon waist.  +3px down
+  { id: 'Manila',    label: 'Manila',    x: 46.2, y: 42.9, goLeft: true  },
+  // Leyte      — lower on Leyte island, away from Samar.  +4px right, +18px down
+  { id: 'Leyte',     label: 'Leyte',     x: 66.6, y: 58.5, goLeft: false },
+  // Cebu       — FIXED reference, center-right Visayas. DO NOT MOVE.
+  { id: 'Cebu',      label: 'Cebu',      x: 61.7, y: 60.9, goLeft: false },
+  // CDO        — north-central Mindanao, shifted right onto landmass.  +6px right
+  { id: 'CDO',       label: 'CDO',       x: 63.6, y: 69.7, goLeft: false },
+  // Davao      — FIXED, south-east Mindanao inside island silhouette. DO NOT MOVE.
+  { id: 'Davao',     label: 'Davao',     x: 69.4, y: 77.3, goLeft: false },
+  // Zamboanga  — Zamboanga Peninsula on land, correct height.  +6px right
+  { id: 'Zamboanga', label: 'Zamboanga', x: 50.6, y: 75.2, goLeft: true  },
 ];
 
 const ABBREV: Record<string, string> = {
@@ -123,6 +132,8 @@ export default function PhilippinesMap({
   projectCounts,
   cityProjectData,
 }: PhilippinesMapProps) {
+  const { t } = useTranslation();
+
   const pins: LocationPin[] = useMemo(() =>
     CITY_PINS.map((c) => ({
       ...c,
@@ -154,11 +165,32 @@ export default function PhilippinesMap({
     return () => { obs.disconnect(); clearTimeout(t); };
   }, []);
 
+  // ── Pins visibility for entrance animation ──
+  const mapColRef = useRef<HTMLDivElement>(null);
+  const [pinsVisible, setPinsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = mapColRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setPinsVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    const t = setTimeout(() => { setPinsVisible(true); obs.disconnect(); }, 800);
+    return () => { obs.disconnect(); clearTimeout(t); };
+  }, []);
+
   const STATS = [
-    { target: 2021, suffix: '',  label: 'Year Founded',      delay: 100  },
-    { target: 100,  suffix: '+', label: 'Projects',          delay: 220  },
-    { target: 10,   suffix: '',  label: 'Ongoing Projects',  delay: 340  },
-    { target: 5,    suffix: '',  label: 'Team Members',      delay: 460  },
+    { target: 2021, suffix: '',  label: t('studio_founded_label'), delay: 100  },
+    { target: 100,  suffix: '+', label: t('map_project_plural'),   delay: 220  },
+    { target: 10,   suffix: '',  label: t('studio_offices_label'), delay: 340  },
+    { target: 5,    suffix: '',  label: t('studio_team_label'),    delay: 460  },
   ];
 
   return (
@@ -171,6 +203,11 @@ export default function PhilippinesMap({
         @keyframes mapFadeIn {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pinEntrance {
+          0%   { transform: translate(-50%, -50%) scale(0);    opacity: 0; }
+          60%  { transform: translate(-50%, -50%) scale(1.18); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1);    opacity: 1; }
         }
         .map-hero-title { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) both; }
         .map-hero-hint  { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.24s both; }
@@ -241,6 +278,7 @@ export default function PhilippinesMap({
 
       {/* ── MAP COLUMN — portrait, centered, fills full height ── */}
       <div
+        ref={mapColRef}
         className="absolute top-0 bottom-0 z-10"
         style={{
           aspectRatio: '7 / 9',
@@ -259,11 +297,11 @@ export default function PhilippinesMap({
         />
 
         {/* ── City Pins ── */}
-        {pins.map((pin) => {
+        {pins.map((pin, index) => {
           const isActive = activeLocation === pin.id;
           const data = cityProjectData[pin.id];
           const cats = data?.categories.slice(0, 4).map(abbrev) ?? [];
-          const projLabel = data ? `${data.count} ${data.count === 1 ? 'Project' : 'Projects'}` : '';
+          const projLabel = data ? `${data.count} ${data.count === 1 ? t('map_project_singular') : t('map_project_plural')}` : '';
           const yearRange =
             data?.yearRange
               ? data.yearRange.min === data.yearRange.max
@@ -274,6 +312,9 @@ export default function PhilippinesMap({
 
           // Card width for the expanded tooltip
           const CARD_W = 180;
+
+          // Staggered entrance: 0.3s base delay + 120ms per pin (geographic order)
+          const entranceDelay = 0.3 + index * 0.12;
 
           return (
             <button
@@ -289,6 +330,10 @@ export default function PhilippinesMap({
                 border: 'none',
                 outline: 'none',
                 padding: 0,
+                opacity: pinsVisible ? undefined : 0,
+                animation: pinsVisible
+                  ? `pinEntrance 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) ${entranceDelay}s both`
+                  : 'none',
               }}
               aria-label={`Show ${pin.label} projects`}
             >
@@ -359,13 +404,6 @@ export default function PhilippinesMap({
                         ))}
                       </div>
                     )}
-                    {/* CTA hint */}
-                    <p
-                      className="mt-2 text-[9px] tracking-widest text-[#1c2b3a]/35 uppercase"
-                      style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
-                    >
-                      Click to explore →
-                    </p>
                   </div>
                 </div>
               ) : (
@@ -434,13 +472,6 @@ export default function PhilippinesMap({
                         ))}
                       </div>
                     )}
-                    {/* CTA hint */}
-                    <p
-                      className="mt-2 text-[9px] tracking-widest text-[#1c2b3a]/35 uppercase"
-                      style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}
-                    >
-                      Click to explore →
-                    </p>
                   </div>
                 </div>
               )}
@@ -495,20 +526,20 @@ export default function PhilippinesMap({
           className="map-hero-title text-xl md:text-2xl font-light tracking-wide mb-2 text-center"
           style={{ fontFamily: 'Marcellus, serif', color: '#1c2b3a' }}
         >
-          Select a Location
+          {t('map_select_location')}
         </h2>
         <p
           className="map-hero-hint text-xs tracking-widest mb-6 text-center"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em', color: 'rgba(28,43,58,0.35)' }}
         >
-          Click a city on the map to explore projects
+          {t('map_click_hint')}
         </p>
         <button
           onClick={() => { onLocationChange('all'); onViewAllProjects(); }}
           className="map-hero-cta self-center flex items-center gap-3 px-7 py-3 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
         >
-          VIEW ALL PROJECTS
+          {t('map_view_all')}
           <span className="text-[10px] text-[#1c2b3a]/40">{totalCount}</span>
         </button>
       </div>

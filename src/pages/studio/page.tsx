@@ -3,6 +3,7 @@ import Navigation from '../../components/feature/Navigation';
 import AboutUs from './components/AboutUs';
 import MeetTheTeam from './components/MeetTheTeam';
 import DesignProcessAccordion from './components/DesignProcessAccordion';
+import StudioCTA from './components/StudioCTA';
 import ContactFooter from '../contact/components/ContactFooter';
 
 export default function StudioPage() {
@@ -43,7 +44,8 @@ export default function StudioPage() {
       <div ref={accordionRef} style={{ position: 'relative', zIndex: 2 }}>
         <DesignProcessAccordion bioOpen={!!selectedMemberKey} />
       </div>
-      <ContactFooter />
+      <StudioCTA />
+      <ContactFooter hideContactBar />
     </div>
   );
 }

@@ -81,8 +81,8 @@ export default function AboutUs() {
         const y = window.scrollY;
         const vh = window.innerHeight;
 
-        // Dark overlay deepens gradually
-        const overlayOpacity = Math.min(y / (vh * 0.7), 0.82);
+        // Dark overlay deepens gradually — faster, hits max by ~30% scroll
+        const overlayOpacity = Math.min(y / (vh * 0.3), 0.82);
         if (overlayRef.current) overlayRef.current.style.opacity = String(overlayOpacity);
 
         // Quote fades out fast — gone by ~12% of viewport scroll
@@ -170,10 +170,6 @@ export default function AboutUs() {
           opacity: 0;
         }
 
-        .quote-rule-line {
-          opacity: 0;
-        }
-
         .quote-words-active .quote-word {
           animation: quoteWordIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
@@ -181,11 +177,6 @@ export default function AboutUs() {
         .quote-words-active .quote-w1 { animation-delay: 0.24s; }
         .quote-words-active .quote-w2 { animation-delay: 0.52s; }
         .quote-words-active .quote-w3 { animation-delay: 0.76s; }
-
-        .quote-words-active .quote-rule-line {
-          animation: quoteWordIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-          animation-delay: 1.05s;
-        }
 
         /* ── Logo reveal keyframe ── */
         @keyframes logoItemReveal {
@@ -302,17 +293,7 @@ export default function AboutUs() {
             })}
           </p>
 
-          {/* Thin rule — appears last */}
-          <div
-            className="quote-rule-line"
-            style={{
-              marginTop: '18px',
-              width: '28px',
-              height: '1px',
-              background: 'rgba(255,255,255,0.28)',
-              position: 'relative',
-            }}
-          />
+
         </div>
 
         {/* ── LOGOS — wow reveal ── */}
@@ -338,19 +319,19 @@ export default function AboutUs() {
               color: 'rgba(255,255,255,0.35)',
               textTransform: 'uppercase',
               textAlign: 'center',
-              marginBottom: '36px',
+              marginBottom: '24px',
             }}
           >
             Clients we&apos;ve worked with
           </p>
 
           {/* Logos row */}
-          <div className="flex items-center justify-center gap-12 md:gap-16 flex-wrap">
+          <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap px-4">
             {CLIENT_LOGOS.map((client, i) => (
               <div
                 key={i}
                 className={`logo-item logo-d${i} flex items-center justify-center`}
-                style={{ height: '52px' }}
+                style={{ height: '40px' }}
               >
                 {client.type === 'image' ? (
                   <img

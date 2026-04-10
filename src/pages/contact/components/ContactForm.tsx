@@ -33,7 +33,7 @@ export default function ContactForm() {
     const elements = form.elements as HTMLFormControlsCollection;
 
     Array.from(elements).forEach((el) => {
-      const input = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      const input = el as HTMLInputElement | HTMLTextAreaElement;
       if (input.name) {
         data.append(input.name, input.value);
       }
@@ -68,15 +68,6 @@ export default function ContactForm() {
     { label: t('contact_info_email'),   icon: 'ri-mail-line',    lines: ['info@fsarchitects.ph'] },
   ];
 
-  const SelectWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="relative">
-      {children}
-      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center">
-        <i className="ri-arrow-down-s-line text-sm text-black/30" />
-      </div>
-    </div>
-  );
-
   return (
     <section ref={sectionRef} id="contact-form" className="w-full px-5 md:px-10 lg:px-28 pt-8 md:pt-12 pb-12 md:pb-20">
       <style>{`
@@ -87,10 +78,6 @@ export default function ContactForm() {
         }
         .cf-visible .cf-item { opacity: 1; transform: translateY(0); }
         .cf-d0 { transition-delay: 0s; }
-        .cf-d1 { transition-delay: 0.08s; }
-        .cf-d2 { transition-delay: 0.16s; }
-        .cf-d3 { transition-delay: 0.24s; }
-        .cf-d4 { transition-delay: 0.32s; }
         .cf-left {
           opacity: 0;
           transform: translateX(-18px);
@@ -121,7 +108,6 @@ export default function ContactForm() {
 
         {/* ── LEFT: Intro + Contact Info ── */}
         <div className="cf-left lg:w-5/12 flex flex-col gap-8 md:gap-10">
-
           <p
             className="text-sm text-black/55 leading-relaxed"
             style={{ fontFamily: 'Geist, sans-serif' }}
@@ -155,7 +141,6 @@ export default function ContactForm() {
               </div>
             ))}
           </div>
-
         </div>
 
         {/* ── RIGHT: Form ── */}
@@ -174,133 +159,34 @@ export default function ContactForm() {
               onSubmit={handleSubmit}
               className="flex flex-col gap-4 md:gap-5"
             >
-              {/* Name + Email */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_name')}
-                  </label>
-                  <input type="text" name="name" required placeholder={t('contact_placeholder_name')} className={inputClass} style={{ fontFamily: 'Geist, sans-serif' }} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_email')}
-                  </label>
-                  <input type="email" name="email" required placeholder={t('contact_placeholder_email')} className={inputClass} style={{ fontFamily: 'Geist, sans-serif' }} />
-                </div>
-              </div>
-
-              {/* Phone + Company */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_phone')}
-                  </label>
-                  <input type="tel" name="phone" placeholder={t('contact_placeholder_phone')} className={inputClass} style={{ fontFamily: 'Geist, sans-serif' }} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_company')}
-                  </label>
-                  <input type="text" name="company" placeholder={t('contact_placeholder_company')} className={inputClass} style={{ fontFamily: 'Geist, sans-serif' }} />
-                </div>
-              </div>
-
-              {/* Subject */}
+              {/* Name */}
               <div className="flex flex-col gap-1">
                 <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                  {t('contact_field_subject')}
+                  {t('contact_field_name')}
                 </label>
-                <SelectWrapper>
-                  <select name="subject" required className={`${inputClass} cursor-pointer appearance-none pr-10`} style={{ fontFamily: 'Geist, sans-serif' }} defaultValue="">
-                    <option value="" disabled>{t('contact_placeholder_subject')}</option>
-                    <option value="New Project">{t('contact_subject_new_project')}</option>
-                    <option value="Collaboration">{t('contact_subject_collaboration')}</option>
-                    <option value="Press & Media">{t('contact_subject_press')}</option>
-                    <option value="Careers">{t('contact_subject_careers')}</option>
-                    <option value="General Inquiry">{t('contact_subject_general')}</option>
-                  </select>
-                </SelectWrapper>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder={t('contact_placeholder_name')}
+                  className={inputClass}
+                  style={{ fontFamily: 'Geist, sans-serif' }}
+                />
               </div>
 
-              {/* Project Type + Location */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_project_type')}
-                  </label>
-                  <SelectWrapper>
-                    <select name="project_type" className={`${inputClass} cursor-pointer appearance-none pr-10`} style={{ fontFamily: 'Geist, sans-serif' }} defaultValue="">
-                      <option value="" disabled>{t('contact_placeholder_project_type')}</option>
-                      <option value="Residential">{t('contact_type_residential')}</option>
-                      <option value="Commercial">{t('contact_type_commercial')}</option>
-                      <option value="Healthcare">{t('contact_type_healthcare')}</option>
-                      <option value="Hospitality">{t('contact_type_hospitality')}</option>
-                      <option value="Mixed Use">{t('contact_type_mixed_use')}</option>
-                      <option value="Interior Design">{t('contact_type_interior')}</option>
-                      <option value="Other">{t('contact_type_other')}</option>
-                    </select>
-                  </SelectWrapper>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_location')}
-                  </label>
-                  <input type="text" name="project_location" placeholder={t('contact_placeholder_location')} className={inputClass} style={{ fontFamily: 'Geist, sans-serif' }} />
-                </div>
-              </div>
-
-              {/* Budget + Timeline */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_budget')}
-                  </label>
-                  <SelectWrapper>
-                    <select name="budget_range" className={`${inputClass} cursor-pointer appearance-none pr-10`} style={{ fontFamily: 'Geist, sans-serif' }} defaultValue="">
-                      <option value="" disabled>{t('contact_placeholder_budget')}</option>
-                      <option value="Below ₱5M">{t('contact_budget_1')}</option>
-                      <option value="₱5M – ₱20M">{t('contact_budget_2')}</option>
-                      <option value="₱20M – ₱50M">{t('contact_budget_3')}</option>
-                      <option value="₱50M – ₱100M">{t('contact_budget_4')}</option>
-                      <option value="Above ₱100M">{t('contact_budget_5')}</option>
-                      <option value="Not sure yet">{t('contact_budget_6')}</option>
-                    </select>
-                  </SelectWrapper>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                    {t('contact_field_timeline')}
-                  </label>
-                  <SelectWrapper>
-                    <select name="start_timeline" className={`${inputClass} cursor-pointer appearance-none pr-10`} style={{ fontFamily: 'Geist, sans-serif' }} defaultValue="">
-                      <option value="" disabled>{t('contact_placeholder_timeline')}</option>
-                      <option value="Within 3 months">{t('contact_timeline_1')}</option>
-                      <option value="3-6 months">{t('contact_timeline_2')}</option>
-                      <option value="6-12 months">{t('contact_timeline_3')}</option>
-                      <option value="More than a year">{t('contact_timeline_4')}</option>
-                      <option value="Not sure yet">{t('contact_timeline_5')}</option>
-                    </select>
-                  </SelectWrapper>
-                </div>
-              </div>
-
-              {/* How did you hear about us */}
+              {/* Email */}
               <div className="flex flex-col gap-1">
                 <label className={labelClass} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
-                  {t('contact_field_referral')}
+                  {t('contact_field_email')}
                 </label>
-                <SelectWrapper>
-                  <select name="referral_source" className={`${inputClass} cursor-pointer appearance-none pr-10`} style={{ fontFamily: 'Geist, sans-serif' }} defaultValue="">
-                    <option value="" disabled>{t('contact_placeholder_referral')}</option>
-                    <option value="Referral">{t('contact_referral_1')}</option>
-                    <option value="Social Media">{t('contact_referral_2')}</option>
-                    <option value="Online Search">{t('contact_referral_3')}</option>
-                    <option value="Press / Media">{t('contact_referral_4')}</option>
-                    <option value="Past Client">{t('contact_referral_5')}</option>
-                    <option value="Other">{t('contact_referral_6')}</option>
-                  </select>
-                </SelectWrapper>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder={t('contact_placeholder_email')}
+                  className={inputClass}
+                  style={{ fontFamily: 'Geist, sans-serif' }}
+                />
               </div>
 
               {/* Message */}
@@ -312,7 +198,7 @@ export default function ContactForm() {
                   <textarea
                     name="message"
                     required
-                    rows={4}
+                    rows={5}
                     maxLength={500}
                     placeholder={t('contact_placeholder_message')}
                     onChange={(e) => setCharCount(e.target.value.length)}

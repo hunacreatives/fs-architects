@@ -65,31 +65,31 @@ export default function StudioCTA() {
       <section className="w-full bg-white">
         <div
           ref={contentRef}
-          className="px-10 md:px-20 lg:px-28 py-10 md:py-12 flex flex-col lg:flex-row lg:items-center lg:justify-center gap-8 lg:gap-36"
+          className="px-6 md:px-20 lg:px-28 py-7 md:py-9 flex flex-col items-center lg:flex-row lg:items-center lg:justify-center gap-6 lg:gap-28"
         >
           {/* Left — copy block */}
-          <div className="flex flex-col gap-2.5 lg:max-w-xl">
+          <div className="flex flex-col gap-2 items-center text-center lg:items-start lg:text-left lg:max-w-lg">
             <h2
               className="cta-block-item cta-d0 leading-tight"
               style={{
                 fontFamily: 'Marcellus, serif',
-                fontSize: 'clamp(26px, 3vw, 40px)',
-                letterSpacing: '-0.02em',
+                fontSize: 'clamp(18px, 1.6vw, 24px)',
+                letterSpacing: '-0.01em',
                 color: 'rgba(0,0,0,0.85)',
               }}
             >
               {t('studio_cta_headline')}
             </h2>
             <p
-              className="cta-block-item cta-d1"
+              className="cta-block-item cta-d1 line-clamp-2"
               style={{
                 fontFamily: 'Geist, sans-serif',
-                fontSize: 'clamp(13px, 1vw, 15px)',
+                fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '1.6',
                 letterSpacing: '0.01em',
-                maxWidth: '380px',
-                color: 'rgba(0,0,0,0.45)',
+                maxWidth: '340px',
+                color: 'rgba(0,0,0,0.40)',
               }}
             >
               {t('studio_cta_desc')}
@@ -97,18 +97,18 @@ export default function StudioCTA() {
           </div>
 
           {/* Right — button stack */}
-          <div className="cta-block-item cta-d2 flex flex-col gap-2.5 w-full lg:w-auto flex-shrink-0" style={{ minWidth: '220px', maxWidth: '280px' }}>
+          <div className="cta-block-item cta-d2 flex flex-col gap-2 w-full lg:w-auto flex-shrink-0 items-center" style={{ minWidth: '190px', maxWidth: '240px' }}>
             <button
               onClick={() => navigate('/contact')}
               className="cta-btn-primary whitespace-nowrap rounded-full flex items-center justify-center w-full"
               style={{
                 fontFamily: 'Geist, sans-serif',
-                fontSize: '13px',
+                fontSize: '11px',
                 fontWeight: 500,
-                letterSpacing: '0.01em',
-                minHeight: '48px',
-                paddingLeft: '28px',
-                paddingRight: '28px',
+                letterSpacing: '0.06em',
+                minHeight: '40px',
+                paddingLeft: '22px',
+                paddingRight: '22px',
               }}
             >
               {t('studio_cta_btn')}
@@ -118,12 +118,12 @@ export default function StudioCTA() {
               className="cta-btn-secondary whitespace-nowrap rounded-full flex items-center justify-center w-full"
               style={{
                 fontFamily: 'Geist, sans-serif',
-                fontSize: '13px',
+                fontSize: '11px',
                 fontWeight: 500,
-                letterSpacing: '0.01em',
-                minHeight: '48px',
-                paddingLeft: '28px',
-                paddingRight: '28px',
+                letterSpacing: '0.06em',
+                minHeight: '40px',
+                paddingLeft: '22px',
+                paddingRight: '22px',
               }}
             >
               {t('studio_cta_btn_secondary')}

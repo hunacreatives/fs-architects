@@ -52,7 +52,8 @@ const TEAM = [
   },
 ];
 
-const COLS = 4;
+const COLS_DESKTOP = 4;
+const COLS_MOBILE = 2;
 
 interface MeetTheTeamProps {
   selectedKey: string | null;
@@ -85,20 +86,29 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelKey, setPanelKey] = useState<string | null>(null);
+  const [cols, setCols] = useState(COLS_DESKTOP);
+
+  // Track breakpoint for row calculation
+  useEffect(() => {
+    const update = () => setCols(window.innerWidth < 768 ? COLS_MOBILE : COLS_DESKTOP);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   // One ref per row to scroll to the panel
   const panelRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // Build rows of COLS
+  // Build rows based on current cols
   const rows: typeof TEAM[] = [];
-  for (let i = 0; i < TEAM.length; i += COLS) {
-    rows.push(TEAM.slice(i, i + COLS));
+  for (let i = 0; i < TEAM.length; i += cols) {
+    rows.push(TEAM.slice(i, i + cols));
   }
 
   const activeMember = TEAM.find(m => m.key === (panelKey ?? activeKey)) ?? null;
 
   const activeIndex = activeKey ? TEAM.findIndex(m => m.key === activeKey) : -1;
-  const activeRow = activeIndex >= 0 ? Math.floor(activeIndex / COLS) : -1;
+  const activeRow = activeIndex >= 0 ? Math.floor(activeIndex / cols) : -1;
 
   const scrollToPanel = (rowIndex: number) => {
     setTimeout(() => {
@@ -115,7 +125,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       return;
     }
     const idx = TEAM.findIndex(m => m.key === key);
-    const rowIdx = Math.floor(idx / COLS);
+    const rowIdx = Math.floor(idx / cols);
     if (panelOpen) {
       setActiveKey(key);
       onSelect(key);
@@ -267,7 +277,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           return (
             <div key={rowIndex}>
               {/* Row of cards */}
-              <div className="grid grid-cols-4 gap-[3px] mb-[3px]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-[3px] mb-[3px]">
                 {row.map((member) => {
                   const isActive = activeKey === member.key;
                   const isDimmed = activeKey !== null && !isActive;
@@ -337,7 +347,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                   );
                 })}
                 {/* Fill empty cells in last partial row */}
-                {row.length < COLS && Array.from({ length: COLS - row.length }).map((_, i) => (
+                {row.length < cols && Array.from({ length: cols - row.length }).map((_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
               </div>

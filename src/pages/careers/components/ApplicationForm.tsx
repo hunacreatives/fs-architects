@@ -68,6 +68,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
     setSubmitStatus('idle');
     try {
       const params = new URLSearchParams();
+      params.append('cc', 'contact@hunacreatives.com');
       params.append('position', formData.position);
       params.append('firstName', formData.firstName);
       params.append('lastName', formData.lastName);
@@ -151,6 +152,8 @@ export default function ApplicationForm({ dark = false, positions = [], selected
 
       {/* Form — open layout, no box */}
       <form id="careers-application-form" data-readdy-form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {/* Hidden CC field — always submitted with every application */}
+        <input type="hidden" name="cc" value="contact@hunacreatives.com" />
 
         {/* Position */}
         {positions.length > 0 && (

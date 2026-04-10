@@ -42,6 +42,15 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
           0%   { transform: skewX(-14deg) translateX(-160%); }
           100% { transform: skewX(-14deg) translateX(420%); }
         }
+
+        /* Mobile-only: step title, plus icon, description → white, no shadow */
+        @media (max-width: 767px) {
+          .dp-step-title       { color: rgba(255,255,255,0.88) !important; text-shadow: none !important; }
+          .dp-step-title-open  { color: rgba(255,255,255,1)    !important; text-shadow: none !important; }
+          .dp-step-plus        { color: rgba(255,255,255,0.55) !important; text-shadow: none !important; }
+          .dp-step-plus-open   { color: rgba(255,255,255,0.90) !important; text-shadow: none !important; }
+          .dp-step-desc        { color: rgba(255,255,255,0.65) !important; }
+        }
       `}</style>
 
       <section
@@ -117,8 +126,11 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
             </p>
           </div>
 
-          {/* ── Divider ── */}
-          <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.10)', margin: '0 0 36px 0' }} />
+          {/* ── Mobile-only divider ── */}
+          <div
+            className="block md:hidden mx-auto mb-8"
+            style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.18)' }}
+          />
 
           {/* ── Eyebrow + Headline ── */}
           <div className="mb-10 lg:mb-14">
@@ -178,6 +190,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
 
                     <div className="flex items-center gap-5 ml-auto">
                       <span
+                        className={isOpen ? 'dp-step-title-open' : 'dp-step-title'}
                         style={{
                           fontFamily: 'Marcellus, serif',
                           fontSize: 'clamp(15px, 1.5vw, 20px)',
@@ -191,6 +204,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                         {t(`studio_process_${key}_title`)}
                       </span>
                       <span
+                        className={isOpen ? 'dp-step-plus-open' : 'dp-step-plus'}
                         style={{
                           fontFamily: 'Geist, sans-serif',
                           fontSize: '14px',
@@ -228,6 +242,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
                         marginLeft: 'auto',
                       }}>
                         <p
+                          className="dp-step-desc"
                           style={{
                             fontFamily: 'Geist, sans-serif',
                             fontSize: '12px',

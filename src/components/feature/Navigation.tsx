@@ -1,7 +1,116 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+
+const LOGO_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/4fa7d6c0-23e8-4c54-909a-7ec172674b09_4.png?v=5d628b311d93cf6c9d87f976195cb525';
+const HAMBURGER_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/d4e31a0a-648a-4452-a5fd-4db72583e0fa_5.png?v=7ea3e0a25c871cbaa6d3cdbb2436b6f2';
+const GIF_FORWARD_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/e3962a03-d22f-4483-8872-cac9f70174a6_FINAL---SASDASDSDasdas-ezgif.com-speed.gif?v=09ea27f14667d24b5d855d81536e0939';
+const GIF_REVERSE_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/fe01d251-7e54-4397-ab42-e87878638b7e_REVERSE-FINAL-SASDASDSDasdas-ezgif.com-speed-4.gif?v=19c0e1751bcc95621cc3ead5d5d338b8';
+
+const FORWARD_DURATION = 8430;
+const REVERSE_DURATION = 720;
+
+type Phase = 'logo' | 'forward' | 'hamburger' | 'reverse';
+
+function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; onClick?: () => void; invert?: boolean }) {
+  const [phase, setPhase] = useState<Phase>('logo');
+  const [forwardReady, setForwardReady] = useState(false);
+  const [reverseReady, setReverseReady] = useState(false);
+  const forwardRef = useRef<HTMLImageElement>(null);
+  const reverseRef = useRef<HTMLImageElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const phaseRef = useRef<Phase>('logo');
+
+  const imgStyle: React.CSSProperties = invert ? { filter: 'invert(1)' } : {};
+
+  const updatePhase = (p: Phase) => {
+    phaseRef.current = p;
+    setPhase(p);
+  };
+
+  useEffect(() => {
+    const fwd = new Image();
+    fwd.onload = () => setForwardReady(true);
+    fwd.src = GIF_FORWARD_URL;
+
+    const rev = new Image();
+    rev.onload = () => setReverseReady(true);
+    rev.src = GIF_REVERSE_URL;
+
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (!forwardReady) return;
+    if (phaseRef.current === 'hamburger') return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (forwardRef.current) {
+      forwardRef.current.src = `${GIF_FORWARD_URL}#${Date.now()}`;
+    }
+    updatePhase('forward');
+    timerRef.current = setTimeout(() => updatePhase('hamburger'), FORWARD_DURATION);
+  };
+
+  const handleMouseLeave = () => {
+    const current = phaseRef.current;
+    if (current === 'logo') return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (reverseReady && reverseRef.current) {
+      reverseRef.current.src = `${GIF_REVERSE_URL}#${Date.now()}`;
+    }
+    updatePhase('reverse');
+    timerRef.current = setTimeout(() => updatePhase('logo'), REVERSE_DURATION);
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="flex items-center cursor-pointer p-0 bg-transparent border-0 outline-none"
+      aria-label="Open menu"
+      style={{ width: size, height: size }}
+    >
+      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+        <img
+          src={LOGO_URL}
+          alt="FS"
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ visibility: phase === 'logo' ? 'visible' : 'hidden', ...imgStyle }}
+          draggable={false}
+        />
+        {forwardReady && (
+          <img
+            ref={forwardRef}
+            src={GIF_FORWARD_URL}
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{ visibility: phase === 'forward' ? 'visible' : 'hidden', ...imgStyle }}
+            draggable={false}
+          />
+        )}
+        <img
+          src={HAMBURGER_URL}
+          alt=""
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ visibility: phase === 'hamburger' ? 'visible' : 'hidden', ...imgStyle }}
+          draggable={false}
+        />
+        {reverseReady && (
+          <img
+            ref={reverseRef}
+            src={GIF_REVERSE_URL}
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{ visibility: phase === 'reverse' ? 'visible' : 'hidden', ...imgStyle }}
+            draggable={false}
+          />
+        )}
+      </div>
+    </button>
+  );
+}
 
 const LANGUAGES = [
   { label: 'ENG', code: 'en' },
@@ -21,6 +130,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeLanguage, setActiveLanguage] = useState<LangLabel>('ENG');
   const [menuOpen, setMenuOpen] = useState(false);
+
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -102,7 +212,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-700 overflow-visible ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 overflow-visible ${
           showContent === false
             ? 'opacity-0'
             : isDark
@@ -117,35 +227,9 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
         <div className="relative w-full px-4 md:px-16 lg:px-24 flex items-center justify-between" style={{ height: '56px' }}>
 
-          {/* Left — FS Logo morphs into hamburger lines on hover */}
+          {/* Left — FS Logo morphs into hamburger via GIF on hover */}
           <div className="w-10 md:w-32 flex items-center gap-4">
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="flex items-center group cursor-pointer"
-              aria-label="Open menu"
-            >
-              <div className="relative w-[43px] h-[43px] flex items-center justify-center">
-                <img
-                  src={isDark
-                    ? "https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/1059e0a313dadf06683203566a99a94a.png"
-                    : "https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/af9840250b5d4b8ed50bb36142137e11.png"}
-                  alt="FS"
-                  className={`absolute inset-0 w-full h-full object-contain transition-all duration-500 ease-in-out group-hover:opacity-0 group-hover:scale-75 ${
-                    isDark ? '' : 'brightness-0 invert'
-                  }`}
-                  draggable={false}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-[6px] opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500 ease-in-out">
-                  {[20, 14, 20].map((w, i) => (
-                    <div
-                      key={i}
-                      className={`h-px transition-colors duration-500 ${isDark ? 'bg-black' : 'bg-white'}`}
-                      style={{ width: `${w}px` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </button>
+            <LogoHamburger size={56} onClick={() => setMenuOpen(true)} invert={isDark} />
             {pageTitle && (
               <span
                 className="text-[9px] tracking-widest uppercase whitespace-nowrap"
@@ -207,7 +291,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-500 ${
+        className={`fixed inset-0 z-50 bg-black/40 transition-opacity duration-500 ${
           menuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setMenuOpen(false)}
@@ -215,33 +299,14 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
       {/* Left sliding panel */}
       <div
-        className={`fixed top-0 left-0 h-full z-50 flex flex-col transition-transform duration-500 ease-in-out ${
+        className={`fixed top-0 left-0 h-full z-[60] flex flex-col transition-transform duration-500 ease-in-out ${
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ width: '280px', backgroundColor: '#2b3640' }}
       >
         {/* Panel header */}
         <div className="flex items-center pl-6 pr-8 py-5">
-          <button
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center group cursor-pointer p-0"
-            aria-label="Close menu"
-          >
-            <div className="relative w-[36px] h-[36px] flex items-center justify-center">
-              <img
-                src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/af9840250b5d4b8ed50bb36142137e11.png"
-                alt="FS"
-                className="absolute inset-0 w-full h-full object-contain brightness-0 invert opacity-80 transition-all duration-500 ease-in-out group-hover:opacity-0 group-hover:scale-75"
-                draggable={false}
-              />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500 ease-in-out">
-                <div className="relative w-4 h-4">
-                  <div className="w-4 h-px bg-white/80 absolute top-1/2 left-0" style={{ transform: 'rotate(45deg)' }} />
-                  <div className="w-4 h-px bg-white/80 absolute top-1/2 left-0" style={{ transform: 'rotate(-45deg)' }} />
-                </div>
-              </div>
-            </div>
-          </button>
+          <LogoHamburger size={48} onClick={() => setMenuOpen(false)} />
         </div>
 
         {/* Thin divider */}

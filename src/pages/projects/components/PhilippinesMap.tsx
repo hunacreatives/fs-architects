@@ -104,20 +104,20 @@ function StatItem({
 
   return (
     <div
-      className="flex flex-col items-end mb-8 last:mb-0"
+      className="flex flex-col items-center md:items-end mb-0 md:mb-8 md:last:mb-0"
       style={{
         animation: `mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) ${delay / 1000}s both`,
       }}
     >
       <span
-        className="text-2xl md:text-3xl font-light tracking-tight leading-none tabular-nums"
+        className="text-base md:text-3xl font-light tracking-tight leading-none tabular-nums"
         style={{ fontFamily: 'Marcellus, serif', color: '#1c2b3a' }}
       >
         {count}{suffix}
       </span>
       <span
-        className="text-[10px] tracking-widest mt-1.5 text-right"
-        style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.14em', color: 'rgba(28,43,58,0.38)' }}
+        className="text-[8px] md:text-[9px] tracking-widest mt-0.5 text-center md:text-right"
+        style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.10em', color: 'rgba(28,43,58,0.38)' }}
       >
         {label.toUpperCase()}
       </span>
@@ -226,12 +226,9 @@ export default function PhilippinesMap({
           animation: mapPulse 2.2s ease-in-out infinite;
         }
 
-        /* Hover card slide-in */
+        /* Hover card slide-in — desktop only */
         .pin-line-left  { transform-origin: right center; }
         .pin-line-right { transform-origin: left center; }
-        .pin-group:hover .pin-line  { transform: scaleX(1) !important; }
-        .pin-group:hover .pin-card  { opacity: 1 !important; transform: translateX(0) !important; }
-        .pin-group:hover .pin-label { opacity: 0; transform: scale(0.85); }
 
         .pin-line {
           transform: scaleX(0);
@@ -243,6 +240,21 @@ export default function PhilippinesMap({
         }
         .pin-label {
           transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        /* Desktop only: hover shows card, hides label */
+        @media (min-width: 768px) {
+          .pin-group:hover .pin-line  { transform: scaleX(1) !important; }
+          .pin-group:hover .pin-card  { opacity: 1 !important; transform: translateX(0) !important; }
+          .pin-group:hover .pin-label { opacity: 0; transform: scale(0.85); }
+        }
+
+        /* Mobile: map fills full viewport, no shrinking */
+        @media (max-width: 767px) {
+          .map-col-mobile {
+            top: 0 !important;
+            bottom: 0 !important;
+          }
         }
       `}</style>
 
@@ -288,7 +300,7 @@ export default function PhilippinesMap({
       {/* ── MAP COLUMN — portrait, centered, fills full height ── */}
       <div
         ref={mapColRef}
-        className="absolute top-0 bottom-0 z-10"
+        className="absolute top-0 bottom-0 z-10 map-col-mobile"
         style={{
           aspectRatio: '7 / 9',
           left: '50%',
@@ -350,10 +362,10 @@ export default function PhilippinesMap({
               }}
               aria-label={`Show ${pin.label} projects`}
             >
-              {/* ── Hover card (left or right) ── */}
+              {/* ── Hover card (left or right) — desktop only ── */}
               {pin.goLeft ? (
                 <div
-                  className="absolute top-1/2 right-[calc(100%+4px)] -translate-y-1/2 flex flex-row-reverse items-center pointer-events-none"
+                  className="hidden md:flex absolute top-1/2 right-[calc(100%+4px)] -translate-y-1/2 flex-row-reverse items-center pointer-events-none"
                   style={{ gap: 0 }}
                 >
                   {/* Line */}
@@ -421,7 +433,7 @@ export default function PhilippinesMap({
                 </div>
               ) : (
                 <div
-                  className="absolute top-1/2 left-[calc(100%+4px)] -translate-y-1/2 flex flex-row items-center pointer-events-none"
+                  className="hidden md:flex absolute top-1/2 left-[calc(100%+4px)] -translate-y-1/2 flex-row items-center pointer-events-none"
                   style={{ gap: 0 }}
                 >
                   {/* Line */}
@@ -489,9 +501,10 @@ export default function PhilippinesMap({
                 </div>
               )}
 
-              {/* Invisible hit-zone: extends hover area upward to cover the label */}
+              {/* Invisible hit-zone: desktop only — on mobile this blocks neighbouring pins */}
               <span
                 aria-hidden="true"
+                className="hidden md:block"
                 style={{
                   position: 'absolute',
                   top: '-52px',
@@ -524,12 +537,12 @@ export default function PhilippinesMap({
                 }`}
               />
 
-              {/* Label bubble */}
+              {/* Label bubble — smaller on mobile for all pins */}
               <div
-                className={`pin-label absolute left-1/2 whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] tracking-wider -translate-x-1/2 bottom-full mb-2 ${
+                className={`pin-label absolute left-1/2 whitespace-nowrap rounded-full tracking-wider -translate-x-1/2 bottom-full mb-2 ${
                   isActive
-                    ? 'bg-[#1c2b3a] text-white opacity-100'
-                    : 'bg-white/95 text-[#1c2b3a] border border-black/10 opacity-70'
+                    ? 'bg-[#1c2b3a] text-white opacity-100 px-2.5 py-1 text-[10px]'
+                    : 'bg-white/95 text-[#1c2b3a] border border-black/10 opacity-70 px-1.5 py-0.5 text-[8px]'
                 }`}
                 style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em', pointerEvents: 'none' }}
               >
@@ -545,9 +558,9 @@ export default function PhilippinesMap({
         })}
       </div>
 
-      {/* ── LEFT OVERLAY ── */}
+      {/* ── DESKTOP: Left overlay (title + hint + CTA) ── */}
       <div
-        className="absolute top-1/2 left-0 z-20 flex flex-col items-center px-12 md:px-20"
+        className="hidden md:flex absolute top-1/2 left-0 z-20 flex-col items-center px-20"
         style={{ transform: 'translateY(-50%)' }}
       >
         <h2
@@ -572,10 +585,10 @@ export default function PhilippinesMap({
         </button>
       </div>
 
-      {/* ── RIGHT OVERLAY — animated stats ── */}
+      {/* ── DESKTOP: Right overlay — animated stats ── */}
       <div
         ref={statsRef}
-        className="absolute top-1/2 right-0 z-20 flex flex-col items-end px-12 md:px-20"
+        className="hidden md:flex absolute top-1/2 right-0 z-20 flex-col items-end px-20"
         style={{ transform: 'translateY(-50%)' }}
       >
         {STATS.map((stat) => (
@@ -589,6 +602,76 @@ export default function PhilippinesMap({
           />
         ))}
       </div>
+
+      {/* ── MOBILE: Title at top — white fade from top so text is readable over map ── */}
+      <div
+        className="md:hidden absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-6"
+        style={{
+          paddingTop: '72px',
+          paddingBottom: '32px',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.88) 60%, transparent 100%)',
+        }}
+      >
+        <h2
+          className="map-hero-title text-lg font-light tracking-wide mb-1 text-center"
+          style={{ fontFamily: 'Marcellus, serif', color: '#1c2b3a' }}
+        >
+          {t('map_select_location')}
+        </h2>
+        <p
+          className="map-hero-hint text-[10px] tracking-widest text-center"
+          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em', color: 'rgba(28,43,58,0.35)' }}
+        >
+          {t('map_click_hint')}
+        </p>
+      </div>
+
+      {/* ── MOBILE: Stats + View All at bottom ── */}
+      <div
+        ref={statsRef}
+        className="md:hidden absolute left-0 right-0 px-6 pb-5 pt-2"
+        style={{ zIndex: 26, bottom: 0, background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.90) 20%, #ffffff 45%)' }}
+      >
+        {/* Stats row — 4 columns */}
+        <div className="grid grid-cols-4 gap-1 mb-2">
+          {STATS.map((stat) => (
+            <div
+              key={stat.label}
+              className="flex flex-col items-center"
+              style={{
+                animation: `mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) ${stat.delay / 1000}s both`,
+              }}
+            >
+              <StatItem
+                target={stat.target}
+                suffix={stat.suffix}
+                label={stat.label}
+                delay={stat.delay}
+                isVisible={statsVisible}
+              />
+            </div>
+          ))}
+        </div>
+        {/* View All button */}
+        <button
+          onClick={() => { onLocationChange('all'); onViewAllProjects(); }}
+          className="map-hero-cta w-full flex items-center justify-center gap-3 px-7 py-2.5 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
+          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
+        >
+          {t('map_view_all')}
+          <span className="text-[10px] text-[#1c2b3a]/40">{totalCount}</span>
+        </button>
+      </div>
+
+      {/* ── Bottom fade-to-white (desktop only — mobile has stats bar instead) ── */}
+      <div
+        className="hidden md:block absolute bottom-0 left-0 right-0 pointer-events-none"
+        style={{
+          height: '180px',
+          zIndex: 25,
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.92) 72%, #ffffff 100%)',
+        }}
+      />
     </div>
   );
 }

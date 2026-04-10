@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../../i18n';
+import LogoHamburger from './LogoHamburger';
 
 const LANGUAGES = [
   { label: 'ENG', code: 'en' },
@@ -19,6 +20,7 @@ export default function Navigation({ showContent }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeLanguage, setActiveLanguage] = useState<LangLabel>('ENG');
   const [menuOpen, setMenuOpen] = useState(false);
+
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -94,31 +96,9 @@ export default function Navigation({ showContent }: NavigationProps) {
 
         <div className="w-full px-8 md:px-16 lg:px-24 flex items-center justify-between" style={{ height: '48px' }}>
 
-          {/* Left — FS Logo morphs into hamburger lines on hover */}
+          {/* Left — FS Logo morphs into hamburger via GIF on hover */}
           <div className="w-32 flex items-center">
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="flex items-center group cursor-pointer"
-              aria-label="Open menu"
-            >
-              <div className="relative w-[43px] h-[43px] flex items-center justify-center">
-                <img
-                  src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/af9840250b5d4b8ed50bb36142137e11.png"
-                  alt="FS"
-                  className="absolute inset-0 w-full h-full object-contain transition-all duration-500 ease-in-out group-hover:opacity-0 group-hover:scale-75 brightness-0 invert"
-                  draggable={false}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-[6px] opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500 ease-in-out">
-                  {[20, 14, 20].map((w, i) => (
-                    <div
-                      key={i}
-                      className={`h-px transition-colors duration-500 ${lineColor}`}
-                      style={{ width: `${w}px` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </button>
+            <LogoHamburger size={56} onClick={() => setMenuOpen(true)} />
           </div>
 
           {/* Center — brand logo */}
@@ -177,26 +157,7 @@ export default function Navigation({ showContent }: NavigationProps) {
       >
         {/* Panel header */}
         <div className="flex items-center pl-6 pr-8 py-5">
-          <button
-            onClick={() => setMenuOpen(false)}
-            className="flex items-center group cursor-pointer p-0"
-            aria-label="Close menu"
-          >
-            <div className="relative w-[36px] h-[36px] flex items-center justify-center">
-              <img
-                src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/af9840250b5d4b8ed50bb36142137e11.png"
-                alt="FS"
-                className="absolute inset-0 w-full h-full object-contain brightness-0 invert opacity-80 transition-all duration-500 ease-in-out group-hover:opacity-0 group-hover:scale-75"
-                draggable={false}
-              />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all duration-500 ease-in-out">
-                <div className="relative w-4 h-4">
-                  <div className="w-4 h-px bg-white/80 absolute top-1/2 left-0" style={{ transform: 'rotate(45deg)' }} />
-                  <div className="w-4 h-px bg-white/80 absolute top-1/2 left-0" style={{ transform: 'rotate(-45deg)' }} />
-                </div>
-              </div>
-            </div>
-          </button>
+          <LogoHamburger size={48} onClick={() => setMenuOpen(false)} />
         </div>
 
         {/* Thin divider */}

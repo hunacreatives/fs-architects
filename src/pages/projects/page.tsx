@@ -464,11 +464,11 @@ export default function ProjectsPage() {
         .grid-revealed .proj-card:nth-child(12) { animation-delay: 0.68s; }
 
         @keyframes projectsReveal {
-          from { opacity: 0; transform: translateY(32px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
         .projects-section-reveal {
-          animation: projectsReveal 0.75s cubic-bezier(0.22,1,0.36,1) both;
+          animation: projectsReveal 0.6s ease both;
         }
       `}</style>
 
@@ -547,62 +547,65 @@ export default function ProjectsPage() {
 
           {/* ── CATEGORY FILTERS, SORT & SEARCH ── */}
           <div className="px-4 md:px-16 lg:px-24 mb-8">
-            <div className="flex items-center justify-between gap-6" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-              <div className="relative flex-1 min-w-0 overflow-hidden">
-                <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => setActiveCategory(category)}
-                      className={`text-sm tracking-wider whitespace-nowrap flex-shrink-0 transition-all duration-300 pb-3 border-b-2 -mb-px cursor-pointer ${
-                        activeCategory === category
-                          ? 'text-navy border-black font-semibold'
-                          : 'text-navy/40 border-transparent hover:text-navy/70'
-                      }`}
-                      style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.04em' }}
-                    >
-                      {categoryLabels[category]}
-                    </button>
-                  ))}
-                </div>
-                <div className="absolute top-0 right-0 h-full w-16 bg-gradient-to-l from-white via-white/80 to-transparent pointer-events-none md:hidden" />
+            {/* Category tabs — scrollable row */}
+            <div className="relative overflow-hidden" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className={`text-xs md:text-sm tracking-wider whitespace-nowrap flex-shrink-0 transition-all duration-300 pb-3 border-b-2 -mb-px cursor-pointer ${
+                      activeCategory === category
+                        ? 'text-navy border-black font-semibold'
+                        : 'text-navy/40 border-transparent hover:text-navy/70'
+                    }`}
+                    style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.04em' }}
+                  >
+                    {categoryLabels[category]}
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center gap-3 md:gap-4 flex-shrink-0 pb-3">
-                <button
-                  onClick={() => handleSortChange('date')}
-                  className={`flex items-center gap-1 text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
-                    sortBy === 'date' ? 'text-navy font-medium' : 'text-navy/40 hover:text-navy/70'
-                  }`}
+              <div className="absolute top-0 right-0 h-full w-10 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+            </div>
+
+            {/* Sort + Search — below tabs on mobile, inline on desktop */}
+            <div className="flex items-center justify-between gap-3 mt-3 md:mt-0 md:absolute md:hidden">
+            </div>
+            <div className="flex items-center gap-3 md:gap-4 mt-3 flex-wrap">
+              <button
+                onClick={() => handleSortChange('date')}
+                className={`flex items-center gap-1 text-xs md:text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
+                  sortBy === 'date' ? 'text-navy font-medium' : 'text-navy/40 hover:text-navy/70'
+                }`}
+                style={{ fontFamily: 'Geist, sans-serif' }}
+              >
+                {t('projects_sort_date')}
+                {sortBy === 'date' && (
+                  <i className={`text-xs ${sortOrder === 'desc' ? 'ri-arrow-down-s-line' : 'ri-arrow-up-s-line'}`} />
+                )}
+              </button>
+              <button
+                onClick={() => handleSortChange('alphabetical')}
+                className={`flex items-center gap-1 text-xs md:text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
+                  sortBy === 'alphabetical' ? 'text-navy font-medium' : 'text-navy/40 hover:text-navy/70'
+                }`}
+                style={{ fontFamily: 'Geist, sans-serif' }}
+              >
+                {t('projects_sort_alpha')}
+                {sortBy === 'alphabetical' && (
+                  <i className={`text-xs ${sortOrder === 'asc' ? 'ri-arrow-down-s-line' : 'ri-arrow-up-s-line'}`} />
+                )}
+              </button>
+              <div className="relative flex-1 min-w-0 md:flex-none">
+                <input
+                  type="text"
+                  placeholder={t('projects_search')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full md:w-44 px-3 md:px-4 py-1.5 text-xs md:text-sm bg-gray-50 border border-gray-200 rounded-md focus:outline-none focus:border-black/30 transition-colors duration-300"
                   style={{ fontFamily: 'Geist, sans-serif' }}
-                >
-                  {t('projects_sort_date')}
-                  {sortBy === 'date' && (
-                    <i className={`text-xs ${sortOrder === 'desc' ? 'ri-arrow-down-s-line' : 'ri-arrow-up-s-line'}`} />
-                  )}
-                </button>
-                <button
-                  onClick={() => handleSortChange('alphabetical')}
-                  className={`flex items-center gap-1 text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
-                    sortBy === 'alphabetical' ? 'text-navy font-medium' : 'text-navy/40 hover:text-navy/70'
-                  }`}
-                  style={{ fontFamily: 'Geist, sans-serif' }}
-                >
-                  {t('projects_sort_alpha')}
-                  {sortBy === 'alphabetical' && (
-                    <i className={`text-xs ${sortOrder === 'asc' ? 'ri-arrow-down-s-line' : 'ri-arrow-up-s-line'}`} />
-                  )}
-                </button>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={t('projects_search')}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-36 md:w-44 px-3 md:px-4 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-md focus:outline-none focus:border-black/30 transition-colors duration-300"
-                    style={{ fontFamily: 'Geist, sans-serif' }}
-                  />
-                  <i className="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-navy/40 text-base w-4 h-4 flex items-center justify-center" />
-                </div>
+                />
+                <i className="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-navy/40 text-base w-4 h-4 flex items-center justify-center" />
               </div>
             </div>
           </div>

@@ -61,7 +61,7 @@ export default function PasswordGate({ children }: PasswordGateProps) {
       >
         {/* Logo */}
         <img
-          src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/4be8756dcc635c33ed68261c7a8f7244.png"
+          src="/images/logo-wordmark-alt.png"
           alt="FS Architects"
           className="h-9 w-auto object-contain brightness-0 invert opacity-80"
           draggable={false}

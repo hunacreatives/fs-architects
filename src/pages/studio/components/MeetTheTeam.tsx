@@ -7,7 +7,7 @@ const TEAM = [
     nameKey: 'studio_team_francisco_name',
     titleKey: 'studio_team_francisco_title',
     bioKey: 'studio_team_francisco_bio',
-    img: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/1271f415-5cef-4d33-8741-27ecd1388197_15.png?v=d1fe9e462a9759234380fea9f6f14461',
+    img: '/images/team/fretz.png',
     imgShift: '10%',
   },
   {
@@ -15,7 +15,7 @@ const TEAM = [
     nameKey: 'studio_team_sofia_name',
     titleKey: 'studio_team_sofia_title',
     bioKey: 'studio_team_sofia_bio',
-    img: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/2df352c7-89d9-4dc8-a1c7-85689550de88_16.png?v=ffca885a4a7042c541f6f1d13b98d1fc',
+    img: '/images/team/sofia.png',
     imgShift: '10%',
   },
   {
@@ -23,7 +23,7 @@ const TEAM = [
     nameKey: 'studio_team_marco_name',
     titleKey: 'studio_team_marco_title',
     bioKey: 'studio_team_marco_bio',
-    img: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/2df352c7-89d9-4dc8-a1c7-85689550de88_16.png?v=5b59db86adee89f40a5448f779492964',
+    img: '/images/team/marco.png',
     imgShift: '0%',
   },
   {
@@ -31,7 +31,7 @@ const TEAM = [
     nameKey: 'studio_team_elena_name',
     titleKey: 'studio_team_elena_title',
     bioKey: 'studio_team_elena_bio',
-    img: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/c447d92c-3d88-4c21-89df-a783e2afe289_18.png?v=ca4765de1af5a8b4620bdb294a4e7955',
+    img: '/images/team/elena.png',
     imgShift: '10%',
   },
   {
@@ -39,7 +39,7 @@ const TEAM = [
     nameKey: 'studio_team_rafael_name',
     titleKey: 'studio_team_rafael_title',
     bioKey: 'studio_team_rafael_bio',
-    img: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/e11df7c6-356e-419f-96b6-5f0fa4191508_19.png?v=fec461a42c97bbbf2594bb2a6d1c4c4a',
+    img: '/images/team/rafael.png',
     imgShift: '10%',
   },
   {
@@ -47,7 +47,7 @@ const TEAM = [
     nameKey: 'studio_team_ana_name',
     titleKey: 'studio_team_ana_title',
     bioKey: 'studio_team_ana_bio',
-    img: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/1593ed2e-a95b-4107-8a6f-a5e435817b29_20.png?v=060e9de3147428a5b23a27854c3813fa',
+    img: '/images/team/ana.png',
     imgShift: '0%',
   },
 ];

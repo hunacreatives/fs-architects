@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
-const LOGO_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/4fa7d6c0-23e8-4c54-909a-7ec172674b09_4.png?v=5d628b311d93cf6c9d87f976195cb525';
-const HAMBURGER_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/d4e31a0a-648a-4452-a5fd-4db72583e0fa_5.png?v=7ea3e0a25c871cbaa6d3cdbb2436b6f2';
-const GIF_FORWARD_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/e3962a03-d22f-4483-8872-cac9f70174a6_FINAL---SASDASDSDasdas-ezgif.com-speed.gif?v=09ea27f14667d24b5d855d81536e0939';
-const GIF_REVERSE_URL = 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/fe01d251-7e54-4397-ab42-e87878638b7e_REVERSE-FINAL-SASDASDSDasdas-ezgif.com-speed-4.gif?v=19c0e1751bcc95621cc3ead5d5d338b8';
+const LOGO_URL = '/images/logo-fs.png';
+const HAMBURGER_URL = '/images/hamburger.png';
+const GIF_FORWARD_URL = '/images/logo-forward.gif';
+const GIF_REVERSE_URL = '/images/logo-reverse.gif';
 
 const FORWARD_DURATION = 8430;
-const REVERSE_DURATION = 720;
+const REVERSE_DURATION = 680;
 
 type Phase = 'logo' | 'forward' | 'hamburger' | 'reverse';
 
@@ -45,22 +45,28 @@ function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; 
     if (!forwardReady) return;
     if (phaseRef.current === 'hamburger') return;
     if (timerRef.current) clearTimeout(timerRef.current);
+    // Reset src while still at opacity 0, then flip phase next frame to avoid flicker
     if (forwardRef.current) {
       forwardRef.current.src = `${GIF_FORWARD_URL}#${Date.now()}`;
     }
-    updatePhase('forward');
-    timerRef.current = setTimeout(() => updatePhase('hamburger'), FORWARD_DURATION);
+    requestAnimationFrame(() => {
+      updatePhase('forward');
+      timerRef.current = setTimeout(() => updatePhase('hamburger'), FORWARD_DURATION);
+    });
   };
 
   const handleMouseLeave = () => {
     const current = phaseRef.current;
     if (current === 'logo') return;
     if (timerRef.current) clearTimeout(timerRef.current);
+    // Reset src while still at opacity 0, then flip phase next frame to avoid flicker
     if (reverseReady && reverseRef.current) {
       reverseRef.current.src = `${GIF_REVERSE_URL}#${Date.now()}`;
     }
-    updatePhase('reverse');
-    timerRef.current = setTimeout(() => updatePhase('logo'), REVERSE_DURATION);
+    requestAnimationFrame(() => {
+      updatePhase('reverse');
+      timerRef.current = setTimeout(() => updatePhase('logo'), REVERSE_DURATION);
+    });
   };
 
   return (
@@ -77,7 +83,7 @@ function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; 
           src={LOGO_URL}
           alt="FS"
           className="absolute inset-0 w-full h-full object-contain"
-          style={{ visibility: phase === 'logo' ? 'visible' : 'hidden', ...imgStyle }}
+          style={{ opacity: phase === 'logo' ? 1 : 0, ...imgStyle }}
           draggable={false}
         />
         {forwardReady && (
@@ -86,7 +92,7 @@ function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; 
             src={GIF_FORWARD_URL}
             alt=""
             className="absolute inset-0 w-full h-full object-contain"
-            style={{ visibility: phase === 'forward' ? 'visible' : 'hidden', ...imgStyle }}
+            style={{ opacity: phase === 'forward' ? 1 : 0, ...imgStyle }}
             draggable={false}
           />
         )}
@@ -94,7 +100,7 @@ function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; 
           src={HAMBURGER_URL}
           alt=""
           className="absolute inset-0 w-full h-full object-contain"
-          style={{ visibility: phase === 'hamburger' ? 'visible' : 'hidden', ...imgStyle }}
+          style={{ opacity: phase === 'hamburger' ? 1 : 0, ...imgStyle }}
           draggable={false}
         />
         {reverseReady && (
@@ -103,7 +109,7 @@ function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; 
             src={GIF_REVERSE_URL}
             alt=""
             className="absolute inset-0 w-full h-full object-contain"
-            style={{ visibility: phase === 'reverse' ? 'visible' : 'hidden', ...imgStyle }}
+            style={{ opacity: phase === 'reverse' ? 1 : 0, ...imgStyle }}
             draggable={false}
           />
         )}
@@ -162,8 +168,6 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
     { label: t('nav_careers'), href: '/careers', sub: [] },
     { label: t('nav_contact'), href: '/contact', sub: [] },
   ];
-
-
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -251,7 +255,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
             aria-label="Go to homepage"
           >
             <img
-              src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/ba19a8ad592864043ff2c21c8607c9c8.png"
+              src="/images/logo-wordmark.png"
               alt="FS Architects"
               className={`transition-all duration-700 ${isDark ? '' : 'brightness-0 invert'}`}
               style={{ height: '62px', width: 'auto', objectFit: 'contain', display: 'block' }}
@@ -306,7 +310,18 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
       >
         {/* Panel header */}
         <div className="flex items-center pl-6 pr-8 py-5">
-          <LogoHamburger size={48} onClick={() => setMenuOpen(false)} />
+          <button
+            onClick={() => setMenuOpen(false)}
+            className="cursor-pointer p-0 bg-transparent border-0 outline-none"
+            aria-label="Close menu"
+          >
+            <img
+              src={LOGO_URL}
+              alt="FS"
+              style={{ width: 48, height: 48, objectFit: 'contain' }}
+              draggable={false}
+            />
+          </button>
         </div>
 
         {/* Thin divider */}

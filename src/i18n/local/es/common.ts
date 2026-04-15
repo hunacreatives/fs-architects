@@ -209,6 +209,7 @@ const translations = {
   studio_cta_headline: 'Todo gran edificio comienza con una sola conversación.',
   studio_cta_desc: 'Ya sea que tengas un terreno, un boceto o solo una idea — nos encantaría escucharla. Nuestro equipo asume un número selecto de proyectos cada año para garantizar que cada uno reciba toda la profundidad de nuestra atención.',
   studio_cta_btn: 'Iniciar una Conversación',
+  studio_cta_btn_secondary: 'Solicitar una Consulta',
   studio_about_headline: 'Arquitectura moldeada\ncon claridad y contención.',
   studio_about_intro: 'Fundado en 2008, FS Architects es un estudio con sede en Manila dedicado al arte del diseño reflexivo. Trabajamos a todas las escalas — desde interiores íntimos hasta grandes edificios cívicos — guiados por una sola convicción: que la arquitectura debe servir a las personas, honrar el lugar y perdurar.',
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',

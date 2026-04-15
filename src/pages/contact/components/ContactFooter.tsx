@@ -68,7 +68,7 @@ export default function ContactFooter({ hideContactBar = false }: ContactFooterP
         {/* Left block — logo + nav */}
         <div className="flex flex-col gap-2">
           <img
-            src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/f6b09cf60cb69de9102d99263d912a52.png"
+            src="/images/logo-footer.png"
             alt="FS Architects"
             className="h-14 w-auto object-contain object-left"
             draggable={false}

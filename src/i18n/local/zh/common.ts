@@ -209,6 +209,7 @@ const translations = {
   studio_cta_headline: '每一座伟大的建筑都始于一次对话。',
   studio_cta_desc: '无论您有一块场地、一张草图，还是仅仅一个想法——我们都很乐意倾听。我们的团队每年承接数量有限的项目，以确保每个项目都能获得我们全部的专注与深度。',
   studio_cta_btn: '开始对话',
+  studio_cta_btn_secondary: '申请咨询',
   studio_about_headline: '以清晰与克制\n塑造建筑。',
   studio_about_intro: 'FS Architects 于2008年在马尼拉创立，致力于深思熟虑的设计艺术。我们跨越不同尺度开展工作——从亲密的室内空间到大型公共建筑——始终秉持一个信念：建筑应服务于人、尊重场所、经久不衰。',
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import HeroSection from './components/HeroSection';
 import IntroSequence from './components/IntroSequence';

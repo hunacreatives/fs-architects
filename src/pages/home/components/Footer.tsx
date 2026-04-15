@@ -53,7 +53,7 @@ export default function Footer() {
           {/* Row 1: logo + social icons */}
           <div className="flex flex-row items-center justify-between">
             <img
-              src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/4be8756dcc635c33ed68261c7a8f7244.png"
+              src="/images/logo-wordmark-alt.png"
               alt="FS Architects"
               className="h-8 w-auto object-contain brightness-0 invert"
               draggable={false}
@@ -137,7 +137,7 @@ export default function Footer() {
             {/* Logo + tagline */}
             <div className="shrink-0">
               <img
-                src="https://static.readdy.ai/image/08981d36cd0b73cf08022d4d82071d03/4be8756dcc635c33ed68261c7a8f7244.png"
+                src="/images/logo-wordmark-alt.png"
                 alt="FS Architects"
                 className="h-10 w-auto object-contain object-top brightness-0 invert block -mt-3"
                 draggable={false}

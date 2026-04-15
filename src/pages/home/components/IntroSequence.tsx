@@ -9,10 +9,8 @@ const NAV_LOGO_SIZE = 43;
 const INTRO_LOGO_SIZE = 96;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
-const VIDEO_URL =
-  'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/eb17e719-3fde-4be3-afcf-955813e797f8_FS-Architects-Intro.mp4?v=a3fa63b3b53412350ed0e09578ede230';
-const PNG_URL =
-  'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/6ce6d8c4-7246-475e-9d31-1ffdfdafa22f_Fs-Architects---Transparent.png?v=3e7e7587bd400cb1da2e408fd26e86f6';
+const VIDEO_URL = '/images/intro-video.mp4';
+const PNG_URL = '/images/intro-logo.png';
 
 type Phase = 'video' | 'hold' | 'moving' | 'fading' | 'done';
 
@@ -99,8 +97,6 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     opacity: phase === 'fading' ? 0 : 1,
     transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
   };
-
-
 
   return (
     <div

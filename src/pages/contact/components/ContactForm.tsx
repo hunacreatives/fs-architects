@@ -64,7 +64,6 @@ export default function ContactForm() {
 
   const contactDetails = [
     { label: t('contact_info_address'), icon: 'ri-map-pin-line', lines: ['Cebu City, Philippines'] },
-    { label: t('contact_info_phone'),   icon: 'ri-phone-line',   lines: ['(+63) 926 751 6692'] },
     { label: t('contact_info_email'),   icon: 'ri-mail-line',    lines: ['info@fsarchitects.ph'] },
   ];
 

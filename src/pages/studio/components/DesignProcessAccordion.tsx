@@ -70,7 +70,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
           className="absolute pointer-events-none"
           style={{
             inset: '-12px',
-            backgroundImage: `url("https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/eb7aada1-d00d-4292-80c0-edc6a1b6afc1_Gemini_Generated_Image_tvv4zctvv4zctvv4.png?v=9aef8d8d87c7ef82c4fa4846fabccb67")`,
+            backgroundImage: `url("/images/design-process-bg.png")`,
             backgroundSize: 'cover',
             backgroundPosition: 'left center',
             backgroundRepeat: 'no-repeat',

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 const CLIENT_LOGOS = [
   {
     type: 'image' as const,
-    src: 'https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/34306e7d-eb23-41b3-8d48-85b7b31317e7_BYD.png?v=74e0dc480428b06ceedf606379375021',
+    src: '/images/byd-logo.png',
     alt: 'BYD',
   },
   { type: 'text' as const, label: 'ROSEWOOD' },
@@ -219,7 +219,7 @@ export default function AboutUs() {
 
         {/* Background photo */}
         <img
-          src="https://readdy.ai/api/search-image?query=Architectural%20studio%20interior%20with%20exposed%20concrete%20walls%2C%20large%20drafting%20tables%20covered%20in%20blueprints%20and%20scale%20models%2C%20warm%20pendant%20lighting%20casting%20soft%20shadows%2C%20floor-to-ceiling%20windows%20overlooking%20a%20city%20skyline%20at%20dusk%2C%20minimalist%20workspace%20with%20dark%20timber%20shelving%20holding%20architectural%20books%20and%20material%20samples%2C%20calm%20and%20focused%20atmosphere%20with%20muted%20earth%20tones%20and%20deep%20shadows&width=900&height=1200&seq=studio-hero-split-001&orientation=portrait"
+          src="/images/studio-bg.jpg"
           alt="FS Architects Studio"
           className="w-full h-full object-cover object-center"
         />

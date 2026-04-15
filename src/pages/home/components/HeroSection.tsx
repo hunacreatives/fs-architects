@@ -8,10 +8,10 @@ interface HeroSectionProps {
 }
 
 const SLIDES = [
-  "https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/99c59eb0-4815-4d7a-866a-f56d3e927d63_FS-Homepage.png?v=1766117ffab489d25f6b03973bad0b09",
-  "https://readdy.ai/api/search-image?query=Elegant%20modern%20residential%20architecture%20with%20cantilevered%20volumes%2C%20warm%20timber%20accents%2C%20and%20floor-to-ceiling%20glass%20reflecting%20a%20calm%20evening%20sky%2C%20architectural%20photography%20with%20soft%20natural%20light%20and%20restrained%20material%20palette%2C%20serene%20and%20timeless%20composition&width=1920&height=1080&seq=fs-arch-slide-002&orientation=landscape",
-  "https://readdy.ai/api/search-image?query=Refined%20institutional%20building%20with%20rhythmic%20concrete%20columns%2C%20deep%20shadow%20reveals%2C%20and%20a%20monumental%20yet%20human-scale%20entrance%20plaza%2C%20professional%20architectural%20photography%20in%20soft%20daylight%20with%20muted%20stone%20and%20concrete%20tones%2C%20calm%20and%20authoritative%20atmosphere&width=1920&height=1080&seq=fs-arch-slide-003&orientation=landscape",
-  "https://readdy.ai/api/search-image?query=Luxury%20private%20villa%20architecture%20with%20long%20horizontal%20rooflines%2C%20infinity%20pool%20reflecting%20the%20sky%2C%20surrounded%20by%20manicured%20landscape%20and%20natural%20stone%20walls%2C%20architectural%20photography%20with%20golden%20hour%20light%2C%20serene%20and%20composed%20atmosphere&width=1920&height=1080&seq=fs-arch-slide-004&orientation=landscape",
+  "/images/hero-slide-1.jpg",
+  "/images/hero-slide-2.jpg",
+  "/images/hero-slide-3.jpg",
+  "/images/hero-slide-4.jpg",
 ];
 
 // Varied Ken Burns directions so each slide feels different

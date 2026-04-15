@@ -42,7 +42,7 @@ export default function DesignProcess() {
       {/* Process image strip */}
       <div className="w-full mb-20 overflow-hidden" style={{ height: '280px' }}>
         <img
-          src="https://readdy.ai/api/search-image?query=Wide%20panoramic%20view%20of%20an%20architectural%20design%20studio%20workspace%20showing%20multiple%20stages%20of%20the%20design%20process%2C%20from%20hand%20sketches%20and%20trace%20paper%20overlays%20on%20the%20left%2C%20to%20detailed%20CAD%20drawings%20in%20the%20center%2C%20to%20a%20finished%20white%20architectural%20scale%20model%20on%20the%20right%2C%20all%20arranged%20on%20a%20long%20concrete%20table%20under%20warm%20pendant%20lights%2C%20dark%20moody%20studio%20atmosphere%20with%20muted%20tones&width=1920&height=560&seq=studio-process-banner-001&orientation=landscape"
+          src="/images/process-banner.jpg"
           alt="Design process"
           className="w-full h-full object-cover object-center"
         />

@@ -11,7 +11,6 @@ export default function ProcessPage() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
     const timer = setTimeout(() => setVisible(true), 100);
     return () => clearTimeout(timer);
   }, []);

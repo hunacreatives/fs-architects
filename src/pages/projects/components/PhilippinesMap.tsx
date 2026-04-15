@@ -266,7 +266,7 @@ export default function PhilippinesMap({
       >
         {/* Layer 1 — blurred copy, visible at edges */}
         <img
-          src="https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/a411f0a0-7383-40bf-8554-15baf00ff8ec_World-Map.png?v=591f9d4777ca7050b06f9d07addba790"
+          src="/images/world-map.png"
           alt=""
           className="absolute inset-0 w-full h-full"
           style={{
@@ -281,7 +281,7 @@ export default function PhilippinesMap({
         />
         {/* Layer 2 — sharp copy, masked to center only */}
         <img
-          src="https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/a411f0a0-7383-40bf-8554-15baf00ff8ec_World-Map.png?v=591f9d4777ca7050b06f9d07addba790"
+          src="/images/world-map.png"
           alt=""
           className="absolute inset-0 w-full h-full"
           style={{
@@ -314,7 +314,7 @@ export default function PhilippinesMap({
       >
         {/* Base map image */}
         <img
-          src="https://storage.readdy-site.link/project_files/3530b75e-ff34-41a0-81d5-ae38e0742267/24b204ac-0ddb-418c-863c-dd662c7f1fef_ph.svg?v=47ebe8b8e1e2c3c3d9761785e68809a2"
+          src="/images/philippines.svg"
           alt="Philippines Map"
           className="absolute inset-0 w-full h-full select-none"
           style={{ objectFit: 'contain', objectPosition: 'center', filter: 'grayscale(1)', opacity: 0.52 }}

@@ -117,7 +117,7 @@ export default function CareersPage() {
       {/* ── FULL-BLEED STUDIO IMAGE ── */}
       <div className="w-full overflow-hidden" style={{ height: '360px' }}>
         <img
-          src="https://readdy.ai/api/search-image?query=overhead%20birds%20eye%20view%20of%20a%20large%20white%20architectural%20drafting%20table%20covered%20in%20overlapping%20blueprints%2C%20technical%20drawings%2C%20white%20scale%20models%2C%20material%20sample%20swatches%20and%20precision%20drafting%20tools%2C%20cool%20diffused%20natural%20light%20from%20above%2C%20clean%20minimal%20studio%20surface%2C%20strong%20graphic%20shadows%20on%20white%20paper%2C%20editorial%20flat%20lay%20architectural%20photography&width=1400&height=560&seq=careers-mid-banner-001&orientation=landscape"
+          src="/images/careers-banner.jpg"
           alt="FS Architects studio workspace"
           className="w-full h-full object-cover object-top"
           draggable={false}

@@ -409,7 +409,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
               >
                 <div className="team-bio-panel-inner">
                   {activeMember && isThisRowActive && (
-                    <div style={{ padding: '12px', marginBottom: '4px' }}>
+                    <div style={{ padding: '12px', marginBottom: '4px', opacity: panelOpen ? 1 : 0, transition: 'opacity 0.18s ease' }}>
                       <div
                         style={{
                           background: 'linear-gradient(135deg, rgba(43,54,64,0.92) 0%, rgba(26,32,40,0.96) 100%)',

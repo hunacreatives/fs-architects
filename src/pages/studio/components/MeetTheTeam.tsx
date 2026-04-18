@@ -409,59 +409,63 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
               >
                 <div className="team-bio-panel-inner">
                   {activeMember && isThisRowActive && (
-                    <div
-                      style={{
-                        background: '#fff',
-                        borderTop: '1px solid rgba(0,0,0,0.07)',
-                        borderBottom: '1px solid rgba(0,0,0,0.07)',
-                        padding: '48px',
-                        marginBottom: '3px',
-                        display: 'flex',
-                        gap: '64px',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      {/* LEFT — Name, Title, Bio, Close */}
-                      <div style={{ flex: '1 1 0', minWidth: 0 }}>
-                        <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(0,0,0,0.84)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
-                          {t(activeMember.nameKey)}
-                        </h3>
-                        <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(0,0,0,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
-                          {t(activeMember.titleKey)}
-                        </p>
-                        <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '13px', lineHeight: 2, color: 'rgba(0,0,0,0.50)', letterSpacing: '0.015em', margin: '0 0 32px 0' }}>
-                          {t(activeMember.bioKey)}
-                        </p>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleClose(); }}
-                          style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.20em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.40)', border: '1px solid rgba(0,0,0,0.14)', padding: '9px 24px', borderRadius: '9999px', background: 'none', cursor: 'pointer', transition: 'color 0.2s ease, border-color 0.2s ease', whiteSpace: 'nowrap' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.80)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.40)'; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.40)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.14)'; }}
-                        >
-                          Close
-                        </button>
-                      </div>
-
-                      {/* RIGHT — Credentials */}
-                      {activeMember.credentials && (
-                        <div style={{ flex: '0 0 280px', borderLeft: '1px solid rgba(0,0,0,0.07)', paddingLeft: '48px' }}>
-                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '24px' }}>
-                            Credentials
+                    <div style={{ padding: '12px', marginBottom: '4px' }}>
+                      <div
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(43,54,64,0.92) 0%, rgba(26,32,40,0.96) 100%)',
+                          backdropFilter: 'blur(24px)',
+                          WebkitBackdropFilter: 'blur(24px)',
+                          border: '1px solid rgba(255,255,255,0.09)',
+                          borderRadius: '20px',
+                          padding: '44px 48px',
+                          display: 'flex',
+                          gap: '56px',
+                          alignItems: 'flex-start',
+                          boxShadow: '0 8px 48px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        {/* LEFT — Name, Title, Bio, Close */}
+                        <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                          <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.90)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
+                            {t(activeMember.nameKey)}
+                          </h3>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
+                            {t(activeMember.titleKey)}
                           </p>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            {activeMember.credentials.map((c) => (
-                              <div key={c.label}>
-                                <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '4px' }}>
-                                  {c.label}
-                                </p>
-                                <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(0,0,0,0.65)', lineHeight: 1.6, letterSpacing: '0.01em' }}>
-                                  {c.value}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '13px', lineHeight: 2, color: 'rgba(255,255,255,0.48)', letterSpacing: '0.015em', margin: '0 0 32px 0' }}>
+                            {t(activeMember.bioKey)}
+                          </p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleClose(); }}
+                            style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.20em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.15)', padding: '9px 24px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease', whiteSpace: 'nowrap' }}
+                            onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.color = 'rgba(255,255,255,0.85)'; b.style.borderColor = 'rgba(255,255,255,0.35)'; b.style.background = 'rgba(255,255,255,0.10)'; }}
+                            onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.color = 'rgba(255,255,255,0.35)'; b.style.borderColor = 'rgba(255,255,255,0.15)'; b.style.background = 'rgba(255,255,255,0.05)'; }}
+                          >
+                            Close
+                          </button>
                         </div>
-                      )}
+
+                        {/* RIGHT — Credentials */}
+                        {activeMember.credentials && (
+                          <div style={{ flex: '0 0 260px', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '48px' }}>
+                            <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: '24px' }}>
+                              Credentials
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                              {activeMember.credentials.map((c) => (
+                                <div key={c.label}>
+                                  <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: '4px' }}>
+                                    {c.label}
+                                  </p>
+                                  <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.60)', lineHeight: 1.6, letterSpacing: '0.01em' }}>
+                                    {c.value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

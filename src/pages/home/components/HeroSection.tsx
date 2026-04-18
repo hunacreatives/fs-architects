@@ -97,7 +97,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               key={i}
               src={src}
               alt={`Architectural work ${i + 1}`}
-              className="absolute inset-0 w-full h-full object-cover object-top"
+              className="absolute inset-0 w-full h-full object-cover object-center"
               style={{
                 opacity: isActive ? 1 : 0,
                 transform: isMoving ? kb.to : kb.from,

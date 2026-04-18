@@ -4,6 +4,7 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import PasswordGate from "./components/feature/PasswordGate";
 import ScrollToTop from "./components/feature/ScrollToTop";
+import PageTransition from "./components/feature/PageTransition";
 
 function App() {
   return (
@@ -11,7 +12,9 @@ function App() {
       <PasswordGate>
         <BrowserRouter basename={__BASE_PATH__}>
           <ScrollToTop />
-          <AppRoutes />
+          <PageTransition>
+            <AppRoutes />
+          </PageTransition>
         </BrowserRouter>
       </PasswordGate>
     </I18nextProvider>

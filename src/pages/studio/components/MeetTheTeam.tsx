@@ -414,64 +414,47 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         background: '#fff',
                         borderTop: '1px solid rgba(0,0,0,0.07)',
                         borderBottom: '1px solid rgba(0,0,0,0.07)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        padding: '52px 48px',
+                        padding: '48px',
                         marginBottom: '3px',
+                        display: 'flex',
+                        gap: '64px',
+                        alignItems: 'flex-start',
                       }}
                     >
-                      {/* Name */}
-                      <h3 style={{
-                        fontFamily: 'Marcellus, serif',
-                        fontSize: 'clamp(22px, 2vw, 30px)',
-                        letterSpacing: '-0.02em',
-                        color: 'rgba(0,0,0,0.84)',
-                        lineHeight: 1.2,
-                        margin: '0 0 6px 0',
-                      }}>
-                        {t(activeMember.nameKey)}
-                      </h3>
+                      {/* LEFT — Name, Title, Bio, Close */}
+                      <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                        <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(0,0,0,0.84)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
+                          {t(activeMember.nameKey)}
+                        </h3>
+                        <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(0,0,0,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
+                          {t(activeMember.titleKey)}
+                        </p>
+                        <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '13px', lineHeight: 2, color: 'rgba(0,0,0,0.50)', letterSpacing: '0.015em', margin: '0 0 32px 0' }}>
+                          {t(activeMember.bioKey)}
+                        </p>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleClose(); }}
+                          style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.20em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.40)', border: '1px solid rgba(0,0,0,0.14)', padding: '9px 24px', borderRadius: '9999px', background: 'none', cursor: 'pointer', transition: 'color 0.2s ease, border-color 0.2s ease', whiteSpace: 'nowrap' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.80)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.40)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.40)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.14)'; }}
+                        >
+                          Close
+                        </button>
+                      </div>
 
-                      {/* Title */}
-                      <p style={{
-                        fontFamily: 'Geist, sans-serif',
-                        fontSize: '10px',
-                        letterSpacing: '0.22em',
-                        color: 'rgba(0,0,0,0.30)',
-                        textTransform: 'uppercase',
-                        marginBottom: '24px',
-                      }}>
-                        {t(activeMember.titleKey)}
-                      </p>
-
-                      {/* Bio */}
-                      <p style={{
-                        fontFamily: 'Geist, sans-serif',
-                        fontSize: '13px',
-                        lineHeight: 2,
-                        color: 'rgba(0,0,0,0.50)',
-                        letterSpacing: '0.015em',
-                        maxWidth: '520px',
-                        margin: '0 0 36px 0',
-                      }}>
-                        {t(activeMember.bioKey)}
-                      </p>
-
-                      {/* Credentials */}
+                      {/* RIGHT — Credentials */}
                       {activeMember.credentials && (
-                        <div style={{ width: '100%', maxWidth: '520px', marginBottom: '32px', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '28px' }}>
-                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '20px' }}>
+                        <div style={{ flex: '0 0 280px', borderLeft: '1px solid rgba(0,0,0,0.07)', paddingLeft: '48px' }}>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '24px' }}>
                             Credentials
                           </p>
-                          <div className="grid grid-cols-2 gap-x-8 gap-y-4" style={{ textAlign: 'left' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {activeMember.credentials.map((c) => (
                               <div key={c.label}>
                                 <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '4px' }}>
                                   {c.label}
                                 </p>
-                                <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(0,0,0,0.65)', lineHeight: 1.5, letterSpacing: '0.01em' }}>
+                                <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(0,0,0,0.65)', lineHeight: 1.6, letterSpacing: '0.01em' }}>
                                   {c.value}
                                 </p>
                               </div>
@@ -479,35 +462,6 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           </div>
                         </div>
                       )}
-
-                      {/* Close — pill */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleClose(); }}
-                        style={{
-                          fontFamily: 'Geist, sans-serif',
-                          fontSize: '9px',
-                          letterSpacing: '0.20em',
-                          textTransform: 'uppercase',
-                          color: 'rgba(0,0,0,0.40)',
-                          border: '1px solid rgba(0,0,0,0.14)',
-                          padding: '9px 24px',
-                          borderRadius: '9999px',
-                          background: 'none',
-                          cursor: 'pointer',
-                          transition: 'color 0.2s ease, border-color 0.2s ease',
-                          whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.80)';
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.40)';
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.40)';
-                          (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.14)';
-                        }}
-                      >
-                        Close
-                      </button>
                     </div>
                   )}
                 </div>

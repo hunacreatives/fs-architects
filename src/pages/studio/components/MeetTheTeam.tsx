@@ -184,7 +184,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           overflow: hidden;
           background: #111;
           aspect-ratio: 3 / 4;
-          border-radius: 8px;
+          border-radius: 16px;
         }
         .team-card-photo img {
           width: 100%;
@@ -272,13 +272,13 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       </div>
 
       {/* Grid — rows of 3 with inline bio panel after each row */}
-      <div className="px-4 md:px-20 lg:px-28" style={{ paddingBottom: '160px' }}>
+      <div className="px-4 md:px-28 lg:px-40" style={{ paddingBottom: '160px' }}>
         {rows.map((row, rowIndex) => {
           const isThisRowActive = activeRow === rowIndex;
           return (
             <div key={rowIndex}>
               {/* Row of cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {row.map((member) => {
                   const isActive = activeKey === member.key;
                   const isDimmed = activeKey !== null && !isActive;

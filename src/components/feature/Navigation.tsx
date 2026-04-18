@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
@@ -140,6 +140,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { pathname } = useLocation();
 
   const isDark = theme === 'dark';
 
@@ -333,12 +334,14 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
         <nav className="flex-1 overflow-y-auto px-8 py-4">
           {menuItems.map(({ label, href, sub }) => {
             const isExpanded = expandedItems[href] ?? false;
+            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
             return (
               <div key={href} className="mb-1">
                 <div className="flex items-center w-full">
                   <button
-                    onClick={() => handleNavClick(href)}
-                    className="flex-1 text-left text-white text-[17px] font-normal tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer"
+                    onClick={() => !isActive && handleNavClick(href)}
+                    disabled={isActive}
+                    className={`flex-1 text-left text-[17px] font-normal tracking-wide py-1.5 transition-colors duration-300 ${isActive ? 'text-white/35 cursor-default' : 'text-white hover:text-white/70 cursor-pointer'}`}
                     style={{ fontFamily: 'Marcellus, serif', letterSpacing: '0.04em' }}
                   >
                     <span className="whitespace-nowrap">{label}</span>

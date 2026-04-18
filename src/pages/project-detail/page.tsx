@@ -349,7 +349,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
-      <Navigation theme="dark" />
+      <Navigation theme="light" />
 
       <ProjectHero
         name={name}

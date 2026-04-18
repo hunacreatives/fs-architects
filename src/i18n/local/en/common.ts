@@ -22,8 +22,8 @@ const translations = {
   // Hero
   hero_title: 'FS Architects',
   hero_subtitle: 'Form In Stillness',
-  hero_tagline_line1: 'Form. Stillness.',
-  hero_tagline_line2: 'Foundational Structures.',
+  hero_tagline_line1: 'Redefining',
+  hero_tagline_line2: 'Spaces.',
   hero_cta: 'View Projects',
 
   // Map section

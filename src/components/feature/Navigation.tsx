@@ -224,7 +224,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
             ? 'opacity-0'
             : isDark
               ? isScrolled
-                ? 'bg-white/98 backdrop-blur-sm'
+                ? 'bg-white/98 backdrop-blur-sm shadow-sm'
                 : 'bg-white'
               : isScrolled
                 ? 'bg-black/20 backdrop-blur-sm'
@@ -292,7 +292,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
         {/* Thin divider line — full-width when scrolled, padded when at top */}
         <div className={`w-full flex items-center transition-all duration-700 ${isScrolled ? 'px-0' : 'px-4 md:px-16 lg:px-24'}`}>
-          <div className={`flex-1 h-px ${isDark ? 'bg-black/15' : 'bg-white/15'}`} />
+          <div className={`flex-1 h-px transition-all duration-700 ${isDark ? (isScrolled ? 'bg-black/25' : 'bg-black/10') : 'bg-white/15'}`} />
         </div>
       </nav>
 

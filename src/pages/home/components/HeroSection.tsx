@@ -138,8 +138,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
               }}
             >
-              <span>{t('hero_tagline_line1')}</span>
-              <span>{t('hero_tagline_line2')}</span>
+              <span>{t('hero_tagline_line1')} {t('hero_tagline_line2')}</span>
             </h1>
           </div>
 

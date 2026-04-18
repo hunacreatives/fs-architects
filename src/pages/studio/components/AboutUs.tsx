@@ -262,35 +262,12 @@ export default function AboutUs() {
               textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
             }}
           >
-            {t('hero_tagline_line1').split(' ').map((word, i) => (
+            {[...t('hero_tagline_line1').split(' '), ...t('hero_tagline_line2').split(' ')].map((word, i, arr) => (
               <span key={i}>
                 <span className={`quote-word quote-w${i}`}>{word}</span>
-                {i < t('hero_tagline_line1').split(' ').length - 1 && ' '}
+                {i < arr.length - 1 && ' '}
               </span>
             ))}
-          </p>
-
-          {/* Line 2 — words continue the global stagger index */}
-          <p
-            style={{
-              fontFamily: 'Marcellus, serif',
-              fontSize: 'clamp(0.95rem, 1.8vw, 1.55rem)',
-              letterSpacing: '0.1em',
-              color: 'rgba(255,255,255,0.72)',
-              textAlign: 'center',
-              lineHeight: 1.6,
-              textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
-            }}
-          >
-            {t('hero_tagline_line2').split(' ').map((word, i) => {
-              const globalIdx = t('hero_tagline_line1').split(' ').length + i;
-              return (
-                <span key={i}>
-                  <span className={`quote-word quote-w${globalIdx}`}>{word}</span>
-                  {i < t('hero_tagline_line2').split(' ').length - 1 && ' '}
-                </span>
-              );
-            })}
           </p>
 
 

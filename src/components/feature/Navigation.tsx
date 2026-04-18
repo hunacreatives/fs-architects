@@ -136,6 +136,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeLanguage, setActiveLanguage] = useState<LangLabel>('ENG');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -177,6 +178,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : '';
+    if (!menuOpen) setExpandedItems({});
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen]);
 
@@ -329,31 +331,55 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
         {/* Nav links */}
         <nav className="flex-1 overflow-y-auto px-8 py-4">
-          {menuItems.map(({ label, href, sub }) => (
+          {menuItems.map(({ label, href, sub }) => {
+            const isExpanded = expandedItems[href] ?? false;
+            return (
               <div key={href} className="mb-1">
-                <button
-                  onClick={() => handleNavClick(href)}
-                  className="flex items-center w-full text-left text-white text-[17px] font-normal tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer"
-                  style={{ fontFamily: 'Marcellus, serif', letterSpacing: '0.04em' }}
-                >
-                  <span className="whitespace-nowrap">{label}</span>
-                </button>
-                {sub.length > 0 && (
-                  <div className="mb-1.5 flex flex-col gap-0.5">
-                    {sub.map((item) => (
-                      <button
-                        key={item.href}
-                        onClick={() => handleNavClick(item.href)}
-                        className="block w-full text-left text-white/45 text-[11px] py-0.5 hover:text-white/75 transition-colors duration-300 cursor-pointer whitespace-nowrap"
-                        style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.03em' }}
+                <div className="flex items-center w-full">
+                  <button
+                    onClick={() => handleNavClick(href)}
+                    className="flex-1 text-left text-white text-[17px] font-normal tracking-wide py-1.5 hover:text-white/70 transition-colors duration-300 cursor-pointer"
+                    style={{ fontFamily: 'Marcellus, serif', letterSpacing: '0.04em' }}
+                  >
+                    <span className="whitespace-nowrap">{label}</span>
+                  </button>
+                  {sub.length > 0 && (
+                    <button
+                      onClick={() => setExpandedItems(prev => ({ ...prev, [href]: !isExpanded }))}
+                      className="flex items-center justify-center w-7 h-7 text-white/40 hover:text-white/70 transition-colors duration-300 cursor-pointer"
+                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      <svg
+                        width="10" height="10" viewBox="0 0 10 10" fill="none"
+                        className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
                       >
-                        {item.label}
-                      </button>
-                    ))}
+                        <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {sub.length > 0 && (
+                  <div
+                    className="overflow-hidden transition-all duration-300"
+                    style={{ maxHeight: isExpanded ? `${sub.length * 28}px` : '0px' }}
+                  >
+                    <div className="mb-1.5 flex flex-col gap-0.5">
+                      {sub.map((item) => (
+                        <button
+                          key={item.href}
+                          onClick={() => handleNavClick(item.href)}
+                          className="block w-full text-left text-white/45 text-[11px] py-0.5 hover:text-white/75 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+                          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.03em' }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
+            );
+          })}
         </nav>
 
         {/* Bottom strip */}

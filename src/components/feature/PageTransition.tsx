@@ -6,28 +6,24 @@ export default function PageTransition({ children }: { children: React.ReactNode
   return (
     <>
       <style>{`
-        @keyframes pageFadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
+        @keyframes overlayOut {
+          0%   { opacity: 1; }
+          100% { opacity: 0; }
         }
-        @keyframes pageLineIn {
-          from { transform: scaleX(0); opacity: 1; }
-          80%  { transform: scaleX(1); opacity: 1; }
-          to   { transform: scaleX(1); opacity: 0; }
+        @keyframes contentIn {
+          0%   { opacity: 0; }
+          40%  { opacity: 0; }
+          100% { opacity: 1; }
         }
         .page-enter {
-          animation: pageFadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation: contentIn 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
         }
         .page-enter::before {
           content: '';
           position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: rgba(255, 255, 255, 0.5);
-          transform-origin: left center;
-          animation: pageLineIn 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          inset: 0;
+          background: #1a1916;
+          animation: overlayOut 380ms cubic-bezier(0.4, 0, 0.2, 1) both;
           z-index: 9999;
           pointer-events: none;
         }

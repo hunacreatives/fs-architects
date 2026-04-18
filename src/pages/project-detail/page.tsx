@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navigation from '../../components/feature/Navigation';
 import ContactFooter from '../contact/components/ContactFooter';
+import StudioCTA from '../studio/components/StudioCTA';
 import ProjectHero from './components/ProjectHero';
 import ProjectInfo from './components/ProjectInfo';
 import ProjectSpecs from './components/ProjectSpecs';
@@ -396,7 +397,8 @@ export default function ProjectDetailPage() {
         prevName={prevName}
       />
 
-      <ContactFooter />
+      <StudioCTA />
+      <ContactFooter hideContactBar />
     </div>
   );
 }

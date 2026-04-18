@@ -16,10 +16,10 @@ const SLIDES = [
 
 // Varied Ken Burns directions so each slide feels different
 const KENBURNS = [
-  { from: 'scale(1.07) translate(1%, 1%)',  to: 'scale(1.0)  translate(-1%, -1%)' },
-  { from: 'scale(1.0)  translate(-1%, -1%)', to: 'scale(1.07) translate(1%,  1%)' },
-  { from: 'scale(1.06) translate(0%,  1%)',  to: 'scale(1.0)  translate(0%,  -1%)' },
-  { from: 'scale(1.0)  translate(1%,  0%)',  to: 'scale(1.06) translate(-1%, 0%)' },
+  { from: 'scale(1.08) translate(1%, 1%)',   to: 'scale(1.03) translate(-1%, -1%)' },
+  { from: 'scale(1.03) translate(-1%, -1%)', to: 'scale(1.08) translate(1%,  1%)' },
+  { from: 'scale(1.07) translate(0%,  1%)',  to: 'scale(1.03) translate(0%,  -1%)' },
+  { from: 'scale(1.03) translate(1%,  0%)',  to: 'scale(1.07) translate(-1%, 0%)' },
 ];
 
 const CROSSFADE_MS = 1800;

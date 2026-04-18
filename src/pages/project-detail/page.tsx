@@ -357,6 +357,7 @@ export default function ProjectDetailPage() {
         image={project.heroImage}
         index={currentIndex}
         total={projectsData.length}
+        location={project.location}
       />
 
       {specs && (

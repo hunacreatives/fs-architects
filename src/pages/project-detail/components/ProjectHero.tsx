@@ -7,9 +7,10 @@ interface ProjectHeroProps {
   image: string;
   index: number;
   total: number;
+  location?: string;
 }
 
-export default function ProjectHero({ name, image, index, total }: ProjectHeroProps) {
+export default function ProjectHero({ name, image, index, total, location }: ProjectHeroProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
@@ -75,6 +76,22 @@ export default function ProjectHero({ name, image, index, total }: ProjectHeroPr
           {name}
         </h1>
       </div>
+
+      {/* Location — bottom right */}
+      {location && (
+        <div
+          className="absolute bottom-16 md:bottom-24 right-6 md:right-16 lg:right-24 flex items-center gap-1.5 z-10"
+          style={{
+            opacity: visible ? 0.55 : 0,
+            transition: 'opacity 1s ease 0.7s',
+          }}
+        >
+          <i className="ri-map-pin-line text-white" style={{ fontSize: '10px' }} />
+          <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', color: 'white', textTransform: 'uppercase' }}>
+            {location}
+          </span>
+        </div>
+      )}
 
       {/* Scroll indicator */}
       <div

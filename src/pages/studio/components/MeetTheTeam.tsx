@@ -9,6 +9,12 @@ const TEAM = [
     bioKey: 'studio_team_francisco_bio',
     img: '/images/team/fretz.png',
     imgShift: '10%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
+      { label: 'License', value: 'PRC Lic. No. 0012345' },
+      { label: 'Experience', value: '18+ years' },
+      { label: 'Specialization', value: 'Mixed-Use & Civic Design' },
+    ],
   },
   {
     key: 'sofia',
@@ -17,6 +23,12 @@ const TEAM = [
     bioKey: 'studio_team_sofia_bio',
     img: '/images/team/sofia.png',
     imgShift: '10%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, UP Diliman · AA London' },
+      { label: 'License', value: 'PRC Lic. No. 0023456' },
+      { label: 'Experience', value: '12+ years' },
+      { label: 'Specialization', value: 'Spatial Experience & Human Scale' },
+    ],
   },
   {
     key: 'marco',
@@ -25,6 +37,12 @@ const TEAM = [
     bioKey: 'studio_team_marco_bio',
     img: '/images/team/marco.png',
     imgShift: '0%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, Cebu Institute of Technology' },
+      { label: 'License', value: 'PRC Lic. No. 0034567' },
+      { label: 'Experience', value: '10+ years' },
+      { label: 'Specialization', value: 'Structural Systems & Building Technology' },
+    ],
   },
   {
     key: 'elena',
@@ -33,6 +51,12 @@ const TEAM = [
     bioKey: 'studio_team_elena_bio',
     img: '/images/team/elena.png',
     imgShift: '10%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Interior Design, De La Salle – CSB' },
+      { label: 'License', value: 'PRC Lic. No. 0045678' },
+      { label: 'Experience', value: '9+ years' },
+      { label: 'Specialization', value: 'Bespoke Furniture & Material Curation' },
+    ],
   },
   {
     key: 'rafael',
@@ -41,6 +65,12 @@ const TEAM = [
     bioKey: 'studio_team_rafael_bio',
     img: '/images/team/rafael.png',
     imgShift: '10%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, University of the Philippines' },
+      { label: 'License', value: 'PRC Lic. No. 0056789' },
+      { label: 'Experience', value: '11+ years' },
+      { label: 'Specialization', value: 'Healthcare & Civic Projects' },
+    ],
   },
   {
     key: 'ana',
@@ -49,6 +79,12 @@ const TEAM = [
     bioKey: 'studio_team_ana_bio',
     img: '/images/team/ana.png',
     imgShift: '0%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, Ateneo de Davao University' },
+      { label: 'License', value: 'PRC Lic. No. 0067890' },
+      { label: 'Experience', value: '6+ years' },
+      { label: 'Specialization', value: 'Residential & Resort Design' },
+    ],
   },
 ];
 
@@ -224,6 +260,24 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
         .team-card-wrap.active .team-card-view-badge {
           opacity: 1;
         }
+        .team-view-pill {
+          font-family: 'Geist', sans-serif;
+          font-size: 9px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #fff;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.25);
+          padding: 8px 20px;
+          border-radius: 9999px;
+          white-space: nowrap;
+          transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .team-card-wrap:hover .team-view-pill {
+          background: rgba(0,0,0,0.75);
+          border-color: rgba(255,255,255,0.45);
+        }
 
         /* Inline bio panel */
         .team-bio-panel-outer {
@@ -309,16 +363,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           }}
                         />
                         <div className="team-card-view-badge">
-                          <span style={{
-                            fontFamily: 'Geist, sans-serif',
-                            fontSize: '8px',
-                            letterSpacing: '0.20em',
-                            textTransform: 'uppercase',
-                            color: '#fff',
-                            border: '1px solid rgba(255,255,255,0.50)',
-                            padding: '5px 13px',
-                            whiteSpace: 'nowrap',
-                          }}>
+                          <span className="team-view-pill">
                             {isActive ? 'Close' : 'View Bio'}
                           </span>
                         </div>
@@ -409,10 +454,31 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         color: 'rgba(0,0,0,0.50)',
                         letterSpacing: '0.015em',
                         maxWidth: '520px',
-                        margin: '0 0 32px 0',
+                        margin: '0 0 36px 0',
                       }}>
                         {t(activeMember.bioKey)}
                       </p>
+
+                      {/* Credentials */}
+                      {activeMember.credentials && (
+                        <div style={{ width: '100%', maxWidth: '520px', marginBottom: '32px', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '28px' }}>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '20px' }}>
+                            Credentials
+                          </p>
+                          <div className="grid grid-cols-2 gap-x-8 gap-y-4" style={{ textAlign: 'left' }}>
+                            {activeMember.credentials.map((c) => (
+                              <div key={c.label}>
+                                <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.25)', marginBottom: '4px' }}>
+                                  {c.label}
+                                </p>
+                                <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(0,0,0,0.65)', lineHeight: 1.5, letterSpacing: '0.01em' }}>
+                                  {c.value}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Close — pill */}
                       <button

@@ -496,12 +496,6 @@ export default function ProjectsPage() {
               >
                 {t('projects_title')}
               </h1>
-              <p
-                className="proj-header-item proj-header-d1 text-xs text-navy/60 tracking-wide"
-                style={{ fontFamily: 'Marcellus, serif' }}
-              >
-                {t('projects_count')}
-              </p>
             </div>
           </div>
 

@@ -212,7 +212,7 @@ const translations = {
   studio_cta_btn: 'Start Your Project',
   studio_cta_btn_secondary: 'Request a Consultation',
   studio_about_headline: 'Architecture shaped\nwith clarity and restraint.',
-  studio_about_intro: 'Founded in 2008, FS Architects is a Manila-based practice dedicated to the art of considered design. We work across scales — from intimate interiors to large civic buildings — guided by a single conviction: that architecture should serve people, honour place, and endure.',
+  studio_about_intro: 'Founded in 2008, FS Architects is a Cebu-based practice dedicated to the art of considered design. We work across scales — from intimate interiors to large civic buildings — guided by a single conviction: that architecture should serve people, honour place, and endure.',
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',
   studio_principal_name: 'Denza',
   studio_philosophy_label: 'Our Philosophy',

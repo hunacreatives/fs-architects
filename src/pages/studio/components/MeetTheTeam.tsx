@@ -221,6 +221,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           background: #111;
           aspect-ratio: 3 / 4;
           border-radius: 16px;
+          max-height: 28vh;
         }
         .team-card-wrap:hover .team-card-photo,
         .team-card-wrap.active .team-card-photo {
@@ -296,7 +297,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       `}</style>
 
       {/* Heading */}
-      <div ref={headingRef} className="px-4 md:px-20 lg:px-28 pt-16 pb-12">
+      <div ref={headingRef} className="px-4 md:px-20 lg:px-28 pt-10 pb-6">
         <p className="team-heading-item team-h-d0" style={{
           fontFamily: 'Geist, sans-serif',
           fontSize: '10px',
@@ -330,7 +331,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       </div>
 
       {/* Grid — rows of 3 with inline bio panel after each row */}
-      <div className="px-4 md:px-28 lg:px-40" style={{ paddingBottom: '160px' }}>
+      <div className="px-4 md:px-28 lg:px-40" style={{ paddingBottom: '40px' }}>
         {rows.map((row, rowIndex) => {
           const isThisRowActive = activeRow === rowIndex;
           return (
@@ -409,7 +410,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
               >
                 <div className="team-bio-panel-inner">
                   {activeMember && isThisRowActive && (
-                    <div style={{ padding: '12px', marginBottom: '4px', opacity: panelOpen ? 1 : 0, transition: 'opacity 0.18s ease' }}>
+                    <div style={{ padding: '0 0 16px 0', opacity: panelOpen ? 1 : 0, transition: 'opacity 0.18s ease' }}>
                       <div
                         style={{
                           background: 'linear-gradient(135deg, rgba(43,54,64,0.92) 0%, rgba(26,32,40,0.96) 100%)',

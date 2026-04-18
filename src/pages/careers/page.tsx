@@ -1,20 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Navigation from '../../components/feature/Navigation';
-import ValuesSection from './components/ValuesSection';
-import OpenRoles, { OPEN_ROLES } from './components/OpenRoles';
-import ApplicationForm from './components/ApplicationForm';
 import ContactFooter from '../contact/components/ContactFooter';
+import StudioCTA from '../studio/components/StudioCTA';
+import OpenRoles, { OPEN_ROLES } from './components/OpenRoles';
+import ValuesSection from './components/ValuesSection';
+import ApplicationForm from './components/ApplicationForm';
 
 export default function CareersPage() {
   const { t } = useTranslation();
-  const [navTheme, setNavTheme] = useState<'light' | 'dark'>('dark');
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
-  const [headerVisible, setHeaderVisible] = useState(false);
-
-  const rolesSectionRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
-  const quoteRef = useRef<HTMLDivElement>(null);
+
+  const positionOptions = OPEN_ROLES.map(r => t(r.titleKey));
 
   const handleApply = (titleKey: string) => {
     setSelectedPosition(t(titleKey));
@@ -23,154 +21,49 @@ export default function CareersPage() {
     }, 80);
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => setHeaderVisible(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  /* Nav theme: dark on white, light inside dark open roles */
-  useEffect(() => {
-    const update = () => {
-      const el = rolesSectionRef.current;
-      const inDarkRoles = el
-        ? el.getBoundingClientRect().top <= 44 && el.getBoundingClientRect().bottom > 44
-        : false;
-      setNavTheme(inDarkRoles ? 'light' : 'dark');
-    };
-    window.addEventListener('scroll', update, { passive: true });
-    update();
-    return () => window.removeEventListener('scroll', update);
-  }, []);
-
-  // Quote scroll reveal
-  useEffect(() => {
-    const el = quoteRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.add('quote-visible');
-          obs.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const positionOptions = OPEN_ROLES.map(r => t(r.titleKey));
-
-  const hi = (delay: string) =>
-    `transition-all duration-700 ease-out ${delay} ${headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`;
-
   return (
     <div className="w-full min-h-screen bg-white">
-      <style>{`
-        .quote-item {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
-        }
-        .quote-visible .quote-item { opacity: 1; transform: translateY(0); }
-        .quote-d0 { transition-delay: 0s; }
-        .quote-d1 { transition-delay: 0.14s; }
-      `}</style>
+      <Navigation theme="dark" />
 
-      <Navigation theme={navTheme} />
-
-      {/* ── PAGE HEADER ── */}
-      <div
-        className="w-full px-6 md:px-20 lg:px-28 flex flex-col md:flex-row md:items-start md:justify-between gap-8 md:gap-16"
-        style={{ paddingTop: '100px', paddingBottom: '36px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <h1
-          className={hi('delay-[0ms]')}
-          style={{
-            fontFamily: 'Marcellus, serif',
-            fontSize: 'clamp(28px, 3.6vw, 52px)',
-            letterSpacing: '-0.03em',
-            color: 'rgba(0,0,0,0.82)',
-            lineHeight: 1.05,
-            margin: 0,
-          }}
-        >
-          {t('careers_heading')}
-        </h1>
-
-        <p
-          className={`flex-shrink-0 md:text-right ${hi('delay-[120ms]')}`}
-          style={{
-            fontFamily: 'Geist, sans-serif',
-            fontSize: '12px',
-            lineHeight: 1.9,
-            color: 'rgba(0,0,0,0.45)',
-            letterSpacing: '0.02em',
-            margin: 0,
-            maxWidth: '320px',
-          }}
-        >
-          {t('careers_intro')}
+      {/* ── HEADER ── */}
+      <div className="w-full px-6 md:px-20 lg:px-28" style={{ paddingTop: '100px', paddingBottom: '40px' }}>
+        <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.28em', color: 'rgba(0,0,0,0.28)', textTransform: 'uppercase', marginBottom: '14px' }}>
+          {t('careers_open_eyebrow')}
         </p>
-      </div>
-
-      {/* ── FULL-BLEED STUDIO IMAGE ── */}
-      <div className="w-full overflow-hidden" style={{ height: '360px' }}>
-        <img
-          src="/images/careers-banner.jpg"
-          alt="FS Architects studio workspace"
-          className="w-full h-full object-cover object-top"
-          draggable={false}
-        />
-      </div>
-
-      {/* ── VALUES ── */}
-      <ValuesSection />
-
-      {/* ── OPEN ROLES ── */}
-      <OpenRoles sectionRef={rolesSectionRef} onApply={handleApply} />
-
-      {/* ── APPLICATION FORM ── */}
-      <div ref={formRef}>
-        <div className="px-6 md:px-20 lg:px-28 py-8">
-          <ApplicationForm positions={positionOptions} selectedPosition={selectedPosition} />
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <h1 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(32px, 4vw, 58px)', letterSpacing: '-0.03em', color: 'rgba(0,0,0,0.85)', lineHeight: 1.0, margin: 0 }}>
+            {t('careers_heading')}
+          </h1>
+          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', lineHeight: 1.85, color: 'rgba(0,0,0,0.42)', letterSpacing: '0.01em', maxWidth: '320px', margin: 0, flexShrink: 0 }}>
+            {t('careers_intro')}
+          </p>
         </div>
       </div>
 
-      {/* ── PULL QUOTE ── */}
-      <div
-        ref={quoteRef}
-        className="w-full px-6 md:px-20 lg:px-28 py-14 md:py-20 flex flex-col items-center text-center overflow-hidden"
-        style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}
-      >
-        <blockquote
-          className="quote-item quote-d0"
-          style={{
-            fontFamily: 'Marcellus, serif',
-            fontSize: 'clamp(14px, 1.55vw, 22px)',
-            letterSpacing: '-0.01em',
-            color: 'rgba(0,0,0,0.68)',
-            lineHeight: 1.4,
-            margin: '0 0 20px 0',
-            fontStyle: 'italic',
-          }}
-        >
-          &ldquo;We do not hire for roles. We invite people into a practice.&rdquo;
-        </blockquote>
-        <p
-          className="quote-item quote-d1"
-          style={{
-            fontFamily: 'Geist, sans-serif',
-            fontSize: '9px',
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,0,0,0.25)',
-          }}
-        >
-          FS Architects, Cebu
-        </p>
+      {/* ── HERO IMAGE ── */}
+      <div className="px-6 md:px-20 lg:px-28 mb-20">
+        <div className="w-full overflow-hidden" style={{ height: 'clamp(220px, 38vw, 480px)', borderRadius: '12px' }}>
+          <img
+            src="/images/careers-banner.jpg"
+            alt="FS Architects studio"
+            className="w-full h-full object-cover object-center"
+            draggable={false}
+          />
+        </div>
       </div>
 
+      {/* ── OPEN POSITIONS ── */}
+      <OpenRoles onApply={handleApply} />
+
+      {/* ── WHY JOIN US ── */}
+      <ValuesSection />
+
+      {/* ── APPLICATION FORM ── */}
+      <div ref={formRef} className="px-6 md:px-20 lg:px-28 py-16 md:py-24" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <ApplicationForm positions={positionOptions} selectedPosition={selectedPosition} />
+      </div>
+
+      <StudioCTA />
       <ContactFooter hideContactBar />
     </div>
   );

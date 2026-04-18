@@ -7,8 +7,8 @@ export default function PageTransition({ children }: { children: React.ReactNode
     <>
       <style>{`
         @keyframes pageFadeIn {
-          from { opacity: 0; transform: translateY(6px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
         .page-enter {
           animation: pageFadeIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;

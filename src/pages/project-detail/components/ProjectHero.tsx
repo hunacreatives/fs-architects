@@ -66,7 +66,7 @@ export default function ProjectHero({ name, image, index, total }: ProjectHeroPr
           className="text-white font-light leading-none"
           style={{
             fontFamily: 'Marcellus, serif',
-            fontSize: 'clamp(36px, 6vw, 90px)',
+            fontSize: 'clamp(24px, 5.5vw, 82px)',
             letterSpacing: '-0.025em',
             maxWidth: '860px',
             lineHeight: 1.05,

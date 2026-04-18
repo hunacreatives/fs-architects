@@ -4,10 +4,12 @@ import IntroSequence from './components/IntroSequence';
 import Footer from './components/Footer';
 
 export default function Home() {
-  const [introComplete, setIntroComplete] = useState(false);
+  const alreadyPlayed = sessionStorage.getItem('introPlayed') === '1';
+  const [introComplete, setIntroComplete] = useState(alreadyPlayed);
   const [userInterrupted, setUserInterrupted] = useState(false);
 
   const handleComplete = useCallback(() => {
+    sessionStorage.setItem('introPlayed', '1');
     setIntroComplete(true);
   }, []);
 

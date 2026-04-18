@@ -21,8 +21,8 @@ export default function ProjectSpecs({
   ];
 
   const row2 = [
-    { label: 'Download', value: 'Press Kit', span: 2 },
-    { label: 'Status', value: status, span: 2 },
+    { label: 'Download', value: 'Press Kit' },
+    { label: 'Status', value: status },
   ];
 
   const labelStyle: React.CSSProperties = {
@@ -57,8 +57,8 @@ export default function ProjectSpecs({
 
   return (
     <div className="w-full">
-      {/* Row 1 — 4 columns */}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '0' }}>
+      {/* Row 1 — 2 cols on mobile, 4 on desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4">
         {row1.map(({ label, value }) => (
           <div key={label} style={cellPad}>
             <p style={labelStyle}>{label}</p>
@@ -68,10 +68,10 @@ export default function ProjectSpecs({
         ))}
       </div>
 
-      {/* Row 2 — 2 wide columns */}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {row2.map(({ label, value, span }) => (
-          <div key={label} style={{ ...cellPad, gridColumn: `span ${span}` }}>
+      {/* Row 2 — 2 cols on mobile, 4 on desktop (each item spans half) */}
+      <div className="grid grid-cols-2 md:grid-cols-4">
+        {row2.map(({ label, value }) => (
+          <div key={label} className="col-span-1 md:col-span-2" style={cellPad}>
             <p style={labelStyle}>{label}</p>
             <div style={dividerStyle} />
             <p style={valueStyle}>{value}</p>

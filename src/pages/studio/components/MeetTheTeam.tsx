@@ -186,6 +186,10 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           aspect-ratio: 3 / 4;
           border-radius: 16px;
         }
+        .team-card-wrap:hover .team-card-photo,
+        .team-card-wrap.active .team-card-photo {
+          border-radius: 16px 16px 16px 16px;
+        }
         .team-card-photo img {
           width: 100%;
           height: 100%;
@@ -373,18 +377,6 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         marginBottom: '3px',
                       }}
                     >
-                      {/* Title / role */}
-                      <p style={{
-                        fontFamily: 'Geist, sans-serif',
-                        fontSize: '9px',
-                        letterSpacing: '0.24em',
-                        color: 'rgba(0,0,0,0.32)',
-                        textTransform: 'uppercase',
-                        marginBottom: '10px',
-                      }}>
-                        {t(activeMember.titleKey)}
-                      </p>
-
                       {/* Name */}
                       <h3 style={{
                         fontFamily: 'Marcellus, serif',
@@ -392,18 +384,22 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         letterSpacing: '-0.02em',
                         color: 'rgba(0,0,0,0.84)',
                         lineHeight: 1.2,
-                        margin: '0 0 20px 0',
+                        margin: '0 0 6px 0',
                       }}>
                         {t(activeMember.nameKey)}
                       </h3>
 
-                      {/* Rule */}
-                      <div style={{
-                        width: '28px',
-                        height: '1px',
-                        background: 'rgba(0,0,0,0.10)',
-                        marginBottom: '20px',
-                      }} />
+                      {/* Title */}
+                      <p style={{
+                        fontFamily: 'Geist, sans-serif',
+                        fontSize: '10px',
+                        letterSpacing: '0.22em',
+                        color: 'rgba(0,0,0,0.30)',
+                        textTransform: 'uppercase',
+                        marginBottom: '24px',
+                      }}>
+                        {t(activeMember.titleKey)}
+                      </p>
 
                       {/* Bio */}
                       <p style={{
@@ -412,13 +408,13 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         lineHeight: 2,
                         color: 'rgba(0,0,0,0.50)',
                         letterSpacing: '0.015em',
-                        maxWidth: '560px',
-                        margin: '0 0 28px 0',
+                        maxWidth: '520px',
+                        margin: '0 0 32px 0',
                       }}>
                         {t(activeMember.bioKey)}
                       </p>
 
-                      {/* Close */}
+                      {/* Close — pill */}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleClose(); }}
                         style={{
@@ -426,9 +422,10 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           fontSize: '9px',
                           letterSpacing: '0.20em',
                           textTransform: 'uppercase',
-                          color: 'rgba(0,0,0,0.35)',
+                          color: 'rgba(0,0,0,0.40)',
                           border: '1px solid rgba(0,0,0,0.14)',
-                          padding: '7px 18px',
+                          padding: '9px 24px',
+                          borderRadius: '9999px',
                           background: 'none',
                           cursor: 'pointer',
                           transition: 'color 0.2s ease, border-color 0.2s ease',
@@ -439,7 +436,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.40)';
                         }}
                         onMouseLeave={e => {
-                          (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.35)';
+                          (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,0,0,0.40)';
                           (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,0,0,0.14)';
                         }}
                       >

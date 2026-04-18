@@ -568,10 +568,10 @@ export default function ProjectsPage() {
               <div className="absolute top-0 right-0 h-full w-10 bg-gradient-to-l from-white to-transparent pointer-events-none" />
             </div>
 
-            <div className="flex items-center gap-3 md:gap-4 mt-3 flex-wrap">
+            <div className="flex items-center justify-end gap-3 md:gap-4 mt-3 flex-wrap">
               <button
                 onClick={() => handleSortChange('date')}
-                className={`flex items-center gap-1 text-xs md:text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
+                className={`flex items-center gap-1 text-xs tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
                   sortBy === 'date' ? 'text-navy font-medium' : 'text-navy/40 hover:text-navy/70'
                 }`}
                 style={{ fontFamily: 'Geist, sans-serif' }}
@@ -583,7 +583,7 @@ export default function ProjectsPage() {
               </button>
               <button
                 onClick={() => handleSortChange('alphabetical')}
-                className={`flex items-center gap-1 text-xs md:text-sm tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
+                className={`flex items-center gap-1 text-xs tracking-wider whitespace-nowrap transition-colors duration-300 cursor-pointer ${
                   sortBy === 'alphabetical' ? 'text-navy font-medium' : 'text-navy/40 hover:text-navy/70'
                 }`}
                 style={{ fontFamily: 'Geist, sans-serif' }}
@@ -593,16 +593,16 @@ export default function ProjectsPage() {
                   <i className={`text-xs ${sortOrder === 'asc' ? 'ri-arrow-down-s-line' : 'ri-arrow-up-s-line'}`} />
                 )}
               </button>
-              <div className="relative flex-1 min-w-0 md:flex-none">
+              <div className="relative">
                 <input
                   type="text"
                   placeholder={t('projects_search')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full md:w-44 px-3 md:px-4 py-1.5 text-xs md:text-sm bg-gray-50 border border-gray-200 rounded-md focus:outline-none focus:border-black/30 transition-colors duration-300"
+                  className="w-40 pl-4 pr-8 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:border-black/30 transition-colors duration-300"
                   style={{ fontFamily: 'Geist, sans-serif' }}
                 />
-                <i className="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-navy/40 text-base w-4 h-4 flex items-center justify-center" />
+                <i className="ri-search-line absolute right-3 top-1/2 -translate-y-1/2 text-navy/40 text-sm" />
               </div>
             </div>
           </div>
@@ -649,7 +649,7 @@ export default function ProjectsPage() {
                         e.stopPropagation();
                         setSelectedProject(project);
                         setViewMode('map');
-                        window.scrollTo({ top: 300, behavior: 'smooth' });
+                        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
                       className={`flex-shrink-0 mt-0.5 w-7 h-7 flex items-center justify-center transition-colors duration-300 cursor-pointer ${
                         selectedProject?.id === project.id

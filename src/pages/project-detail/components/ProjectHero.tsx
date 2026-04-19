@@ -55,7 +55,7 @@ export default function ProjectHero({ name, image, index, total, location }: Pro
 
       {/* Bottom editorial block */}
       <div
-        className="absolute bottom-0 left-0 right-0 px-6 md:px-16 lg:px-24 pb-14 md:pb-20"
+        className="absolute bottom-0 left-0 right-0 px-6 md:px-16 lg:px-24 pb-24 md:pb-20"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? 'translateY(0)' : 'translateY(20px)',

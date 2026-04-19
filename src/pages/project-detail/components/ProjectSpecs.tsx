@@ -60,7 +60,7 @@ export default function ProjectSpecs({
       {/* Row 1 — 2 cols on mobile, 4 on desktop */}
       <div className="grid grid-cols-2 md:grid-cols-4">
         {row1.map(({ label, value }) => (
-          <div key={label} style={cellPad}>
+          <div key={label} className="text-center md:text-left" style={cellPad}>
             <p style={labelStyle}>{label}</p>
             <div style={dividerStyle} />
             <p style={valueStyle}>{value}</p>
@@ -71,7 +71,7 @@ export default function ProjectSpecs({
       {/* Row 2 — 2 cols on mobile, 4 on desktop (each item spans half) */}
       <div className="grid grid-cols-2 md:grid-cols-4">
         {row2.map(({ label, value }) => (
-          <div key={label} className="col-span-1 md:col-span-2" style={cellPad}>
+          <div key={label} className="col-span-1 md:col-span-2 text-center md:text-left" style={cellPad}>
             <p style={labelStyle}>{label}</p>
             <div style={dividerStyle} />
             <p style={valueStyle}>{value}</p>

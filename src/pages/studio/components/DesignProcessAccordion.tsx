@@ -55,14 +55,15 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
 
       <section
         id="design-process"
-        className="w-full relative overflow-hidden"
+        className="relative overflow-hidden mx-6 md:mx-20 lg:mx-28"
         style={{
-          marginTop: bioOpen ? '0px' : '-100px',
+          marginTop: bioOpen ? '0px' : '-40px',
           transition: 'margin-top 0.55s cubic-bezier(0.4,0,0.2,1)',
           position: 'relative',
           zIndex: 2,
           contain: 'paint',
           transform: 'translateZ(0)',
+          borderRadius: '20px',
         }}
       >
         {/* ── Blurred background image layer ── */}
@@ -108,44 +109,17 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
 
         {/* ── Content ── */}
         <div
-          className="relative px-4 md:px-20 lg:px-28 pb-14"
+          className="relative px-6 md:px-12 lg:px-16 pb-14"
           style={{ paddingTop: '72px' }}
         >
-          {/* ── Studio Philosophy ── */}
-          <div className="flex flex-col items-center text-center" style={{ maxWidth: '900px', margin: '0 auto 36px' }}>
-            <p style={{
-              fontFamily: 'Marcellus, serif',
-              fontSize: '13px',
-              lineHeight: 1.7,
-              color: 'rgba(255,255,255,0.72)',
-              letterSpacing: '0.01em',
-              margin: '0 0 10px 0',
-              textWrap: 'pretty',
-            } as React.CSSProperties}>
-              {t('studio_philosophy_p1')}
-            </p>
-          </div>
-
           {/* ── Mobile-only divider ── */}
           <div
             className="block md:hidden mx-auto mb-8"
             style={{ width: '40px', height: '1px', background: 'rgba(255,255,255,0.18)' }}
           />
 
-          {/* ── Eyebrow + Headline ── */}
+          {/* ── Headline ── */}
           <div className="mb-10 lg:mb-14">
-            <p
-              className="mb-3"
-              style={{
-                fontFamily: 'Geist, sans-serif',
-                fontSize: '9px',
-                letterSpacing: '0.28em',
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.70)',
-              }}
-            >
-              {t('studio_process_eyebrow')}
-            </p>
             <h2
               style={{
                 fontFamily: 'Marcellus, serif',

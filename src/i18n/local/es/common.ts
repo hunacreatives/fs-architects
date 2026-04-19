@@ -21,8 +21,8 @@ const translations = {
   // Hero
   hero_title: 'FS Architects',
   hero_subtitle: 'Forma en Quietud',
-  hero_tagline_line1: 'Forma. Quietud.',
-  hero_tagline_line2: 'Estructuras Fundamentales.',
+  hero_tagline_line1: 'Redefiniendo',
+  hero_tagline_line2: 'Espacios.',
   hero_cta: 'Ver Proyectos',
 
   // Map section

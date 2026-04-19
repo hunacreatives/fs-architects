@@ -86,9 +86,65 @@ const TEAM = [
       { label: 'Specialization', value: 'Residential & Resort Design' },
     ],
   },
+  {
+    key: 'leo',
+    nameKey: 'studio_team_leo_name',
+    titleKey: 'studio_team_leo_title',
+    bioKey: 'studio_team_leo_bio',
+    img: '/images/team/ana.png',
+    imgShift: '10%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Landscape Architecture, DLSU' },
+      { label: 'License', value: 'PRC Lic. No. 0078901' },
+      { label: 'Experience', value: '8+ years' },
+      { label: 'Specialization', value: 'Urban Design & Masterplanning' },
+    ],
+  },
+  {
+    key: 'maya',
+    nameKey: 'studio_team_maya_name',
+    titleKey: 'studio_team_maya_title',
+    bioKey: 'studio_team_maya_bio',
+    img: '/images/team/ana.png',
+    imgShift: '0%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
+      { label: 'License', value: 'PRC Lic. No. 0089012' },
+      { label: 'Experience', value: '5+ years' },
+      { label: 'Specialization', value: 'Adaptive Reuse & Heritage Design' },
+    ],
+  },
+  {
+    key: 'carlos',
+    nameKey: 'studio_team_carlos_name',
+    titleKey: 'studio_team_carlos_title',
+    bioKey: 'studio_team_carlos_bio',
+    img: '/images/team/ana.png',
+    imgShift: '10%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture, Cebu Institute of Technology' },
+      { label: 'License', value: 'PRC Lic. No. 0090123' },
+      { label: 'Experience', value: '7+ years' },
+      { label: 'Specialization', value: 'Technical Documentation & CA' },
+    ],
+  },
+  {
+    key: 'nina',
+    nameKey: 'studio_team_nina_name',
+    titleKey: 'studio_team_nina_title',
+    bioKey: 'studio_team_nina_bio',
+    img: '/images/team/ana.png',
+    imgShift: '0%',
+    credentials: [
+      { label: 'Education', value: 'B.S. Interior Design, University of the Philippines' },
+      { label: 'License', value: 'PRC Lic. No. 0101234' },
+      { label: 'Experience', value: '7+ years' },
+      { label: 'Specialization', value: 'FF&E & Spatial Sequencing' },
+    ],
+  },
 ];
 
-const COLS_DESKTOP = 4;
+const COLS_DESKTOP = 5;
 const COLS_MOBILE = 2;
 
 interface MeetTheTeamProps {
@@ -134,6 +190,8 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
 
   // One ref per row to scroll to the panel
   const panelRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  // One ref per card to get card top for centering
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Build rows based on current cols
   const rows: typeof TEAM[] = [];
@@ -146,13 +204,19 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
   const activeIndex = activeKey ? TEAM.findIndex(m => m.key === activeKey) : -1;
   const activeRow = activeIndex >= 0 ? Math.floor(activeIndex / cols) : -1;
 
-  const scrollToPanel = (rowIndex: number) => {
+  const scrollToPanel = (rowIndex: number, memberKey: string) => {
     setTimeout(() => {
-      const el = panelRefs.current[rowIndex];
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const card = cardRefs.current[memberKey];
+      const panel = panelRefs.current[rowIndex];
+      if (card && panel) {
+        const cardTop = card.getBoundingClientRect().top + window.scrollY;
+        const panelBottom = panel.getBoundingClientRect().bottom + window.scrollY;
+        const centerY = (cardTop + panelBottom) / 2;
+        window.scrollTo({ top: centerY - window.innerHeight / 2, behavior: 'smooth' });
+      } else if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 120);
+    }, 180);
   };
 
   const handleOpen = (key: string) => {
@@ -166,7 +230,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       setActiveKey(key);
       onSelect(key);
       setPanelKey(key);
-      scrollToPanel(rowIdx);
+      scrollToPanel(rowIdx, key);
       return;
     }
     setActiveKey(key);
@@ -175,7 +239,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setPanelOpen(true);
-        scrollToPanel(rowIdx);
+        scrollToPanel(rowIdx, key);
       });
     });
   };
@@ -186,7 +250,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       setActiveKey(null);
       setPanelKey(null);
       onSelect(null);
-    }, 420);
+    }, 280);
   };
 
   useEffect(() => {
@@ -198,7 +262,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
   }, [activeKey]);
 
   return (
-    <section id="team" className="w-full bg-white">
+    <section id="team" className="w-full bg-white" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <style>{`
         .team-heading-item {
           opacity: 0;
@@ -221,7 +285,6 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           background: #111;
           aspect-ratio: 3 / 4;
           border-radius: 16px;
-          max-height: 28vh;
         }
         .team-card-wrap:hover .team-card-photo,
         .team-card-wrap.active .team-card-photo {
@@ -235,9 +298,15 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           transition: transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.40s ease;
           opacity: 1;
         }
-        .team-card-wrap:hover .team-card-photo img,
+        .team-card-wrap:hover .team-card-photo img {
+          opacity: 0.75;
+        }
         .team-card-wrap.dimmed .team-card-photo img {
-          opacity: 0.55;
+          opacity: 0.25;
+          filter: blur(3px);
+        }
+        .team-card-wrap.dimmed .team-card-photo {
+          filter: blur(1px);
         }
         .team-card-wrap.active .team-card-photo img {
           opacity: 1;
@@ -257,8 +326,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           transition: opacity 0.30s ease;
           pointer-events: none;
         }
-        .team-card-wrap:hover .team-card-view-badge,
-        .team-card-wrap.active .team-card-view-badge {
+        .team-card-wrap:hover:not(.active) .team-card-view-badge {
           opacity: 1;
         }
         .team-view-pill {
@@ -284,7 +352,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
         .team-bio-panel-outer {
           display: grid;
           grid-template-rows: 0fr;
-          transition: grid-template-rows 0.42s cubic-bezier(0.22,1,0.36,1);
+          transition: grid-template-rows 0.28s cubic-bezier(0.22,1,0.36,1);
           overflow: hidden;
         }
         .team-bio-panel-outer.open {
@@ -298,20 +366,10 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
 
       {/* Heading */}
       <div ref={headingRef} className="px-4 md:px-20 lg:px-28 pt-10 pb-6">
-        <p className="team-heading-item team-h-d0" style={{
-          fontFamily: 'Geist, sans-serif',
-          fontSize: '10px',
-          letterSpacing: '0.22em',
-          color: 'rgba(0,0,0,0.22)',
-          textTransform: 'uppercase',
-          marginBottom: '14px',
-        }}>
-          {t('studio_team_strip_eyebrow')}
-        </p>
         <h2 className="team-heading-item team-h-d1" style={{
           fontFamily: 'Marcellus, serif',
-          fontSize: 'clamp(26px, 2.5vw, 32px)',
-          letterSpacing: '-0.025em',
+          fontSize: 'clamp(20px, 2.4vw, 32px)',
+          letterSpacing: '-0.01em',
           color: 'rgba(0,0,0,0.82)',
           lineHeight: 1.15,
           margin: 0,
@@ -320,8 +378,8 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
         </h2>
         <h2 className="team-heading-item team-h-d2" style={{
           fontFamily: 'Marcellus, serif',
-          fontSize: 'clamp(26px, 2.5vw, 32px)',
-          letterSpacing: '-0.025em',
+          fontSize: 'clamp(20px, 2.4vw, 32px)',
+          letterSpacing: '-0.01em',
           color: 'rgba(0,0,0,0.25)',
           lineHeight: 1.15,
           margin: 0,
@@ -331,19 +389,20 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       </div>
 
       {/* Grid — rows of 3 with inline bio panel after each row */}
-      <div className="px-4 md:px-28 lg:px-40" style={{ paddingBottom: '40px' }}>
+      <div className="px-4 md:px-20 lg:px-28" style={{ paddingBottom: '120px', flex: 1 }}>
         {rows.map((row, rowIndex) => {
           const isThisRowActive = activeRow === rowIndex;
           return (
             <div key={rowIndex}>
               {/* Row of cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
                 {row.map((member) => {
                   const isActive = activeKey === member.key;
                   const isDimmed = activeKey !== null && !isActive;
                   return (
                     <div
                       key={member.key}
+                      ref={(el) => { cardRefs.current[member.key] = el; }}
                       className={`team-card-wrap${isActive ? ' active' : ''}${isDimmed ? ' dimmed' : ''}`}
                       onClick={() => handleOpen(member.key)}
                       role="button"
@@ -365,7 +424,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         />
                         <div className="team-card-view-badge">
                           <span className="team-view-pill">
-                            {isActive ? 'Close' : 'View Bio'}
+                            View Bio
                           </span>
                         </div>
                       </div>
@@ -374,8 +433,9 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                       <div style={{ paddingTop: '12px', paddingBottom: '4px' }}>
                         <p style={{
                           fontFamily: 'Marcellus, serif',
-                          fontSize: '15px',
-                          color: isDimmed ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.82)',
+                          fontSize: 'clamp(13px, 1.1vw, 16px)',
+                          letterSpacing: '-0.01em',
+                          color: isDimmed ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.82)',
                           margin: '0 0 4px 0',
                           lineHeight: 1.3,
                           transition: 'color 0.35s ease',
@@ -384,9 +444,9 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         </p>
                         <p style={{
                           fontFamily: 'Geist, sans-serif',
-                          fontSize: '10px',
-                          letterSpacing: '0.18em',
-                          color: isDimmed ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.35)',
+                          fontSize: '8px',
+                          letterSpacing: '0.28em',
+                          color: isDimmed ? 'rgba(0,0,0,0.14)' : 'rgba(0,0,0,0.30)',
                           textTransform: 'uppercase',
                           margin: 0,
                           transition: 'color 0.35s ease',
@@ -410,7 +470,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
               >
                 <div className="team-bio-panel-inner">
                   {activeMember && isThisRowActive && (
-                    <div style={{ padding: '0 0 16px 0', opacity: panelOpen ? 1 : 0, transition: 'opacity 0.18s ease' }}>
+                    <div style={{ padding: '0 0 24px 0', opacity: panelOpen ? 1 : 0, transition: 'opacity 0.12s ease' }}>
                       <div
                         style={{
                           background: 'linear-gradient(135deg, rgba(43,54,64,0.92) 0%, rgba(26,32,40,0.96) 100%)',
@@ -427,13 +487,13 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                       >
                         {/* LEFT — Name, Title, Bio, Close */}
                         <div style={{ flex: '1 1 0', minWidth: 0 }}>
-                          <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.90)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
+                          <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(17px, 1.8vw, 24px)', letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.90)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
                             {t(activeMember.nameKey)}
                           </h3>
-                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
                             {t(activeMember.titleKey)}
                           </p>
-                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '13px', lineHeight: 2, color: 'rgba(255,255,255,0.48)', letterSpacing: '0.015em', margin: '0 0 32px 0' }}>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(13px, 1vw, 14px)', lineHeight: 1.9, color: 'rgba(255,255,255,0.50)', letterSpacing: '0.01em', margin: '0 0 32px 0' }}>
                             {t(activeMember.bioKey)}
                           </p>
                           <button
@@ -455,10 +515,10 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                               {activeMember.credentials.map((c) => (
                                 <div key={c.label}>
-                                  <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: '4px' }}>
+                                  <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: '4px' }}>
                                     {c.label}
                                   </p>
-                                  <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.60)', lineHeight: 1.6, letterSpacing: '0.01em' }}>
+                                  <p style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(12px, 0.9vw, 13px)', color: 'rgba(255,255,255,0.62)', lineHeight: 1.7, letterSpacing: '0.01em' }}>
                                     {c.value}
                                   </p>
                                 </div>

@@ -21,8 +21,8 @@ const translations = {
   // Hero
   hero_title: 'FS Architects',
   hero_subtitle: '静谧之形',
-  hero_tagline_line1: '形式。静默。',
-  hero_tagline_line2: '基础结构。',
+  hero_tagline_line1: '重新定义',
+  hero_tagline_line2: '空间。',
   hero_cta: '查看项目',
 
   // Map section

@@ -120,32 +120,15 @@ export default function AboutUs() {
     <section id="about" className="w-full bg-white">
       <style>{`
         /* ── Scroll reveal ── */
-        .reveal-item {
-          opacity: 0;
-          transform: translateY(28px);
-          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
-        }
-        .reveal-visible .reveal-item { opacity: 1; transform: translateY(0); }
-        .reveal-item-left {
-          opacity: 0;
-          transform: translateX(-24px);
-          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
-        }
-        .reveal-visible .reveal-item-left { opacity: 1; transform: translateX(0); }
-        .reveal-item-right {
-          opacity: 0;
-          transform: translateX(24px);
-          transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1), transform 0.75s cubic-bezier(0.22,1,0.36,1);
-        }
-        .reveal-visible .reveal-item-right { opacity: 1; transform: translateX(0); }
+        .reveal-item { opacity: 1; transform: none; }
+        .reveal-item-left { opacity: 1; transform: none; }
+        .reveal-item-right { opacity: 1; transform: none; }
         .reveal-delay-1 { transition-delay: 0.10s; }
         .reveal-delay-2 { transition-delay: 0.22s; }
         .stat-reveal {
-          opacity: 0;
-          transform: translateY(18px);
-          transition: opacity 0.65s cubic-bezier(0.22,1,0.36,1), transform 0.65s cubic-bezier(0.22,1,0.36,1);
+          opacity: 1;
+          transform: translateY(0);
         }
-        .reveal-visible .stat-reveal { opacity: 1; transform: translateY(0); }
         .stat-d0 { transition-delay: 0s; }
         .stat-d1 { transition-delay: 0.12s; }
         .stat-d2 { transition-delay: 0.24s; }
@@ -173,10 +156,7 @@ export default function AboutUs() {
         .quote-words-active .quote-word {
           animation: quoteWordIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
-        .quote-words-active .quote-w0 { animation-delay: 0s; }
-        .quote-words-active .quote-w1 { animation-delay: 0.24s; }
-        .quote-words-active .quote-w2 { animation-delay: 0.52s; }
-        .quote-words-active .quote-w3 { animation-delay: 0.76s; }
+        ${Array.from({ length: 20 }, (_, i) => `.quote-words-active .quote-w${i} { animation-delay: ${(i * 0.18).toFixed(2)}s; }`).join('\n        ')}
 
         /* ── Logo reveal keyframe ── */
         @keyframes logoItemReveal {
@@ -262,12 +242,17 @@ export default function AboutUs() {
               textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
             }}
           >
-            {[...t('hero_tagline_line1').split(' '), ...t('hero_tagline_line2').split(' ')].map((word, i, arr) => (
-              <span key={i}>
-                <span className={`quote-word quote-w${i}`}>{word}</span>
-                {i < arr.length - 1 && ' '}
-              </span>
-            ))}
+            {(() => {
+              const full = [t('hero_tagline_line1'), t('hero_tagline_line2')].join(' ').trim();
+              const isCJK = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff]/.test(full);
+              const tokens = isCJK ? [...full].filter(c => c.trim()) : full.split(' ').filter(Boolean);
+              return tokens.map((token, i) => (
+                <span key={i}>
+                  <span className={`quote-word quote-w${i}`}>{token}</span>
+                  {!isCJK && i < tokens.length - 1 && ' '}
+                </span>
+              ));
+            })()}
           </p>
 
 
@@ -350,23 +335,23 @@ export default function AboutUs() {
         <div className="w-full">
 
           {/* Two-col philosophy */}
-          <div className="flex flex-col lg:flex-row px-4 md:px-20 lg:px-28 pt-20 pb-16 gap-12 lg:gap-24">
+          <div className="flex flex-col lg:flex-row px-4 md:px-20 lg:px-28 pt-24 pb-20 gap-12 lg:gap-24">
 
             {/* Left — h2 */}
             <div ref={h2Ref} className="lg:w-5/12 flex-shrink-0">
               <h2
-                className="reveal-item reveal-item-left text-2xl md:text-3xl text-black/80 leading-snug text-center lg:text-left [text-wrap:pretty]"
-                style={{ fontFamily: 'Marcellus, serif', letterSpacing: '-0.01em' }}
+                className="reveal-item reveal-item-left text-black/80 leading-snug text-center lg:text-left [text-wrap:pretty]"
+                style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2.4vw, 32px)', letterSpacing: '-0.01em' }}
               >
                 {t('studio_about_h2')}
               </h2>
             </div>
 
             {/* Right — body paragraph */}
-            <div ref={bodyRef} className="lg:w-7/12 flex flex-col justify-center gap-4">
+            <div ref={bodyRef} className="lg:w-7/12 flex flex-col justify-center">
               <p
-                className="reveal-item reveal-item-right reveal-delay-1 text-black/50 text-xs leading-loose text-center lg:text-right [text-wrap:pretty]"
-                style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.03em' }}
+                className="reveal-item reveal-item-right reveal-delay-1 text-black/45 text-center lg:text-right [text-wrap:pretty]"
+                style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(13px, 1vw, 14px)', lineHeight: 1.9, letterSpacing: '0.01em' }}
               >
                 {t('studio_about_intro')}
               </p>
@@ -374,7 +359,7 @@ export default function AboutUs() {
           </div>
 
           {/* Stats strip */}
-          <div ref={statsRef} className="px-4 md:px-20 lg:px-28 pb-14 grid grid-cols-4">
+          <div ref={statsRef} className="px-4 md:px-20 lg:px-28 pt-0 pb-10 grid grid-cols-4">
             {[
               { value: '2021', label: t('studio_founded_label') },
               { value: '100+', label: t('studio_projects_label') },
@@ -385,8 +370,8 @@ export default function AboutUs() {
                 key={label}
                 className={`stat-reveal stat-d${i} flex flex-col items-center gap-1 py-4 md:py-8 ${i < 3 ? 'border-r border-black/8 pr-2 md:pr-8' : ''} ${i > 0 ? 'pl-2 md:pl-8' : ''}`}
               >
-                <span className="text-lg md:text-2xl lg:text-3xl text-black/75" style={{ fontFamily: 'Marcellus, serif' }}>{value}</span>
-                <span className="text-black/28 text-[7px] md:text-[9px] tracking-widest uppercase text-center" style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}>{label}</span>
+                <span style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2.5vw, 32px)', color: 'rgba(0,0,0,0.75)' }}>{value}</span>
+                <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)', textAlign: 'center' }}>{label}</span>
               </div>
             ))}
           </div>

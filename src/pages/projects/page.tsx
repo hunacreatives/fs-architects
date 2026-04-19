@@ -261,6 +261,17 @@ export default function ProjectsPage() {
     return data;
   }, []);
 
+  // Scroll to grid when returning from a project detail page
+  useEffect(() => {
+    if (sessionStorage.getItem('projects_return_to_grid')) {
+      sessionStorage.removeItem('projects_return_to_grid');
+      setProjectsVisible(true);
+      setTimeout(() => {
+        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, []);
+
   // Read ?category= from URL — re-runs whenever searchParams changes
   // (handles both first load and navigating from the menu while already on this page)
   useEffect(() => {
@@ -607,15 +618,13 @@ export default function ProjectsPage() {
               {sortedProjects.slice(0, visibleCount).map((project) => (
                 <div
                   key={project.id}
-                  className={`proj-card group transition-all duration-300 ${
-                    selectedProject?.id === project.id ? 'opacity-100' : 'opacity-80 hover:opacity-100'
+                  className={`proj-card group transition-all duration-300 overflow-hidden rounded-xl ${
+                    selectedProject?.id === project.id ? 'opacity-100 ring-2 ring-black/20 shadow-lg shadow-black/15' : 'opacity-80 hover:opacity-100'
                   }`}
                 >
                   <div
-                    className={`w-full aspect-[4/3] overflow-hidden bg-gray-100 transition-all duration-300 cursor-pointer ${
-                      selectedProject?.id === project.id ? 'ring-2 ring-black' : ''
-                    }`}
-                    onClick={() => navigate(`/projects/${project.slug}`)}
+                    className="w-full aspect-[4/3] overflow-hidden bg-gray-100 cursor-pointer"
+                    onClick={() => { sessionStorage.setItem('projects_return_to_grid', '1'); navigate(`/projects/${project.slug}`); }}
                   >
                     <img
                       src={project.image}
@@ -623,8 +632,8 @@ export default function ProjectsPage() {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                   </div>
-                  <div className="flex items-start justify-between gap-2 px-2 py-2">
-                    <div className="cursor-pointer" onClick={() => navigate(`/projects/${project.slug}`)}>
+                  <div className="flex items-start justify-between gap-2 px-3 py-3" style={{ background: 'rgba(0,0,0,0.05)' }}>
+                    <div className="cursor-pointer" onClick={() => { sessionStorage.setItem('projects_return_to_grid', '1'); navigate(`/projects/${project.slug}`); }}>
                       <h3
                         className="text-sm font-medium text-navy mb-0.5 tracking-wide"
                         style={{ fontFamily: 'Marcellus, serif' }}
@@ -676,7 +685,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {projectsVisible && <StudioCTA />}
+      {projectsVisible && <div className="pb-16"><StudioCTA /></div>}
       <ContactFooter hideContactBar />
 
       {/* Floating Go Up button */}

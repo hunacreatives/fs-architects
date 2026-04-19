@@ -21,11 +21,9 @@ export default function StudioCTA() {
     <>
       <style>{`
         .cta-block-item {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.8s cubic-bezier(0.22,1,0.36,1), transform 0.8s cubic-bezier(0.22,1,0.36,1);
+          opacity: 1;
+          transform: translateY(0);
         }
-        .cta-content-visible .cta-block-item { opacity: 1; transform: translateY(0); }
         .cta-d0 { transition-delay: 0s; }
         .cta-d1 { transition-delay: 0.12s; }
         .cta-d2 { transition-delay: 0.22s; }

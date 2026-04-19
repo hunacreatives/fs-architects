@@ -101,26 +101,26 @@ export default function ApplicationForm({ dark = false, positions = [], selected
   };
 
   // Style tokens
-  const labelColor  = dark ? 'text-white/45'  : 'text-black/50';
+  const labelColor  = dark ? 'text-white/70'  : 'text-black/50';
   const inputBase   = `w-full px-0 py-2.5 border-b bg-transparent text-sm focus:outline-none transition-colors duration-200`;
   const inputColor  = dark
-    ? 'text-white border-white/20 focus:border-white/60 placeholder:text-white/20'
+    ? 'text-white border-white/30 focus:border-white/80 placeholder:text-white/35'
     : 'text-black border-black/20 focus:border-black placeholder:text-black/25';
   const inputErr    = dark ? 'border-red-400/60' : 'border-red-400';
   const errText     = 'text-red-400 text-[10px] mt-1 tracking-wide';
-  const charCount   = dark ? 'text-white/25' : 'text-black/30';
+  const charCount   = dark ? 'text-white/45' : 'text-black/30';
   const uploadColor = dark
-    ? 'text-white/45 border-white/20 hover:text-white hover:border-white/60'
+    ? 'text-white/70 border-white/30 hover:text-white hover:border-white/70'
     : 'text-black/50 border-black/20 hover:text-black hover:border-black';
-  const fileLabel   = dark ? 'text-white/35' : 'text-black/40';
+  const fileLabel   = dark ? 'text-white/60' : 'text-black/40';
   const btnClass    = dark ? 'bg-white text-black hover:bg-white/85' : 'bg-black text-white hover:bg-black/80';
-  const successColor = dark ? 'text-white/50' : 'text-black/60';
+  const successColor = dark ? 'text-white/70' : 'text-black/60';
   const toggleBase  = `text-[10px] tracking-widest uppercase px-3 py-1 rounded-full transition-all duration-200 cursor-pointer whitespace-nowrap`;
   const toggleActive = dark
-    ? 'bg-white/12 text-white border border-white/25'
+    ? 'bg-white/15 text-white border border-white/35'
     : 'bg-black text-white border border-black';
   const toggleInactive = dark
-    ? 'text-white/35 border border-transparent hover:text-white/60'
+    ? 'text-white/55 border border-transparent hover:text-white/80'
     : 'text-black/40 border border-transparent hover:text-black/70';
 
   const req = <span className="text-red-400/70 ml-0.5">*</span>;
@@ -130,7 +130,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
       {/* Editorial header — full width, same style as other page sections */}
       <div className="flex flex-col items-center text-center md:items-start md:text-left mb-8 pb-7" style={{ borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}` }}>
           <h2
-            className={dark ? 'text-white/93' : 'text-black/82'}
+            className={dark ? 'text-white' : 'text-black/82'}
             style={{
               fontFamily: 'Marcellus, serif',
               fontSize: 'clamp(18px, 1.9vw, 26px)',
@@ -143,7 +143,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
             {t('careers_form_heading')}
           </h2>
           <p
-            className={`text-xs ${dark ? 'text-white/45' : 'text-black/50'}`}
+            className={`text-xs ${dark ? 'text-white/70' : 'text-black/50'}`}
             style={{ fontFamily: 'Geist, sans-serif', lineHeight: 1.85, letterSpacing: '0.02em', maxWidth: '480px' }}
           >
             {t('careers_form_desc')}

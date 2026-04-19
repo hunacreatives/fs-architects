@@ -44,7 +44,9 @@ export default function StudioPage() {
       <div ref={accordionRef} style={{ position: 'relative', zIndex: 2 }}>
         <DesignProcessAccordion bioOpen={!!selectedMemberKey} />
       </div>
-      <StudioCTA />
+      <div className="py-16 md:py-24">
+        <StudioCTA />
+      </div>
       <ContactFooter hideContactBar />
     </div>
   );

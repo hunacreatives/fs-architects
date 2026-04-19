@@ -39,7 +39,7 @@ export default function ValuesSection() {
           {VALUES.map((val, i) => (
             <div
               key={val.num}
-              className={`val-item val-d${i} px-6 py-8`}
+              className={`val-item val-d${i} px-6 py-8 text-center md:text-left`}
               style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: '12px', background: val.bg }}
             >
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '11px', color: 'rgba(0,0,0,0.22)', letterSpacing: '0.08em', marginBottom: '16px' }}>

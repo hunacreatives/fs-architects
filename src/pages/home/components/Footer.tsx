@@ -241,7 +241,7 @@ export default function Footer() {
           className="text-white/20 text-[11px] hover:text-white/45 transition-colors duration-300 cursor-pointer whitespace-nowrap"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
         >
-          Website by Huna Creatives
+          {t('footer_website_by')} Huna Creatives
         </a>
         <p
           className="text-white/20 text-[11px]"

@@ -629,8 +629,8 @@ export default function PhilippinesMap({
       {/* ── MOBILE: Stats + View All at bottom ── */}
       <div
         ref={statsRef}
-        className="md:hidden absolute left-0 right-0 px-6 pb-5 pt-2"
-        style={{ zIndex: 26, bottom: 0, background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.90) 20%, #ffffff 45%)' }}
+        className="md:hidden absolute left-0 right-0 px-6 pb-4 pt-0"
+        style={{ zIndex: 26, bottom: 0, background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.92) 30%, #ffffff 55%)' }}
       >
         {/* Stats row — 4 columns */}
         <div className="grid grid-cols-4 gap-1 mb-2">

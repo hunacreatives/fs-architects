@@ -554,7 +554,7 @@ export default function ProjectsPage() {
           <div className="px-4 md:px-16 lg:px-24 mb-8">
             {/* Category tabs — scrollable row */}
             <div className="relative overflow-hidden" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide pr-10 md:pr-0">
                 {categories.map((category) => (
                   <button
                     key={category}
@@ -570,7 +570,14 @@ export default function ProjectsPage() {
                   </button>
                 ))}
               </div>
-              <div className="absolute top-0 right-0 h-full w-10 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+              {/* Scroll fade + chevron — mobile only */}
+              <div className="md:hidden absolute top-0 right-0 h-full flex items-center pointer-events-none" style={{ paddingBottom: '2px' }}>
+                <div className="w-16 h-full bg-gradient-to-l from-white via-white/80 to-transparent" />
+                <div className="absolute right-0 pr-1 flex items-center" style={{ bottom: '10px' }}>
+                  <i className="ri-arrow-right-s-line text-navy/30" style={{ fontSize: '14px' }} />
+                </div>
+              </div>
+              <div className="hidden md:block absolute top-0 right-0 h-full w-10 bg-gradient-to-l from-white to-transparent pointer-events-none" />
             </div>
 
             <div className="flex items-center justify-end gap-3 md:gap-4 mt-3 flex-wrap">

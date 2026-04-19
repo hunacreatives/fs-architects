@@ -166,7 +166,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
               value={formData.position}
               onChange={(e) => { setFormData({ ...formData, position: e.target.value }); setErrors(p => ({ ...p, position: undefined })); }}
               className={`${inputBase} cursor-pointer ${errors.position ? inputErr : inputColor}`}
-              style={{ fontFamily: 'Geist, sans-serif', appearance: 'none' }}
+              style={{ fontFamily: 'Geist, sans-serif', appearance: 'none', WebkitAppearance: 'none', background: 'transparent' }}
             >
               <option value="" style={{ background: '#1a2028', color: '#fff' }}>{t('careers_form_position_placeholder')}</option>
               {positions.map(p => (

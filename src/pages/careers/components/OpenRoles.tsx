@@ -68,7 +68,7 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
       <div ref={sectionRef} className="w-full px-6 md:px-20 lg:px-28 mb-20">
         {/* Header */}
         <p style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(0,0,0,0.82)', marginBottom: '32px', lineHeight: 1.15 }}>
-          {OPEN_ROLES.length} Open Positions
+          {OPEN_ROLES.length} {t('careers_open_positions')}
         </p>
 
         {/* Roles list */}
@@ -129,13 +129,13 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8" style={{ maxWidth: '720px' }}>
                         <div>
                           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)', marginBottom: '14px' }}>
-                            Responsibilities
+                            {t('careers_responsibilities')}
                           </p>
                           <BulletList text={t(role.responsibilitiesKey)} />
                         </div>
                         <div>
                           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)', marginBottom: '14px' }}>
-                            What We're Looking For
+                            {t('careers_looking_for')}
                           </p>
                           <BulletList text={t(role.requirementsKey)} />
                         </div>

@@ -71,7 +71,7 @@ export default function DesignProcessAccordion({ bioOpen = false }: { bioOpen?: 
           className="absolute pointer-events-none"
           style={{
             inset: '-12px',
-            backgroundImage: `url("/images/design-process-bg.png")`,
+            backgroundImage: `url("/images/design-process-bg.webp")`,
             backgroundSize: 'cover',
             backgroundPosition: 'left center',
             backgroundRepeat: 'no-repeat',

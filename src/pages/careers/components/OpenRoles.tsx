@@ -65,7 +65,7 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
         }
       `}</style>
 
-      <div ref={sectionRef} className="w-full px-6 md:px-20 lg:px-28 mb-20">
+      <div ref={sectionRef} className="w-full px-4 md:px-16 lg:px-24 mb-20">
         {/* Header */}
         <p style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(0,0,0,0.82)', marginBottom: '32px', lineHeight: 1.15 }}>
           {OPEN_ROLES.length} {t('careers_open_positions')}

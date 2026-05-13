@@ -8,10 +8,10 @@ interface HeroSectionProps {
 }
 
 const SLIDES = [
-  "/images/hero-slide-1.jpg",
-  "/images/hero-slide-2.jpg",
-  "/images/hero-slide-3.jpg",
-  "/images/hero-slide-4.jpg",
+  "/images/hero-slide-1.webp",
+  "/images/hero-slide-2.webp",
+  "/images/hero-slide-3.webp",
+  "/images/hero-slide-4.webp",
 ];
 
 // Varied Ken Burns directions so each slide feels different

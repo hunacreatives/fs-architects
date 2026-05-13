@@ -266,7 +266,7 @@ export default function PhilippinesMap({
       >
         {/* Layer 1 — blurred copy, visible at edges */}
         <img
-          src="/images/world-map.png"
+          src="/images/world-map.webp"
           alt=""
           className="absolute inset-0 w-full h-full"
           style={{
@@ -281,7 +281,7 @@ export default function PhilippinesMap({
         />
         {/* Layer 2 — sharp copy, masked to center only */}
         <img
-          src="/images/world-map.png"
+          src="/images/world-map.webp"
           alt=""
           className="absolute inset-0 w-full h-full"
           style={{

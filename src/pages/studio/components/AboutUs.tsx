@@ -199,7 +199,7 @@ export default function AboutUs() {
 
         {/* Background photo */}
         <img
-          src="/images/studio-bg.jpg"
+          src="/images/studio-bg.webp"
           alt="FS Architects Studio"
           className="w-full h-full object-cover object-center"
         />

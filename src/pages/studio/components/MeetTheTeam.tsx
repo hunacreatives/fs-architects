@@ -7,7 +7,7 @@ const TEAM = [
     nameKey: 'studio_team_francisco_name',
     titleKey: 'studio_team_francisco_title',
     bioKey: 'studio_team_francisco_bio',
-    img: '/images/team/fretz.png',
+    img: '/images/team/fretz.webp',
     imgShift: '10%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
@@ -21,7 +21,7 @@ const TEAM = [
     nameKey: 'studio_team_sofia_name',
     titleKey: 'studio_team_sofia_title',
     bioKey: 'studio_team_sofia_bio',
-    img: '/images/team/sofia.png',
+    img: '/images/team/sofia.webp',
     imgShift: '10%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, UP Diliman · AA London' },
@@ -35,7 +35,7 @@ const TEAM = [
     nameKey: 'studio_team_marco_name',
     titleKey: 'studio_team_marco_title',
     bioKey: 'studio_team_marco_bio',
-    img: '/images/team/marco.png',
+    img: '/images/team/marco.webp',
     imgShift: '0%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, Cebu Institute of Technology' },
@@ -49,7 +49,7 @@ const TEAM = [
     nameKey: 'studio_team_elena_name',
     titleKey: 'studio_team_elena_title',
     bioKey: 'studio_team_elena_bio',
-    img: '/images/team/elena.png',
+    img: '/images/team/elena.webp',
     imgShift: '10%',
     credentials: [
       { label: 'Education', value: 'B.S. Interior Design, De La Salle – CSB' },
@@ -63,7 +63,7 @@ const TEAM = [
     nameKey: 'studio_team_rafael_name',
     titleKey: 'studio_team_rafael_title',
     bioKey: 'studio_team_rafael_bio',
-    img: '/images/team/rafael.png',
+    img: '/images/team/rafael.webp',
     imgShift: '10%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, University of the Philippines' },
@@ -77,7 +77,7 @@ const TEAM = [
     nameKey: 'studio_team_ana_name',
     titleKey: 'studio_team_ana_title',
     bioKey: 'studio_team_ana_bio',
-    img: '/images/team/ana.png',
+    img: '/images/team/ana.webp',
     imgShift: '0%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, Ateneo de Davao University' },
@@ -91,7 +91,7 @@ const TEAM = [
     nameKey: 'studio_team_leo_name',
     titleKey: 'studio_team_leo_title',
     bioKey: 'studio_team_leo_bio',
-    img: '/images/team/ana.png',
+    img: '/images/team/ana.webp',
     imgShift: '10%',
     credentials: [
       { label: 'Education', value: 'B.S. Landscape Architecture, DLSU' },
@@ -105,7 +105,7 @@ const TEAM = [
     nameKey: 'studio_team_maya_name',
     titleKey: 'studio_team_maya_title',
     bioKey: 'studio_team_maya_bio',
-    img: '/images/team/ana.png',
+    img: '/images/team/ana.webp',
     imgShift: '0%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
@@ -119,7 +119,7 @@ const TEAM = [
     nameKey: 'studio_team_carlos_name',
     titleKey: 'studio_team_carlos_title',
     bioKey: 'studio_team_carlos_bio',
-    img: '/images/team/ana.png',
+    img: '/images/team/ana.webp',
     imgShift: '10%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, Cebu Institute of Technology' },
@@ -133,7 +133,7 @@ const TEAM = [
     nameKey: 'studio_team_nina_name',
     titleKey: 'studio_team_nina_title',
     bioKey: 'studio_team_nina_bio',
-    img: '/images/team/ana.png',
+    img: '/images/team/ana.webp',
     imgShift: '0%',
     credentials: [
       { label: 'Education', value: 'B.S. Interior Design, University of the Philippines' },
@@ -482,7 +482,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           display: 'flex',
                           gap: '56px',
                           alignItems: 'flex-start',
-                          boxShadow: '0 8px 48px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
                         }}
                       >
                         {/* LEFT — Name, Title, Bio, Close */}

@@ -42,7 +42,7 @@ export default function DesignProcess() {
       {/* Process image strip */}
       <div className="w-full mb-20 overflow-hidden" style={{ height: '280px' }}>
         <img
-          src="/images/process-banner.jpg"
+          src="/images/process-banner.webp"
           alt="Design process"
           className="w-full h-full object-cover object-center"
         />

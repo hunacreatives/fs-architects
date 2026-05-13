@@ -28,7 +28,7 @@ export default function ValuesSection() {
         .val-item { opacity: 1; }
       `}</style>
 
-      <div className="w-full px-6 md:px-20 lg:px-28 py-16 md:py-24" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+      <div className="w-full px-4 md:px-16 lg:px-24 py-16 md:py-24" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
         {/* Header */}
         <h2 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(0,0,0,0.82)', lineHeight: 1.15, margin: '0 0 40px 0' }}>
           {t('careers_why_heading')}

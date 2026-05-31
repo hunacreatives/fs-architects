@@ -37,7 +37,7 @@ const translations = {
   projects_count: '100+ 个项目',
   projects_all: '全部项目',
   projects_all_locations: '全部地点',
-  projects_sort_date: '日期 ↑',
+  projects_sort_date: '日期',
   projects_sort_alpha: '字母排序',
   projects_search: '搜索',
   projects_viewing: '正在查看',

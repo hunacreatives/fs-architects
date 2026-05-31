@@ -1,0 +1,608 @@
+import { useEffect, useState } from 'react';
+import AdminLayout from '@/pages/hub/components/AdminLayout';
+import { useAuth } from '@/contexts/AuthContext';
+import { useDemo } from '@/contexts/DemoContext';
+import { supabase } from '@/lib/supabase';
+import { HubTimeOff, HubUser } from '@/lib/types';
+import { logAudit } from '@/lib/audit';
+import { DEMO_TIME_OFF } from '@/lib/demoData';
+
+const typeLabels: Record<string, string> = {
+  pto: 'PTO', vacation: 'PTO', sick: 'Sick', emergency: 'Emergency', unpaid: 'Unpaid', other: 'Other',
+};
+const typeColors: Record<string, string> = {
+  pto: 'bg-sky-100 text-sky-700', vacation: 'bg-sky-100 text-sky-700',
+  sick: 'bg-rose-100 text-rose-700', emergency: 'bg-orange-100 text-orange-700',
+  unpaid: 'bg-gray-100 text-gray-600', other: 'bg-purple-100 text-purple-700',
+};
+const statusColors: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-700',
+  forwarded: 'bg-purple-100 text-purple-700',
+  approved: 'bg-emerald-100 text-emerald-700',
+  rejected: 'bg-rose-100 text-rose-700',
+};
+const statusLabels: Record<string, string> = {
+  pending: 'Pending', forwarded: 'Forwarded', approved: 'Approved', rejected: 'Rejected',
+};
+
+const daysBetween = (a: string, b: string) =>
+  Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000) + 1;
+
+export default function AdminTimeOffPage() {
+  const { hubUser } = useAuth();
+  const { isDemo } = useDemo();
+  const isOwner = isDemo ? true : hubUser?.role === 'owner';
+
+  const [tab, setTab] = useState<'requests' | 'blackouts' | 'balances'>('requests');
+  const [balances, setBalances] = useState<any[]>([]);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [requests, setRequests] = useState<HubTimeOff[]>([]);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<HubTimeOff | null>(null);
+  const [hrNotes, setHrNotes] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+
+  // Blackout dates
+  const [blackouts, setBlackouts] = useState<any[]>([]);
+  const [bdForm, setBdForm] = useState({ start_date: '', end_date: '', reason: '' });
+  const [bdSaving, setBdSaving] = useState(false);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    let q = supabase
+      .from('hub_time_off')
+      .select('*, hub_users(full_name, avatar_url, department, start_date)')
+      .order('created_at', { ascending: false });
+    if (statusFilter !== 'all') q = q.eq('status', statusFilter);
+    const { data } = await q;
+    setRequests((data as HubTimeOff[]) ?? []);
+    setLoading(false);
+  };
+
+  const fetchBlackouts = async () => {
+    const { data } = await supabase.from('hub_blackout_dates').select('*').order('start_date');
+    setBlackouts(data ?? []);
+  };
+
+  const fetchBalances = async () => {
+    setBalancesLoading(true);
+    const year = new Date().getFullYear();
+    const yearStart = `${year}-01-01`;
+    const yearEnd = `${year}-12-31`;
+
+    const [usersRes, leavesRes] = await Promise.all([
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, start_date, annual_pto_days, annual_sick_days').eq('status', 'active').eq('role', 'contractor'),
+      supabase.from('hub_time_off').select('contractor_id, type, status, start_date, end_date, half_day').gte('start_date', yearStart).lte('start_date', yearEnd).eq('status', 'approved'),
+    ]);
+
+    const leavesByUser: Record<string, any[]> = {};
+    for (const l of leavesRes.data || []) {
+      if (!leavesByUser[l.contractor_id]) leavesByUser[l.contractor_id] = [];
+      leavesByUser[l.contractor_id].push(l);
+    }
+
+    const daysBetween = (a: string, b: string) =>
+      Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000) + 1;
+
+    const result = (usersRes.data || []).map((u: any) => {
+      const ptoLimit = u.annual_pto_days ?? 15;
+      const sickLimit = u.annual_sick_days ?? 10;
+      const leaves = leavesByUser[u.id] || [];
+      const ptoUsed = leaves.filter((l: any) => l.type === 'pto' || l.type === 'vacation')
+        .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : daysBetween(l.start_date, l.end_date)), 0);
+      const sickUsed = leaves.filter((l: any) => l.type === 'sick')
+        .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : daysBetween(l.start_date, l.end_date)), 0);
+      const ptoEligible = u.start_date
+        ? new Date() >= new Date(new Date(u.start_date).setMonth(new Date(u.start_date).getMonth() + 6))
+        : false;
+      return { ...u, ptoUsed, sickUsed, ptoLimit, sickLimit, ptoLeft: Math.max(0, ptoLimit - ptoUsed), sickLeft: Math.max(0, sickLimit - sickUsed), ptoEligible };
+    });
+
+    setBalances(result);
+    setBalancesLoading(false);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isDemo) {
+      const filtered = statusFilter === 'all' ? DEMO_TIME_OFF : DEMO_TIME_OFF.filter(r => r.status === statusFilter);
+      setRequests(filtered);
+      setLoading(false);
+      return;
+    }
+    fetchRequests();
+  }, [isDemo, statusFilter]);
+  useEffect(() => { fetchBlackouts(); }, []);
+  useEffect(() => { if (tab === 'balances') fetchBalances(); }, [tab]);
+
+  const days = (r: HubTimeOff) => r.half_day ? 0.5 : daysBetween(r.start_date, r.end_date);
+
+  const openReview = (r: HubTimeOff) => {
+    setSelected(r);
+    setHrNotes(r.hr_notes || r.admin_notes || '');
+  };
+
+  // HR forwards to owner
+  const forwardToOwner = async () => {
+    if (!selected) return;
+    setUpdating(true);
+    await supabase.from('hub_time_off').update({
+      status: 'forwarded',
+      hr_notes: hrNotes,
+      admin_notes: hrNotes,
+      forwarded_to_owner: true,
+    }).eq('id', selected.id);
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'time_off', entity_id: String(selected.id), description: `Forwarded ${selected.type} request from ${(selected as any).hub_users?.full_name} to owner` });
+    setUpdating(false);
+    setSelected(null);
+    fetchRequests();
+  };
+
+  // Owner approves/rejects
+  const ownerDecide = async (status: 'approved' | 'rejected') => {
+    if (!selected) return;
+    setUpdating(true);
+    await supabase.from('hub_time_off').update({
+      status,
+      admin_notes: hrNotes,
+      hr_notes: hrNotes,
+    }).eq('id', selected.id);
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: status === 'approved' ? 'approve' : 'reject', entity_type: 'time_off', entity_id: String(selected.id), description: `${status === 'approved' ? 'Approved' : 'Rejected'} ${selected.type} request from ${(selected as any).hub_users?.full_name} (${selected.start_date} – ${selected.end_date})` });
+    if (selected?.contractor_id) {
+      supabase.functions.invoke('notify-timeoff-decision', {
+        body: {
+          contractor_id: selected.contractor_id,
+          leave_type: selected.type,
+          start_date: selected.start_date,
+          end_date: selected.end_date,
+          decision: status,
+        },
+      }).catch(() => {});
+    }
+    setUpdating(false);
+    setSelected(null);
+    fetchRequests();
+  };
+
+  const addBlackout = async () => {
+    if (!bdForm.start_date || !bdForm.end_date) return;
+    setBdSaving(true);
+    await supabase.from('hub_blackout_dates').insert({
+      ...bdForm,
+      created_by: hubUser?.id,
+    });
+    setBdForm({ start_date: '', end_date: '', reason: '' });
+    setBdSaving(false);
+    fetchBlackouts();
+  };
+
+  const deleteBlackout = async (id: number) => {
+    await supabase.from('hub_blackout_dates').delete().eq('id', id);
+    fetchBlackouts();
+  };
+
+  const bulkDecide = async (status: 'approved' | 'rejected') => {
+    if (selectedIds.size === 0) return;
+    setBulkUpdating(true);
+    await supabase.from('hub_time_off').update({ status, admin_notes: null }).in('id', Array.from(selectedIds));
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: status === 'approved' ? 'approve' : 'reject', entity_type: 'time_off', description: `Bulk ${status} ${selectedIds.size} leave request(s)` });
+    const selectedRequests = requests.filter(r => r.id != null && selectedIds.has(r.id));
+    for (const r of selectedRequests) {
+      if (r.contractor_id) {
+        supabase.functions.invoke('notify-timeoff-decision', {
+          body: {
+            contractor_id: r.contractor_id,
+            leave_type: r.type,
+            start_date: r.start_date,
+            end_date: r.end_date,
+            decision: status,
+          },
+        }).catch(() => {});
+      }
+    }
+    setSelectedIds(new Set());
+    setBulkUpdating(false);
+    fetchRequests();
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === requests.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(requests.map(r => r.id!)));
+    }
+  };
+
+  const filterTabs = ['pending', 'forwarded', 'approved', 'rejected', 'all'];
+
+  return (
+    <AdminLayout title="Time Off">
+      <div className="space-y-4">
+
+        {/* Tab: Requests / Blackouts / Balances */}
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-max sm:w-fit">
+          {[{ key: 'requests', label: 'Leave Requests' }, { key: 'blackouts', label: 'Blackout Dates' }, { key: 'balances', label: 'Leave Balances' }].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                tab === t.key ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        </div>
+
+        {tab === 'requests' && (
+          <>
+            {/* Status filter */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 flex-1">
+                <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-max sm:w-fit">
+                  {filterTabs.map((s) => (
+                    <button key={s} onClick={() => { setStatusFilter(s); setSelectedIds(new Set()); }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap capitalize ${
+                        statusFilter === s ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                      }`}>
+                      {s === 'all' ? 'All' : statusLabels[s]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <span className="text-xs text-gray-400 flex-shrink-0">{requests.length} request{requests.length !== 1 ? 's' : ''}</span>
+            </div>
+
+            {/* Bulk action bar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-3 px-4 py-2.5 bg-[#111827] rounded-xl">
+                <span className="text-xs text-white/60 flex-1">{selectedIds.size} selected</span>
+                <button onClick={() => bulkDecide('approved')} disabled={bulkUpdating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 cursor-pointer transition-colors">
+                  <i className="ri-check-line"></i> Approve All
+                </button>
+                <button onClick={() => bulkDecide('rejected')} disabled={bulkUpdating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-50 cursor-pointer transition-colors">
+                  <i className="ri-close-line"></i> Reject All
+                </button>
+                <button onClick={() => setSelectedIds(new Set())} className="text-white/40 hover:text-white cursor-pointer transition-colors">
+                  <i className="ri-close-line text-sm"></i>
+                </button>
+              </div>
+            )}
+
+            {/* Forwarded banner for owner */}
+            {isOwner && statusFilter !== 'forwarded' && requests.filter((r) => r.status === 'forwarded').length > 0 && (
+              <div
+                className="flex items-center justify-between p-3 bg-purple-50 border border-purple-100 rounded-xl cursor-pointer"
+                onClick={() => setStatusFilter('forwarded')}
+              >
+                <div className="flex items-center gap-2">
+                  <i className="ri-send-plane-line text-purple-500 text-sm"></i>
+                  <p className="text-xs font-medium text-purple-700">
+                    {requests.filter((r) => r.status === 'forwarded').length} request{requests.filter((r) => r.status === 'forwarded').length !== 1 ? 's' : ''} forwarded to you for approval
+                  </p>
+                </div>
+                <span className="text-xs text-purple-500 font-medium">Review →</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex justify-center py-12"><i className="ri-loader-4-line animate-spin text-xl text-gray-400"></i></div>
+            ) : requests.length === 0 ? (
+              <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
+                <i className="ri-calendar-check-line text-3xl text-gray-200 mb-2 block"></i>
+                <p className="text-sm text-gray-400">No {statusFilter !== 'all' ? statusFilter : ''} requests</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="px-4 py-3 w-8">
+                        <input type="checkbox" checked={requests.length > 0 && selectedIds.size === requests.length} onChange={toggleSelectAll} className="cursor-pointer" />
+                      </th>
+                      {['Contractor', 'Type', 'Dates', 'Days', 'Status', 'Filed', ''].map((h) => (
+                        <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {requests.map((r) => {
+                      const u = r.hub_users as HubUser;
+                      return (
+                        <tr key={r.id} className={`hover:bg-gray-50/50 transition-colors ${selectedIds.has(r.id!) ? 'bg-orange-50/50' : ''}`}>
+                          <td className="px-4 py-3.5 w-8">
+                            <input type="checkbox" checked={selectedIds.has(r.id!)} onChange={() => toggleSelect(r.id!)} className="cursor-pointer" />
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
+                                <span className="text-[#FF6B35] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-[#111827]">{u?.full_name}</p>
+                                <p className="text-xs text-gray-400">{u?.department}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeColors[r.type] || 'bg-gray-100 text-gray-600'}`}>
+                              {typeLabels[r.type] || r.type}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">
+                            {new Date(r.start_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {!r.half_day && r.start_date !== r.end_date && (
+                              <> – {new Date(r.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-sm text-gray-600">
+                            {r.half_day ? '½' : `${days(r)}d`}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[r.status]}`}>
+                              {statusLabels[r.status] || r.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
+                            {new Date(r.created_at!).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <button onClick={() => openReview(r)}
+                              className="text-xs text-gray-500 hover:text-[#FF6B35] cursor-pointer transition-colors font-medium whitespace-nowrap">
+                              {r.status === 'forwarded' && isOwner ? 'Decide' : 'Review'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'blackouts' && (
+          <div className="space-y-4">
+            {/* Add blackout */}
+            <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+              <h3 className="text-sm font-semibold text-[#111827]">Add Blackout Period</h3>
+              <p className="text-xs text-gray-400">Contractors cannot file PTO or sick leave during blackout dates. Emergencies are exempt.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Start Date</label>
+                  <input type="date" value={bdForm.start_date} onChange={(e) => setBdForm({ ...bdForm, start_date: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">End Date</label>
+                  <input type="date" value={bdForm.end_date} min={bdForm.start_date} onChange={(e) => setBdForm({ ...bdForm, end_date: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                </div>
+                <div className="col-span-1 sm:col-span-2 space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Reason <span className="text-gray-400 font-normal">(shown to contractors)</span></label>
+                  <input value={bdForm.reason} onChange={(e) => setBdForm({ ...bdForm, reason: e.target.value })}
+                    placeholder="e.g. Client launch period, Q4 crunch"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                </div>
+              </div>
+              <button onClick={addBlackout} disabled={bdSaving || !bdForm.start_date || !bdForm.end_date}
+                className="px-4 py-2 text-sm bg-[#111827] text-white rounded-lg hover:bg-gray-800 disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap">
+                {bdSaving ? 'Adding...' : 'Add Blackout Period'}
+              </button>
+            </div>
+
+            {/* Blackout list */}
+            {blackouts.length === 0 ? (
+              <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
+                <i className="ri-calendar-close-line text-3xl text-gray-200 mb-2 block"></i>
+                <p className="text-sm text-gray-400">No blackout dates set</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {blackouts.map((b) => (
+                  <div key={b.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#111827]">
+                        {new Date(b.start_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(b.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      {b.reason && <p className="text-xs text-gray-400 mt-0.5">{b.reason}</p>}
+                    </div>
+                    <button onClick={() => deleteBlackout(b.id)}
+                      className="text-gray-300 hover:text-rose-400 transition-colors cursor-pointer flex-shrink-0">
+                      <i className="ri-delete-bin-line text-sm"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'balances' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-400">Leave balances for {new Date().getFullYear()} · approved requests only</p>
+              <button onClick={fetchBalances} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer flex items-center gap-1">
+                <i className="ri-refresh-line text-xs"></i> Refresh
+              </button>
+            </div>
+            {balancesLoading ? (
+              <div className="flex justify-center py-10"><i className="ri-loader-4-line animate-spin text-xl text-gray-400"></i></div>
+            ) : balances.length === 0 ? (
+              <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
+                <i className="ri-user-line text-3xl text-gray-200 mb-2 block"></i>
+                <p className="text-sm text-gray-400">No active contractors found</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      {['Contractor', 'VL Used', 'VL Left', 'SL Used', 'SL Left', 'Eligibility'].map(h => (
+                        <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {balances.map((b) => (
+                      <tr key={b.id} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[#FF6B35] text-xs font-bold">{b.full_name?.charAt(0) || '?'}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-[#111827]">{b.full_name}</p>
+                              {b.department && <p className="text-xs text-gray-400">{b.department}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-sky-400 rounded-full" style={{ width: `${Math.min(100, (b.ptoUsed / b.ptoLimit) * 100)}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-600">{b.ptoUsed}<span className="text-gray-400">/{b.ptoLimit}</span></span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className={`text-sm font-semibold ${b.ptoLeft === 0 ? 'text-gray-300' : 'text-sky-600'}`}>{b.ptoLeft}d</span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-rose-400 rounded-full" style={{ width: `${Math.min(100, (b.sickUsed / b.sickLimit) * 100)}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-600">{b.sickUsed}<span className="text-gray-400">/{b.sickLimit}</span></span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className={`text-sm font-semibold ${b.sickLeft === 0 ? 'text-gray-300' : 'text-rose-600'}`}>{b.sickLeft}d</span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {b.ptoEligible ? (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Eligible</span>
+                          ) : (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Not yet</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Review modal */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-[#111827]">{(selected.hub_users as HubUser)?.full_name}</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{typeLabels[selected.type] || selected.type} · {days(selected) === 0.5 ? 'Half day' : `${days(selected)} day${days(selected) !== 1 ? 's' : ''}`}</p>
+              </div>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
+                <i className="ri-close-line text-lg"></i>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400 mb-1">Start</p>
+                  <p className="text-sm font-medium text-[#111827]">
+                    {new Date(selected.start_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {selected.half_day && <span className="block text-xs text-gray-400 font-normal capitalize">{selected.half_day_period}</span>}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-400 mb-1">{selected.half_day ? 'Type' : 'End'}</p>
+                  <p className="text-sm font-medium text-[#111827]">
+                    {selected.half_day ? 'Half day' : new Date(selected.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeColors[selected.type]}`}>{typeLabels[selected.type] || selected.type}</span>
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[selected.status]}`}>{statusLabels[selected.status]}</span>
+              </div>
+
+              {selected.reason && (
+                <div>
+                  <p className="text-xs font-medium text-gray-700 mb-1">Contractor's Reason</p>
+                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{selected.reason}</p>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">
+                  {isOwner ? 'Notes (visible to contractor)' : 'HR Notes (forwarded to owner)'}
+                </label>
+                <textarea value={hrNotes} onChange={(e) => setHrNotes(e.target.value)} rows={3}
+                  placeholder={isOwner ? 'Add notes for the contractor...' : 'Add notes before forwarding to owner...'}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+              </div>
+
+              {/* Action buttons based on role + status */}
+              {isOwner ? (
+                // Owner can approve/reject forwarded requests
+                <div className="flex gap-2">
+                  <button onClick={() => ownerDecide('approved')} disabled={updating || selected.status === 'approved'}
+                    className="flex-1 py-2.5 text-sm bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap">
+                    Approve
+                  </button>
+                  <button onClick={() => ownerDecide('rejected')} disabled={updating || selected.status === 'rejected'}
+                    className="flex-1 py-2.5 text-sm bg-rose-500 text-white rounded-lg font-medium hover:bg-rose-600 disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap">
+                    Reject
+                  </button>
+                </div>
+              ) : (
+                // HR/Admin forwards to owner
+                <div className="space-y-2">
+                  {selected.status === 'forwarded' ? (
+                    <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                      <i className="ri-check-line text-purple-500 text-sm"></i>
+                      <p className="text-xs text-purple-700">Forwarded to owner for final approval.</p>
+                    </div>
+                  ) : (
+                    <button onClick={forwardToOwner} disabled={updating}
+                      className="w-full py-2.5 text-sm bg-[#111827] text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-40 cursor-pointer transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                      <i className="ri-send-plane-line text-sm"></i>
+                      Forward to Owner for Approval
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
+  );
+}

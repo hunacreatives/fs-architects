@@ -994,18 +994,6 @@ export default function ProjectsPage() {
       {projectsVisible && <div className="pb-16"><StudioCTA /></div>}
       <ContactFooter hideContactBar />
 
-      {/* Floating Go Up button */}
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className={`fixed bottom-8 right-8 z-40 w-11 h-11 flex items-center justify-center rounded-full bg-black text-white hover:bg-black/80 transition-all duration-400 cursor-pointer ${
-          showGoUp ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-        }`}
-        aria-label="Go to top"
-        title="Go to top"
-        style={{ transition: 'opacity 0.35s ease, transform 0.35s ease, background-color 0.2s ease' }}
-      >
-        <i className="ri-arrow-up-line text-base" />
-      </button>
     </div>
   );
 }

@@ -37,7 +37,7 @@ const translations = {
   projects_count: '100+ Proyectos',
   projects_all: 'Todos los Proyectos',
   projects_all_locations: 'Todas las Ubicaciones',
-  projects_sort_date: 'Fecha ↑',
+  projects_sort_date: 'Fecha',
   projects_sort_alpha: 'Alfabético',
   projects_search: 'Buscar',
   projects_viewing: 'Viendo',

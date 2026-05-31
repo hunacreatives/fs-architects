@@ -60,8 +60,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     const video = videoRef.current;
     if (!video) return;
 
-    const handleEnded = () => {
-      // Video ended — PNG is already underneath, just start moving
+    const advance = () => {
       setPhase('hold');
       const t1 = setTimeout(() => setPhase('moving'), 300);
       const t2 = setTimeout(() => setPhase('fading'), 1800);
@@ -72,9 +71,33 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       timersRef.current = [t1, t2, t3];
     };
 
+    // Fallback: if video fails to load or autoplay is blocked, skip it after 1s
+    const fallbackTimer = setTimeout(advance, 1000);
+
+    const handleEnded = () => {
+      clearTimeout(fallbackTimer);
+      advance();
+    };
+
+    const handleError = () => {
+      clearTimeout(fallbackTimer);
+      advance();
+    };
+
+    const handleCanPlay = () => {
+      // Video loaded and can play — cancel the fallback
+      clearTimeout(fallbackTimer);
+    };
+
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('error', handleError);
+    video.addEventListener('canplay', handleCanPlay);
+
     return () => {
+      clearTimeout(fallbackTimer);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('error', handleError);
+      video.removeEventListener('canplay', handleCanPlay);
     };
   }, [onComplete]);
 

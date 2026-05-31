@@ -266,17 +266,8 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
             />
           </button>
 
-          {/* Right — Team Portal + language selector */}
-          <div className="flex items-center gap-3 md:gap-4 text-xs tracking-wider w-auto md:w-auto justify-end">
-            <button
-              onClick={() => handleNavClick('/hub/login')}
-              className={`hidden md:block text-[10px] tracking-widest uppercase transition-all duration-300 cursor-pointer ${isDark ? 'text-black/50 hover:text-black/90' : 'text-white/55 hover:text-white/90'}`}
-              style={{ letterSpacing: '0.12em', fontFamily: 'Geist, sans-serif' }}
-            >
-              Team Portal
-            </button>
-            <div className={`hidden md:block w-px h-3 ${isDark ? 'bg-black/20' : 'bg-white/20'}`} />
-            <div className="flex items-center gap-1.5 md:gap-2">
+          {/* Right — language selector */}
+          <div className="flex items-center gap-1.5 md:gap-2 text-xs tracking-wider w-auto md:w-32 justify-end">
             {LANGUAGES.map((lang, i) => (
               <div key={lang.label} className="flex items-center gap-1.5 md:gap-2">
                 <button
@@ -295,7 +286,6 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
                 )}
               </div>
             ))}
-            </div>
           </div>
 
         </div>

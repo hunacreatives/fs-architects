@@ -240,30 +240,25 @@ export default function AboutUs() {
             zIndex: 2,
           }}
         >
-          {/* Line 1 — each word staggers in */}
-          <p
-            style={{
-              fontFamily: 'Marcellus, serif',
-              fontSize: 'clamp(0.95rem, 1.8vw, 1.55rem)',
-              letterSpacing: '0.1em',
-              color: 'rgba(255,255,255,0.9)',
-              textAlign: 'center',
-              lineHeight: 1.6,
-              textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
-            }}
-          >
-            {(() => {
-              const full = [t('hero_tagline_line1'), t('hero_tagline_line2')].join(' ').trim();
-              const isCJK = /[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff]/.test(full);
-              const tokens = isCJK ? [...full].filter(c => c.trim()) : full.split(' ').filter(Boolean);
-              return tokens.map((token, i) => (
-                <span key={i}>
-                  <span className={`quote-word quote-w${i}`}>{token}</span>
-                  {!isCJK && i < tokens.length - 1 && ' '}
-                </span>
-              ));
-            })()}
-          </p>
+          {/* Three lines — each staggers in */}
+          {[t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')].map((line, li) => (
+            <p
+              key={li}
+              className={`quote-word quote-w${li}`}
+              style={{
+                fontFamily: 'Marcellus, serif',
+                fontSize: 'clamp(1.05rem, 2vw, 1.7rem)',
+                letterSpacing: '0.06em',
+                color: 'rgba(255,255,255,0.9)',
+                textAlign: 'center',
+                lineHeight: 1.55,
+                textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
+                display: 'block',
+              }}
+            >
+              {line}
+            </p>
+          ))}
 
 
         </div>

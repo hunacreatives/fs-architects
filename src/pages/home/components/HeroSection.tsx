@@ -136,15 +136,18 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             }`}
           >
             <h1
-              className="text-2xl md:text-3xl lg:text-4xl flex flex-col text-white"
+              className="flex flex-col text-white"
               style={{
                 fontFamily: 'Marcellus, serif',
-                letterSpacing: '-0.02em',
-                lineHeight: '1.12',
+                fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
+                letterSpacing: '-0.01em',
+                lineHeight: '1.25',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
               }}
             >
-              <span>{t('hero_tagline_line1')} {t('hero_tagline_line2')}</span>
+              <span>{t('studio_quote_line1')}</span>
+              <span>{t('studio_quote_line2')}</span>
+              <span>{t('studio_quote_line3')}</span>
             </h1>
           </div>
 

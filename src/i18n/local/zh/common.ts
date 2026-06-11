@@ -23,9 +23,9 @@ const translations = {
   hero_subtitle: '静谧之形',
   hero_tagline_line1: '重新定义',
   hero_tagline_line2: '空间。',
-  studio_quote_line1: '形式。',
-  studio_quote_line2: '空间。',
-  studio_quote_line3: '直觉。',
+  studio_quote_line1: '由形式定义。',
+  studio_quote_line2: '由空间塑造。',
+  studio_quote_line3: '由意图引导。',
   hero_cta: '查看项目',
 
   // Map section

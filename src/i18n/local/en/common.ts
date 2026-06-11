@@ -24,9 +24,9 @@ const translations = {
   hero_subtitle: 'Form In Stillness',
   hero_tagline_line1: 'Redefining',
   hero_tagline_line2: 'Spaces.',
-  studio_quote_line1: 'Form.',
-  studio_quote_line2: 'Space.',
-  studio_quote_line3: 'Intuition.',
+  studio_quote_line1: 'Defined by Form.',
+  studio_quote_line2: 'Shaped by Space.',
+  studio_quote_line3: 'Guided by Intent.',
   hero_cta: 'View Projects',
 
   // Map section

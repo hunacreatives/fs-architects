@@ -32,9 +32,14 @@ const CROSSFADE_MS = 1800;
 const HOLD_FIRST_MS = 9000;
 const HOLD_REST_MS  = 6000;
 
+const TAGLINE_HOLD_MS = 2800;
+const TAGLINE_FADE_MS = 600;
+
 export default function HeroSection({ isVisible }: HeroSectionProps) {
   const [showContent, setShowContent] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [taglineIdx, setTaglineIdx] = useState(0);
+  const [taglineVisible, setTaglineVisible] = useState(false);
   const [kbActive, setKbActive] = useState<boolean[]>(SLIDES.map((_, i) => i === 0));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
@@ -46,6 +51,25 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
       return () => clearTimeout(t1);
     }
   }, [isVisible]);
+
+  // Cycle tagline lines: fade in → hold → fade out → next
+  useEffect(() => {
+    if (!showContent) return;
+    const fadeIn = setTimeout(() => setTaglineVisible(true), 300);
+    return () => clearTimeout(fadeIn);
+  }, [showContent]);
+
+  useEffect(() => {
+    if (!showContent) return;
+    const cycle = setInterval(() => {
+      setTaglineVisible(false);
+      setTimeout(() => {
+        setTaglineIdx(i => (i + 1) % 3);
+        setTaglineVisible(true);
+      }, TAGLINE_FADE_MS);
+    }, TAGLINE_HOLD_MS + TAGLINE_FADE_MS);
+    return () => clearInterval(cycle);
+  }, [showContent]);
 
   const scheduleNext = (current: number, isFirst: boolean) => {
     const hold = isFirst ? HOLD_FIRST_MS : HOLD_REST_MS;
@@ -136,18 +160,19 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             }`}
           >
             <h1
-              className="flex flex-col text-white"
               style={{
                 fontFamily: 'Marcellus, serif',
                 fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
                 letterSpacing: '-0.01em',
                 lineHeight: '1.25',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+                color: 'white',
+                opacity: taglineVisible ? 1 : 0,
+                transform: taglineVisible ? 'translateY(0)' : 'translateY(8px)',
+                transition: `opacity ${TAGLINE_FADE_MS}ms ease, transform ${TAGLINE_FADE_MS}ms ease`,
               }}
             >
-              <span>{t('studio_quote_line1')}</span>
-              <span>{t('studio_quote_line2')}</span>
-              <span>{t('studio_quote_line3')}</span>
+              {[t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')][taglineIdx]}
             </h1>
           </div>
 

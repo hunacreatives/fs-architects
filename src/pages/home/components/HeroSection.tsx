@@ -32,14 +32,12 @@ const CROSSFADE_MS = 1800;
 const HOLD_FIRST_MS = 9000;
 const HOLD_REST_MS  = 6000;
 
-const TAGLINE_HOLD_MS = 2800;
-const TAGLINE_FADE_MS = 600;
+const TAGLINE_CYCLE_MS = 3200;
 
 export default function HeroSection({ isVisible }: HeroSectionProps) {
   const [showContent, setShowContent] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const [taglineIdx, setTaglineIdx] = useState(0);
-  const [taglineVisible, setTaglineVisible] = useState(false);
   const [kbActive, setKbActive] = useState<boolean[]>(SLIDES.map((_, i) => i === 0));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
@@ -52,23 +50,13 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     }
   }, [isVisible]);
 
-  // Cycle tagline lines: fade in → hold → fade out → next
+  // Cycle tagline lines every TAGLINE_CYCLE_MS; key change on h1 triggers CSS animation
   useEffect(() => {
     if (!showContent) return;
-    const fadeIn = setTimeout(() => setTaglineVisible(true), 300);
-    return () => clearTimeout(fadeIn);
-  }, [showContent]);
-
-  useEffect(() => {
-    if (!showContent) return;
-    const cycle = setInterval(() => {
-      setTaglineVisible(false);
-      setTimeout(() => {
-        setTaglineIdx(i => (i + 1) % 3);
-        setTaglineVisible(true);
-      }, TAGLINE_FADE_MS);
-    }, TAGLINE_HOLD_MS + TAGLINE_FADE_MS);
-    return () => clearInterval(cycle);
+    const interval = setInterval(() => {
+      setTaglineIdx(i => (i + 1) % 3);
+    }, TAGLINE_CYCLE_MS);
+    return () => clearInterval(interval);
   }, [showContent]);
 
   const scheduleNext = (current: number, isFirst: boolean) => {
@@ -159,7 +147,20 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
+            <style>{`
+              @keyframes taglineIn {
+                0%   { opacity: 0; transform: translateY(10px); }
+                18%  { opacity: 1; transform: translateY(0); }
+                82%  { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-6px); }
+              }
+              .tagline-cycle {
+                animation: taglineIn ${TAGLINE_CYCLE_MS}ms ease forwards;
+              }
+            `}</style>
             <h1
+              key={taglineIdx}
+              className="tagline-cycle"
               style={{
                 fontFamily: 'Marcellus, serif',
                 fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
@@ -167,9 +168,6 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 lineHeight: '1.25',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
                 color: 'white',
-                opacity: taglineVisible ? 1 : 0,
-                transform: taglineVisible ? 'translateY(0)' : 'translateY(8px)',
-                transition: `opacity ${TAGLINE_FADE_MS}ms ease, transform ${TAGLINE_FADE_MS}ms ease`,
               }}
             >
               {[t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')][taglineIdx]}

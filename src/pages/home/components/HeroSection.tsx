@@ -32,12 +32,10 @@ const CROSSFADE_MS = 1800;
 const HOLD_FIRST_MS = 9000;
 const HOLD_REST_MS  = 6000;
 
-const TAGLINE_CYCLE_MS = 3200;
 
 export default function HeroSection({ isVisible }: HeroSectionProps) {
   const [showContent, setShowContent] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
-  const [taglineIdx, setTaglineIdx] = useState(0);
   const [kbActive, setKbActive] = useState<boolean[]>(SLIDES.map((_, i) => i === 0));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
@@ -50,14 +48,6 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     }
   }, [isVisible]);
 
-  // Cycle tagline lines every TAGLINE_CYCLE_MS; key change on h1 triggers CSS animation
-  useEffect(() => {
-    if (!showContent) return;
-    const interval = setInterval(() => {
-      setTaglineIdx(i => (i + 1) % 3);
-    }, TAGLINE_CYCLE_MS);
-    return () => clearInterval(interval);
-  }, [showContent]);
 
   const scheduleNext = (current: number, isFirst: boolean) => {
     const hold = isFirst ? HOLD_FIRST_MS : HOLD_REST_MS;
@@ -147,59 +137,19 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
-            <style>{`
-              @keyframes taglineWordIn {
-                0%   { opacity: 0; transform: translateY(10px); }
-                20%  { opacity: 1; transform: translateY(0); }
-                80%  { opacity: 1; transform: translateY(0); }
-                100% { opacity: 0; transform: translateY(-6px); }
-              }
-              .tagline-word-active {
-                animation: taglineWordIn ${TAGLINE_CYCLE_MS}ms ease forwards;
-              }
-            `}</style>
-            {(() => {
-              const lines = [t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')];
-              const parts = lines.map(l => { const idx = l.indexOf(' by '); return { pre: l.slice(0, idx), post: l.slice(idx + 4) }; });
-              return (
-                <h1
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    gap: '0.3em',
-                    fontFamily: 'Geist, sans-serif',
-                    fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
-                    letterSpacing: '0.1em',
-                    lineHeight: '1.25',
-                    textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-                    color: 'white',
-                  }}
-                >
-                  {/* Pre-word slot: all 3 stacked in same grid cell so width = widest word */}
-                  <span style={{ display: 'inline-grid', textAlign: 'right' }}>
-                    {parts.map(({ pre }, i) => (
-                      <span
-                        key={taglineIdx === i ? `pre-${i}-active` : `pre-${i}`}
-                        className={taglineIdx === i ? 'tagline-word-active' : ''}
-                        style={{ gridArea: '1/1', opacity: taglineIdx === i ? undefined : 0 }}
-                      >{pre}</span>
-                    ))}
-                  </span>
-                  {/* "by" never moves */}
-                  <span>by</span>
-                  {/* Post-word slot: same grid trick */}
-                  <span style={{ display: 'inline-grid' }}>
-                    {parts.map(({ post }, i) => (
-                      <span
-                        key={taglineIdx === i ? `post-${i}-active` : `post-${i}`}
-                        className={taglineIdx === i ? 'tagline-word-active' : ''}
-                        style={{ gridArea: '1/1', opacity: taglineIdx === i ? undefined : 0 }}
-                      >{post}</span>
-                    ))}
-                  </span>
-                </h1>
-              );
-            })()}
+            <h1
+              style={{
+                fontFamily: 'Geist, sans-serif',
+                fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
+                letterSpacing: '0.1em',
+                lineHeight: '1.35',
+                textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+                color: 'white',
+              }}
+            >
+              <span style={{ display: 'block', fontWeight: 600 }}>FS Architects</span>
+              <span style={{ display: 'block', opacity: 0.7, fontWeight: 300 }}>Form. Space. Intent.</span>
+            </h1>
           </div>
 
           {/* Right CTA */}

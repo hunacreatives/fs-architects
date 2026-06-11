@@ -240,25 +240,21 @@ export default function AboutUs() {
             zIndex: 2,
           }}
         >
-          {/* Three lines — each staggers in */}
-          {[t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')].map((line, li) => (
-            <p
-              key={li}
-              className={`quote-word quote-w${li}`}
-              style={{
-                fontFamily: 'Geist, sans-serif',
-                fontSize: 'clamp(1.05rem, 2vw, 1.7rem)',
-                letterSpacing: '0.12em',
-                color: 'rgba(255,255,255,0.9)',
-                textAlign: 'center',
-                lineHeight: 1.55,
-                textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
-                display: 'block',
-              }}
-            >
-              {line}
-            </p>
-          ))}
+          {/* Single line quote */}
+          <p
+            className="quote-word quote-w0"
+            style={{
+              fontFamily: 'Geist, sans-serif',
+              fontSize: 'clamp(1.05rem, 2vw, 1.7rem)',
+              letterSpacing: '0.12em',
+              color: 'rgba(255,255,255,0.9)',
+              textAlign: 'center',
+              lineHeight: 1.55,
+              textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
+            }}
+          >
+            Form. Space. Intent.
+          </p>
 
 
         </div>

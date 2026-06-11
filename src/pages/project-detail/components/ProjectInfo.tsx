@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface FloorPlan {
   label: string;
@@ -11,6 +11,7 @@ interface ProjectInfoProps {
   mainImage: string;
   galleryImages: string[];
   plans?: FloorPlan[];
+  quote?: string;
 }
 
 function useReveal(threshold = 0.08) {
@@ -46,12 +47,55 @@ export default function ProjectInfo({
   mainImage,
   galleryImages,
   plans = [],
+  quote,
 }: ProjectInfoProps) {
   const openerRef = useReveal(0.04);
   const imagesRef = useReveal(0.03);
   const plansRef  = useReveal(0.05);
 
-  const imgs = [mainImage, ...galleryImages];
+  // Sample evenly: first 12 displayed, extras queue for rotation
+  const { initial, extras } = (() => {
+    const all = galleryImages.filter(Boolean);
+    if (all.length <= 12) return { initial: all, extras: [] };
+    const step = all.length / 12;
+    const selected = Array.from({ length: 12 }, (_, i) => all[Math.floor(i * step)]);
+    const selectedSet = new Set(selected);
+    return { initial: selected, extras: all.filter(s => !selectedSet.has(s)) };
+  })();
+
+  const [imgs, setImgs] = useState<string[]>(initial);
+  const [fadingIdx, setFadingIdx] = useState<number | null>(null);
+  const unusedRef = useRef<string[]>(extras);
+  const fadingRef = useRef(false);
+
+  useEffect(() => {
+    if (unusedRef.current.length === 0) return;
+    const interval = setInterval(() => {
+      if (fadingRef.current) return;
+      fadingRef.current = true;
+      const idx = Math.floor(Math.random() * 12);
+      // Phase 1: fade out
+      setFadingIdx(idx);
+      // Phase 2: swap src while still invisible
+      setTimeout(() => {
+        setImgs(prev => {
+          const next = [...prev];
+          const outgoing = next[idx];
+          const incoming = unusedRef.current.shift()!;
+          unusedRef.current.push(outgoing);
+          next[idx] = incoming;
+          return next;
+        });
+        // Phase 3: fade in after a tick so the new src renders at opacity 0 first
+        setTimeout(() => {
+          setFadingIdx(null);
+          fadingRef.current = false;
+        }, 60);
+      }, 700);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const g = (i: number) => imgs[i % imgs.length];
 
   const sentences = description.split(/(?<=[.!?])\s+/).filter(Boolean);
@@ -141,88 +185,124 @@ export default function ProjectInfo({
       </div>
 
       {/* ── IMAGE SPREADS ───────────────────────────────────────────────── */}
+      {/* Dynamic spreads — cycles through 6 layout types to show all gallery images */}
       <div ref={imagesRef}>
+        {(() => {
+          // Build groups carrying original index so fade swaps can target the right slot
+          const PATTERN = [2, 1, 3, 2, 3, 2, 1, 3];
+          const groups: { src: string; idx: number }[][] = [];
+          let i = 0, p = 0;
+          while (i < imgs.length) {
+            const take = PATTERN[p % PATTERN.length];
+            const end = Math.min(i + take, imgs.length);
+            const slice = Array.from({ length: end - i }, (_, k) => ({ src: imgs[i + k], idx: i + k }));
+            if (slice.length > 0) groups.push(slice);
+            i += take;
+            p++;
+          }
 
-        {/* Row 1 — portrait left (tall) + landscape right (shorter) */}
-        <div className="flex flex-col md:flex-row" style={{ gap: '3px' }}>
-          <div
-            className="mag-reveal mag-img w-full md:w-[38%]"
-            style={{ height: 'clamp(320px, 52vw, 760px)', transitionDelay: '0s' }}
-          >
-            <img src={g(0)} alt={name} style={{ objectPosition: 'center' }} />
-          </div>
-          <div
-            className="mag-reveal mag-img w-full md:w-[60%]"
-            style={{ height: 'clamp(220px, 34vw, 500px)', alignSelf: 'flex-end', transitionDelay: '0.08s' }}
-          >
-            <img src={g(1)} alt={`${name} — view`} />
-          </div>
-        </div>
+          const quoteAfterGroup = Math.floor(groups.length * 0.45);
 
-        {/* Row 2 — full bleed wide */}
-        <div
-          className="mag-reveal mag-img w-full"
-          style={{ height: 'clamp(300px, 46vw, 680px)', marginTop: '3px' }}
-        >
-          <img src={g(2)} alt={`${name} — exterior`} style={{ objectPosition: 'top' }} />
-        </div>
+          // Helper: fade-aware image wrapper
+          const FadeImg = ({ item, className, style }: { item: { src: string; idx: number }; className?: string; style?: React.CSSProperties }) => (
+            <div
+              className={`mag-reveal mag-img${className ? ' ' + className : ''}`}
+              style={{
+                ...style,
+                position: 'relative',
+              }}
+            >
+              <img
+                src={item.src}
+                alt={name}
+                style={{
+                  opacity: fadingIdx === item.idx ? 0 : 1,
+                  transition: 'opacity 0.65s ease',
+                }}
+              />
+            </div>
+          );
 
-        {/* Row 3 — three unequal columns: narrow | wide | narrow-tall */}
-        <div className="flex flex-col sm:flex-row" style={{ gap: '3px', marginTop: '3px' }}>
-          <div
-            className="mag-reveal mag-img w-full sm:w-[24%]"
-            style={{ height: 'clamp(200px, 34vw, 480px)', transitionDelay: '0s' }}
-          >
-            <img src={g(3)} alt={`${name} — detail`} />
-          </div>
-          <div
-            className="mag-reveal mag-img w-full sm:w-[48%]"
-            style={{ height: 'clamp(180px, 26vw, 380px)', alignSelf: 'flex-end', transitionDelay: '0.07s' }}
-          >
-            <img src={g(4)} alt={`${name} — interior`} />
-          </div>
-          <div
-            className="mag-reveal mag-img w-full sm:w-[26%]"
-            style={{ height: 'clamp(200px, 30vw, 440px)', transitionDelay: '0.14s' }}
-          >
-            <img src={g(5)} alt={`${name} — material`} />
-          </div>
-        </div>
+          return groups.map((grp, gi) => {
+            const layoutType = gi % 6;
+            const delay = (k: number) => `${k * 0.08}s`;
 
-        {/* Pull quote */}
-        <div className="px-6 md:px-20 lg:px-36 py-20 md:py-28 flex flex-col items-center text-center">
-          <div style={{ width: '1px', height: '48px', backgroundColor: 'rgba(0,0,0,0.12)', marginBottom: '28px' }} />
-          <p
-            className="mag-reveal"
-            style={{
-              fontFamily: 'Marcellus, serif',
-              fontSize: 'clamp(17px, 2vw, 27px)',
-              color: 'rgba(0,0,0,0.60)',
-              lineHeight: 1.7,
-              letterSpacing: '-0.01em',
-              maxWidth: '640px',
-            }}
-          >
-            "Architecture is not about form — it is the way a building responds to its context, its light, and the lives of the people who inhabit it."
-          </p>
-        </div>
+            const spread = (() => {
+              // Single image — full bleed
+              if (grp.length === 1) {
+                return (
+                  <FadeImg item={grp[0]} className="w-full" style={{ height: 'clamp(300px, 46vw, 680px)' }} />
+                );
+              }
 
-        {/* Row 4 — landscape left (dominant) + portrait right (tall, crops up) */}
-        <div className="flex flex-col md:flex-row" style={{ gap: '3px' }}>
-          <div
-            className="mag-reveal mag-img w-full md:w-[65%]"
-            style={{ height: 'clamp(260px, 38vw, 560px)', transitionDelay: '0s' }}
-          >
-            <img src={g(6 % imgs.length)} alt={`${name} — overview`} />
-          </div>
-          <div
-            className="mag-reveal mag-img w-full md:w-[33%]"
-            style={{ height: 'clamp(300px, 46vw, 660px)', transitionDelay: '0.1s' }}
-          >
-            <img src={g(0)} alt={`${name} — facade`} />
-          </div>
-        </div>
+              // Two images
+              if (grp.length === 2) {
+                if (layoutType === 0 || layoutType === 4) {
+                  return (
+                    <div className="flex flex-col md:flex-row" style={{ gap: '3px' }}>
+                      <FadeImg item={grp[0]} className="w-full md:w-[38%]" style={{ height: 'clamp(300px, 50vw, 740px)', transitionDelay: delay(0) }} />
+                      <FadeImg item={grp[1]} className="w-full md:w-[60%]" style={{ height: 'clamp(220px, 32vw, 480px)', alignSelf: 'flex-end', transitionDelay: delay(1) }} />
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="flex flex-col md:flex-row" style={{ gap: '3px' }}>
+                      <FadeImg item={grp[0]} className="w-full md:w-[62%]" style={{ height: 'clamp(240px, 36vw, 540px)', transitionDelay: delay(0) }} />
+                      <FadeImg item={grp[1]} className="w-full md:w-[36%]" style={{ height: 'clamp(300px, 46vw, 660px)', transitionDelay: delay(1) }} />
+                    </div>
+                  );
+                }
+              }
 
+              // Three images
+              if (layoutType === 1 || layoutType === 5) {
+                return (
+                  <div className="flex flex-col sm:flex-row" style={{ gap: '3px' }}>
+                    <FadeImg item={grp[0]} className="w-full sm:w-[24%]" style={{ height: 'clamp(200px, 32vw, 460px)', transitionDelay: delay(0) }} />
+                    <FadeImg item={grp[1]} className="w-full sm:w-[50%]" style={{ height: 'clamp(180px, 24vw, 360px)', alignSelf: 'flex-end', transitionDelay: delay(1) }} />
+                    <FadeImg item={grp[2]} className="w-full sm:w-[24%]" style={{ height: 'clamp(220px, 30vw, 440px)', transitionDelay: delay(2) }} />
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="flex flex-col md:flex-row" style={{ gap: '3px' }}>
+                    <FadeImg item={grp[0]} className="w-full md:w-[58%]" style={{ height: 'clamp(300px, 44vw, 640px)', transitionDelay: delay(0) }} />
+                    <div className="flex flex-col w-full md:w-[40%]" style={{ gap: '3px' }}>
+                      <FadeImg item={grp[1]} className="w-full" style={{ flex: 1, height: 'clamp(150px, 21vw, 316px)', transitionDelay: delay(1) }} />
+                      <FadeImg item={grp[2]} className="w-full" style={{ flex: 1, height: 'clamp(150px, 21vw, 316px)', transitionDelay: delay(2) }} />
+                    </div>
+                  </div>
+                );
+              }
+            })();
+
+            return (
+              <div key={gi}>
+                <div style={{ marginTop: gi === 0 ? 0 : '3px' }}>{spread}</div>
+
+                {/* Pull quote injected once, roughly mid-way */}
+                {gi === quoteAfterGroup && (
+                  <div className="px-6 md:px-20 lg:px-36 py-20 md:py-28 flex flex-col items-center text-center">
+                    <div style={{ width: '1px', height: '48px', backgroundColor: 'rgba(0,0,0,0.12)', marginBottom: '28px' }} />
+                    <p
+                      className="mag-reveal"
+                      style={{
+                        fontFamily: 'Marcellus, serif',
+                        fontSize: 'clamp(17px, 2vw, 27px)',
+                        color: 'rgba(0,0,0,0.60)',
+                        lineHeight: 1.7,
+                        letterSpacing: '-0.01em',
+                        maxWidth: '640px',
+                      }}
+                    >
+                      {quote || "Architecture is not about form — it is the way a building responds to its context, its light, and the lives of the people who inhabit it."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          });
+        })()}
       </div>
 
       {/* ── FLOOR PLANS ─────────────────────────────────────────────────── */}

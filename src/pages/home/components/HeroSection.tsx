@@ -148,7 +148,9 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               }}
             >
               <span style={{ display: 'block', fontWeight: 600 }}>FS Architects</span>
-              <span style={{ display: 'block', opacity: 0.7, fontWeight: 300 }}>Form. Space. Intent.</span>
+              <span style={{ display: 'block', opacity: 0.7, fontWeight: 300 }}>
+                <span style={{ fontFamily: 'Geist, sans-serif' }}>Form. Space. </span><span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', letterSpacing: '0.04em' }}>Intent.</span>
+              </span>
             </h1>
           </div>
 

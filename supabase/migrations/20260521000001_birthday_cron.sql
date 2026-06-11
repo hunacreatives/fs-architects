@@ -1,0 +1,15 @@
+-- Daily birthday check at 9:00 AM Philippine Time (01:00 UTC)
+-- NOTE: Replace YOUR_ANON_KEY below with your actual Supabase anon key before running.
+-- Do NOT run this file via CLI — paste into Supabase SQL Editor with the real key.
+--
+-- select cron.schedule(
+--   'slack-birthday-check',
+--   '0 1 * * *',
+--   $$
+--   select net.http_post(
+--     url := 'https://aaqpwobmfofztcbbsonw.supabase.co/functions/v1/slack-birthday',
+--     headers := '{"Content-Type":"application/json","Authorization":"Bearer YOUR_ANON_KEY"}'::jsonb,
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );

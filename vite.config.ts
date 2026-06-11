@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { resolve } from "node:path";
 import AutoImport from "unplugin-auto-import/vite";
+import viteImagemin from "vite-plugin-imagemin";
 
 const base = process.env.BASE_PATH || "/";
 // https://vite.dev/config/
@@ -11,6 +12,12 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    viteImagemin({
+      webp: { quality: 82 },
+      gifsicle: { optimizationLevel: 3 },
+      optipng: { optimizationLevel: 5 },
+      svgo: { plugins: [{ name: "removeViewBox" }] },
+    }),
     AutoImport({
       imports: [
         {

@@ -1,0 +1,7 @@
+alter table hub_projects
+  add column if not exists project_type text not null default 'client'
+  check (project_type in ('client', 'internal'));
+
+update hub_projects
+set project_type = 'client'
+where project_type is null;

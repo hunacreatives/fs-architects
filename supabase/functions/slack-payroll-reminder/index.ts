@@ -1,0 +1,139 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
+const SLACK_CHANNEL = 'C0830PCGQK1';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const HUB_URL = 'https://www.hunacreatives.com/hub/login';
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json',
+};
+
+function getPHTParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  return {
+    year: Number(get('year')),
+    month: Number(get('month')),
+    day: Number(get('day')),
+    weekday: get('weekday'),
+  };
+}
+
+function lastWorkingDayOfMonth(year: number, month1: number): number {
+  const lastDay = new Date(Date.UTC(year, month1, 0));
+  const dow = lastDay.getUTCDay();
+  if (dow === 6) lastDay.setUTCDate(lastDay.getUTCDate() - 1);
+  if (dow === 0) lastDay.setUTCDate(lastDay.getUTCDate() - 2);
+  return lastDay.getUTCDate();
+}
+
+function isTodayCutoff(): boolean {
+  const { year, month, day } = getPHTParts();
+  return day === 15 || day === lastWorkingDayOfMonth(year, month);
+}
+
+function getCutoffLabel(): string {
+  const { day } = getPHTParts();
+  return day === 15
+    ? 'Today is the 15th payroll cutoff'
+    : 'Today is the last working day of the month';
+}
+
+function getPHTDateString(): string {
+  return new Date().toLocaleDateString('en-US', {
+    timeZone: 'Asia/Manila',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+async function slackPost(path: string, body: unknown) {
+  const res = await fetch(`https://slack.com/api/${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.ok) {
+    console.error(`Slack API failed: ${path}`, { status: res.status, response: json });
+    throw new Error(`Slack API failed: ${path} - ${json.error ?? res.status}`);
+  }
+  return json;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  try {
+    const url = new URL(req.url);
+    const force = url.searchParams.get('force') === 'true';
+
+    if (!force && !isTodayCutoff()) {
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'Not a cutoff day' }), { headers: cors });
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const dateLabel = getPHTDateString();
+    const cutoffLabel = getCutoffLabel();
+
+    const { data: contractors, error } = await supabase
+      .from('hub_users')
+      .select('full_name, slack_id')
+      .eq('status', 'active')
+      .in('role', ['contractor']);
+
+    if (error) {
+      console.error('Failed to load contractors', error);
+      throw error;
+    }
+
+    const mentions = (contractors ?? [])
+      .map(c => c.slack_id ? `<@${c.slack_id}>` : c.full_name)
+      .join('  ·  ');
+
+    const blocks = [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: '📋 Payroll Cutoff Today', emoji: true },
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*${cutoffLabel}* — ${dateLabel}.\n\nMake sure your attendance is up to date and submit your payslip before you log off today. Anything missing after cutoff moves to next period.`,
+        },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `<${HUB_URL}|Open Sentro Hub →>` },
+      },
+      ...(mentions
+        ? [{ type: 'context', elements: [{ type: 'mrkdwn', text: `For: ${mentions}` }] }]
+        : []),
+      { type: 'divider' },
+    ];
+
+    await slackPost('chat.postMessage', {
+      channel: SLACK_CHANNEL,
+      text: `📋 Payroll cutoff today (${dateLabel}) — please submit your payslip before end of shift.`,
+      blocks,
+    });
+
+    return new Response(JSON.stringify({ ok: true, date: dateLabel }), { headers: cors });
+  } catch (err) {
+    console.error('slack-payroll-reminder error:', err);
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: cors });
+  }
+});

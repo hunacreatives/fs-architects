@@ -342,7 +342,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
                     onClick={() => !isActive && handleNavClick(href)}
                     disabled={isActive}
                     className={`flex-1 text-left text-[17px] font-normal tracking-wide py-1.5 transition-colors duration-300 ${isActive ? 'text-white/35 cursor-default' : 'text-white hover:text-white/70 cursor-pointer'}`}
-                    style={{ fontFamily: 'Marcellus, serif', letterSpacing: '0.04em' }}
+                    style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.08em' }}
                   >
                     <span className="whitespace-nowrap">{label}</span>
                   </button>

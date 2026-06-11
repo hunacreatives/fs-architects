@@ -140,7 +140,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             <h1
               style={{
                 fontFamily: 'Geist, sans-serif',
-                fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
+                fontSize: 'clamp(0.85rem, 1.4vw, 1.4rem)',
                 letterSpacing: '0.1em',
                 lineHeight: '1.35',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',

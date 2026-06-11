@@ -55,6 +55,17 @@ const TEAM = [
     ],
   },
   {
+    key: 'raul',
+    nameKey: 'studio_team_raul_name',
+    titleKey: 'studio_team_raul_title',
+    bioKey: 'studio_team_raul_bio',
+    img: '/images/team/placeholder.svg',
+    imgShift: '0%',
+    credentials: [
+      { label: 'Role', value: 'Junior Architect' },
+    ],
+  },
+  {
     key: 'gab',
     nameKey: 'studio_team_gab_name',
     titleKey: 'studio_team_gab_title',
@@ -80,29 +91,7 @@ const TEAM = [
       { label: 'Role', value: 'Junior Architect' },
     ],
   },
-  {
-    key: 'raul',
-    nameKey: 'studio_team_raul_name',
-    titleKey: 'studio_team_raul_title',
-    bioKey: 'studio_team_raul_bio',
-    img: '/images/team/placeholder.svg',
-    imgShift: '0%',
-    credentials: [
-      { label: 'Role', value: 'Junior Architect' },
-    ],
-  },
   // Architectural Apprentices
-  {
-    key: 'chico',
-    nameKey: 'studio_team_chico_name',
-    titleKey: 'studio_team_chico_title',
-    bioKey: 'studio_team_chico_bio',
-    img: '/images/team/chico.webp',
-    imgShift: '-22%',
-    credentials: [
-      { label: 'Role', value: 'Architectural Apprentice' },
-    ],
-  },
   {
     key: 'neil',
     nameKey: 'studio_team_neil_name',
@@ -116,12 +105,12 @@ const TEAM = [
     ],
   },
   {
-    key: 'juls',
-    nameKey: 'studio_team_juls_name',
-    titleKey: 'studio_team_juls_title',
-    bioKey: 'studio_team_juls_bio',
-    img: '/images/team/juls.webp',
-    imgShift: '-17%',
+    key: 'chico',
+    nameKey: 'studio_team_chico_name',
+    titleKey: 'studio_team_chico_title',
+    bioKey: 'studio_team_chico_bio',
+    img: '/images/team/chico.webp',
+    imgShift: '-22%',
     credentials: [
       { label: 'Role', value: 'Architectural Apprentice' },
     ],
@@ -133,6 +122,17 @@ const TEAM = [
     bioKey: 'studio_team_servacio_bio',
     img: '/images/team/placeholder.svg',
     imgShift: '0%',
+    credentials: [
+      { label: 'Role', value: 'Architectural Apprentice' },
+    ],
+  },
+  {
+    key: 'juls',
+    nameKey: 'studio_team_juls_name',
+    titleKey: 'studio_team_juls_title',
+    bioKey: 'studio_team_juls_bio',
+    img: '/images/team/juls.webp',
+    imgShift: '-17%',
     credentials: [
       { label: 'Role', value: 'Architectural Apprentice' },
     ],

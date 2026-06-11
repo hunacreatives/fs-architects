@@ -7,17 +7,30 @@ interface HeroSectionProps {
   isVisible: boolean;
 }
 
-const SLIDES = [
-  "/images/hero-slide-1.webp",
-  "/images/projects/mallberry-hero.webp",
-  "/images/projects/abucay-hero.webp",
-  "/images/projects/sorana-island-villas-hero.webp",
-  "/images/projects/byd-iligan-hero.webp",
-  "/images/projects/sytin-projects-hero.webp",
-  "/images/projects/bellarie-office-hero.webp",
-  "/images/projects/palm-sands-hero.webp",
-  "/images/projects/yang-residence-hero.webp",
-  "/images/projects/vmc-admin-hero.webp",
+interface Slide {
+  src: string;
+  title: string;
+  location: string;
+  year: string;
+}
+
+const SLIDES: Slide[] = [
+  { src: "/images/hero-slide-1.webp",                              title: "FS Architects",                    location: "Philippines",       year: "2025" },
+  { src: "/images/projects/mallberry-hero.webp",                   title: "Mallberry Platinum Hall & Lounge", location: "Cagayan de Oro",    year: "2023" },
+  { src: "/images/projects/abucay-hero.webp",                      title: "Abucay Beach House",               location: "Bataan",            year: "2024" },
+  { src: "/images/projects/sorana-island-villas-hero.webp",        title: "Sorana Island Villas",             location: "Cagayan de Oro",    year: "2025" },
+  { src: "/images/projects/byd-iligan-hero.webp",                  title: "BYD Iligan",                       location: "Iligan City",       year: "2025" },
+  { src: "/images/projects/sytin-projects-hero.webp",              title: "Sytin Projects",                   location: "Metro Manila",      year: "2025" },
+  { src: "/images/projects/bellarie-office-hero.webp",             title: "Bellarie Office",                  location: "Cagayan de Oro",    year: "2025" },
+  { src: "/images/projects/palm-sands-hero.webp",                  title: "Palm Sands Pool & Lounge",         location: "Cagayan de Oro",    year: "2024" },
+  { src: "/images/projects/yang-residence-hero.webp",              title: "Yang Residence",                   location: "Cagayan de Oro",    year: "2025" },
+  { src: "/images/projects/vmc-admin-hero.webp",                   title: "VMC Administration Interiors",     location: "Cagayan de Oro",    year: "2024" },
+];
+
+const TAGLINES = [
+  'Defined by Form.',
+  'Shaped by Space.',
+  'Guided by Intent.',
 ];
 
 // Varied Ken Burns directions so each slide feels different
@@ -40,6 +53,35 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // Typewriter tagline state
+  const [taglineIndex, setTaglineIndex] = useState(0);
+  const [displayed, setDisplayed] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!showContent) return;
+    const target = TAGLINES[taglineIndex];
+    let i = 0;
+    setDisplayed('');
+    setIsTyping(true);
+
+    const type = () => {
+      if (i < target.length) {
+        setDisplayed(target.slice(0, i + 1));
+        i++;
+        typeTimerRef.current = setTimeout(type, 38);
+      } else {
+        setIsTyping(false);
+        typeTimerRef.current = setTimeout(() => {
+          setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
+        }, 2800);
+      }
+    };
+    typeTimerRef.current = setTimeout(type, 200);
+    return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
+  }, [taglineIndex, showContent]);
 
   useEffect(() => {
     if (isVisible) {
@@ -95,7 +137,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     >
       {/* Slideshow — all slides stacked, crossfade via opacity only, no React remounting */}
       <div className="absolute inset-0 overflow-hidden">
-        {SLIDES.map((src, i) => {
+        {SLIDES.map((slide, i) => {
           const kb = KENBURNS[i % KENBURNS.length];
           const isActive = i === activeSlide;
           const isMoving = kbActive[i];
@@ -103,7 +145,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
           return (
             <img
               key={i}
-              src={src}
+              src={slide.src}
               alt={`Architectural work ${i + 1}`}
               className="absolute inset-0 w-full h-full object-cover object-center"
               style={{
@@ -131,7 +173,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
       {/* Hero Content */}
       <div className="relative z-20 h-screen flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-12 md:pb-20">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 md:gap-0">
-          {/* Left */}
+          {/* Left — typewriter tagline */}
           <div
             className={`transition-all duration-1000 delay-300 ${
               showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
@@ -139,27 +181,47 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
           >
             <h1
               style={{
-                fontFamily: 'Geist, sans-serif',
-                fontSize: 'clamp(1.2rem, 2.2vw, 2.2rem)',
-                letterSpacing: '-0.02em',
-                lineHeight: '1.35',
+                fontFamily: 'Marcellus, serif',
+                fontStyle: 'italic',
+                fontWeight: 700,
+                fontSize: 'clamp(1.3rem, 2.4vw, 2.4rem)',
+                letterSpacing: '-0.01em',
+                lineHeight: '1.2',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
                 color: 'white',
+                minHeight: '1.4em',
               }}
             >
-              <span style={{ display: 'block', fontFamily: 'Marcellus, serif', fontWeight: 400 }}>FS Architects</span>
-              <span style={{ display: 'block', opacity: 0.7, fontWeight: 300 }}>
-                <span style={{ fontFamily: 'Geist, sans-serif' }}>Form. Space. </span><span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic' }}>Intent.</span>
-              </span>
+              {displayed}
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '2px',
+                  height: '0.9em',
+                  backgroundColor: 'white',
+                  marginLeft: '2px',
+                  verticalAlign: 'middle',
+                  opacity: isTyping ? 1 : 0,
+                  transition: 'opacity 0.15s ease',
+                }}
+              />
             </h1>
           </div>
 
-          {/* Right CTA */}
+          {/* Right — slide metadata + CTA */}
           <div
-            className={`transition-all duration-1000 delay-500 ${
+            className={`flex flex-col items-end gap-3 transition-all duration-1000 delay-500 ${
               showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
+            <div className="text-right" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+              <p style={{ fontFamily: 'Marcellus, serif', fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
+                {SLIDES[activeSlide].title}
+              </p>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', fontWeight: 400, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+                {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+              </p>
+            </div>
             <button
               onClick={() => navigate('/projects')}
               className="group px-7 py-2.5 border border-white/80 rounded-full text-white text-xs tracking-wide transition-all duration-500 hover:bg-white/10 hover:border-white whitespace-nowrap cursor-pointer"

@@ -311,7 +311,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
         .team-card-photo {
           position: relative;
           overflow: hidden;
-          background: #111;
+          background: #1a2028;
           aspect-ratio: 3 / 4;
           border-radius: 16px;
         }
@@ -466,16 +466,18 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                     >
                       {/* Photo */}
                       <div className="team-card-photo">
-                        <img
-                          src={member.img}
-                          alt={t(member.nameKey)}
-                          draggable={false}
-                          style={{
-                            objectPosition: 'top center',
-                            transform: `scale(${member.imgScale ?? 1.5}) translateX(${member.imgShiftX ?? '0%'}) translateY(${member.imgShift})`,
-                            transformOrigin: 'top center',
-                          }}
-                        />
+                        {!member.img.includes('placeholder') && (
+                          <img
+                            src={member.img}
+                            alt={t(member.nameKey)}
+                            draggable={false}
+                            style={{
+                              objectPosition: 'top center',
+                              transform: `scale(${member.imgScale ?? 1.5}) translateX(${member.imgShiftX ?? '0%'}) translateY(${member.imgShift})`,
+                              transformOrigin: 'top center',
+                            }}
+                          />
+                        )}
                         <div className="team-card-view-badge">
                           <span className="team-view-pill">
                             View Bio

@@ -22,7 +22,8 @@ function LogoHamburger({ size = 43, onClick, invert = false }: { size?: number; 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef<Phase>('logo');
 
-  const imgStyle: React.CSSProperties = invert ? { filter: 'invert(1)' } : {};
+  const NAVY_FILTER = 'brightness(0) invert(16%) sepia(35%) saturate(200%) hue-rotate(178deg) brightness(90%)';
+  const imgStyle: React.CSSProperties = invert ? { filter: NAVY_FILTER } : {};
 
   const updatePhase = (p: Phase) => {
     phaseRef.current = p;
@@ -236,7 +237,7 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
 
           {/* Left — FS Logo morphs into hamburger via GIF on hover */}
           <div className="w-10 md:w-32 flex items-center gap-4">
-            <LogoHamburger size={56} onClick={() => setMenuOpen(true)} invert={isDark} />
+            <LogoHamburger size={43} onClick={() => setMenuOpen(true)} invert={isDark} />
             {pageTitle && (
               <span
                 className="text-[9px] tracking-widest uppercase whitespace-nowrap"
@@ -260,8 +261,8 @@ export default function Navigation({ theme = 'light', showContent, pageTitle }: 
             <img
               src="/images/logo-wordmark.png"
               alt="FS Architects"
-              className={`transition-all duration-700 ${isDark ? '' : 'brightness-0 invert'}`}
-              style={{ height: '62px', width: 'auto', objectFit: 'contain', display: 'block' }}
+              className="transition-all duration-700"
+              style={{ height: '56px', width: 'auto', objectFit: 'contain', display: 'block', filter: isDark ? 'brightness(0) invert(16%) sepia(35%) saturate(200%) hue-rotate(178deg) brightness(90%)' : 'brightness(0) invert(1)' }}
               draggable={false}
             />
           </button>

@@ -184,7 +184,7 @@ export default function HubLoginPage() {
               <h1 className="text-white font-bold leading-tight" style={{ fontSize: '2.6rem', letterSpacing: '-0.02em' }}>
                 Sign in to<br />your workspace.
               </h1>
-              <p className="text-white/30 text-sm mt-3">Authorized personnel only</p>
+              <p className="text-white/30 text-sm mt-3">FS Architects team only</p>
             </div>
 
             {justSignedUp && (
@@ -245,7 +245,7 @@ export default function HubLoginPage() {
 
         {/* Footer */}
         <div className="relative z-10 p-8 md:p-10 form-in" style={{ animationDelay: '0.2s' }}>
-          <p className="text-xs text-white/15">© Sentro OS {new Date().getFullYear()} · by <a href="https://fsarchitects.ph" target="_blank" rel="noopener noreferrer" className="hover:text-white/30 transition-colors">FS Architects</a></p>
+          <p className="text-xs text-white/15">© Sentro OS 2026 · by <a href="https://hunacreatives.com" target="_blank" rel="noopener noreferrer" className="hover:text-white/30 transition-colors">Huna Creatives</a></p>
         </div>
       </div>
 

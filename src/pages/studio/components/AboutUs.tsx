@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const CLIENT_LOGOS = [
@@ -47,18 +47,20 @@ export default function AboutUs() {
   const bodyRef = useReveal(0.2);
   const statsRef = useReveal(0.15);
 
-  // Cinematic intro: pitch black → words stagger in → slowly reveals background image
-  const quoteVisibleRef = useRef(false);
-  useEffect(() => {
-    // Phase 1: trigger word-by-word stagger (starts at 400ms)
-    const quoteTimeout = setTimeout(() => {
-      quoteVisibleRef.current = true;
-      if (quoteRef.current) {
-        quoteRef.current.classList.add('quote-words-active');
-      }
-    }, 400);
+  // Typewriter state
+  const TAGLINES = ['Defined by Form.', 'Shaped by Space.', 'Guided by Intent.'];
+  const [typewriterReady, setTypewriterReady] = useState(false);
+  const [taglineIndex, setTaglineIndex] = useState(0);
+  const [displayed, setDisplayed] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Phase 2: cinematic fade out of black overlay (starts at ~1400ms)
+  // Cinematic intro: pitch black → typewriter starts → slowly reveals background image
+  useEffect(() => {
+    // Start typewriter at 400ms (matches original quote reveal timing)
+    const startTimer = setTimeout(() => setTypewriterReady(true), 400);
+
+    // Cinematic fade out of black overlay (starts at ~1400ms)
     const cinematicTimeout = setTimeout(() => {
       if (cinematicRef.current) {
         cinematicRef.current.style.transition = 'opacity 3.2s cubic-bezier(0.4, 0, 0.25, 1)';
@@ -67,10 +69,32 @@ export default function AboutUs() {
     }, 1400);
 
     return () => {
-      clearTimeout(quoteTimeout);
+      clearTimeout(startTimer);
       clearTimeout(cinematicTimeout);
     };
   }, []);
+
+  useEffect(() => {
+    if (!typewriterReady) return;
+    const target = TAGLINES[taglineIndex];
+    let i = 0;
+    setDisplayed('');
+    setIsTyping(true);
+    const type = () => {
+      if (i < target.length) {
+        setDisplayed(target.slice(0, i + 1));
+        i++;
+        typeTimerRef.current = setTimeout(type, 38);
+      } else {
+        setIsTyping(false);
+        typeTimerRef.current = setTimeout(() => {
+          setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
+        }, 2800);
+      }
+    };
+    typeTimerRef.current = setTimeout(type, 200);
+    return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
+  }, [taglineIndex, typewriterReady]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -131,30 +155,6 @@ export default function AboutUs() {
         .stat-d1 { transition-delay: 0.12s; }
         .stat-d2 { transition-delay: 0.24s; }
         .stat-d3 { transition-delay: 0.36s; }
-
-        /* ── Word-by-word quote stagger ── */
-        @keyframes quoteWordIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-            filter: blur(4px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-            filter: blur(0px);
-          }
-        }
-
-        .quote-word {
-          display: inline-block;
-          opacity: 0;
-        }
-
-        .quote-words-active .quote-word {
-          animation: quoteWordIn 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-        ${Array.from({ length: 20 }, (_, i) => `.quote-words-active .quote-w${i} { animation-delay: ${(i * 0.18).toFixed(2)}s; }`).join('\n        ')}
 
         /* ── Logo reveal keyframe ── */
         @keyframes logoItemReveal {
@@ -228,35 +228,40 @@ export default function AboutUs() {
           style={{ opacity: 1, zIndex: 1, willChange: 'opacity' }}
         />
 
-        {/* ── QUOTE — word-by-word stagger ── */}
+        {/* ── QUOTE — typewriter ── */}
         <div
           ref={quoteRef}
           className="absolute left-0 right-0 pointer-events-none flex flex-col items-center px-8"
-          style={{
-            top: '50%',
-            transform: 'translateY(-50%)',
-            willChange: 'opacity, transform',
-            opacity: 1,
-            zIndex: 2,
-          }}
+          style={{ top: '50%', transform: 'translateY(-50%)', willChange: 'opacity, transform', opacity: 1, zIndex: 2 }}
         >
-          {/* Single line quote */}
-          <p
-            className="quote-word quote-w0"
+          <h1
             style={{
-              fontFamily: 'Geist, sans-serif',
-              fontSize: 'clamp(1.05rem, 2vw, 1.7rem)',
-              letterSpacing: '0.12em',
-              color: 'rgba(255,255,255,0.9)',
+              fontFamily: 'Marcellus, serif',
+              fontStyle: 'italic',
+              fontWeight: 700,
+              fontSize: 'clamp(1.3rem, 2.4vw, 2.4rem)',
+              letterSpacing: '-0.01em',
+              lineHeight: 1.2,
+              textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+              color: 'white',
+              minHeight: '1.4em',
               textAlign: 'center',
-              lineHeight: 1.55,
-              textShadow: '0 2px 24px rgba(0,0,0,0.9), 0 0 48px rgba(0,0,0,0.75)',
             }}
           >
-            Form. Space. Intent.
-          </p>
-
-
+            {displayed}
+            <span
+              style={{
+                display: 'inline-block',
+                width: '2px',
+                height: '0.9em',
+                backgroundColor: 'white',
+                marginLeft: '2px',
+                verticalAlign: 'middle',
+                opacity: isTyping ? 1 : 0,
+                transition: 'opacity 0.15s ease',
+              }}
+            />
+          </h1>
         </div>
 
         {/* ── LOGOS — wow reveal ── */}
@@ -344,8 +349,14 @@ export default function AboutUs() {
           {/* Two-col philosophy */}
           <div className="flex flex-col lg:flex-row px-4 md:px-20 lg:px-28 pt-24 pb-20 gap-12 lg:gap-24">
 
-            {/* Left — h2 */}
+            {/* Left — manifesto eyebrow + h2 */}
             <div ref={h2Ref} className="lg:w-5/12 flex-shrink-0">
+              <p
+                className="reveal-item reveal-item-left reveal-delay-1 text-center lg:text-left mb-3"
+                style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)' }}
+              >
+                {t('studio_about_manifesto_eyebrow')}
+              </p>
               <h2
                 className="reveal-item reveal-item-left text-black/80 leading-snug text-center lg:text-left [text-wrap:pretty]"
                 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2.4vw, 32px)', letterSpacing: '-0.01em' }}
@@ -368,7 +379,7 @@ export default function AboutUs() {
           {/* Stats strip */}
           <div ref={statsRef} className="px-4 md:px-20 lg:px-28 pt-0 pb-10 grid grid-cols-4">
             {[
-              { value: '2021', label: t('studio_founded_label') },
+              { value: '2022', label: t('studio_founded_label') },
               { value: '100+', label: t('studio_projects_label') },
               { value: '10', label: t('studio_offices_label') },
               { value: '14', label: t('studio_team_label') },

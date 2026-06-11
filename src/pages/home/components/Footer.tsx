@@ -135,18 +135,18 @@ export default function Footer() {
           {/* Left — Logo + divider + Get in Touch + social */}
           <div className="flex flex-row items-start gap-10">
             {/* Logo + tagline */}
-            <div className="shrink-0">
+            <div className="shrink-0 -mt-5">
               <img
                 src="/images/logo-wordmark-alt.png"
                 alt="FS Architects"
-                className="h-10 w-auto object-contain object-top brightness-0 invert block -mt-3"
+                className="h-16 w-auto object-contain object-top brightness-0 invert block -ml-2"
                 draggable={false}
               />
               <p
-                className="text-white/30 text-[11px] leading-relaxed max-w-[150px] -mt-1"
+                className="text-white/30 text-[13px] leading-relaxed max-w-[180px] -mt-2"
                 style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.05em' }}
               >
-                {t('footer_tagline')}
+                Form. Space. Intent.
               </p>
             </div>
 

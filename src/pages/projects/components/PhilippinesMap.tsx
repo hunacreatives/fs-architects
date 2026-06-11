@@ -224,7 +224,7 @@ export default function PhilippinesMap({
   }, []);
 
   const STATS = [
-    { target: 2021, suffix: '',  label: t('studio_founded_label'), delay: 600  },
+    { target: 2022, suffix: '',  label: t('studio_founded_label'), delay: 600  },
     { target: 100,  suffix: '+', label: t('map_project_plural'),   delay: 740  },
     { target: 10,   suffix: '',  label: t('studio_offices_label'), delay: 880  },
     { target: 14,   suffix: '',  label: t('studio_team_label'),    delay: 1020 },
@@ -553,9 +553,11 @@ export default function PhilippinesMap({
                 }`}
               />
 
-              {/* Label bubble — smaller on mobile for all pins */}
+              {/* Label bubble — left or right of dot based on goLeft */}
               <div
-                className={`pin-label absolute left-1/2 whitespace-nowrap rounded-full tracking-wider -translate-x-1/2 bottom-full mb-2 ${
+                className={`pin-label absolute whitespace-nowrap rounded-full tracking-wider top-1/2 -translate-y-1/2 ${
+                  pin.goLeft ? 'right-full mr-2' : 'left-full ml-2'
+                } ${
                   isActive
                     ? 'bg-[#1c2b3a] text-white opacity-100 px-2.5 py-1 text-[10px]'
                     : 'bg-white/95 text-[#1c2b3a] border border-black/10 opacity-70 px-1.5 py-0.5 text-[8px]'
@@ -576,24 +578,24 @@ export default function PhilippinesMap({
 
       {/* ── DESKTOP: Left overlay (title + hint + CTA) ── */}
       <div
-        className="hidden md:flex absolute top-1/2 left-0 z-20 flex-col items-center px-20"
+        className="hidden md:flex absolute top-1/2 left-0 z-20 flex-col items-start pl-[104px]"
         style={{ transform: 'translateY(-50%)' }}
       >
         <h2
-          className="map-hero-title text-xl md:text-2xl font-light tracking-wide mb-2 text-center"
+          className="map-hero-title text-xl md:text-2xl font-light tracking-wide mb-2 text-left"
           style={{ fontFamily: 'Marcellus, serif', color: '#1c2b3a' }}
         >
           {t('map_select_location')}
         </h2>
         <p
-          className="map-hero-hint text-xs tracking-widest mb-6 text-center"
+          className="map-hero-hint text-xs tracking-widest mb-6 text-left"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em', color: 'rgba(28,43,58,0.35)' }}
         >
           {t('map_click_hint')}
         </p>
         <button
           onClick={() => { onLocationChange('all'); onViewAllProjects(); }}
-          className="map-hero-cta self-center flex items-center gap-3 px-7 py-3 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
+          className="map-hero-cta self-start flex items-center gap-3 px-7 py-3 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
         >
           {t('map_view_all')}
@@ -604,7 +606,7 @@ export default function PhilippinesMap({
       {/* ── DESKTOP: Right overlay — animated stats ── */}
       <div
         ref={statsRef}
-        className="hidden md:flex absolute top-1/2 right-0 z-20 flex-col items-end px-20"
+        className="hidden md:flex absolute top-1/2 right-0 z-20 flex-col items-end pr-24"
         style={{ transform: 'translateY(-50%)' }}
       >
         {STATS.map((stat) => (
@@ -621,7 +623,7 @@ export default function PhilippinesMap({
 
       {/* ── MOBILE: Title at top — white fade from top so text is readable over map ── */}
       <div
-        className="md:hidden absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-6"
+        className="md:hidden absolute top-0 left-0 right-0 z-20 px-6"
         style={{
           paddingTop: '72px',
           paddingBottom: '32px',
@@ -629,13 +631,13 @@ export default function PhilippinesMap({
         }}
       >
         <h2
-          className="map-hero-title text-lg font-light tracking-wide mb-1 text-center"
+          className="map-hero-title text-lg font-light tracking-wide mb-1 text-left w-full"
           style={{ fontFamily: 'Marcellus, serif', color: '#1c2b3a' }}
         >
           {t('map_select_location')}
         </h2>
         <p
-          className="map-hero-hint text-[10px] tracking-widest text-center"
+          className="map-hero-hint text-[10px] tracking-widest text-left w-full"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em', color: 'rgba(28,43,58,0.35)' }}
         >
           {t('map_click_hint')}
@@ -671,7 +673,7 @@ export default function PhilippinesMap({
         {/* View All button */}
         <button
           onClick={() => { onLocationChange('all'); onViewAllProjects(); }}
-          className="map-hero-cta w-full flex items-center justify-center gap-3 px-7 py-2.5 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
+          className="map-hero-cta inline-flex items-center gap-3 px-7 py-2.5 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
         >
           {t('map_view_all')}

@@ -656,7 +656,6 @@ export default function ProjectsPage() {
   const [sortBy, setSortBy] = useState<'date' | 'alphabetical'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProject, setSelectedProject] = useState<typeof mockProjects[0] | null>(null);
   const [visibleCount, setVisibleCount] = useState(8);
   const batchStartRef = useRef(0);
   const [showGoUp, setShowGoUp] = useState(false);
@@ -731,10 +730,6 @@ export default function ProjectsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Slideshow state
-  const [viewMode, setViewMode] = useState<'slideshow' | 'map'>('slideshow');
-  const [slideIndex, setSlideIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const filteredProjects = useMemo(() => mockProjects.filter((project) => {
     const matchesLocation = activeLocation === 'all' || project.location === activeLocation;
@@ -779,11 +774,6 @@ export default function ProjectsPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Reset slide index when filters change
-  useEffect(() => {
-    setSlideIndex(0);
-  }, [activeLocation, activeCategory, sortBy, searchQuery]);
-
   // ── Header entrance ──
   useEffect(() => {
     const t = setTimeout(() => setHeaderVisible(true), 80);
@@ -822,43 +812,8 @@ export default function ProjectsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLocation, activeCategory, sortBy, sortOrder, searchQuery, projectsVisible]);
 
-  const goToSlide = useCallback((index: number) => {
-    if (isTransitioning || sortedProjects.length === 0) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setSlideIndex(index);
-      setIsTransitioning(false);
-    }, 300);
-  }, [isTransitioning, sortedProjects.length]);
-
-  const prevSlide = () => {
-    const newIndex = slideIndex === 0 ? sortedProjects.length - 1 : slideIndex - 1;
-    goToSlide(newIndex);
-  };
-
-  const nextSlide = () => {
-    const newIndex = slideIndex === sortedProjects.length - 1 ? 0 : slideIndex + 1;
-    goToSlide(newIndex);
-  };
-
-  // Auto-advance slideshow
-  useEffect(() => {
-    if (viewMode !== 'slideshow' || sortedProjects.length === 0) return;
-    const timer = setInterval(() => {
-      setSlideIndex((prev) => (prev === sortedProjects.length - 1 ? 0 : prev + 1));
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [viewMode, sortedProjects.length, slideIndex]);
-
-  const currentSlide = sortedProjects[slideIndex] ?? null;
-
-  const mapSrc = selectedProject
-    ? `https://maps.google.com/maps?q=${selectedProject.lat},${selectedProject.lng}&z=16&output=embed`
-    : `https://maps.google.com/maps?q=14.5995,120.9842&z=11&output=embed`;
-
   const handleLocationChange = useCallback((loc: string) => {
     setActiveLocation(loc);
-    setSlideIndex(0);
     setProjectsVisible(true);
     setTimeout(() => {
       projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -941,46 +896,6 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          {/* ── MAP MODE ── */}
-          {viewMode === 'map' && (
-            <div className="w-full h-72 md:h-96 mb-12 relative">
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-3 flex-wrap">
-                {selectedProject && (
-                  <div className="bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 flex items-center gap-2">
-                    <div>
-                      <p className="text-xs text-navy/50 tracking-wider uppercase" style={{ fontFamily: 'Geist, sans-serif' }}>
-                        {t('projects_viewing')}
-                      </p>
-                      <p className="text-sm font-medium text-navy" style={{ fontFamily: 'Marcellus, serif' }}>
-                        {t(`${selectedProject.translationKey}_name`)}
-                      </p>
-                      <p className="text-xs text-navy/50" style={{ fontFamily: 'Geist, sans-serif' }}>
-                        {t(`${selectedProject.translationKey}_address`)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedProject(null)}
-                      className="ml-2 w-6 h-6 flex items-center justify-center text-navy/40 hover:text-navy transition-colors cursor-pointer"
-                    >
-                      <i className="ri-close-line text-base" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <iframe
-                key={mapSrc}
-                src={mapSrc}
-                width="100%"
-                height="100%"
-                style={{ border: 0, filter: 'grayscale(100%)' }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Projects Map"
-              />
-            </div>
-          )}
-
           {/* ── CATEGORY FILTERS, SORT & SEARCH ── */}
           <div className="px-4 md:px-16 lg:px-24 mb-8">
             {/* Category tabs — scrollable row */}
@@ -1059,9 +974,7 @@ export default function ProjectsPage() {
                 return (
                 <div
                   key={project.id}
-                  className={`proj-card group transition-all duration-300 overflow-hidden rounded-xl ${
-                    selectedProject?.id === project.id ? 'opacity-100 ring-2 ring-black/20 shadow-lg shadow-black/15' : 'opacity-80 hover:opacity-100'
-                  }`}
+                  className="proj-card group transition-all duration-300 overflow-hidden rounded-xl opacity-80 hover:opacity-100"
                   style={{ animationDelay: delay }}
                 >
                   <div
@@ -1074,39 +987,24 @@ export default function ProjectsPage() {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                   </div>
-                  <div className="flex items-start justify-between gap-2 px-3 py-3" style={{ background: 'rgba(0,0,0,0.05)' }}>
-                    <div className="cursor-pointer min-w-0" onClick={() => { sessionStorage.setItem('projects_return_to_grid', '1'); navigate(`/projects/${project.slug}`); }}>
-                      <h3
-                        className="text-sm font-medium text-navy mb-0.5 tracking-wide truncate"
-                        style={{ fontFamily: 'Marcellus, serif', maxWidth: '160px' }}
-                        title={t(`${project.translationKey}_name`)}
-                      >
-                        {t(`${project.translationKey}_name`)}
-                      </h3>
-                      <p
-                        className="text-xs text-navy/50 tracking-wide"
-                        style={{ fontFamily: 'Geist, sans-serif' }}
-                      >
-                        {project.year} · {t(`${project.translationKey}_address`)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedProject(project);
-                        setViewMode('map');
-                        projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }}
-                      className={`flex-shrink-0 mt-0.5 w-7 h-7 flex items-center justify-center transition-colors duration-300 cursor-pointer ${
-                        selectedProject?.id === project.id
-                          ? 'text-navy'
-                          : 'text-navy/30 hover:text-navy'
-                      }`}
-                      aria-label="Show on map"
-                      title="Show on map"
+                  <div
+                    className="px-3 py-3 cursor-pointer"
+                    style={{ background: 'rgba(0,0,0,0.05)' }}
+                    onClick={() => { sessionStorage.setItem('projects_return_to_grid', '1'); navigate(`/projects/${project.slug}`); }}
+                  >
+                    <h3
+                      className="text-sm font-medium text-navy mb-0.5 tracking-wide truncate"
+                      style={{ fontFamily: 'Marcellus, serif', maxWidth: '200px' }}
+                      title={t(`${project.translationKey}_name`)}
                     >
-                      <i className="ri-map-pin-line text-base" />
-                    </button>
+                      {t(`${project.translationKey}_name`)}
+                    </h3>
+                    <p
+                      className="text-xs text-navy/50 tracking-wide"
+                      style={{ fontFamily: 'Geist, sans-serif' }}
+                    >
+                      {project.year} · {t(`${project.translationKey}_address`)}
+                    </p>
                   </div>
                 </div>
                 );

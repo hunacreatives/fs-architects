@@ -5,9 +5,8 @@ const STEPS = [
   { key: 'discovery', num: '01' },
   { key: 'concept', num: '02' },
   { key: 'design', num: '03' },
-  { key: 'documentation', num: '04' },
-  { key: 'construction', num: '05' },
-  { key: 'completion', num: '06' },
+  { key: 'construction', num: '04' },
+  { key: 'completion', num: '05' },
 ];
 
 export default function DesignProcess() {

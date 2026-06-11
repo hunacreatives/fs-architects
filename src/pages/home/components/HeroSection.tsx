@@ -148,19 +148,18 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             }`}
           >
             <style>{`
-              @keyframes taglineIn {
+              @keyframes taglineWordIn {
                 0%   { opacity: 0; transform: translateY(10px); }
-                18%  { opacity: 1; transform: translateY(0); }
-                82%  { opacity: 1; transform: translateY(0); }
+                20%  { opacity: 1; transform: translateY(0); }
+                80%  { opacity: 1; transform: translateY(0); }
                 100% { opacity: 0; transform: translateY(-6px); }
               }
-              .tagline-cycle {
-                animation: taglineIn ${TAGLINE_CYCLE_MS}ms ease forwards;
+              .tagline-word {
+                display: inline-block;
+                animation: taglineWordIn ${TAGLINE_CYCLE_MS}ms ease forwards;
               }
             `}</style>
             <h1
-              key={taglineIdx}
-              className="tagline-cycle"
               style={{
                 fontFamily: 'Marcellus, serif',
                 fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
@@ -170,7 +169,17 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 color: 'white',
               }}
             >
-              {[t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')][taglineIdx]}
+              {(() => {
+                const lines = [t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')];
+                const [pre, post] = lines[taglineIdx].split(' by ');
+                return (
+                  <>
+                    <span key={`pre-${taglineIdx}`} className="tagline-word">{pre}</span>
+                    <span style={{ opacity: 1 }}>{' by '}</span>
+                    <span key={`post-${taglineIdx}`} className="tagline-word">{post}</span>
+                  </>
+                );
+              })()}
             </h1>
           </div>
 

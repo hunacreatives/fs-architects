@@ -34,3 +34,4 @@ Thumbs.db
 
 # TypeScript auto-generated
 auto-imports.d.ts
+*.mp4

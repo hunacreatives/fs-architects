@@ -141,15 +141,15 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               style={{
                 fontFamily: 'Geist, sans-serif',
                 fontSize: 'clamp(1.2rem, 2.2vw, 2.2rem)',
-                letterSpacing: '0.1em',
+                letterSpacing: '-0.02em',
                 lineHeight: '1.35',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
                 color: 'white',
               }}
             >
-              <span style={{ display: 'block', fontWeight: 600 }}>FS Architects</span>
+              <span style={{ display: 'block', fontWeight: 400 }}>FS Architects</span>
               <span style={{ display: 'block', opacity: 0.7, fontWeight: 300 }}>
-                <span style={{ fontFamily: 'Geist, sans-serif' }}>Form. Space. </span><span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', letterSpacing: '0.04em' }}>Intent.</span>
+                <span style={{ fontFamily: 'Geist, sans-serif' }}>Form. Space. </span><span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic' }}>Intent.</span>
               </span>
             </h1>
           </div>

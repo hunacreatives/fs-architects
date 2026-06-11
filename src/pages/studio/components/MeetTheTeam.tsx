@@ -499,7 +499,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         <p style={{
                           fontFamily: 'Geist, sans-serif',
                           fontSize: '8px',
-                          letterSpacing: '0.28em',
+                          letterSpacing: '0',
                           color: isDimmed ? 'rgba(0,0,0,0.14)' : 'rgba(0,0,0,0.30)',
                           textTransform: 'uppercase',
                           margin: 0,
@@ -542,7 +542,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(17px, 1.8vw, 24px)', letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.90)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
                             {t(activeMember.nameKey)}
                           </h3>
-                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
+                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
                             {t(activeMember.titleKey)}
                           </p>
                           <div style={{ margin: '0 0 32px 0' }}>

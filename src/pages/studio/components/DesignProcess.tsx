@@ -14,7 +14,7 @@ export default function DesignProcess() {
   const { t } = useTranslation();
 
   return (
-    <section id="design-process" style={{ backgroundColor: '#1a2028' }} className="w-full px-8 md:px-16 lg:px-24 py-24">
+    <section id="design-process" style={{ backgroundColor: '#1a2028' }} className="w-full px-4 md:px-16 lg:px-24 py-24">
       {/* Section header */}
       <div className="mb-20">
         <p

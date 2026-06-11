@@ -192,6 +192,13 @@ export default function AboutUs() {
         .logos-active .logo-d6 { animation-delay: 0.72s; }
         .logos-active .logo-d7 { animation-delay: 0.80s; }
         .logos-active .logo-d8 { animation-delay: 0.88s; }
+
+        @media (max-width: 639px) {
+          .logo-text-item {
+            font-size: 10px !important;
+            letter-spacing: 0.14em !important;
+          }
+        }
       `}</style>
 
       {/* ── Sticky hero ── */}
@@ -270,7 +277,7 @@ export default function AboutUs() {
             transform: 'translateY(-50%)',
             willChange: 'opacity, transform',
             opacity: 0,
-            padding: '0 48px',
+            padding: '0 16px',
             zIndex: 2,
           }}
         >
@@ -292,7 +299,7 @@ export default function AboutUs() {
 
           {/* Logos — two balanced rows */}
           {[CLIENT_LOGOS.slice(0, 5), CLIENT_LOGOS.slice(5)].map((row, rowIdx) => (
-            <div key={rowIdx} className={`flex items-center justify-center gap-8 md:gap-12 px-4${rowIdx === 0 ? ' mb-6' : ''}`}>
+            <div key={rowIdx} className={`flex items-center justify-center flex-wrap gap-3 sm:gap-6 md:gap-12 px-4${rowIdx === 0 ? ' mb-4 sm:mb-6' : ''}`}>
               {row.map((client, j) => {
                 const i = rowIdx === 0 ? j : 5 + j;
                 return (
@@ -316,6 +323,7 @@ export default function AboutUs() {
                       />
                     ) : (
                       <span
+                        className="logo-text-item"
                         style={{
                           fontFamily: 'Geist, sans-serif',
                           fontSize: '18px',

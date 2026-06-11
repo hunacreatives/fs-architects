@@ -337,8 +337,11 @@ export default function ProjectInfo({
           </p>
 
           <div
-            className="grid gap-4 md:gap-8"
-            style={{ gridTemplateColumns: `repeat(${Math.min(plans.length, 3)}, 1fr)` }}
+            className={`grid gap-4 md:gap-8 ${
+              plans.length === 1 ? 'grid-cols-1 max-w-xs' :
+              plans.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+              'grid-cols-2 md:grid-cols-3'
+            }`}
           >
             {plans.map((plan, i) => (
               <div

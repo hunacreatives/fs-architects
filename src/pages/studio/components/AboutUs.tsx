@@ -2,17 +2,15 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const CLIENT_LOGOS = [
-  {
-    type: 'image' as const,
-    src: '/images/byd-logo.png',
-    alt: 'BYD',
-  },
-  { type: 'text' as const, label: 'ROSEWOOD' },
-  { type: 'text' as const, label: 'EMAAR' },
-  { type: 'text' as const, label: 'NEOM' },
-  { type: 'text' as const, label: 'ALDAR' },
-  { type: 'text' as const, label: 'MERAAS' },
-  { type: 'text' as const, label: 'NAKHEEL' },
+  { type: 'image' as const, src: '/images/byd-logo.png', alt: 'BYD' },
+  { type: 'text' as const, label: 'DENZA' },
+  { type: 'text' as const, label: 'MALLBERRY' },
+  { type: 'text' as const, label: 'VMC' },
+  { type: 'text' as const, label: 'FOXHOMES' },
+  { type: 'text' as const, label: 'KAWAY RESORT' },
+  { type: 'text' as const, label: 'RAINTREE' },
+  { type: 'text' as const, label: '207 CAFÉ' },
+  { type: 'text' as const, label: 'SQUAREVIEW' },
 ];
 
 function useReveal(threshold = 0.15) {
@@ -93,14 +91,14 @@ export default function AboutUs() {
           quoteRef.current.style.transform = `translateY(-50%) translateY(-${quoteY}px)`;
         }
 
-        // Logos fade in early — starts at 8%, fully visible by ~35%
-        const logosProgress = Math.min(Math.max((y - vh * 0.08) / (vh * 0.22), 0), 1);
+        // Logos track scroll bidirectionally — fade in at 2%, full by ~16%, fade back out on scroll up
+        const logosProgress = Math.min(Math.max((y - vh * 0.02) / (vh * 0.14), 0), 1);
         const logosY = Math.max(0, 36 * (1 - logosProgress));
         if (logosRef.current) {
           logosRef.current.style.opacity = String(logosProgress);
           logosRef.current.style.transform = `translateY(calc(-50% + ${logosY}px))`;
 
-          // Trigger staggered CSS animation once
+          // Trigger staggered CSS animation once on first reveal
           if (logosProgress > 0.12 && !logosActiveRef.current) {
             logosActiveRef.current = true;
             logosRef.current.classList.add('logos-active');
@@ -192,6 +190,8 @@ export default function AboutUs() {
         .logos-active .logo-d4 { animation-delay: 0.55s; }
         .logos-active .logo-d5 { animation-delay: 0.64s; }
         .logos-active .logo-d6 { animation-delay: 0.72s; }
+        .logos-active .logo-d7 { animation-delay: 0.80s; }
+        .logos-active .logo-d8 { animation-delay: 0.88s; }
       `}</style>
 
       {/* ── Sticky hero ── */}
@@ -203,6 +203,9 @@ export default function AboutUs() {
           alt="FS Architects Studio"
           className="w-full h-full object-cover object-center"
         />
+
+        {/* Base dark tint — always present */}
+        <div className="absolute inset-0 bg-black pointer-events-none" style={{ opacity: 0.45 }} />
 
         {/* Dark overlay — deepens on scroll */}
         <div
@@ -263,7 +266,7 @@ export default function AboutUs() {
           ref={logosRef}
           className="absolute left-0 right-0 pointer-events-none flex flex-col items-center"
           style={{
-            top: '50%',
+            top: '44%',
             transform: 'translateY(-50%)',
             willChange: 'opacity, transform',
             opacity: 0,
@@ -287,44 +290,49 @@ export default function AboutUs() {
             Clients we&apos;ve worked with
           </p>
 
-          {/* Logos row */}
-          <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap px-4">
-            {CLIENT_LOGOS.map((client, i) => (
-              <div
-                key={i}
-                className={`logo-item logo-d${i} flex items-center justify-center`}
-                style={{ height: '40px' }}
-              >
-                {client.type === 'image' ? (
-                  <img
-                    src={client.src}
-                    alt={client.alt}
-                    draggable={false}
-                    style={{
-                      height: '44px',
-                      width: 'auto',
-                      filter: 'brightness(0) invert(1)',
-                      opacity: 0.85,
-                      objectFit: 'contain',
-                    }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      fontFamily: 'Geist, sans-serif',
-                      fontSize: '18px',
-                      fontWeight: 700,
-                      letterSpacing: '0.24em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(255,255,255,0.88)',
-                    }}
+          {/* Logos — two balanced rows */}
+          {[CLIENT_LOGOS.slice(0, 5), CLIENT_LOGOS.slice(5)].map((row, rowIdx) => (
+            <div key={rowIdx} className={`flex items-center justify-center gap-8 md:gap-12 px-4${rowIdx === 0 ? ' mb-6' : ''}`}>
+              {row.map((client, j) => {
+                const i = rowIdx === 0 ? j : 5 + j;
+                return (
+                  <div
+                    key={i}
+                    className={`logo-item logo-d${i} flex items-center justify-center`}
+                    style={{ height: '40px' }}
                   >
-                    {client.label}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+                    {client.type === 'image' ? (
+                      <img
+                        src={client.src}
+                        alt={client.alt}
+                        draggable={false}
+                        style={{
+                          height: '44px',
+                          width: 'auto',
+                          filter: 'brightness(0) invert(1)',
+                          opacity: 0.85,
+                          objectFit: 'contain',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          fontFamily: 'Geist, sans-serif',
+                          fontSize: '18px',
+                          fontWeight: 700,
+                          letterSpacing: '0.24em',
+                          textTransform: 'uppercase',
+                          color: 'rgba(255,255,255,0.88)',
+                        }}
+                      >
+                        {client.label}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
 
         </div>
 
@@ -364,7 +372,7 @@ export default function AboutUs() {
               { value: '2021', label: t('studio_founded_label') },
               { value: '100+', label: t('studio_projects_label') },
               { value: '10', label: t('studio_offices_label') },
-              { value: '10', label: t('studio_team_label') },
+              { value: '14', label: t('studio_team_label') },
             ].map(({ value, label }, i) => (
               <div
                 key={label}

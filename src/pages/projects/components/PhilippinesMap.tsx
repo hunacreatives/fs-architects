@@ -1,5 +1,22 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import PhilippinesMapSVG from './PhilippinesMapSVG';
+
+// City → region ID mapping
+const CITY_TO_REGION: Record<string, string> = {
+  Manila:    'PH03',
+  Bataan:    'PH03',
+  Cavite:    'PH40',
+  Bacolod:   'PH06-0',
+  Cebu:      'PH07-4',
+  Butuan:    'PH13',
+  Iligan:    'PH10',
+  CDO:       'PH10',
+  Ozamiz:    'PH10',
+  Tagum:     'PH11',
+  Davao:     'PH11',
+  Zamboanga: 'PH09',
+};
 
 interface FeaturedProject {
   name: string;
@@ -35,17 +52,29 @@ interface LocationPin {
 // Cebu is the fixed reference. All others positioned relative to it.
 // Conversion: 1px ≈ 0.143% x, 0.111% y  (700×900 working space)
 const CITY_PINS: { id: string; label: string; x: number; y: number; goLeft: boolean }[] = [
-  // Manila     — NCR / Manila Bay area, central-west Luzon waist.  +3px down
+  // Manila     — NCR / Manila Bay area, central-west Luzon waist.
   { id: 'Manila',    label: 'Manila',    x: 46.2, y: 42.9, goLeft: true  },
-  // Leyte      — lower on Leyte island, away from Samar.  +4px right, +18px down
-  { id: 'Leyte',     label: 'Leyte',     x: 66.6, y: 58.5, goLeft: false },
+  // Bataan     — Bataan Peninsula, west of Manila across Manila Bay.
+  { id: 'Bataan',    label: 'Bataan',    x: 42.8, y: 41.5, goLeft: true  },
+  // Cavite     — south of Manila, Cavite province.
+  { id: 'Cavite',    label: 'Cavite',    x: 46.5, y: 45.8, goLeft: true  },
+  // Bacolod    — Negros Occidental, western Visayas.
+  { id: 'Bacolod',   label: 'Bacolod',   x: 56.2, y: 62.5, goLeft: true  },
   // Cebu       — FIXED reference, center-right Visayas. DO NOT MOVE.
   { id: 'Cebu',      label: 'Cebu',      x: 61.7, y: 60.9, goLeft: false },
-  // CDO        — north-central Mindanao, shifted right onto landmass.  +6px right
+  // Butuan     — northeast Mindanao, Agusan del Norte.
+  { id: 'Butuan',    label: 'Butuan',    x: 69.2, y: 67.2, goLeft: false },
+  // Iligan     — northwest Mindanao coast, west of CDO.
+  { id: 'Iligan',    label: 'Iligan',    x: 61.5, y: 70.5, goLeft: true  },
+  // CDO        — north-central Mindanao. DO NOT MOVE.
   { id: 'CDO',       label: 'CDO',       x: 63.6, y: 69.7, goLeft: false },
+  // Ozamiz     — Misamis Occidental, nudged right to stay inside PH10 highlight boundary.
+  { id: 'Ozamiz',    label: 'Ozamiz',    x: 60.2, y: 72.0, goLeft: true  },
+  // Tagum      — Davao del Norte, northeast of Davao City.
+  { id: 'Tagum',     label: 'Tagum',     x: 71.2, y: 74.8, goLeft: false },
   // Davao      — FIXED, south-east Mindanao inside island silhouette. DO NOT MOVE.
   { id: 'Davao',     label: 'Davao',     x: 69.4, y: 77.3, goLeft: false },
-  // Zamboanga  — Zamboanga Peninsula on land, correct height.  +6px right
+  // Zamboanga  — Zamboanga Peninsula on land, correct height.
   { id: 'Zamboanga', label: 'Zamboanga', x: 50.6, y: 75.2, goLeft: true  },
 ];
 
@@ -175,6 +204,7 @@ export default function PhilippinesMap({
   // ── Pins visibility for entrance animation ──
   const mapColRef = useRef<HTMLDivElement>(null);
   const [pinsVisible, setPinsVisible] = useState(false);
+  const [hoveredPin, setHoveredPin] = useState<string | null>(null);
 
   useEffect(() => {
     const el = mapColRef.current;
@@ -197,7 +227,7 @@ export default function PhilippinesMap({
     { target: 2021, suffix: '',  label: t('studio_founded_label'), delay: 600  },
     { target: 100,  suffix: '+', label: t('map_project_plural'),   delay: 740  },
     { target: 10,   suffix: '',  label: t('studio_offices_label'), delay: 880  },
-    { target: 5,    suffix: '',  label: t('studio_team_label'),    delay: 1020 },
+    { target: 14,   suffix: '',  label: t('studio_team_label'),    delay: 1020 },
   ];
 
   return (
@@ -232,7 +262,8 @@ export default function PhilippinesMap({
 
         .pin-line {
           transform: scaleX(0);
-          transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+          opacity: 0;
+          transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease;
         }
         .pin-card {
           opacity: 0;
@@ -242,11 +273,11 @@ export default function PhilippinesMap({
           transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
-        /* Desktop only: hover shows card, hides label */
+        /* Card/line visibility controlled via .pin-hovered class set by JS */
         @media (min-width: 768px) {
-          .pin-group:hover .pin-line  { transform: scaleX(1) !important; }
-          .pin-group:hover .pin-card  { opacity: 1 !important; transform: translateX(0) !important; }
-          .pin-group:hover .pin-label { opacity: 0; transform: scale(0.85); }
+          .pin-hovered .pin-line  { transform: scaleX(1) !important; opacity: 1 !important; }
+          .pin-hovered .pin-card  { opacity: 1 !important; transform: translateX(0) !important; }
+          .pin-hovered .pin-label { opacity: 0; transform: scale(0.85); }
         }
 
         /* Mobile: map fills full viewport, no shrinking */
@@ -312,13 +343,10 @@ export default function PhilippinesMap({
           transition: 'opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.25s, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.25s',
         }}
       >
-        {/* Base map image */}
-        <img
-          src="/images/philippines.svg"
-          alt="Philippines Map"
-          className="absolute inset-0 w-full h-full select-none"
-          style={{ objectFit: 'contain', objectPosition: 'center', filter: 'grayscale(1)', opacity: 0.52 }}
-          draggable={false}
+        {/* Interactive inline SVG map */}
+        <PhilippinesMapSVG
+          activeRegions={activeLocation && activeLocation !== 'all' ? [CITY_TO_REGION[activeLocation]].filter(Boolean) : []}
+          hoveredRegion={hoveredPin ? (CITY_TO_REGION[hoveredPin] ?? null) : null}
         />
 
         {/* ── City Pins ── */}
@@ -341,16 +369,19 @@ export default function PhilippinesMap({
           // Staggered entrance: 0.3s base delay + 120ms per pin (geographic order)
           const entranceDelay = 0.3 + index * 0.12;
 
+          const isHovered = hoveredPin === pin.id;
           return (
             <button
               key={pin.id}
               onClick={() => onLocationChange(pin.id)}
-              className="pin-group absolute cursor-pointer"
+              onMouseEnter={() => setHoveredPin(pin.id)}
+              onMouseLeave={() => setHoveredPin(null)}
+              className={`pin-group absolute cursor-pointer${isHovered ? ' pin-hovered' : ''}`}
               style={{
                 left: `${pin.x}%`,
                 top: `${pin.y}%`,
                 transform: 'translate(-50%, -50%)',
-                zIndex: isActive ? 30 : 20,
+                zIndex: isActive ? 30 : isHovered ? 25 : 20,
                 background: 'none',
                 border: 'none',
                 outline: 'none',
@@ -501,21 +532,6 @@ export default function PhilippinesMap({
                 </div>
               )}
 
-              {/* Invisible hit-zone: desktop only — on mobile this blocks neighbouring pins */}
-              <span
-                aria-hidden="true"
-                className="hidden md:block"
-                style={{
-                  position: 'absolute',
-                  top: '-52px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '100px',
-                  height: '66px',
-                  pointerEvents: 'auto',
-                  zIndex: 0,
-                }}
-              />
 
               {/* Active pulse ring */}
               {isActive && <span className="pin-pulse" />}
@@ -523,8 +539,8 @@ export default function PhilippinesMap({
               {/* Hover glow ring */}
               {!isActive && (
                 <span
-                  className="absolute top-1/2 left-1/2 w-8 h-8 rounded-full bg-[#1c2b3a]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ transform: 'translate(-50%, -50%)' }}
+                  className="absolute top-1/2 left-1/2 w-8 h-8 rounded-full bg-[#1c2b3a]/10 transition-opacity duration-300"
+                  style={{ transform: 'translate(-50%, -50%)', opacity: isHovered ? 1 : 0 }}
                 />
               )}
 

@@ -9,9 +9,15 @@ interface HeroSectionProps {
 
 const SLIDES = [
   "/images/hero-slide-1.webp",
-  "/images/hero-slide-2.webp",
-  "/images/hero-slide-3.webp",
-  "/images/hero-slide-4.webp",
+  "/images/projects/mallberry-hero.webp",
+  "/images/projects/abucay-hero.webp",
+  "/images/projects/sorana-island-villas-hero.webp",
+  "/images/projects/byd-iligan-hero.webp",
+  "/images/projects/sytin-projects-hero.webp",
+  "/images/projects/bellarie-office-hero.webp",
+  "/images/projects/palm-sands-hero.webp",
+  "/images/projects/yang-residence-hero.webp",
+  "/images/projects/vmc-admin-hero.webp",
 ];
 
 // Varied Ken Burns directions so each slide feels different
@@ -168,14 +174,17 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             <button
               key={i}
               onClick={() => goToSlide(i)}
-              className="cursor-pointer transition-all duration-500"
-              style={{
-                width: i === activeSlide ? '28px' : '8px',
+              className="cursor-pointer flex items-center justify-center"
+              style={{ width: i === activeSlide ? '28px' : '8px', height: '22px', background: 'none', transition: 'width 500ms' }}
+              aria-label={`Slide ${i + 1}`}
+            >
+              <div style={{
+                width: '100%',
                 height: '2px',
                 backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)',
-              }}
-              aria-label={`Slide ${i + 1}`}
-            />
+                transition: 'background-color 500ms',
+              }} />
+            </button>
           ))}
         </div>
       </div>

@@ -39,7 +39,8 @@ export default function HubLoginPage() {
 
   useEffect(() => {
     if (hubUser) navigate(getHubHomePath(hubUser.role), { replace: true });
-  }, [hubUser, navigate]);
+    else if (!loading && hubUser === null) setLoading(false);
+  }, [hubUser, navigate, loading]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,11 +51,13 @@ export default function HubLoginPage() {
       if (err) {
         setError(err.message || 'Invalid email or password. Please try again.');
         setLoading(false);
+        return;
       }
+      // Success — keep spinner while onAuthStateChange loads the hub profile
     } catch {
       setError('Something went wrong. Please try again.');
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -242,7 +245,7 @@ export default function HubLoginPage() {
 
         {/* Footer */}
         <div className="relative z-10 p-8 md:p-10 form-in" style={{ animationDelay: '0.2s' }}>
-          <p className="text-xs text-white/15">© Sentro OS {new Date().getFullYear()} · by <a href="https://hunacreatives.com" target="_blank" rel="noopener noreferrer" className="hover:text-white/30 transition-colors">Huna Creatives</a></p>
+          <p className="text-xs text-white/15">© Sentro OS {new Date().getFullYear()} · by <a href="https://fsarchitects.ph" target="_blank" rel="noopener noreferrer" className="hover:text-white/30 transition-colors">FS Architects</a></p>
         </div>
       </div>
 

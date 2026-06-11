@@ -100,7 +100,10 @@ export default function SettingsPage() {
           <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-5">
             <h3 className="font-semibold text-[#111827]">Profile Information</h3>
             <div className="flex items-center gap-4">
-              <img src={user?.avatar_url || ''} alt="" className="w-16 h-16 rounded-full object-cover object-top" />
+              {user?.avatar_url
+                ? <img src={user.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover object-top" />
+                : <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-500">{user?.full_name?.[0]}</div>
+              }
               <div>
                 <p className="text-sm font-medium text-[#111827]">{user?.full_name}</p>
                 <p className="text-xs text-gray-400 capitalize">{user?.role} · {user?.department}</p>
@@ -124,7 +127,7 @@ export default function SettingsPage() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Slack Username</label>
+                <label className="text-xs font-medium text-gray-700">Phone Number</label>
                 <input value={profileForm.slack_username} onChange={(e) => setProfileForm({ ...profileForm, slack_username: e.target.value })}
                   placeholder="@username"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
@@ -167,9 +170,9 @@ export default function SettingsPage() {
               <h3 className="font-semibold text-[#111827]">System Info</h3>
               <div className="space-y-3">
                 {[
-                  { label: 'Platform', value: 'Huna Hub' },
+                  { label: 'Platform', value: 'FS Hub' },
                   { label: 'Version', value: '1.0.0' },
-                  { label: 'Agency', value: 'Huna Creatives' },
+                  { label: 'Agency', value: 'FS Architects' },
                   { label: 'Timezone', value: 'Asia/Manila (PHT)' },
                   { label: 'Cutoff Period', value: '1st–15th / 16th–EOM' },
                   { label: 'Default Currency', value: 'PHP' },
@@ -192,7 +195,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between py-3 border-b border-white/10">
                   <div>
                     <p className="text-sm font-medium text-white">Role switcher toolbar</p>
-                    <p className="text-xs text-gray-400 mt-0.5">The floating bar at the bottom that switches between Owner / Admin / Contractor views</p>
+                    <p className="text-xs text-gray-400 mt-0.5">The floating bar at the bottom that switches between Owner / Admin / Employee views</p>
                   </div>
                   <button
                     onClick={async () => {

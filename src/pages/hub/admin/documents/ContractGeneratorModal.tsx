@@ -43,12 +43,12 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
 <div class="page">
   <div class="header">
     <div class="logo-block">
-      <img src="${logoData}" alt="Huna Creatives" />
-      <div class="logo-tagline">Let's bring your <em>hunahuna</em> to life.</div>
+      <img src="${logoData}" alt="FS Architects" />
+      <div class="logo-tagline">Let's bring your <em>architecture</em> to life.</div>
     </div>
     <div class="header-contact">
       (032) 505 6921 | +63 952 447 2602<br />
-      contact@hunacreatives.com<br />
+      contact@fsarchitects.ph<br />
       Cebu, Philippines, 6004
     </div>
   </div>
@@ -59,7 +59,7 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
   <hr class="divider" style="margin-top:28pt;" />
   <div class="sig-grid">
     <div>
-      <p><strong>Huna Creatives</strong><br />("Client")</p>
+      <p><strong>FS Architects</strong><br />("Client")</p>
       <div style="height:44pt;display:flex;align-items:flex-end;padding-bottom:0;margin-top:16pt;">
         <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
       </div>
@@ -98,11 +98,11 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   const commissionSection = hasCommission ? `
   <hr class="divider" />
   <div class="section-title">10. Performance-Based Commission – ${commissionClient}</div>
-  <p>10.1 In recognition of the Contractor's role with <strong>${commissionClient}</strong>, the Contractor shall be entitled to a <strong>${commissionPercent}% commission</strong> derived from <strong>performance-based commissions actually received by Huna Creatives</strong> under its agreement with ${commissionClient}.</p>
-  <p>10.2 The commission shall be calculated <strong>solely on amounts received by Huna Creatives</strong>, and not on gross sales, gross revenue, or client-side net profit.</p>
+  <p>10.1 In recognition of the Contractor's role with <strong>${commissionClient}</strong>, the Contractor shall be entitled to a <strong>${commissionPercent}% commission</strong> derived from <strong>performance-based commissions actually received by FS Architects</strong> under its agreement with ${commissionClient}.</p>
+  <p>10.2 The commission shall be calculated <strong>solely on amounts received by FS Architects</strong>, and not on gross sales, gross revenue, or client-side net profit.</p>
   <p>10.3 The Contractor shall have <strong>no direct contractual relationship or claim</strong> against ${commissionClient}.</p>
-  <p>10.4 Commission eligibility applies only while the Contractor is <strong>actively engaged</strong> with Huna Creatives and providing services related to ${commissionClient}.</p>
-  <p>10.5 Commission payouts shall be settled on a <strong>monthly basis</strong>, aligned with Huna Creatives' receipt of commission payments.</p>
+  <p>10.4 Commission eligibility applies only while the Contractor is <strong>actively engaged</strong> with FS Architects and providing services related to ${commissionClient}.</p>
+  <p>10.5 Commission payouts shall be settled on a <strong>monthly basis</strong>, aligned with FS Architects' receipt of commission payments.</p>
   <p>10.6 No commission shall be due on refunded, reversed, disputed, unpaid, or cancelled transactions, or after termination of this Agreement.</p>
   <p>10.7 This commission is a <strong>performance-based incentive</strong> and does not form part of the Contractor's guaranteed compensation.</p>` : '';
 
@@ -137,12 +137,12 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
 <div class="page">
   <div class="header">
     <div class="logo-block">
-      <img src="${logoData}" alt="Huna Creatives" />
-      <div class="logo-tagline">Let's bring your <em>hunahuna</em> to life.</div>
+      <img src="${logoData}" alt="FS Architects" />
+      <div class="logo-tagline">Let's bring your <em>architecture</em> to life.</div>
     </div>
     <div class="header-contact">
       (032) 505 6921 | +63 952 447 2602<br />
-      contact@hunacreatives.com<br />
+      contact@fsarchitects.ph<br />
       Cebu, Philippines, 6004
     </div>
   </div>
@@ -150,21 +150,21 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
 
   <div class="doc-title">Independent Contractor Agreement</div>
   <p>This Independent Contractor Agreement ("Agreement") is made and entered into effective <strong>${fmt(effectiveDate)}</strong>, by and between:</p>
-  <p><strong>Huna Creatives</strong>, represented by <strong>Francis Fiel Roble</strong> ("Client"),</p>
+  <p><strong>FS Architects</strong>, represented by <strong>Francis Fiel Roble</strong> ("Client"),</p>
   <p>and <strong>${contractorName}</strong> ("Contractor").</p>
   <hr class="divider" />
 
   <div class="section-title">1. Scope of Work</div>
   <div class="sub-title">1.1 Primary Role</div>
-  <p>The Contractor's <strong>primary role</strong> shall be to serve as <strong>${role}</strong> for <strong>${primaryClient}</strong>, a client of Huna Creatives. Responsibilities may include, but are not limited to:</p>
+  <p>The Contractor's <strong>primary role</strong> shall be to serve as <strong>${role}</strong> for <strong>${primaryClient}</strong>, a client of FS Architects. Responsibilities may include, but are not limited to:</p>
   <ul>${respItems}</ul>
 
   ${addItems ? `<div class="sub-title">1.2 Additional Client Support</div>
-  <p>In addition to the primary role, the Contractor may also provide creative support services for <strong>Huna Creatives and its other clients</strong>, including but not limited to:</p>
+  <p>In addition to the primary role, the Contractor may also provide creative support services for <strong>FS Architects and its other clients</strong>, including but not limited to:</p>
   <ul>${addItems}</ul>` : ''}
 
   <div class="sub-title">${addItems ? '1.3' : '1.2'} General Duties</div>
-  <p>The Contractor agrees to perform tasks reasonably related to the scope above, consistent with the Contractor's skills, as assigned by Huna Creatives.</p>
+  <p>The Contractor agrees to perform tasks reasonably related to the scope above, consistent with the Contractor's skills, as assigned by FS Architects.</p>
 
   <div class="sub-title">${addItems ? '1.4' : '1.3'} Coordination</div>
   <p>The Contractor shall coordinate directly with the Client or a designated supervisor regarding deliverables, priorities, and timelines.</p>
@@ -174,7 +174,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   ${isFlexible ? `
   <p>2.1 The Contractor shall work on a <strong>flexible, as-needed basis</strong>, rendering services based on project requirements and mutual availability. There is no fixed minimum number of hours per day or days per week.</p>
   <p>2.2 The Contractor is expected to communicate availability in advance and remain responsive via Slack or email during agreed working windows.</p>
-  <p>2.3 Specific project timelines, deadlines, and deliverable windows will be communicated by Huna Creatives as work arises.</p>
+  <p>2.3 Specific project timelines, deadlines, and deliverable windows will be communicated by FS Architects as work arises.</p>
   ` : `
   <p>2.1 The Contractor shall be <strong>primarily available</strong> to render services for up to <strong>${hoursPerDay} hours per day</strong>, <strong>${workDays.length} days per week</strong> (${workDays.join(', ')}), based on agreed priorities and deliverables.</p>
   <p>2.2 Standard working hours shall follow the <strong>${shiftTime}</strong>, unless otherwise agreed in writing.</p>
@@ -187,7 +187,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <div class="sub-title">3.1 Hourly Rate</div>
   <p>Effective <strong>${fmt(effectiveDate)}</strong>, the Contractor shall be compensated at a rate of <strong>₱${rate} PHP per hour</strong> for all approved hours rendered.</p>
   <div class="sub-title">3.2 Hour Logging</div>
-  <p>The Contractor is responsible for accurately logging all hours worked through Huna Creatives' designated attendance system. Hours must be submitted and approved prior to payment processing.</p>
+  <p>The Contractor is responsible for accurately logging all hours worked through FS Architects' designated attendance system. Hours must be submitted and approved prior to payment processing.</p>
   <div class="sub-title">3.3 Payment Schedule</div>
   <p>Payments shall be made on a <strong>${paymentSchedule}</strong>, based on approved hours logged during the pay period.</p>
   <div class="sub-title">3.4 Adjustments</div>
@@ -208,40 +208,40 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <hr class="divider" />
 
   <div class="section-title">4. Tools &amp; Resources</div>
-  <p>Huna Creatives shall provide the Contractor with access to necessary tools and subscriptions required for work, which may include but are not limited to:</p>
+  <p>FS Architects shall provide the Contractor with access to necessary tools and subscriptions required for work, which may include but are not limited to:</p>
   <ul>${toolItems}</ul>
-  <p>All tools remain the property of Huna Creatives and are to be used solely for authorized work purposes.</p>
+  <p>All tools remain the property of FS Architects and are to be used solely for authorized work purposes.</p>
   <hr class="divider" />
 
   <div class="section-title">5. Discretionary Paid Time Away (PTA)</div>
-  <p>5.1 As a <strong>courtesy benefit voluntarily extended by Huna Creatives</strong>, the Contractor may be granted up to <strong>${ptaDays} days of Paid Time Away (PTA) per calendar year</strong>, effective after <strong>six (6) months</strong> of continuous engagement.</p>
-  <p>5.2 PTA is <strong>not an entitlement</strong>, does not form part of the Contractor's service fee, and is provided solely as a goodwill benefit at the discretion of Huna Creatives.</p>
+  <p>5.1 As a <strong>courtesy benefit voluntarily extended by FS Architects</strong>, the Contractor may be granted up to <strong>${ptaDays} days of Paid Time Away (PTA) per calendar year</strong>, effective after <strong>six (6) months</strong> of continuous engagement.</p>
+  <p>5.2 PTA is <strong>not an entitlement</strong>, does not form part of the Contractor's service fee, and is provided solely as a goodwill benefit at the discretion of FS Architects.</p>
   <p>5.3 PTA may be taken in increments, provided that <strong>no more than three (3) PTA days may be used within any rolling two-month period</strong>. PTA may not be taken consecutively beyond this limit unless expressly approved in writing.</p>
   <p>5.4 PTA requests must be submitted at least <strong>one (1) week in advance</strong>, except in cases of emergency or illness, and remain subject to approval based on operational needs.</p>
   <p>5.5 Unused PTA credits do not carry over and automatically expire at the end of each calendar year.</p>
-  <p>5.6 Huna Creatives reserves the right to modify, suspend, or withdraw this discretionary benefit at any time.</p>
+  <p>5.6 FS Architects reserves the right to modify, suspend, or withdraw this discretionary benefit at any time.</p>
   <hr class="divider" />
 
   <div class="section-title">6. Sick Leave</div>
   <p>6.1 The Contractor is entitled to <strong>${sickDays} days of paid sick leave per calendar year</strong>, effective upon the start of engagement.</p>
   <p>6.2 Sick leave is intended for use when the Contractor is genuinely ill or unwell and unable to render services. It is <strong>not interchangeable with PTA</strong> or other leave types.</p>
   <p>6.3 The Contractor must notify the Client or designated supervisor <strong>as early as possible</strong> on the day of absence, or in advance when foreseeable.</p>
-  <p>6.4 Huna Creatives may request reasonable documentation (e.g., a medical certificate) for sick leave absences exceeding two (2) consecutive days.</p>
+  <p>6.4 FS Architects may request reasonable documentation (e.g., a medical certificate) for sick leave absences exceeding two (2) consecutive days.</p>
   <p>6.5 Unused sick leave credits do not carry over and automatically expire at the end of each calendar year.</p>
   <p>6.6 Sick leave taken beyond the allotted days will be treated as unpaid leave or deducted proportionally from the Contractor's monthly service fee.</p>
   <hr class="divider" />
 
   <div class="section-title">7. Confidentiality</div>
-  <p>The Contractor agrees to maintain strict confidentiality over all proprietary, sensitive, and client-related information obtained during the engagement. No materials, strategies, files, or information may be shared or reused without prior written consent from Huna Creatives.</p>
+  <p>The Contractor agrees to maintain strict confidentiality over all proprietary, sensitive, and client-related information obtained during the engagement. No materials, strategies, files, or information may be shared or reused without prior written consent from FS Architects.</p>
   <hr class="divider" />
 
   <div class="section-title">8. Non-Compete &amp; Conflict of Interest</div>
-  <p>The Contractor agrees not to engage in work for <strong>direct competitors of Huna Creatives</strong> or participate in activities that create a conflict of interest during the term of this Agreement, without prior written approval.</p>
+  <p>The Contractor agrees not to engage in work for <strong>direct competitors of FS Architects</strong> or participate in activities that create a conflict of interest during the term of this Agreement, without prior written approval.</p>
   <hr class="divider" />
 
   <div class="section-title">9. Ownership of Work</div>
-  <p>9.1 All creative output, designs, content, and materials produced during this engagement shall be the <strong>exclusive property of Huna Creatives and/or its clients</strong>.</p>
-  <p>9.2 The Contractor may not use, repurpose, or redistribute such materials without prior written consent from Huna Creatives.</p>
+  <p>9.1 All creative output, designs, content, and materials produced during this engagement shall be the <strong>exclusive property of FS Architects and/or its clients</strong>.</p>
+  <p>9.2 The Contractor may not use, repurpose, or redistribute such materials without prior written consent from FS Architects.</p>
   <hr class="divider" />
 
   <div class="section-title">10. Communication &amp; Remote Work Expectations</div>
@@ -257,7 +257,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <hr class="divider" />
 
   <div class="section-title">${sectionNum(12)}. Independent Contractor Status</div>
-  <p>The Contractor is engaged as an independent contractor and not as an employee, agent, or partner of Huna Creatives. The Contractor is solely responsible for all applicable taxes, government contributions, and other obligations arising from this engagement. Nothing in this Agreement shall be construed to create an employer-employee relationship.</p>
+  <p>The Contractor is engaged as an independent contractor and not as an employee, agent, or partner of FS Architects. The Contractor is solely responsible for all applicable taxes, government contributions, and other obligations arising from this engagement. Nothing in this Agreement shall be construed to create an employer-employee relationship.</p>
   <hr class="divider" />
 
   <div class="section-title">${sectionNum(13)}. Governing Law</div>
@@ -268,7 +268,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <p>By signing below, both parties acknowledge that they have read, understood, and agreed to the terms of this Agreement.</p>
   <div class="sig-grid">
     <div>
-      <p><strong>Huna Creatives</strong><br />("Client")</p>
+      <p><strong>FS Architects</strong><br />("Client")</p>
       <div style="height:44pt;display:flex;align-items:flex-end;padding-bottom:0;margin-top:16pt;">
         <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
       </div>
@@ -520,7 +520,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     value={customBody}
                     onChange={e => setCustomBody(e.target.value)}
                     rows={18}
-                    placeholder={"Type or paste your contract here...\n\nSeparate paragraphs with a blank line.\n\nThe Huna Creatives header and signature block are added automatically."}
+                    placeholder={"Type or paste your contract here...\n\nSeparate paragraphs with a blank line.\n\nThe FS Architects header and signature block are added automatically."}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] font-mono resize-y"
                   />
                   <p className="text-xs text-gray-400 mt-1">Blank line = new paragraph. Header + signature block added automatically.</p>

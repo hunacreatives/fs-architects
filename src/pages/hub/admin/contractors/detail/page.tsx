@@ -271,7 +271,7 @@ export default function ContractorDetailPage() {
 
   if (loading) {
     return (
-      <AdminLayout title="Contractor Detail">
+      <AdminLayout title="Employee Detail">
         <div className="flex items-center justify-center h-48">
           <i className="ri-loader-4-line animate-spin text-2xl text-gray-400"></i>
         </div>
@@ -282,7 +282,7 @@ export default function ContractorDetailPage() {
   if (!contractor) {
     return (
       <AdminLayout title="Not Found">
-        <p className="text-gray-500">Contractor not found.</p>
+        <p className="text-gray-500">Employee not found.</p>
       </AdminLayout>
     );
   }
@@ -811,7 +811,7 @@ export default function ContractorDetailPage() {
                   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                       <div>
-                        <p className="text-white font-bold text-base">Huna Creatives</p>
+                        <p className="text-white font-bold text-base">FS Architects</p>
                         <p className="text-white/40 text-xs mt-0.5">Contractor Payment Summary</p>
                       </div>
                       <div className="text-right">
@@ -822,7 +822,7 @@ export default function ContractorDetailPage() {
 
                     <div className="px-6 py-4 border-b border-gray-50 grid grid-cols-2 sm:grid-cols-3 gap-4">
                       <div>
-                        <p className="text-xs text-gray-400 mb-0.5">Contractor</p>
+                        <p className="text-xs text-gray-400 mb-0.5">Employee</p>
                         <p className="text-sm font-semibold text-gray-900">{contractor?.full_name}</p>
                         {(contractor as any)?.department && <p className="text-xs text-gray-400">{(contractor as any).department}</p>}
                       </div>

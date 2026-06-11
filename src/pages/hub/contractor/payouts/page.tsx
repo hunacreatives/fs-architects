@@ -112,10 +112,10 @@ function generatePayslipHTML(opts: {
   <!-- Letterhead -->
   <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #FF6B35;margin-bottom:28px;">
     <div style="display:flex;align-items:center;gap:14px;">
-      <img src="${logoUrl}" alt="Huna Creatives" style="height:44px;width:auto;object-fit:contain;" />
+      <img src="${logoUrl}" alt="FS Architects" style="height:44px;width:auto;object-fit:contain;" />
       <div>
-        <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">Huna Creatives</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · hunacreatives.com</div>
+        <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">FS Architects</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · fsarchitects.ph</div>
       </div>
     </div>
     <div style="text-align:right;">
@@ -129,17 +129,17 @@ function generatePayslipHTML(opts: {
   <div style="background:#f9fafb;border-left:3px solid #FF6B35;padding:14px 16px;border-radius:0 8px 8px 0;margin-bottom:28px;">
     <p style="font-size:12px;color:#374151;line-height:1.7;">
       <strong>To Whom It May Concern:</strong><br>
-      This is to certify that <strong>${name}</strong>${department ? `, assigned to the <strong>${department}</strong> department,` : ''} is an active independent contractor of <strong>Huna Creatives</strong>, a creative agency based in Cebu, Philippines. This document serves as an official record of compensation rendered for the pay period indicated below, and may be used for financial, banking, or institutional purposes.
+      This is to certify that <strong>${name}</strong>${department ? `, assigned to the <strong>${department}</strong> department,` : ''} is an active employee of <strong>FS Architects</strong>, a creative agency based in Cebu, Philippines. This document serves as an official record of compensation rendered for the pay period indicated below, and may be used for financial, banking, or institutional purposes.
     </p>
   </div>
 
-  <!-- Contractor + Period info -->
+  <!-- Employee + Period info -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:28px;">
     <div>
-      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Contractor</div>
+      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Employee</div>
       <div style="font-size:15px;font-weight:700;color:#111827;">${name}</div>
       ${department ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${department}</div>` : ''}
-      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Independent Contractor</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Employee</div>
     </div>
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Pay Period</div>
@@ -229,14 +229,14 @@ function generatePayslipHTML(opts: {
     <div>
       <div style="border-top:1.5px solid #374151;padding-top:8px;margin-top:48px;">
         <div style="font-size:12px;font-weight:700;color:#111827;">Francis Fiel Roble</div>
-        <div style="font-size:11px;color:#6b7280;">Owner, Huna Creatives</div>
+        <div style="font-size:11px;color:#6b7280;">Owner, FS Architects</div>
         <div style="font-size:11px;color:#6b7280;">Date: ${generatedDate}</div>
       </div>
     </div>
     <div>
       <div style="border-top:1.5px solid #d1d5db;padding-top:8px;margin-top:48px;">
         <div style="font-size:12px;font-weight:700;color:#111827;">${name}</div>
-        <div style="font-size:11px;color:#6b7280;">Independent Contractor</div>
+        <div style="font-size:11px;color:#6b7280;">Employee</div>
         <div style="font-size:11px;color:#6b7280;">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
       </div>
     </div>
@@ -245,11 +245,11 @@ function generatePayslipHTML(opts: {
   <!-- Footer -->
   <div style="border-top:1px solid #f0f0f0;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-start;">
     <div style="font-size:10px;color:#9ca3af;max-width:420px;line-height:1.7;">
-      This document is an officially issued payslip by Huna Creatives. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
-      <br>For verification, contact us at <strong>hunacreatives.com</strong>.
+      This document is an officially issued payslip by FS Architects. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
+      <br>For verification, contact us at <strong>fsarchitects.ph</strong>.
     </div>
     <div style="text-align:right;">
-      <img src="${logoUrl}" alt="Huna Creatives" style="height:28px;width:auto;opacity:0.3;" />
+      <img src="${logoUrl}" alt="FS Architects" style="height:28px;width:auto;opacity:0.3;" />
     </div>
   </div>
 
@@ -537,8 +537,8 @@ export default function ContractorPayoutsPage() {
               {/* Payslip header */}
               <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                 <div>
-                  <p className="text-white font-bold text-base">Huna Creatives</p>
-                  <p className="text-white/40 text-xs mt-0.5">Contractor Payment Summary</p>
+                  <p className="text-white font-bold text-base">FS Architects</p>
+                  <p className="text-white/40 text-xs mt-0.5">Employee Payment Summary</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[#FF6B35] font-bold text-sm tracking-widest">PAYSLIP</p>
@@ -546,10 +546,10 @@ export default function ContractorPayoutsPage() {
                 </div>
               </div>
 
-              {/* Contractor info row */}
+              {/* Employee info row */}
               <div className="px-6 py-4 border-b border-gray-50 grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Contractor</p>
+                  <p className="text-xs text-gray-400 mb-0.5">Employee</p>
                   <p className="text-sm font-semibold text-gray-900">{hubUser?.full_name}</p>
                   {(hubUser as any)?.department && <p className="text-xs text-gray-400">{(hubUser as any).department}</p>}
                 </div>

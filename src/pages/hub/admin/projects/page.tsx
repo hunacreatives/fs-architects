@@ -38,15 +38,15 @@ const fmtDate = (d: string | null | undefined, fallback = '—') => {
 };
 
 const serviceCfg: Record<string, { border: string; dot: string; badge: string }> = {
-  'Website Design':           { border: 'border-l-sky-400',     dot: 'bg-sky-400',     badge: 'bg-sky-50 text-sky-700' },
-  'Website Maintenance':      { border: 'border-l-cyan-400',    dot: 'bg-cyan-400',    badge: 'bg-cyan-50 text-cyan-700' },
-  'Branding & Identity':      { border: 'border-l-violet-400',  dot: 'bg-violet-400',  badge: 'bg-violet-50 text-violet-700' },
+  'Architectural Design':           { border: 'border-l-sky-400',     dot: 'bg-sky-400',     badge: 'bg-sky-50 text-sky-700' },
+  'Construction Documents':      { border: 'border-l-cyan-400',    dot: 'bg-cyan-400',    badge: 'bg-cyan-50 text-cyan-700' },
+  'Interior Design':      { border: 'border-l-violet-400',  dot: 'bg-violet-400',  badge: 'bg-violet-50 text-violet-700' },
   'Graphic Design':           { border: 'border-l-pink-400',    dot: 'bg-pink-400',    badge: 'bg-pink-50 text-pink-700' },
-  'Social Media Management':  { border: 'border-l-orange-400',  dot: 'bg-orange-400',  badge: 'bg-orange-50 text-orange-700' },
-  'Content Creation':         { border: 'border-l-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700' },
+  'Site Planning':  { border: 'border-l-orange-400',  dot: 'bg-orange-400',  badge: 'bg-orange-50 text-orange-700' },
+  'Feasibility Study':         { border: 'border-l-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700' },
   'SEO':                      { border: 'border-l-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700' },
-  'Digital Ads':              { border: 'border-l-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-50 text-rose-700' },
-  'Email Marketing':          { border: 'border-l-indigo-400',  dot: 'bg-indigo-400',  badge: 'bg-indigo-50 text-indigo-700' },
+  'Project Management':              { border: 'border-l-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-50 text-rose-700' },
+  'Renovation':          { border: 'border-l-indigo-400',  dot: 'bg-indigo-400',  badge: 'bg-indigo-50 text-indigo-700' },
   'Other':                    { border: 'border-l-gray-300',    dot: 'bg-gray-300',    badge: 'bg-gray-50 text-gray-500' },
 };
 const getServiceCfg = (service: string | null) => serviceCfg[service ?? ''] ?? serviceCfg['Other'];
@@ -137,8 +137,8 @@ export default function AdminProjectsPage() {
   });
 
   // Project form
-  const SERVICES = ['Website Design', 'Website Maintenance', 'Branding & Identity', 'Graphic Design', 'Social Media Management', 'Content Creation', 'SEO', 'Digital Ads', 'Email Marketing', 'Marketing', 'Other'];
-  const emptyForm = { project_type: 'client' as 'client' | 'internal' | 'retainer', client_name: '', project_name: '', service: 'Website Design', contract_price: '', monthly_rate: '', monthly_rate_currency: 'PHP' as 'PHP' | 'USD', status: 'ongoing', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
+  const SERVICES = ['Architectural Design', 'Interior Design', 'Structural Design', 'Construction Documents', 'Project Management', 'Feasibility Study', 'Site Planning', 'Renovation', 'Consultation', 'Other'];
+  const emptyForm = { project_type: 'client' as 'client' | 'internal' | 'retainer', client_name: '', project_name: '', service: 'Architectural Design', contract_price: '', monthly_rate: '', monthly_rate_currency: 'PHP' as 'PHP' | 'USD', status: 'ongoing', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -901,7 +901,7 @@ export default function AdminProjectsPage() {
       : null;
     const d = derived(project);
     const fmt2 = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const logoUrl = 'https://www.fsarchitects.ph/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
     const invNum = overrides?.invoice_number || String(project.id).padStart(4,'0');
     const billToName = overrides?.bill_to_name || project.client_name;
     const billToAddress = overrides?.bill_to_address?.trim() || '';
@@ -973,9 +973,9 @@ ${customMsg ? `<div style="background:#fffbf5;border:1px solid #fed7aa;border-ra
 <div class="meta">
   <div class="meta-col">
     <div class="eyebrow">From</div>
-    <div class="title">Huna Creatives</div>
-    <div class="line">billing@hunacreatives.com
-www.hunacreatives.com</div>
+    <div class="title">FS Architects</div>
+    <div class="line">billing@fsarchitects.ph
+www.fsarchitects.ph</div>
   </div>
   <div class="meta-col right">
     <div class="eyebrow">Bill To</div>
@@ -1009,7 +1009,7 @@ ${balanceDue > 0 && payUrl ? `
   <a href="${payUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#111827;color:#ffffff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:9px;text-decoration:none;">Pay Now →</a>
 </div>` : ''}
 ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;margin-top:16px">${project.notes}</p>` : ''}
-<div class="footer">This email is not being monitored. Please do not reply directly. If you have questions, contact contact@hunacreatives.com.</div>
+<div class="footer">This email is not being monitored. Please do not reply directly. If you have questions, contact contact@fsarchitects.ph.</div>
 </div>
 </div>
 <script>window.onload=function(){setTimeout(function(){window.print()},400)}</script>
@@ -1110,10 +1110,8 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
     else { setWorkspaceOpen(false); }
     setOpenSections({});
     if (activeId) setTimeout(() => detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-    // Sync URL
-    if (activeId) setSearchParams({ w: String(activeId) }, { replace: true });
-    else setSearchParams({}, { replace: true });
-  }, [activeId, isDemo, setSearchParams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, isDemo]);
 
   // Open workspace directly if ?w= param is set on initial load only
   const didInitWorkspace = useRef(false);
@@ -1748,7 +1746,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)' }}>
                   <p className="text-[11px] text-violet-200 uppercase tracking-widest font-semibold">Monthly Retainer</p>
                   <p className="text-[22px] font-bold text-white mt-1.5 leading-none">{fmt(summaryTotals.mrr)}</p>
-                  <p className="text-xs text-violet-200 mt-1.5">{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length} active client{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-violet-200 mt-1.5">{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length} active contract{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length !== 1 ? 's' : ''}</p>
                 </div>
               )}
               <div className="rounded-2xl p-5 bg-white border border-gray-100">
@@ -1837,7 +1835,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             <button onClick={() => { setEditingProject(null); setForm({ ...emptyForm, project_type: 'retainer' }); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
               <i className="ri-add-line text-sm"></i>
-              <span className="hidden sm:inline">Add Client</span>
+              <span className="hidden sm:inline">Add Contract</span>
             </button>
             <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-[#111827] text-white text-sm rounded-lg hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap">
@@ -1915,7 +1913,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               </div>
               </div>
             )}
-          {/* ── Retainer Clients section ── */}
+          {/* ── Ongoing Contracts section ── */}
           {!activeClientId && !(activeId && projects.find(p => p.id === activeId && p.project_type !== 'retainer')) && (() => {
             // Merge retainer projects + hub_clients, dedup by client_name
             const retainerNames = new Set([
@@ -1934,7 +1932,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 style={{ background: 'rgba(30,40,70,0.06)', borderTop: '1px solid rgba(30,40,70,0.10)' }}>
                 <div className="flex items-center gap-2">
                   <i className="ri-building-line text-[#FF6B35] text-sm"></i>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Retainer Clients <span className="text-gray-400 font-normal">({totalCount})</span></p>
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Ongoing Contracts <span className="text-gray-400 font-normal">({totalCount})</span></p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {/* Retainer projects — clickable */}
@@ -2020,11 +2018,11 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
               <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#111827]">{editingClient ? 'Edit Client' : 'New Client'}</h2>
+                <h2 className="font-semibold text-[#111827]">{editingClient ? 'Edit Contract' : 'New Contract'}</h2>
                 <button onClick={() => { setShowClientModal(false); setEditingClient(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer"><i className="ri-close-line text-lg"></i></button>
               </div>
               <div className="p-5 space-y-3">
-                {[['Client Name', 'client_name', 'text', 'e.g. Blue Collar Nutrition'], ['Platform', 'platform', 'text', 'e.g. Meta, Google, TikTok'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, ph]) => (
+                {[['Client Name', 'client_name', 'text', 'e.g. Ayala Land, SM Prime'], ['Platform', 'platform', 'text', 'e.g. Meta, Google, TikTok'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, ph]) => (
                   <div key={field} className="space-y-1">
                     <label className="text-xs font-medium text-gray-700">{label}</label>
                     <input type={type} value={(clientForm as any)[field]} onChange={e => setClientForm(f => ({ ...f, [field]: e.target.value }))} placeholder={ph}
@@ -2053,7 +2051,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <button onClick={() => { setShowClientModal(false); setEditingClient(null); }} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer">Cancel</button>
                 <button onClick={saveClient} disabled={clientSaving || !clientForm.client_name.trim()}
                   className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-40 cursor-pointer">
-                  {clientSaving ? 'Saving...' : editingClient ? 'Save Changes' : 'Add Client'}
+                  {clientSaving ? 'Saving...' : editingClient ? 'Save Changes' : 'Add Contract'}
                 </button>
               </div>
             </div>
@@ -2253,7 +2251,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     {/* Retainer payment history bar */}
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>Client payments</span>
+                        <span>Project payments</span>
                         <span>{d.monthsCollected ?? 0} month{(d.monthsCollected ?? 0) !== 1 ? 's' : ''} · {fmt(d.totalPaid)} collected</span>
                       </div>
                       <div className="h-2 bg-white/60 rounded-full overflow-hidden border border-white/55">
@@ -2276,7 +2274,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     {/* Collection progress */}
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>Client payments</span>
+                        <span>Project payments</span>
                         <span>{fmt(d.totalPaid)} of {fmt(activeProject.contract_price)}</span>
                       </div>
                       <div className="h-2 bg-white/60 rounded-full overflow-hidden border border-white/55">
@@ -2387,7 +2385,6 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                             <select value={payCurrency} onChange={e => setPayCurrency(e.target.value as 'PHP' | 'USD')}
                               className="px-2 py-1.5 text-xs border border-gray-200 rounded-l-lg focus:outline-none bg-gray-50 border-r-0">
                               <option value="PHP">₱</option>
-                              <option value="USD">$</option>
                             </select>
                             <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="Amount"
                               className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
@@ -2784,65 +2781,18 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
       {/* Project form modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h2 className="font-semibold text-[#111827]">{editingProject ? 'Edit Project' : 'New Project'}</h2>
-              <div className="flex items-center gap-2">
-                {!editingProject && (
-                  <>
-                    <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
-                      <i className={`${importing ? 'ri-loader-4-line animate-spin' : 'ri-sparkling-2-line'} text-sm text-indigo-500`}></i>
-                      {importing ? 'Reading…' : 'Import from file'}
-                      <input type="file" className="hidden" accept=".pdf,.csv,.txt,.png,.jpg,.jpeg"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setImporting(true);
-                          try {
-                            const buffer = await file.arrayBuffer();
-                            const bytes = new Uint8Array(buffer);
-                            let binary = '';
-                            bytes.forEach(b => binary += String.fromCharCode(b));
-                            const file_base64 = btoa(binary);
-                            const { data, error } = await supabase.functions.invoke('parse-project-doc', {
-                              body: { file_base64, mime_type: file.type, file_name: file.name },
-                            });
-                            if (error || !data) throw new Error(error?.message ?? 'No data returned');
-                            setForm(f => ({
-                              ...f,
-                              project_name: data.project_name ?? f.project_name,
-                              client_name: data.client_name ?? f.client_name,
-                              project_type: data.project_type ?? f.project_type,
-                              service: data.service ?? f.service,
-                              contract_price: data.contract_price != null ? String(data.contract_price) : f.contract_price,
-                              monthly_rate: data.monthly_rate != null ? String(data.monthly_rate) : (f as any).monthly_rate,
-                              start_date: data.start_date ?? f.start_date,
-                              deadline: data.deadline ?? f.deadline,
-                              notes: data.notes ?? f.notes,
-                            } as any));
-                            if (data.tasks?.length) setImportedTasks(data.tasks);
-                          } catch (err) {
-                            setFormError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-                          } finally {
-                            setImporting(false);
-                            e.target.value = '';
-                          }
-                        }}
-                      />
-                    </label>
-                  </>
-                )}
-                <button onClick={() => { setShowForm(false); setEditingProject(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center"><i className="ri-close-line text-lg"></i></button>
-              </div>
+              <button onClick={() => { setShowForm(false); setEditingProject(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center"><i className="ri-close-line text-lg"></i></button>
             </div>
             <div className="p-5 space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Project Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'client',   label: 'One-time',   sub: 'Fixed contract billing' },
-                    { value: 'retainer', label: 'Retainer', sub: 'Monthly recurring' },
-                    { value: 'internal', label: 'Internal', sub: 'Tasks & team only' },
+                    { value: 'client',   label: 'Fixed Contract', sub: 'Fixed fee project' },
+                    { value: 'internal', label: 'Internal',       sub: 'Tasks & team only' },
                   ].map(option => (
                     <button
                       key={option.value}
@@ -2858,13 +2808,13 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">{form.project_type === 'internal' ? 'Owner / Label' : 'Client Name'}{form.project_type !== 'internal' ? ' *' : ''}</label>
-                  <input value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} placeholder={form.project_type === 'internal' ? 'e.g. Internal, Marketing, Ops' : 'e.g. FS Architects'}
+                  <label className="text-xs font-medium text-gray-700">{form.project_type === 'internal' ? 'Owner / Label' : 'Client / Developer'}{form.project_type !== 'internal' ? ' *' : ''}</label>
+                  <input value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} placeholder={form.project_type === 'internal' ? 'e.g. Internal, R&D' : 'e.g. Ayala Land, SM Prime'}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Project Name *</label>
-                  <input value={form.project_name} onChange={e => setForm({ ...form, project_name: e.target.value })} placeholder="e.g. fsarchitects.ph"
+                  <input value={form.project_name} onChange={e => setForm({ ...form, project_name: e.target.value })} placeholder="e.g. Eastwood Mall Renovation"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
               </div>
@@ -2896,7 +2846,6 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <select value={(form as any).monthly_rate_currency} onChange={e => setForm({ ...form, monthly_rate_currency: e.target.value } as any)}
                         className="px-2.5 py-2 text-sm border border-gray-200 rounded-l-lg focus:outline-none bg-gray-50 border-r-0 text-gray-600">
                         <option value="PHP">₱ PHP</option>
-                        <option value="USD">$ USD</option>
                       </select>
                       <input type="number" value={(form as any).monthly_rate} onChange={e => setForm({ ...form, monthly_rate: e.target.value } as any)} placeholder="0.00"
                         className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
@@ -2943,7 +2892,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               </div>
               {(form.project_type === 'client' || form.project_type === 'retainer') && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Client Contact Email <span className="text-gray-400 font-normal">(for invoices)</span></label>
+                  <label className="text-xs font-medium text-gray-700">Client Contact Email <span className="text-gray-400 font-normal">(optional)</span></label>
                   <input type="email" value={form.contact_email} onChange={e => setForm({ ...form, contact_email: e.target.value })} placeholder="client@email.com"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
@@ -3134,7 +3083,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-600">Message <span className="text-gray-400 font-normal">(optional note to client)</span></label>
                 <textarea value={invoiceForm.message} onChange={e => setIf({ message: e.target.value })} rows={3}
-                  placeholder="e.g. Thank you for your continued trust in Huna Creatives. Please find your invoice below."
+                  placeholder="e.g. Thank you for your continued trust in FS Architects. Please find your invoice below."
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
               </div>
               {/* Balance summary */}
@@ -3218,7 +3167,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-600">CC <span className="text-gray-400">(optional)</span></label>
                 <input type="email" value={sendReceiptCc} onChange={e => setSendReceiptCc(e.target.value)}
-                  placeholder="e.g. team@hunacreatives.com"
+                  placeholder="e.g. team@fsarchitects.ph"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
               </div>
 

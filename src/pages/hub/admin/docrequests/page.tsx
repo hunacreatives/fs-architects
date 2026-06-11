@@ -87,7 +87,7 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
               rows={3}
               value={adminNotes}
               onChange={e => setAdminNotes(e.target.value)}
-              placeholder="Add notes for the contractor..."
+              placeholder="Add notes for the employee..."
               maxLength={500}
             />
           </div>

@@ -120,6 +120,39 @@ export default function ContactFooter({ hideContactBar = false }: ContactFooterP
         </div>
 
       </div>
+
+      {/* Divider */}
+      <div className="w-full px-4 md:px-20 lg:px-28">
+        <div className="h-px bg-black/10 w-full" />
+      </div>
+
+      {/* Bottom bar */}
+      <div className="w-full px-4 md:px-20 lg:px-28 py-3 lg:py-4 flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-1 sm:gap-2">
+        <a
+          href="https://hunacreatives.com"
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          className="text-black/20 text-[11px] hover:text-black/45 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+        >
+          {t('footer_website_by')} Huna Creatives
+        </a>
+        <div className="flex items-center gap-4">
+          <a
+            href="/privacy"
+            className="text-black/20 text-[11px] hover:text-black/45 transition-colors duration-300"
+            style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+          >
+            Privacy Notice
+          </a>
+          <p
+            className="text-black/20 text-[11px]"
+            style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+          >
+            © {new Date().getFullYear()} FS Architects. All Rights Reserved.
+          </p>
+        </div>
+      </div>
     </footer>
   );
 }

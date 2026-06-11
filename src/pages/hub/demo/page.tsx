@@ -30,7 +30,7 @@ export default function HubDemoPage() {
           <div className="w-14 h-14 rounded-3xl bg-[#FF6B35] text-white flex items-center justify-center shadow-lg shadow-orange-200 mb-4">
             <img src="/s-logo.png" alt="S" className="w-8 h-8 object-contain" style={{ filter: 'invert(1)' }} />
           </div>
-          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-semibold">Huna Ops</p>
+          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-semibold">FS Architects</p>
           <h1 className="text-2xl font-bold text-gray-800">Sentro</h1>
           <p className="text-sm text-gray-400 mt-1">Interactive Demo</p>
         </div>
@@ -68,7 +68,7 @@ export default function HubDemoPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">Sentro by Huna Creatives · Demo Mode</p>
+        <p className="text-center text-xs text-gray-300 mt-6">Sentro by FS Architects · Demo Mode</p>
       </div>
     </div>
   );

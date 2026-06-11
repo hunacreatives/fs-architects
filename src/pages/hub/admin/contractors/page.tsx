@@ -119,14 +119,14 @@ export default function ContractorsPage() {
 
   return (
     <AdminLayout
-      title="Contractors"
+      title="Employees"
       actions={
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-1.5 bg-[#FF6B35] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#e55a27] transition-colors cursor-pointer whitespace-nowrap"
         >
           <i className="ri-user-add-line text-sm"></i>
-          Add Contractor
+          Add Member
         </button>
       }
     >
@@ -234,7 +234,7 @@ export default function ContractorsPage() {
         ) : filtered.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
             <i className="ri-user-search-line text-3xl text-gray-200 block mb-2"></i>
-            <p className="text-sm text-gray-400">No contractors found</p>
+            <p className="text-sm text-gray-400">No employees found</p>
           </div>
         ) : (
           <div className="bg-white border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">

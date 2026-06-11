@@ -211,7 +211,7 @@ export default function AdminPerformancePage() {
               onChange={e => setFilterContractor(e.target.value)}
               className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white"
             >
-              <option value="">All contractors</option>
+              <option value="">All employees</option>
               {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
             <span className="text-xs text-gray-400">{filtered.length} review{filtered.length !== 1 ? 's' : ''}</span>
@@ -247,7 +247,7 @@ export default function AdminPerformancePage() {
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-gray-100 bg-gray-50">
-                                {['Contractor', 'Overall', 'Attendance', 'Quality', 'Communication', 'Initiative', 'Reviewed by', ''].map(h => (
+                                {['Employee', 'Overall', 'Attendance', 'Quality', 'Communication', 'Initiative', 'Reviewed by', ''].map(h => (
                                   <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-2.5 whitespace-nowrap">{h}</th>
                                 ))}
                               </tr>
@@ -313,10 +313,10 @@ export default function AdminPerformancePage() {
             <form onSubmit={handleSubmit} className="p-5 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1 col-span-2">
-                  <label className="text-xs font-medium text-gray-700">Contractor *</label>
+                  <label className="text-xs font-medium text-gray-700">Employee *</label>
                   <select required value={form.contractor_id} onChange={e => setF({ contractor_id: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                    <option value="">Select contractor...</option>
+                    <option value="">Select employee...</option>
                     {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                   </select>
                 </div>
@@ -360,7 +360,7 @@ export default function AdminPerformancePage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Strengths</label>
                 <textarea value={form.strengths} onChange={e => setF({ strengths: e.target.value })} rows={2}
-                  placeholder="What this contractor does well..."
+                  placeholder="What this employee does well..."
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
               </div>
 
@@ -372,7 +372,7 @@ export default function AdminPerformancePage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Internal Notes <span className="text-gray-400 font-normal">(not shown to contractor)</span></label>
+                <label className="text-xs font-medium text-gray-700">Internal Notes <span className="text-gray-400 font-normal">(not shown to employee)</span></label>
                 <textarea value={form.notes} onChange={e => setF({ notes: e.target.value })} rows={2}
                   placeholder="Private notes for admin..."
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />

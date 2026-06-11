@@ -226,7 +226,10 @@ export default function AdminDashboardPage() {
     }
     const fetchAll = async () => {
       const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, usdRateStr, invResult, linkResult, payoutsResult] = await Promise.all([
-        supabase.functions.invoke('slack-attendance'),
+        supabase.from('hub_attendance_punches')
+          .select('user_id, type, punched_at, hub_users(id, full_name, avatar_url, department)')
+          .eq('date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })())
+          .order('punched_at', { ascending: true }),
         supabase.from('hub_announcements').select('*, hub_users(full_name)').order('created_at', { ascending: false }).limit(4),
         supabase.from('hub_requests').select('*, hub_users(full_name, avatar_url)').in('status', ['open', 'in_review']).order('created_at', { ascending: false }),
         supabase.from('hub_time_off').select('*, hub_users(full_name, avatar_url)').eq('status', 'pending').order('created_at', { ascending: false }),
@@ -240,8 +243,35 @@ export default function AdminDashboardPage() {
         supabase.from('hub_payouts').select('contractor_id, adjustments').eq('cutoff_start', cutoffStart),
       ]);
 
-      if (!slackResult.error && slackResult.data?.attendance) {
-        setAttendance(slackResult.data.attendance);
+      if (!slackResult.error && slackResult.data) {
+        const allPunches: any[] = slackResult.data;
+        const punchMap: Record<string, any[]> = {};
+        for (const p of allPunches) {
+          if (!punchMap[p.user_id]) punchMap[p.user_id] = [];
+          punchMap[p.user_id].push(p);
+        }
+        const userMap: Record<string, any> = {};
+        for (const p of allPunches) { if (p.hub_users) userMap[p.user_id] = p.hub_users; }
+        // Also include users with no punches (absent)
+        for (const c of (contractorsResult.data ?? []) as any[]) {
+          if (!userMap[c.id]) userMap[c.id] = c;
+        }
+        const records = Object.entries(userMap).map(([uid, u]: [string, any]) => {
+          const punches = punchMap[uid] ?? [];
+          const last = punches[punches.length - 1] ?? null;
+          return {
+            hub_user_id: uid,
+            full_name: u.full_name,
+            avatar_url: u.avatar_url ?? null,
+            department: u.department ?? null,
+            status: punches.length === 0 ? 'absent' : last?.type === 'in' ? 'on' : 'off',
+            last_punch: last?.punched_at ?? null,
+            hours_today: 0,
+            overtime_today: 0,
+            punches: [],
+          };
+        });
+        setAttendance(records);
       }
 
       let hrs = 0;
@@ -605,7 +635,7 @@ export default function AdminDashboardPage() {
               </p>
               <h2 className="text-xl font-bold">{greeting}, team.</h2>
               <p className="text-white/60 text-sm mt-1">
-                {counts.on > 0 ? `${counts.on} contractor${counts.on > 1 ? 's' : ''} online right now.` : 'No one online yet today.'}
+                {counts.on > 0 ? `${counts.on} employee${counts.on > 1 ? 's' : ''} in the office today.` : 'No one clocked in yet today.'}
               </p>
             </div>
             {/* Payroll period card */}
@@ -699,7 +729,7 @@ export default function AdminDashboardPage() {
         {show('kpi') && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Online Now', value: counts.on, icon: 'ri-user-follow-line', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: 'In Office', value: counts.on, icon: 'ri-user-follow-line', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
               { label: 'Logged Off', value: counts.off, icon: 'ri-user-unfollow-line', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-100' },
               { label: 'Not In Yet', value: counts.absent, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
               { label: 'Cutoff Hours', value: `${totalHours}h`, icon: 'ri-bar-chart-2-line', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100' },
@@ -729,7 +759,7 @@ export default function AdminDashboardPage() {
                   <div className="mb-4">
                     <p className="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                      Online
+                      In Office Now
                     </p>
                     <div className="space-y-2">
                       {onlineList.map(r => (
@@ -1033,7 +1063,7 @@ export default function AdminDashboardPage() {
                 <h3 className="font-semibold text-[#111827] text-sm mb-3">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Add Contractor', icon: 'ri-user-add-line', path: '/hub/admin/contractors', color: 'text-[#FF6B35]', bg: 'bg-[#FF6B35]/5 hover:bg-[#FF6B35]/10' },
+                    { label: 'Add Member', icon: 'ri-user-add-line', path: '/hub/admin/contractors', color: 'text-[#FF6B35]', bg: 'bg-[#FF6B35]/5 hover:bg-[#FF6B35]/10' },
                     { label: 'View Attendance', icon: 'ri-time-line', path: '/hub/admin/attendance', color: 'text-sky-600', bg: 'bg-sky-50 hover:bg-sky-100' },
                     { label: 'Post Announcement', icon: 'ri-megaphone-line', path: '/hub/admin/announcements', color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100' },
                     { label: 'Run Payroll', icon: 'ri-money-dollar-circle-line', path: '/hub/admin/payroll', color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100' },

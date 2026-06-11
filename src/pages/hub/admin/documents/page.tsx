@@ -58,7 +58,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes</label>
-            <textarea className={`${inputCls} resize-none`} rows={3} value={adminNotes} onChange={e => setAdminNotes(e.target.value)} placeholder="Add notes for the contractor…" maxLength={500} />
+            <textarea className={`${inputCls} resize-none`} rows={3} value={adminNotes} onChange={e => setAdminNotes(e.target.value)} placeholder="Add notes for the employee..." maxLength={500} />
           </div>
           <div className="border-t border-gray-100 pt-3">
             <p className="text-xs font-medium text-gray-600 mb-2">Upload Document Link</p>

@@ -64,113 +64,303 @@ const translations = {
   footer_privacy: '隐私政策',
   footer_terms: '使用条款',
 
-  // ── Project 1: Metropolitan Healthcare Center ──
-  proj_metropolitan_healthcare_center_name: '大都会医疗中心',
-  proj_metropolitan_healthcare_center_address: '马尼拉大都会马卡蒂市',
-  proj_metropolitan_healthcare_center_category: '医疗',
-  proj_metropolitan_healthcare_center_description: '大都会医疗中心重新定义了菲律宾医疗建筑的标准。该设施以患者为中心的设计理念，将自然采光、生物亲和元素与直观的导视系统融为一体，形成统一的建筑语言。洁白的外立面与宽阔的玻璃幕墙营造出开阔宁静的氛围，有效缓解了临床环境中常见的焦虑感。从双层通高中庭到景观疗愈花园，每一处细节都旨在同时支持患者康复与员工身心健康。',
-  proj_metropolitan_healthcare_center_fp0: '首层平面图',
-  proj_metropolitan_healthcare_center_fp1: '二层平面图',
-  proj_metropolitan_healthcare_center_fp2: '三层平面图',
 
-  // ── Project 2: Coastal Resort & Spa ──
-  proj_coastal_resort_spa_name: '海岸度假村与水疗中心',
-  proj_coastal_resort_spa_address: '莱特省',
-  proj_coastal_resort_spa_category: '酒店',
-  proj_coastal_resort_spa_description: '这座度假村与水疗中心坐落于莱特岛原始海岸线旁，是建筑与自然和谐共生的典范。设计从菲律宾本土建筑传统中汲取灵感——架空结构、编织屏风与深远挑檐——以当代极简主义的视角重新诠释。每栋别墅均朝向海风方向，精心框取海洋景观。水疗馆掩映于成熟椰林之中，采用当地石材与回收木材，营造出沉稳奢华的氛围。',
-  proj_coastal_resort_spa_fp0: '总平面图',
-  proj_coastal_resort_spa_fp1: '别墅平面图',
-  proj_coastal_resort_spa_fp2: '水疗馆平面图',
+  // ── Mallberry Platinum Hall & Lounge ──
+  proj_mallberry_platinum_hall_lounge_name: 'Mallberry铂金宴会厅与休息室',
+  proj_mallberry_platinum_hall_lounge_address: '卡加延德奥罗市',
+  proj_mallberry_platinum_hall_lounge_category: '室内设计',
+  proj_mallberry_platinum_hall_lounge_description: 'Mallberry铂金宴会厅与休息室是位于卡加延德奥罗市Mallberry购物中心内的高端活动场所与休息室。设计营造出精致的氛围，适合企业活动、社交聚会及私人庆典，在奢华细节与多功能场地需求之间取得平衡。材料搭配以丰富的质感与温暖的重点照明为主，打造出既高雅又温馨的室内环境。',
+  proj_mallberry_platinum_hall_lounge_quote: '"休息室不仅仅是一个房间——它是目的地与抵达之间的停顿，设计让这一刻值得铭记。"',
 
-  // ── Project 3: Urban Living Complex ──
-  proj_urban_living_complex_name: '城市生活综合体',
-  proj_urban_living_complex_address: '宿务市',
-  proj_urban_living_complex_category: '综合体',
-  proj_urban_living_complex_description: '宿务市城市生活综合体代表了菲律宾高密度城市开发的全新模式。项目将住宅塔楼、商业裙楼与公共广场整合为一个统一的城市街区。立面系统——由预制混凝土板与内凹阳台构成的模块化网格——形成富有韵律的肌理，既回应热带气候，又保持鲜明的建筑个性。街道层面，连续的骑楼激活公共空间，为行人提供遮阴。',
-  proj_urban_living_complex_fp0: '首层平面图',
-  proj_urban_living_complex_fp1: '标准住宅层平面图',
-  proj_urban_living_complex_fp2: '裙楼层平面图',
+  // ── Abucay Beach House ──
+  proj_abucay_beach_house_name: 'Abucay海滨别墅',
+  proj_abucay_beach_house_address: '巴丹省阿布凯',
+  proj_abucay_beach_house_category: '住宅',
+  proj_abucay_beach_house_description: 'Abucay海滨别墅是一处私人住宅，坐落于巴丹省阿布凯的海岸线上。设计融入滨海环境，在室内生活空间与周围景观之间建立对话——引入海风、自然光以及对海湾的全景视野。材料搭配以温暖的木质色调与简洁的现代线条相结合，将居所根植于场地之中，同时以静默的方式展现建筑形式的自信。',
+  proj_abucay_beach_house_quote: '"海滨别墅不是远离大海的避难所——它是通向大海的门槛，设计让每个清晨都像一次抵达。"',
 
-  // ── Project 4: Tech Hub Office Tower ──
-  proj_tech_hub_office_tower_name: '科技枢纽办公塔楼',
-  proj_tech_hub_office_tower_address: '塔吉格BGC',
-  proj_tech_hub_office_tower_category: '办公',
-  proj_tech_hub_office_tower_description: '科技枢纽办公塔楼矗立于博尼法西奥全球城天际线之上，是菲律宾科技产业的地标建筑。双层玻璃幕墙作为热缓冲层，在保持城市全景视野的同时显著降低太阳辐射热。室内每隔五层设置空中花园，为使用者提供非正式协作空间与生物亲和的休憩场所。首层设计为可渗透的公共空间，模糊了企业内部与BGC活力街道之间的边界。',
-  proj_tech_hub_office_tower_fp0: '首层平面图',
-  proj_tech_hub_office_tower_fp1: '标准办公层平面图',
-  proj_tech_hub_office_tower_fp2: '空中花园层平面图',
+  // ── 阿米莉亚美甲沙龙 ──
+  proj_amelia_nail_salon_name: '阿米莉亚美甲沙龙',
+  proj_amelia_nail_salon_address: '卡加延德奥罗市',
+  proj_amelia_nail_salon_category: '室内设计',
+  proj_amelia_nail_salon_description: '阿米莉亚美甲沙龙是一个精品美容空间，专为精准与宁静而设计。室内采用柔和的中性色调、温暖的质感和精心的照明，打造一个以工艺为核心的环境。',
+  proj_amelia_nail_salon_quote: '"美甲沙龙不仅仅是一个美容场所——它是一种自我关爱的仪式，通过承载它的空间品质而令人难忘。"',
 
-  // ── Project 5: Hillside Residences ──
-  proj_hillside_residences_name: '山坡住宅',
-  proj_hillside_residences_address: '达沃市',
-  proj_hillside_residences_category: '住宅',
-  proj_hillside_residences_description: '山坡住宅俯瞰达沃市，依托自然地形而建。建筑群以层叠梯田式布局排列，最大限度减少土方工程，保留现有树冠。每个单元均设有宽敞的私人露台，朝向城市与远处阿波火山的轮廓。材料调色板——模板混凝土、耐候钢与当地硬木——经岁月沉淀愈发厚重，与自然景观的联结也随之加深。',
-  proj_hillside_residences_fp0: '总平面图',
-  proj_hillside_residences_fp1: '单元平面图',
-  proj_hillside_residences_fp2: '露台层平面图',
+  // ── 巴科洛德展厅 ──
+  proj_bacolod_showroom_name: '巴科洛德展厅',
+  proj_bacolod_showroom_address: '巴科洛德市',
+  proj_bacolod_showroom_category: '零售',
+  proj_bacolod_showroom_description: '巴科洛德展厅是一个当代零售空间，旨在以简洁、精致的环境展示产品。',
+  proj_bacolod_showroom_quote: '"展厅是一个舞台——产品是主角，建筑退居幕后成为完美的背景。"',
 
-  // ── Project 6: Lifestyle Shopping District ──
-  proj_lifestyle_shopping_district_name: '生活方式购物街区',
-  proj_lifestyle_shopping_district_address: '卡加延德奥罗市',
-  proj_lifestyle_shopping_district_category: '零售',
-  proj_lifestyle_shopping_district_description: '卡加延德奥罗生活方式购物街区为现代菲律宾消费者重新构想了零售体验。项目摒弃传统封闭式商场，以互联展馆、广场与景观步道构成开放式街区。建筑从城市丰富的文化遗产中汲取灵感，将本土工艺传统融入当代建筑元素。中央水景与成熟树冠共同营造出微气候，使户外购物在热带炎热中依然舒适宜人。',
-  proj_lifestyle_shopping_district_fp0: '总平面图',
-  proj_lifestyle_shopping_district_fp1: '首层平面图',
-  proj_lifestyle_shopping_district_fp2: '上层平面图',
+  // ── BC CDO ──
+  proj_bc_cdo_name: 'BC CDO',
+  proj_bc_cdo_address: '卡加延德奥罗市',
+  proj_bc_cdo_category: '综合用途',
+  proj_bc_cdo_description: 'BC CDO是一个综合用途开发项目，位于卡加延德奥罗市，在连贯的建筑框架内整合商业和社区功能。',
+  proj_bc_cdo_quote: '"最持久的建筑是那些服务街道的程度不亚于服务租户的建筑——在归属于一座城市的行为中找到意义。"',
 
-  // ── Project 7: Executive Suite Interiors ──
-  proj_executive_suite_interiors_name: '行政套房室内设计',
-  proj_executive_suite_interiors_address: '马卡蒂市',
-  proj_executive_suite_interiors_category: '室内设计',
-  proj_executive_suite_interiors_description: '这一为马卡蒂某领先金融机构打造的行政套房室内项目，充分展现了工作室在企业室内设计上的理念：严谨、精炼、深思熟虑。设计任务书要求空间既能彰显权威与自信，又保持温暖的人性尺度。方案采用深色胡桃木、拉丝黄铜与磨光大理石的克制调色板，点缀以精心甄选的菲律宾当代艺术作品。定制木作与专属家具确保每一元素都精准契合客户需求。',
-  proj_executive_suite_interiors_fp0: '行政层平面图',
-  proj_executive_suite_interiors_fp1: '董事会层平面图',
-  proj_executive_suite_interiors_fp2: '接待区与休息室',
+  // ── BYD CDO ──
+  proj_byd_cdo_name: 'BYD CDO',
+  proj_byd_cdo_address: '卡加延德奥罗市',
+  proj_byd_cdo_category: '零售',
+  proj_byd_cdo_description: 'BYD CDO是一座汽车展厅，旨在体现比亚迪品牌的前瞻性形象。',
+  proj_byd_cdo_quote: '"汽车展厅是一个静止的运动承诺——在为停顿而建的空间里捕捉运动本质的建筑。"',
 
-  // ── Project 8: Waterfront Villas ──
-  proj_waterfront_villas_name: '滨水别墅',
-  proj_waterfront_villas_address: '三宝颜市',
-  proj_waterfront_villas_category: '住宅',
-  proj_waterfront_villas_description: '三宝颜滨水别墅是一组私人住宅，旨在颂扬三宝颜半岛非凡的自然环境。每栋别墅均独立选址，以最大化私密性与景观视野，建筑形态回应各地块的具体条件。设计语言植根于当地查瓦卡诺文化遗产，以当代手法重新诠释拱形柱廊、赤陶屋瓦与郁郁葱葱的庭院花园。最终呈现出一组既超越时间又深深扎根于所在之地的住宅。',
-  proj_waterfront_villas_fp0: '总平面图',
-  proj_waterfront_villas_fp1: '首层平面图',
-  proj_waterfront_villas_fp2: '上层平面图',
+  // ── BYD他古姆 ──
+  proj_byd_tagum_name: 'BYD他古姆',
+  proj_byd_tagum_address: '他古姆市，达沃德尔诺特',
+  proj_byd_tagum_category: '零售',
+  proj_byd_tagum_description: 'BYD他古姆将比亚迪汽车品牌带到他古姆市，展厅设计追求清晰与冲击感。',
+  proj_byd_tagum_quote: '"每个品牌都有其空间语言。展厅的作用是流利地说出这种语言——让访客在看到产品之前就感受到品牌的价值观。"',
 
-  // ── Project 9: City Medical Plaza ──
-  proj_city_medical_plaza_name: '城市医疗广场',
-  proj_city_medical_plaza_address: '宿务市',
-  proj_city_medical_plaza_category: '医疗',
-  proj_city_medical_plaza_description: '宿务市城市医疗广场是一座综合性门诊医疗设施，旨在满足米沙鄢地区日益增长的医疗需求。建筑围绕中央中庭组织，作为主要导视轴线，将自然光引入平面深处，为患者与访客创造清晰、无压力的环境。外立面采用穿孔铝板遮阳系统，在过滤强烈热带阳光的同时，保持与周边城市环境的通透感与联系。',
-  proj_city_medical_plaza_fp0: '首层平面图',
-  proj_city_medical_plaza_fp1: '二层平面图',
-  proj_city_medical_plaza_fp2: '中庭剖面图',
+  // ── BYD三宝颜 ──
+  proj_byd_zamboanga_name: 'BYD三宝颜',
+  proj_byd_zamboanga_address: '三宝颜市',
+  proj_byd_zamboanga_category: '零售',
+  proj_byd_zamboanga_description: 'BYD三宝颜是服务于棉兰老岛西部地区的汽车设施。',
+  proj_byd_zamboanga_quote: '"品牌建筑是一种翻译形式——将公司的身份转化为墙壁、光线和尺度。"',
 
-  // ── Project 10: Boutique Hotel Downtown ──
-  proj_boutique_hotel_downtown_name: '市中心精品酒店',
-  proj_boutique_hotel_downtown_address: '马尼拉',
-  proj_boutique_hotel_downtown_category: '酒店',
-  proj_boutique_hotel_downtown_description: '这家精品酒店位于马尼拉历史中心，占据一栋经过精心修复的历史建筑，并附有当代后翼扩建。项目在保护与创新之间寻求平衡——保留原建筑华丽的外立面与高挑的室内空间，同时在扩建部分引入鲜明属于当代的建筑语言。48间客房各具特色，每间均从马尼拉丰富而多层次的历史中汲取灵感进行设计。',
-  proj_boutique_hotel_downtown_fp0: '首层平面图',
-  proj_boutique_hotel_downtown_fp1: '标准客房层平面图',
-  proj_boutique_hotel_downtown_fp2: '屋顶层平面图',
+  // ── 钟诊所 ──
+  proj_chiong_clinic_name: '钟诊所',
+  proj_chiong_clinic_address: '卡加延德奥罗市',
+  proj_chiong_clinic_category: '医疗',
+  proj_chiong_clinic_description: '钟诊所是一家医疗机构，旨在为患者和医疗从业者提供平静、专业的环境。',
+  proj_chiong_clinic_quote: '"最好的医疗环境在治疗开始之前就已经开始治愈——通过光线的质量、移动的便利和有序空间的宁静。"',
 
-  // ── Project 11: Innovation Campus ──
-  proj_innovation_campus_name: '创新园区',
-  proj_innovation_campus_address: '达沃市',
-  proj_innovation_campus_category: '综合体',
-  proj_innovation_campus_description: '达沃创新园区是专为研究、科技与创意产业打造的专属环境。总体规划将一系列灵活的实验室与工作室建筑围绕中央绿轴布置，促进偶发性相遇与跨学科协作。建筑风格刻意低调——作为其中工作与人群的背景——以清水混凝土、耐候钢与大面积玻璃构成统一的材料语言。覆盖式步行连廊将所有建筑相连，在热带雨季提供遮蔽，同时保持与景观的紧密联系。',
-  proj_innovation_campus_fp0: '总体规划图',
-  proj_innovation_campus_fp1: '实验楼平面图',
-  proj_innovation_campus_fp2: '工作室楼平面图',
+  // ── 邱办公室 ──
+  proj_chiu_office_name: '邱办公室',
+  proj_chiu_office_address: '卡加延德奥罗市',
+  proj_chiu_office_category: '办公',
+  proj_chiu_office_description: '邱办公室是一个私人商业办公空间，专为专注工作和专业会面而设计。',
+  proj_chiu_office_quote: '"办公室不仅仅是一个工作场所——它是对你是谁、你重视什么的每日宣言，通过空间变得有形。"',
 
-  // ── Project 12: Corporate Headquarters ──
-  proj_corporate_headquarters_name: '企业总部',
-  proj_corporate_headquarters_address: '马卡蒂市',
-  proj_corporate_headquarters_category: '办公',
-  proj_corporate_headquarters_description: '这座为菲律宾领先企业集团打造的总部大楼，是机构自信与建筑雄心的宣言。建筑独特的形态——锥形塔楼与雕塑感冠顶——在马卡蒂天际线上树立了新地标。外立面由集成太阳能遮阳翼的单元式幕墙系统构成，在不损害建筑视觉存在感的前提下实现高水平的能源性能。室内设计与客户密切协作完成，体现了企业的核心价值：创新、诚信与菲律宾自豪感。',
-  proj_corporate_headquarters_fp0: '首层平面图',
-  proj_corporate_headquarters_fp1: '标准办公层平面图',
-  proj_corporate_headquarters_fp2: '行政层平面图',
+  // ── 达沃展厅 ──
+  proj_davao_showroom_name: '达沃展厅',
+  proj_davao_showroom_address: '达沃市',
+  proj_davao_showroom_category: '零售',
+  proj_davao_showroom_description: '达沃展厅是一个零售目的地，专为服务达沃市充满活力的商业环境而设计。',
+  proj_davao_showroom_quote: '"最好的零售建筑让浏览的行为感觉像是一种乐趣，而不是一项任务——将商业转化为体验的空间。"',
+
+  // ── Foxhome项目 ──
+  proj_foxhome_name: 'Foxhome项目',
+  proj_foxhome_address: '卡加延德奥罗市',
+  proj_foxhome_category: '住宅',
+  proj_foxhome_description: 'Foxhome项目代表了一系列为卡加延德奥罗不断增长的住房市场开发的住宅设计。',
+  proj_foxhome_quote: '"家是所有建筑类型中最私人的——一个人生命中必须承载不仅是身体，还有记忆、抱负和归属感的建筑。"',
+
+  // ── 卡威度假村 ──
+  proj_kaway_resort_name: '卡威度假村',
+  proj_kaway_resort_address: '卡加延德奥罗市',
+  proj_kaway_resort_category: '酒店',
+  proj_kaway_resort_description: '卡威度假村是一个酒店项目，其特色源于其所在地的自然景观。',
+  proj_kaway_resort_quote: '"当客人忘记自己在建筑中时，度假村才算成功——当建筑融入景观，剩下的只有抵达的感觉。"',
+
+  // ── 棕榈公寓 ──
+  proj_palm_residences_name: '棕榈公寓',
+  proj_palm_residences_address: '卡加延德奥罗市',
+  proj_palm_residences_category: '住宅',
+  proj_palm_residences_description: '棕榈公寓是一个住宅开发项目，旨在经过精心规划的社区内提供优质生活。',
+  proj_palm_residences_quote: '"伟大的住宅建筑不仅仅提供住所——它创造了精彩生活的条件，一个社区一个社区，一个单元一个单元。"',
+
+  // ── 棕榈沙滩泳池与休息室 ──
+  proj_palm_sands_name: '棕榈沙滩泳池与休息室',
+  proj_palm_sands_address: '卡加延德奥罗市',
+  proj_palm_sands_category: '酒店',
+  proj_palm_sands_description: '棕榈沙滩泳池与休息室是一个休闲和酒店空间，专为放松和社交聚会而设计。',
+  proj_palm_sands_quote: '"水与建筑始终说着同一种语言——反射、深度，以及水面捕捉光线的永恒乐趣。"',
+
+  // ── RC曼达尼阁楼 ──
+  proj_rc_mandani_loft_name: 'RC曼达尼阁楼',
+  proj_rc_mandani_loft_address: '宿务曼达维市',
+  proj_rc_mandani_loft_category: '住宅',
+  proj_rc_mandani_loft_description: 'RC曼达尼阁楼是一个住宅室内项目，位于宿务曼达尼湾开发区内。',
+  proj_rc_mandani_loft_quote: '"阁楼不只是一个平面图——它是楼层之间的垂直对话，在日常与高处之间，在庇护所与天空之间。"',
+
+  // ── 罗萨莱斯住宅 ──
+  proj_rosales_residence_name: '罗萨莱斯住宅',
+  proj_rosales_residence_address: '卡加延德奥罗市',
+  proj_rosales_residence_category: '住宅',
+  proj_rosales_residence_description: '罗萨莱斯住宅是一座私人家庭住宅，专为满足居住者的特定需求和场地条件而设计。',
+  proj_rosales_residence_quote: '"私宅是建筑与人类生活最直接的相遇——在这里，我们是谁最清楚地反映在我们所建造的东西上。"',
+
+  // ── 广场视野 ──
+  proj_squareview_name: '广场视野',
+  proj_squareview_address: '卡加延德奥罗市',
+  proj_squareview_category: '综合用途',
+  proj_squareview_description: '广场视野是一个综合用途开发项目，被设想为卡加延德奥罗市的新活动节点。',
+  proj_squareview_quote: '"最好的综合用途建筑不仅仅是建筑——它们是被压缩和叠加的小城市，在那里人类活动的多样性赋予每一层楼自己的生命。"',
+
+  // ── VMC行政内装 ──
+  proj_vmc_admin_name: 'VMC行政内装',
+  proj_vmc_admin_address: '卡加延德奥罗市',
+  proj_vmc_admin_category: '办公',
+  proj_vmc_admin_description: 'VMC行政内装项目将一家主要医疗机构的工作环境改造成能够体现其关怀和专业使命的空间。',
+  proj_vmc_admin_quote: '"医疗环境中的行政空间承担着独特的责任——它们必须向每天在其中工作的每位员工展示能力和平静。"',
+
+  // ── VMC住宅 ──
+  proj_vmc_housing_name: 'VMC住宅',
+  proj_vmc_housing_address: '卡加延德奥罗市',
+  proj_vmc_housing_category: '住宅',
+  proj_vmc_housing_description: 'VMC住宅是一个住宅项目，服务于大型医疗综合体相关的住房需求。',
+  proj_vmc_housing_quote: '"为那些将生命奉献给关怀事业的人提供的住房，应该拥有与他们每天给予他人同等水准的用心设计。"',
+
+  // ── VMC项目 ──
+  proj_vmc_projects_name: 'VMC项目',
+  proj_vmc_projects_address: '卡加延德奥罗市',
+  proj_vmc_projects_category: '综合用途',
+  proj_vmc_projects_description: 'VMC项目涵盖了为VMC机构综合体承担的一系列建筑作品，涉及医疗、住宅和行政设施。',
+  proj_vmc_projects_quote: '"机构园区不是一天建成的——它们是通过多年来做出的决策积累而成，每一个决策都在增加或减少整体的连贯性。"',
+  // ── CHOA公寓16C单元 ──
+  proj_choa_unit_16c_name: 'CHOA公寓16C单元',
+  proj_choa_unit_16c_address: '卡加延德奥罗市',
+  proj_choa_unit_16c_category: '住宅',
+  proj_choa_unit_16c_description: 'CHOA公寓16C单元是卡加延德奥罗市一栋高层建筑内的住宅室内项目。设计通过叠加质感、光线和空间变化，将标准公寓平面改造为一个经过深思熟虑的家园，克服紧凑户型的限制。',
+  proj_choa_unit_16c_quote: '"一个设计精良的公寓证明了尺度并非品质的前提——精准运用克制，比丰盛更能创造价值。"',
+  // ── Graphic Junior酒店CDO ──
+  proj_graphic_junior_hotel_name: 'Graphic Junior酒店CDO',
+  proj_graphic_junior_hotel_address: '卡加延德奥罗市',
+  proj_graphic_junior_hotel_category: '酒店',
+  proj_graphic_junior_hotel_description: 'Graphic Junior酒店CDO是一个精品酒店项目，旨在卡加延德奥罗不断发展的城市环境中提供独特的住客体验。',
+  proj_graphic_junior_hotel_quote: '"一家优秀的酒店不以设施衡量，而以氛围取胜——让人感受到有人为入住于此认真思考过的那种感觉。"',
+  // -- 207咖啡馆 --
+  proj_cafe_207_name: '207咖啡馆',
+  proj_cafe_207_address: '卡加延德奥罗市',
+  proj_cafe_207_category: '酒店',
+  proj_cafe_207_description: '207咖啡馆是一个精品咖啡空间，围绕烘焙、冲泡和聚会的仪式而设计。',
+  proj_cafe_207_quote: '"一家优秀的咖啡馆不只是喝咖啡的地方——它是一个让你慢下来的环境，让一杯咖啡成为值得留下来的时刻。"',
+  // -- BYD布图安 --
+  proj_byd_butuan_name: 'BYD布图安',
+  proj_byd_butuan_address: '布图安市',
+  proj_byd_butuan_category: '零售',
+  proj_byd_butuan_description: 'BYD布图安将BYD汽车品牌带到布图安市，为卡拉加地区不断增长的汽车市场奠定基础。',
+  proj_byd_butuan_quote: '"在一座成长中的城市开设展厅承载着不同的重量——它不只是一个零售空间，更是这个地方已准备好迎接未来的信号。"',
+  // -- BYD C5 Acropolis --
+  proj_byd_c5_acropolis_name: 'BYD C5 Acropolis',
+  proj_byd_c5_acropolis_address: '奎松市',
+  proj_byd_c5_acropolis_category: '零售',
+  proj_byd_c5_acropolis_description: 'BYD C5 Acropolis是位于马尼拉都会区C5走廊的汽车展厅，专为服务首都的高需求汽车市场而设计。',
+  proj_byd_c5_acropolis_quote: '"在城市走廊上，建筑必须先向街道说话——只有这样，才能邀请人们走进来。"',
+  // -- BYD伊利根 --
+  proj_byd_iligan_name: 'BYD伊利根',
+  proj_byd_iligan_address: '伊利根市',
+  proj_byd_iligan_category: '零售',
+  proj_byd_iligan_description: 'BYD伊利根将BYD网络延伸至伊利根市，为该地区不断增长的电动汽车市场提供服务。',
+  proj_byd_iligan_quote: '"在每座新城市开设的每家新展厅都是一种信心——品牌相信这个地方未来的方式。"',
+  // -- BYD马里基纳 --
+  proj_byd_marikina_name: 'BYD马里基纳',
+  proj_byd_marikina_address: '马里基纳市',
+  proj_byd_marikina_category: '零售',
+  proj_byd_marikina_description: 'BYD马里基纳是一座当代汽车展厅，服务于马尼拉都会区东部市场。',
+  proj_byd_marikina_quote: '"好的品牌建筑从不千篇一律——它以品牌的语言说话，带有地区口音，让人感到既熟悉又新鲜。"',
+  // -- 巴里斯比斯住宅 --
+  proj_balisbis_residence_name: '巴里斯比斯住宅',
+  proj_balisbis_residence_address: '卡加延德奥罗市',
+  proj_balisbis_residence_category: '住宅',
+  proj_balisbis_residence_description: '巴里斯比斯住宅是一所私人家庭住宅，经历了多个设计阶段的演变。',
+  proj_balisbis_residence_quote: '"最好的家园不是通过单一的姿态完成的——它们随家庭一起演变，积累的决策共同构成深刻个人化的整体。"',
+  // -- 贝拉里办公楼 --
+  proj_bellarie_office_name: '贝拉里办公楼',
+  proj_bellarie_office_address: '卡加延德奥罗市',
+  proj_bellarie_office_category: '办公',
+  proj_bellarie_office_description: '贝拉里办公楼是一座多层商业建筑，专为卡加延德奥罗的专业和商业社区服务。',
+  proj_bellarie_office_quote: '"最好的办公建筑为生产力创造条件，而不规定工作应该如何发生。"',
+  // -- Blush --
+  proj_blush_name: 'Blush',
+  proj_blush_address: '卡加延德奥罗市',
+  proj_blush_category: '室内设计',
+  proj_blush_description: 'Blush是一个美容与健康室内空间，以对柔软、温暖和感官舒适的细心关注而设计。',
+  proj_blush_quote: '"美容空间成功的标志是让顾客在任何服务开始之前就感到被关爱和美丽。"',
+  // -- 达斯马里纳斯卡维提住宅 --
+  proj_dasmarinas_residence_name: '达斯马里纳斯卡维提住宅',
+  proj_dasmarinas_residence_address: '卡维提省达斯马里纳斯',
+  proj_dasmarinas_residence_category: '住宅',
+  proj_dasmarinas_residence_description: '达斯马里纳斯住宅是卡维提省一栋两层家庭住宅，旨在在紧凑的郊区地块内提供宽敞明亮的生活空间。',
+  proj_dasmarinas_residence_quote: '"郊区地块上的两层住宅是建筑最受约束的挑战之一——当这些约束得到真正的关怀时，也是最有回报的。"',
+  // -- Denza展厅 --
+  proj_denza_showroom_name: 'Denza展厅',
+  proj_denza_showroom_address: '卡加延德奥罗市',
+  proj_denza_showroom_category: '零售',
+  proj_denza_showroom_description: 'Denza展厅将高端电动汽车品牌Denza带到卡加延德奥罗。',
+  proj_denza_showroom_quote: '"豪华汽车展厅是品牌最有形的表达——每一个表面、比例和光源都在诉说品牌的价值观。"',
+  // -- Foxhomes 2025 --
+  proj_foxhomes_2025_name: 'Foxhomes 2025',
+  proj_foxhomes_2025_address: '卡加延德奥罗市',
+  proj_foxhomes_2025_category: '住宅',
+  proj_foxhomes_2025_description: 'Foxhomes 2025代表了卡加延德奥罗Foxhome系列的最新住宅设计。',
+  proj_foxhomes_2025_quote: '"系列住宅设计不是重复——而是精进，在之前所学的基础上，让每次迭代都更加深思熟虑。"',
+  // -- Graphic附属楼 --
+  proj_graphic_annex_name: 'Graphic附属楼',
+  proj_graphic_annex_address: '卡加延德奥罗市',
+  proj_graphic_annex_category: '酒店',
+  proj_graphic_annex_description: 'Graphic附属楼是卡加延德奥罗Graphic酒店品牌的扩建项目。',
+  proj_graphic_annex_quote: '"附属楼是一种信心的行为——扩展一个已经运作良好的地方的决定。"',
+  // -- 奥萨米斯透析中心 --
+  proj_ozamiz_dialysis_center_name: '奥萨米斯透析中心',
+  proj_ozamiz_dialysis_center_address: '奥萨米斯市',
+  proj_ozamiz_dialysis_center_category: '医疗',
+  proj_ozamiz_dialysis_center_description: '奥萨米斯透析中心是一家医疗机构，专为奥萨米斯市的透析患者提供有尊严的舒适护理。',
+  proj_ozamiz_dialysis_center_quote: '"透析建筑承担着特殊的责任——患者每周在这些空间里度过数小时，环境质量直接影响他们的健康与康复。"',
+  // -- Raintree商场美容诊所 --
+  proj_raintree_beauty_clinic_name: 'Raintree商场美容诊所',
+  proj_raintree_beauty_clinic_address: '卡加延德奥罗市',
+  proj_raintree_beauty_clinic_category: '室内设计',
+  proj_raintree_beauty_clinic_description: 'Raintree商场美容诊所是卡加延德奥罗Raintree商场内的零售美容与健康空间。',
+  proj_raintree_beauty_clinic_quote: '"商场内的美容诊所必须在被商业噪音包围的空间里创造一种抵达感和宁静感。"',
+  // -- Sanjus诊断中心 --
+  proj_sanjus_diagnostics_name: 'Sanjus诊断中心',
+  proj_sanjus_diagnostics_address: '卡加延德奥罗市',
+  proj_sanjus_diagnostics_category: '医疗',
+  proj_sanjus_diagnostics_description: 'Sanjus诊断中心是一家诊断医疗机构，旨在提供高效、安心和清晰组织的患者体验。',
+  proj_sanjus_diagnostics_quote: '"诊断诊所的候诊室是焦虑与希望共存的地方——能够认识到这一点的建筑可以真正改善患者的体验。"',
+  // -- 索拉纳岛别墅 --
+  proj_sorana_island_villas_name: '索拉纳岛别墅',
+  proj_sorana_island_villas_address: '卡加延德奥罗市',
+  proj_sorana_island_villas_category: '酒店',
+  proj_sorana_island_villas_description: '索拉纳岛别墅是一个休闲和酒店开发项目，被设想为热带度假地。',
+  proj_sorana_island_villas_quote: '"最美的岛屿建筑融入景观而消失——建筑退居其次，体验浮出水面。"',
+  // -- Sytin项目 --
+  proj_sytin_projects_name: 'Sytin项目',
+  proj_sytin_projects_address: '马尼拉都会区',
+  proj_sytin_projects_category: '零售',
+  proj_sytin_projects_description: 'Sytin项目涵盖了马尼拉都会区的两个汽车展厅设施——分别位于费尔维尤和邦板牙。',
+  proj_sytin_projects_quote: '"跨地点的品牌一致性是一种纪律——在尊重品牌语言的同时，让每座建筑说出它所在城市的方言。"',
+  // -- Tabas --
+  proj_tabas_name: 'Tabas',
+  proj_tabas_address: '卡加延德奥罗市',
+  proj_tabas_category: '住宅',
+  proj_tabas_description: 'Tabas是卡加延德奥罗的一个私人住宅项目，在日常家庭生活的功能需求与设计抱负之间取得平衡。',
+  proj_tabas_quote: '"最好的住宅建筑不由预算或规模定义——而由每一个决策中投入的关怀定义。"',
+  // -- VMC制糖项目 --
+  proj_vmc_projects_2025_name: 'VMC制糖项目',
+  proj_vmc_projects_2025_address: '卡加延德奥罗市',
+  proj_vmc_projects_2025_category: '综合用途',
+  proj_vmc_projects_2025_description: 'VMC制糖项目代表了为VMC工业综合体承担的建筑作品。',
+  proj_vmc_projects_2025_quote: '"工业建筑长期以来被视为豁免于设计的类别——这个项目提醒我们，每一座建筑，无论其功能如何，都值得用心建造。"',
+  // -- 杨氏住宅 --
+  proj_yang_residence_name: '杨氏住宅',
+  proj_yang_residence_address: '卡加延德奥罗市',
+  proj_yang_residence_category: '住宅',
+  proj_yang_residence_description: '杨氏住宅是卡加延德奥罗的一所私人家庭住宅，经历了多轮设计精进。',
+  proj_yang_residence_quote: '"经过迭代精进的家园是用信念建造的家园——每一次修改都是关怀的行为。"',
+  // -- 叶氏公寓室内设计 --
+  proj_yap_residences_interiors_name: '叶氏公寓室内设计',
+  proj_yap_residences_interiors_address: '卡加延德奥罗市',
+  proj_yap_residences_interiors_category: '住宅',
+  proj_yap_residences_interiors_description: '叶氏公寓室内设计项目将现有住宅单元改造为经过深思熟虑的个性化生活环境。',
+  proj_yap_residences_interiors_quote: '"室内设计在其最强大的状态下是不可见的——当做得好时，你不会注意到设计；你只会注意到在这个空间里感觉有多好。"',
+  // -- BAIC Radar CDO --
+  proj_baic_radar_cdo_name: 'BAIC Radar CDO',
+  proj_baic_radar_cdo_address: '卡加延德奥罗市',
+  proj_baic_radar_cdo_category: '零售',
+  proj_baic_radar_cdo_description: 'BAIC Radar CDO将BAIC汽车品牌带到卡加延德奥罗，展厅专为向棉兰老岛北部市场介绍Radar电动车系列而设计。',
+  proj_baic_radar_cdo_quote: '"每一个在成长中的城市开设的新汽车展厅都承担着双重使命——它销售汽车，也标志着这个市场已准备好迎接明日的技术。"',
+  // -- Chen Residence --
+  proj_chen_residence_name: '陈氏住宅',
+  proj_chen_residence_address: '卡加延德奥罗市',
+  proj_chen_residence_category: '住宅',
+  proj_chen_residence_description: '陈氏住宅是卡加延德奥罗的一所当代家庭住宅，旨在精致的建筑外壳内提供宽敞、设施齐全的生活空间。',
+  proj_chen_residence_quote: '"最好的家园不是为竣工之日而设计的——而是为随后的数十年而设计的，当建筑沉淀下来，家庭在每个房间里成长。"',
 
   // ── Studio Page ──
   studio_about_eyebrow: '关于工作室',

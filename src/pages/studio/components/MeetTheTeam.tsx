@@ -2,149 +2,178 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 
 const TEAM = [
+  // Principal Architect
   {
     key: 'fretz',
-    nameKey: 'studio_team_francisco_name',
-    titleKey: 'studio_team_francisco_title',
-    bioKey: 'studio_team_francisco_bio',
+    nameKey: 'studio_team_fretz_name',
+    titleKey: 'studio_team_fretz_title',
+    bioKey: 'studio_team_fretz_bio',
     img: '/images/team/fretz.webp',
-    imgShift: '10%',
+    imgShift: '-19%',
     credentials: [
       { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
-      { label: 'License', value: 'PRC Lic. No. 0012345' },
+      { label: 'License', value: 'PRC Licensed Architect' },
       { label: 'Experience', value: '18+ years' },
       { label: 'Specialization', value: 'Mixed-Use & Civic Design' },
     ],
   },
+  // Design Lead
   {
-    key: 'sofia',
-    nameKey: 'studio_team_sofia_name',
-    titleKey: 'studio_team_sofia_title',
-    bioKey: 'studio_team_sofia_bio',
-    img: '/images/team/sofia.webp',
-    imgShift: '10%',
+    key: 'dan',
+    nameKey: 'studio_team_dan_name',
+    titleKey: 'studio_team_dan_title',
+    bioKey: 'studio_team_dan_bio',
+    img: '/images/team/dan.webp',
+    imgShift: '-16%',
     credentials: [
-      { label: 'Education', value: 'B.S. Architecture, UP Diliman · AA London' },
-      { label: 'License', value: 'PRC Lic. No. 0023456' },
-      { label: 'Experience', value: '12+ years' },
-      { label: 'Specialization', value: 'Spatial Experience & Human Scale' },
+      { label: 'Role', value: 'Design Lead' },
+    ],
+  },
+  // Junior Architects
+  {
+    key: 'john',
+    nameKey: 'studio_team_john_name',
+    titleKey: 'studio_team_john_title',
+    bioKey: 'studio_team_john_bio',
+    img: '/images/team/john.webp',
+    imgShift: '-24%',
+    imgScale: 1.7,
+    credentials: [
+      { label: 'Role', value: 'Junior Architect' },
     ],
   },
   {
-    key: 'marco',
-    nameKey: 'studio_team_marco_name',
-    titleKey: 'studio_team_marco_title',
-    bioKey: 'studio_team_marco_bio',
-    img: '/images/team/marco.webp',
+    key: 'jan',
+    nameKey: 'studio_team_jan_name',
+    titleKey: 'studio_team_jan_title',
+    bioKey: 'studio_team_jan_bio',
+    img: '/images/team/jan.webp',
+    imgShift: '-20%',
+    imgScale: 1.8,
+    credentials: [
+      { label: 'Role', value: 'Junior Architect' },
+    ],
+  },
+  {
+    key: 'gab',
+    nameKey: 'studio_team_gab_name',
+    titleKey: 'studio_team_gab_title',
+    bioKey: 'studio_team_gab_bio',
+    img: '/images/team/gab.webp',
+    imgShift: '-20%',
+    imgShiftX: '3%',
+    credentials: [
+      { label: 'Role', value: 'Junior Architect' },
+    ],
+  },
+  {
+    key: 'mikee',
+    nameKey: 'studio_team_mikee_name',
+    titleKey: 'studio_team_mikee_title',
+    bioKey: 'studio_team_mikee_bio',
+    img: '/images/team/mikee.webp',
+    imgShift: '-30%',
+    imgScale: 1.8,
+    credentials: [
+      { label: 'Education', value: 'B.S. Architecture' },
+      { label: 'License', value: 'PRC Licensed Architect' },
+      { label: 'Role', value: 'Junior Architect' },
+    ],
+  },
+  {
+    key: 'raul',
+    nameKey: 'studio_team_raul_name',
+    titleKey: 'studio_team_raul_title',
+    bioKey: 'studio_team_raul_bio',
+    img: '/images/team/placeholder.svg',
     imgShift: '0%',
     credentials: [
-      { label: 'Education', value: 'B.S. Architecture, Cebu Institute of Technology' },
-      { label: 'License', value: 'PRC Lic. No. 0034567' },
-      { label: 'Experience', value: '10+ years' },
-      { label: 'Specialization', value: 'Structural Systems & Building Technology' },
+      { label: 'Role', value: 'Junior Architect' },
     ],
   },
+  // Architectural Apprentices
   {
-    key: 'elena',
-    nameKey: 'studio_team_elena_name',
-    titleKey: 'studio_team_elena_title',
-    bioKey: 'studio_team_elena_bio',
-    img: '/images/team/elena.webp',
-    imgShift: '10%',
+    key: 'chico',
+    nameKey: 'studio_team_chico_name',
+    titleKey: 'studio_team_chico_title',
+    bioKey: 'studio_team_chico_bio',
+    img: '/images/team/chico.webp',
+    imgShift: '-22%',
     credentials: [
-      { label: 'Education', value: 'B.S. Interior Design, De La Salle – CSB' },
-      { label: 'License', value: 'PRC Lic. No. 0045678' },
-      { label: 'Experience', value: '9+ years' },
-      { label: 'Specialization', value: 'Bespoke Furniture & Material Curation' },
+      { label: 'Role', value: 'Architectural Apprentice' },
     ],
   },
   {
-    key: 'rafael',
-    nameKey: 'studio_team_rafael_name',
-    titleKey: 'studio_team_rafael_title',
-    bioKey: 'studio_team_rafael_bio',
-    img: '/images/team/rafael.webp',
-    imgShift: '10%',
+    key: 'neil',
+    nameKey: 'studio_team_neil_name',
+    titleKey: 'studio_team_neil_title',
+    bioKey: 'studio_team_neil_bio',
+    img: '/images/team/neil.webp',
+    imgShift: '-27%',
+    imgScale: 1.8,
     credentials: [
-      { label: 'Education', value: 'B.S. Architecture, University of the Philippines' },
-      { label: 'License', value: 'PRC Lic. No. 0056789' },
-      { label: 'Experience', value: '11+ years' },
-      { label: 'Specialization', value: 'Healthcare & Civic Projects' },
+      { label: 'Role', value: 'Architectural Apprentice' },
     ],
   },
   {
-    key: 'ana',
-    nameKey: 'studio_team_ana_name',
-    titleKey: 'studio_team_ana_title',
-    bioKey: 'studio_team_ana_bio',
-    img: '/images/team/ana.webp',
+    key: 'juls',
+    nameKey: 'studio_team_juls_name',
+    titleKey: 'studio_team_juls_title',
+    bioKey: 'studio_team_juls_bio',
+    img: '/images/team/juls.webp',
+    imgShift: '-17%',
+    credentials: [
+      { label: 'Role', value: 'Architectural Apprentice' },
+    ],
+  },
+  {
+    key: 'servacio',
+    nameKey: 'studio_team_servacio_name',
+    titleKey: 'studio_team_servacio_title',
+    bioKey: 'studio_team_servacio_bio',
+    img: '/images/team/placeholder.svg',
     imgShift: '0%',
     credentials: [
-      { label: 'Education', value: 'B.S. Architecture, Ateneo de Davao University' },
-      { label: 'License', value: 'PRC Lic. No. 0067890' },
-      { label: 'Experience', value: '6+ years' },
-      { label: 'Specialization', value: 'Residential & Resort Design' },
+      { label: 'Role', value: 'Architectural Apprentice' },
     ],
   },
+  // Architectural Interns
   {
-    key: 'leo',
-    nameKey: 'studio_team_leo_name',
-    titleKey: 'studio_team_leo_title',
-    bioKey: 'studio_team_leo_bio',
-    img: '/images/team/ana.webp',
-    imgShift: '10%',
-    credentials: [
-      { label: 'Education', value: 'B.S. Landscape Architecture, DLSU' },
-      { label: 'License', value: 'PRC Lic. No. 0078901' },
-      { label: 'Experience', value: '8+ years' },
-      { label: 'Specialization', value: 'Urban Design & Masterplanning' },
-    ],
-  },
-  {
-    key: 'maya',
-    nameKey: 'studio_team_maya_name',
-    titleKey: 'studio_team_maya_title',
-    bioKey: 'studio_team_maya_bio',
-    img: '/images/team/ana.webp',
+    key: 'villarin',
+    nameKey: 'studio_team_villarin_name',
+    titleKey: 'studio_team_villarin_title',
+    bioKey: 'studio_team_villarin_bio',
+    img: '/images/team/placeholder.svg',
     imgShift: '0%',
     credentials: [
-      { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
-      { label: 'License', value: 'PRC Lic. No. 0089012' },
-      { label: 'Experience', value: '5+ years' },
-      { label: 'Specialization', value: 'Adaptive Reuse & Heritage Design' },
+      { label: 'Role', value: 'Architectural Intern' },
     ],
   },
   {
-    key: 'carlos',
-    nameKey: 'studio_team_carlos_name',
-    titleKey: 'studio_team_carlos_title',
-    bioKey: 'studio_team_carlos_bio',
-    img: '/images/team/ana.webp',
-    imgShift: '10%',
-    credentials: [
-      { label: 'Education', value: 'B.S. Architecture, Cebu Institute of Technology' },
-      { label: 'License', value: 'PRC Lic. No. 0090123' },
-      { label: 'Experience', value: '7+ years' },
-      { label: 'Specialization', value: 'Technical Documentation & CA' },
-    ],
-  },
-  {
-    key: 'nina',
-    nameKey: 'studio_team_nina_name',
-    titleKey: 'studio_team_nina_title',
-    bioKey: 'studio_team_nina_bio',
-    img: '/images/team/ana.webp',
+    key: 'iligan',
+    nameKey: 'studio_team_iligan_name',
+    titleKey: 'studio_team_iligan_title',
+    bioKey: 'studio_team_iligan_bio',
+    img: '/images/team/placeholder.svg',
     imgShift: '0%',
     credentials: [
-      { label: 'Education', value: 'B.S. Interior Design, University of the Philippines' },
-      { label: 'License', value: 'PRC Lic. No. 0101234' },
-      { label: 'Experience', value: '7+ years' },
-      { label: 'Specialization', value: 'FF&E & Spatial Sequencing' },
+      { label: 'Role', value: 'Architectural Intern' },
+    ],
+  },
+  {
+    key: 'divinigracia',
+    nameKey: 'studio_team_divinigracia_name',
+    titleKey: 'studio_team_divinigracia_title',
+    bioKey: 'studio_team_divinigracia_bio',
+    img: '/images/team/placeholder.svg',
+    imgShift: '0%',
+    credentials: [
+      { label: 'Role', value: 'Architectural Intern' },
     ],
   },
 ];
 
-const COLS_DESKTOP = 5;
+const COLS_DESKTOP = 4;
 const COLS_MOBILE = 2;
 
 interface MeetTheTeamProps {
@@ -216,7 +245,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       } else if (panel) {
         panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 180);
+    }, 320);
   };
 
   const handleOpen = (key: string) => {
@@ -310,10 +339,8 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
         }
         .team-card-wrap.active .team-card-photo img {
           opacity: 1;
-          transform: scale(1.03);
         }
         .team-card-wrap:hover .team-card-photo img {
-          transform: scale(1.03);
           opacity: 0.75;
         }
         .team-card-view-badge {
@@ -362,6 +389,32 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           min-height: 0;
           overflow: hidden;
         }
+
+        .team-bio-panel-body {
+          display: flex;
+          flex-direction: row;
+          gap: 56px;
+          align-items: flex-start;
+        }
+        .team-bio-credentials {
+          flex: 0 0 260px;
+          border-left: 1px solid rgba(255,255,255,0.08);
+          padding-left: 48px;
+        }
+        @media (max-width: 767px) {
+          .team-bio-panel-body {
+            flex-direction: column;
+            gap: 24px;
+          }
+          .team-bio-credentials {
+            flex: none;
+            width: 100%;
+            border-left: none;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-left: 0;
+            padding-top: 24px;
+          }
+        }
       `}</style>
 
       {/* Heading */}
@@ -395,7 +448,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
           return (
             <div key={rowIndex}>
               {/* Row of cards */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 {row.map((member) => {
                   const isActive = activeKey === member.key;
                   const isDimmed = activeKey !== null && !isActive;
@@ -418,8 +471,9 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           alt={t(member.nameKey)}
                           draggable={false}
                           style={{
-                            objectPosition: 'top',
-                            transform: `translateY(${member.imgShift})`,
+                            objectPosition: 'top center',
+                            transform: `scale(${member.imgScale ?? 1.5}) translateX(${member.imgShiftX ?? '0%'}) translateY(${member.imgShift})`,
+                            transformOrigin: 'top center',
                           }}
                         />
                         <div className="team-card-view-badge">
@@ -478,13 +532,11 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           WebkitBackdropFilter: 'blur(24px)',
                           border: '1px solid rgba(255,255,255,0.09)',
                           borderRadius: '20px',
-                          padding: '44px 48px',
-                          display: 'flex',
-                          gap: '56px',
-                          alignItems: 'flex-start',
+                          padding: 'clamp(24px, 4vw, 44px) clamp(20px, 4vw, 48px)',
                           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
                         }}
                       >
+                        <div className="team-bio-panel-body">
                         {/* LEFT — Name, Title, Bio, Close */}
                         <div style={{ flex: '1 1 0', minWidth: 0 }}>
                           <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(17px, 1.8vw, 24px)', letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.90)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
@@ -493,9 +545,13 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.28em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
                             {t(activeMember.titleKey)}
                           </p>
-                          <p style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(13px, 1vw, 14px)', lineHeight: 1.9, color: 'rgba(255,255,255,0.50)', letterSpacing: '0.01em', margin: '0 0 32px 0' }}>
-                            {t(activeMember.bioKey)}
-                          </p>
+                          <div style={{ margin: '0 0 32px 0' }}>
+                            {t(activeMember.bioKey).split('\n\n').map((para, i) => (
+                              <p key={i} style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(13px, 1vw, 14px)', lineHeight: 1.9, color: 'rgba(255,255,255,0.50)', letterSpacing: '0.01em', margin: i === 0 ? 0 : '16px 0 0 0', textAlign: 'justify' }}>
+                                {para}
+                              </p>
+                            ))}
+                          </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleClose(); }}
                             style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.20em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.15)', padding: '9px 24px', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease', whiteSpace: 'nowrap' }}
@@ -508,7 +564,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
 
                         {/* RIGHT — Credentials */}
                         {activeMember.credentials && (
-                          <div style={{ flex: '0 0 260px', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '48px' }}>
+                          <div className="team-bio-credentials">
                             <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.26em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: '24px' }}>
                               Credentials
                             </p>
@@ -526,6 +582,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                             </div>
                           </div>
                         )}
+                        </div>
                       </div>
                     </div>
                   )}

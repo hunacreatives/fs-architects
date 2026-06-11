@@ -57,7 +57,7 @@ export default function AttendanceEditModal({ record, contractors, onClose, onSu
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {!record && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Contractor *</label>
+              <label className="text-xs font-medium text-gray-700">Employee *</label>
               <select required value={form.contractor_id} onChange={(e) => set('contractor_id', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
                 <option value="">Select contractor...</option>

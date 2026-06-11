@@ -17,7 +17,7 @@ export default function HubRouteGate({ allowedRoles, children }: HubRouteGatePro
 
   if (isDemo) return <>{children}</>;
 
-  if (loading) {
+  if (loading || (session && !effectiveRole)) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#FAFAFA]">
         <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
@@ -29,7 +29,7 @@ export default function HubRouteGate({ allowedRoles, children }: HubRouteGatePro
     return <Navigate to="/hub/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (!effectiveRole || !allowedRoles.includes(effectiveRole as UserRole)) {
+  if (!allowedRoles.includes(effectiveRole as UserRole)) {
     return <Navigate to={getHubHomePath(effectiveRole)} replace />;
   }
 

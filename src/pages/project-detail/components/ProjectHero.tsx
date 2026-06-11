@@ -67,10 +67,12 @@ export default function ProjectHero({ name, image, index, total, location }: Pro
           className="text-white font-light leading-none"
           style={{
             fontFamily: 'Marcellus, serif',
-            fontSize: 'clamp(24px, 5.5vw, 82px)',
+            fontSize: 'clamp(16px, 3.8vw, 66px)',
             letterSpacing: '-0.025em',
-            maxWidth: '860px',
             lineHeight: 1.05,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {name}
@@ -78,34 +80,29 @@ export default function ProjectHero({ name, image, index, total, location }: Pro
       </div>
 
       {/* Location — bottom right */}
-      {location && (
-        <div
-          className="absolute bottom-16 md:bottom-24 right-6 md:right-16 lg:right-24 flex items-center gap-1.5 z-10"
-          style={{
-            opacity: visible ? 0.55 : 0,
-            transition: 'opacity 1s ease 0.7s',
-          }}
-        >
-          <i className="ri-map-pin-line text-white" style={{ fontSize: '10px' }} />
-          <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', color: 'white', textTransform: 'uppercase' }}>
-            {location}
-          </span>
-        </div>
-      )}
-
-      {/* Scroll indicator */}
-      <div
-        className="absolute bottom-6 right-6 md:right-16 lg:right-24 flex flex-col items-center gap-2"
-        style={{
-          opacity: visible ? 0.35 : 0,
-          transition: 'opacity 1s ease 0.9s',
-        }}
-      >
+      {/* Location + scroll line grouped so the line centers under the location text */}
+      <div className="absolute bottom-6 right-6 md:right-16 lg:right-24 flex flex-col items-center gap-3 z-10">
+        {location && (
+          <div
+            className="flex items-center gap-1.5"
+            style={{
+              opacity: visible ? 0.55 : 0,
+              transition: 'opacity 1s ease 0.7s',
+            }}
+          >
+            <i className="ri-map-pin-line text-white" style={{ fontSize: '10px' }} />
+            <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', color: 'white', textTransform: 'uppercase' }}>
+              {location}
+            </span>
+          </div>
+        )}
         <div
           style={{
             width: '1px',
             height: '40px',
             backgroundColor: 'white',
+            opacity: visible ? 0.35 : 0,
+            transition: 'opacity 1s ease 0.9s',
             animation: 'heroPulse 2.2s ease-in-out infinite',
           }}
         />

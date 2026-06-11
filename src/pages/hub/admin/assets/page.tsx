@@ -130,7 +130,7 @@ export default function AssetsPage() {
                 <tr className="border-b border-gray-100">
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Platform</th>
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Account</th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Contractor</th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Assigned To</th>
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Access Level</th>
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Status</th>
                   <th className="px-5 py-3"></th>
@@ -183,7 +183,7 @@ export default function AssetsPage() {
             </div>
             <div className="p-5 space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Contractor *</label>
+                <label className="text-xs font-medium text-gray-700">Assigned To *</label>
                 <select value={form.contractor_id} onChange={(e) => setForm({ ...form, contractor_id: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
                   <option value="">Select contractor...</option>
@@ -213,7 +213,7 @@ export default function AssetsPage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Account Name *</label>
                 <input value={form.account_name} onChange={(e) => setForm({ ...form, account_name: e.target.value })}
-                  placeholder="e.g. Huna Creatives Canva Team" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  placeholder="e.g. FS Architects AutoCAD License" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Status</label>

@@ -606,9 +606,9 @@ export default function AdminPayrollPage() {
       <div style="width:1080px;background:#ffffff;color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px 44px;">
         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #FF6B35;padding-bottom:20px;margin-bottom:28px;">
           <div style="display:flex;align-items:center;gap:14px;">
-            <img src="${logoUrl}" alt="Huna Creatives" style="height:46px;object-fit:contain;" />
+            <img src="${logoUrl}" alt="FS Architects" style="height:46px;object-fit:contain;" />
             <div>
-              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">Huna Creatives</div>
+              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">FS Architects</div>
               <div style="font-size:24px;font-weight:800;color:#111827;margin-top:2px;">Payroll Report</div>
             </div>
           </div>
@@ -621,8 +621,8 @@ export default function AdminPayrollPage() {
           ${[
             { label: 'Total Payroll', value: fmt(displayTotalPay, 'PHP') },
             { label: 'Total Hours', value: `${totalHours.toFixed(2)}h` },
-            { label: 'Contractors', value: `${rows.length}` },
-            { label: 'Hourly / Fixed', value: `${hourlyRows} / ${fixedRows}` },
+            { label: 'Employees', value: `${rows.length}` },
+            
           ].map((item) => `
             <div style="border:1px solid #e5e7eb;border-radius:16px;background:#f9fafb;padding:14px 16px;">
               <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;font-weight:700;">${item.label}</div>
@@ -633,7 +633,7 @@ export default function AdminPayrollPage() {
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Contractor</th>
+              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Employee</th>
               <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Department</th>
               <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
               <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Rate</th>
@@ -793,7 +793,8 @@ export default function AdminPayrollPage() {
         .subscribe();
       return () => { supabase.removeChannel(channel); };
     }
-  }, [fetchPayroll, fetchWorkflow, isDemo, selectedPeriod, usdRate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo, selectedPeriod, usdRate]);
 
   const fetchPayroll = async () => {
     setLoading(true);
@@ -1088,7 +1089,7 @@ export default function AdminPayrollPage() {
 </head>
 <body>
   <div class="header">
-    <img src="${logoUrl}" alt="Huna Creatives" onerror="this.style.display='none'" />
+    <img src="${logoUrl}" alt="FS Architects" onerror="this.style.display='none'" />
     <div class="header-right">
       <h1>Payroll Report</h1>
       <p>Period: <strong>${selectedPeriod.label}</strong></p>
@@ -1105,18 +1106,18 @@ export default function AdminPayrollPage() {
       <div class="value">${totalHours.toFixed(1)}h</div>
     </div>
     <div class="summary-item">
-      <div class="label">Contractors</div>
+      <div class="label">Employees</div>
       <div class="value">${rows.length}</div>
     </div>
     <div class="summary-item">
-      <div class="label">Hourly / Fixed</div>
-      <div class="value">${hourlyCount} / ${fixedCount}</div>
+      
+      
     </div>
   </div>
   <table>
     <thead>
       <tr>
-        <th>Contractor</th>
+        <th>Employee</th>
         <th>Department</th>
         <th>Type</th>
         <th>Rate</th>
@@ -1137,7 +1138,7 @@ export default function AdminPayrollPage() {
       </tr>
     </tfoot>
   </table>
-  <div class="footer">Huna Creatives · Payroll · ${selectedPeriod.label}</div>
+  <div class="footer">FS Architects · Payroll · ${selectedPeriod.label}</div>
   <script>window.onload = function() { setTimeout(function() { window.print(); }, 400); };</script>
 </body>
 </html>`);
@@ -1248,8 +1249,8 @@ export default function AdminPayrollPage() {
                 {[
                   { label: 'Total Payroll', value: fmt(displayTotalPay, 'PHP'), accent: true },
                   { label: 'Total Hours', value: `${totalHours.toFixed(1)}h` },
-                  { label: 'Hourly', value: `${hourlyCount} contractor${hourlyCount !== 1 ? 's' : ''}` },
-                  { label: 'Fixed Rate', value: `${fixedCount} contractor${fixedCount !== 1 ? 's' : ''}` },
+                  
+                  
                 ].map((k) => (
                   <div key={k.label}>
                     <p className="text-white/40 text-[11px] uppercase tracking-wide mb-1">{k.label}</p>
@@ -1365,7 +1366,7 @@ export default function AdminPayrollPage() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {rows.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">No contractor data found</div>
+              <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">No employee data found</div>
             ) : rows.map((r) => {
               const c = r.contractor;
               const isFixed = c.payment_type === 'fixed' || c.payment_type === 'fixed_flexible';
@@ -1510,7 +1511,7 @@ export default function AdminPayrollPage() {
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
                     {[
-                      { label: 'Contractor', cls: 'w-64' },
+                      { label: 'Employee', cls: 'w-64' },
                       { label: 'Hours', cls: 'w-36' },
                       { label: 'Overtime', cls: 'w-32' },
                       { label: 'Pay', cls: 'w-48' },
@@ -1524,7 +1525,7 @@ export default function AdminPayrollPage() {
                   {rows.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-12 text-gray-400 text-sm">
-                        No contractor data found
+                        No employee data found
                       </td>
                     </tr>
                   ) : rows.map((r) => {
@@ -1765,7 +1766,7 @@ export default function AdminPayrollPage() {
               </div>
 
               {!batch && approvedCount === 0 && (
-                <p className="text-xs text-gray-400">Approve at least one contractor to request a fund transfer.</p>
+                <p className="text-xs text-gray-400">Approve at least one employee to request a fund transfer.</p>
               )}
 
               {batch && (() => {
@@ -1869,7 +1870,7 @@ export default function AdminPayrollPage() {
                       <div className="flex items-start gap-3">
                         <i className="ri-flag-fill text-rose-500 text-sm mt-0.5 flex-shrink-0"></i>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-rose-700">Flagged by contractor</p>
+                          <p className="text-xs font-semibold text-rose-700">Flagged by employee</p>
                           <p className="text-xs text-rose-600 mt-0.5">{dispute.reason}</p>
                           {dispute.admin_notes && (
                             <p className="text-xs text-gray-500 mt-1 italic">Note: {dispute.admin_notes}</p>

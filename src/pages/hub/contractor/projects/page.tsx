@@ -878,7 +878,7 @@ export default function ContractorProjectsPage() {
   };
 
   const searchLower = search.toLowerCase();
-  // My Work = one-time + internal only (retainers live in My Clients)
+  // My Work = one-time + internal only (retainers live in My Projects)
   const workRows = rows.filter(r => r.hub_projects?.project_type !== 'retainer');
   const filteredRows = search
     ? workRows.filter(r => {
@@ -1748,14 +1748,14 @@ export default function ContractorProjectsPage() {
               );
             })()}
 
-            {/* ── My Clients section ── */}
+            {/* ── My Projects section ── */}
             {clientEntries.length > 0 && (
               <div className="-mx-4 md:-mx-6 px-4 md:px-6 pt-5 pb-6 mt-2 space-y-3"
                 style={{ background: 'rgba(30,40,70,0.06)', borderTop: '1px solid rgba(30,40,70,0.10)' }}>
                 {/* Header */}
                 <div className="flex items-center gap-2">
                   <i className="ri-building-line text-[#FF6B35] text-sm"></i>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">My Clients <span className="text-gray-400 font-normal">({clientEntries.length})</span></p>
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">My Projects <span className="text-gray-400 font-normal">({clientEntries.length})</span></p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {clientEntries.map(c => (
@@ -2345,7 +2345,7 @@ export default function ContractorProjectsPage() {
         teamMembers={wsTeam}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}
-        currentUserName={hubUser?.full_name ?? 'Contractor'}
+        currentUserName={hubUser?.full_name ?? 'Employee'}
       />
     </ContractorLayout>
   );

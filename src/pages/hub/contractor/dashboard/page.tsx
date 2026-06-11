@@ -295,6 +295,30 @@ export default function ContractorDashboard() {
   const navigate = useNavigate();
   const now = useClock();
   const [slackStatus, setSlackStatus] = useState<'on' | 'off' | 'absent' | null>(null);
+  const [punching, setPunching] = useState(false);
+  const handlePunch = async (type: 'in' | 'out') => {
+    if (!user?.id || punching) return;
+    setPunching(true);
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const { data: existing } = await supabase.from('hub_attendance_punches').select('type').eq('user_id', user.id).eq('date', todayStr).order('punched_at', { ascending: false }).limit(1);
+    const lastType = existing?.[0]?.type ?? null;
+    if (type === 'in' && lastType === 'in') { setPunching(false); setSlackStatus('on'); return; }
+    if (type === 'out' && lastType !== 'in') { setPunching(false); setSlackStatus('off'); return; }
+    await supabase.from('hub_attendance_punches').insert({ user_id: user.id, type, punched_at: new Date().toISOString(), date: todayStr });
+    setSlackStatus(type === 'in' ? 'on' : 'off');
+    if (type === 'out') {
+      const { data: ps } = await supabase.from('hub_attendance_punches').select('type, punched_at').eq('user_id', user.id).eq('date', todayStr).order('punched_at', { ascending: true });
+      let ms = 0, lastIn: string | null = null, first_on: string | null = null, last_off: string | null = null;
+      for (const p of (ps ?? []) as { type: string; punched_at: string }[]) {
+        if (p.type === 'in') { lastIn = p.punched_at; if (!first_on) first_on = p.punched_at; }
+        else if (p.type === 'out' && lastIn) { ms += new Date(p.punched_at).getTime() - new Date(lastIn).getTime(); last_off = p.punched_at; lastIn = null; }
+      }
+      const raw = ms / 3600000;
+      await supabase.from('hub_daily_hours').upsert({ user_id: user.id, date: todayStr, hours_raw: +raw.toFixed(2), hours_capped: +Math.min(raw,8).toFixed(2), overtime_hours: +Math.max(0,raw-8).toFixed(2), first_on, last_off }, { onConflict: 'user_id,date' });
+    }
+    setPunching(false);
+  };
   const [hoursThisCutoff, setHoursThisCutoff] = useState(0);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
   const [showPayout, setShowPayout] = useState(() => localStorage.getItem('hub_showPayout') === 'true');
@@ -376,7 +400,10 @@ export default function ContractorDashboard() {
       supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(10),
       supabase.from('hub_requests').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
       supabase.from('hub_time_off').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
-      supabase.functions.invoke('slack-attendance'),
+      supabase.from('hub_attendance_punches')
+        .select('user_id, type, punched_at')
+        .eq('date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })())
+        .order('punched_at', { ascending: true }),
       supabase.from('hub_rate_history')
         .select('effective_date, payment_type, hourly_rate, monthly_rate')
         .eq('contractor_id', user.id)
@@ -459,21 +486,19 @@ export default function ContractorDashboard() {
     }
     setEstimatedPayout(parseFloat(estimated.toFixed(2)));
 
-    if (!slackResult.error && slackResult.data?.attendance) {
-      const all: any[] = slackResult.data.attendance;
-      const mine = all.find((r: any) => r.email === user.email || r.hub_user_id === user.id);
-      setSlackStatus(mine?.status ?? 'absent');
-      // Team = everyone else
-      setTeamStatus(
-        all
-          .filter((r: any) => r.hub_user_id !== user.id && r.email !== user.email)
-          .map((r: any) => ({
-            full_name: r.full_name,
-            avatar_url: r.avatar_url,
-            status: r.status,
-            hours_today: r.hours_today || 0,
-          }))
-      );
+    if (!slackResult.error && slackResult.data) {
+      const allPunches: any[] = slackResult.data;
+      const punchMap: Record<string, any[]> = {};
+      for (const p of allPunches) {
+        if (!punchMap[p.user_id]) punchMap[p.user_id] = [];
+        punchMap[p.user_id].push(p);
+      }
+      const getStatus = (uid: string) => {
+        const ps = punchMap[uid] ?? [];
+        if (!ps.length) return 'absent' as const;
+        return ps[ps.length - 1].type === 'in' ? 'on' as const : 'off' as const;
+      };
+      setSlackStatus(getStatus(user.id));
     }
 
     setAnnouncements((annResult.data as HubAnnouncement[]) ?? []);
@@ -638,10 +663,6 @@ export default function ContractorDashboard() {
                     <div className="h-full bg-[#FF6B35] rounded-full" style={{ width: `${(daysElapsed / periodTotal) * 100}%` }} />
                   </div>
                 </div>
-                <p className="text-white/30 text-xs mt-3 flex items-center gap-1">
-                  <i className="ri-slack-line"></i>
-                  Type <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On</span> or <span className="font-mono bg-white/10 px-1 rounded mx-0.5">Off</span> in the Slack attendance channel
-                </p>
               </div>
             </div>
 
@@ -650,6 +671,28 @@ export default function ContractorDashboard() {
 
           {/* ── LEFT COLUMN (2/3) ── */}
           <div className="lg:col-span-2 space-y-4">
+
+            {/* Clock In / Out */}
+            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${slackStatus === 'on' ? 'bg-emerald-100' : slackStatus === 'off' ? 'bg-gray-100' : 'bg-amber-50'}`}>
+                  <i className={`text-lg ${slackStatus === 'on' ? 'ri-user-follow-line text-emerald-600' : slackStatus === 'off' ? 'ri-user-unfollow-line text-gray-500' : 'ri-time-line text-amber-500'}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-bold ${slackStatus === 'on' ? 'text-emerald-600' : slackStatus === 'off' ? 'text-gray-700' : 'text-amber-600'}`}>
+                    {slackStatus === 'on' ? "You're In Office" : slackStatus === 'off' ? 'Clocked Out' : 'Not Clocked In'}
+                  </p>
+                  <p className="text-xs text-gray-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handlePunch(slackStatus === 'on' ? 'out' : 'in')}
+                disabled={punching}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 ${slackStatus === 'on' ? 'bg-gray-900 text-white hover:bg-gray-700' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`}
+              >
+                {punching ? 'Recording...' : slackStatus === 'on' ? 'Clock Out' : 'Clock In'}
+              </button>
+            </div>
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

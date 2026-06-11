@@ -71,7 +71,7 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
           {!collapsed && (
             <>
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold truncate">Huna Creatives</p>
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold truncate">FS Architects</p>
                 <p className="text-[16px] font-semibold text-gray-800 leading-none">Sentro</p>
               </div>
               <button

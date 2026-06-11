@@ -169,6 +169,8 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             width: `${INTRO_LOGO_SIZE}px`,
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
+            // Strip blue cast so it matches the neutral nav logo (#e0e0e0)
+            filter: 'grayscale(1) brightness(1.4)',
             // Invisible during video, instantly visible after — no transition
             visibility: phase === 'video' ? 'hidden' : 'visible',
           }}

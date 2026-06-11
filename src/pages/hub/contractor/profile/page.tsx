@@ -20,7 +20,7 @@ export default function ContractorProfilePage() {
     full_name: u?.full_name || '',
     phone: u?.phone || '',
     address: u?.address || '',
-    slack_username: u?.slack_username || '',
+    phone: u?.phone || '',
     emergency_contact_name: u?.emergency_contact_name || '',
     emergency_contact_relationship: u?.emergency_contact_relationship || '',
     emergency_contact_phone: u?.emergency_contact_phone || '',
@@ -43,7 +43,7 @@ export default function ContractorProfilePage() {
       full_name: form.full_name,
       phone: form.phone || null,
       address: form.address || null,
-      slack_username: form.slack_username || null,
+      phone: form.phone || null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_relationship: form.emergency_contact_relationship || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
@@ -171,7 +171,7 @@ export default function ContractorProfilePage() {
                 { label: 'Phone', value: user.phone || '—' },
                 { label: 'Address', value: user.address || '—' },
                 { label: 'Emergency Contact', value: ecDisplay },
-                { label: 'Slack Display Name', value: user.slack_username || '—' },
+                { label: 'Phone Number', value: user.phone || '—' },
                 { label: 'Department', value: user.department || '—' },
                 { label: 'Birthday', value: u.birthday ? new Date(u.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
                 { label: 'Start Date', value: user.start_date ? new Date(user.start_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
@@ -207,8 +207,8 @@ export default function ContractorProfilePage() {
                 <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="City, Province" className={inputCls} />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Slack Display Name</label>
-                <input value={form.slack_username} onChange={(e) => setForm({ ...form, slack_username: e.target.value })} placeholder="Your name as it appears in Slack" className={inputCls} />
+                <label className="text-xs font-medium text-gray-700">Phone Number</label>
+                <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="e.g. +63 9XX XXX XXXX" className={inputCls} />
               </div>
 
               {/* Emergency Contact */}

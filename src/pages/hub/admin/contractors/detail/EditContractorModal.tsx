@@ -60,7 +60,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="font-semibold text-[#111827]">Edit Contractor</h2>
+          <h2 className="font-semibold text-[#111827]">Edit Employee</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer">
             <i className="ri-close-line text-lg"></i>
           </button>
@@ -72,7 +72,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               { label: 'Full Name *', key: 'full_name', required: true, colSpan: '2' },
               { label: 'Email *', key: 'email', required: true, type: 'email', colSpan: '2' },
               { label: 'Phone', key: 'phone' },
-              { label: 'Slack Username', key: 'slack_username' },
+              { label: 'Phone', key: 'phone' },
               { label: 'Address', key: 'address', colSpan: '2' },
               { label: 'Emergency Contact Name', key: 'emergency_contact_name', colSpan: '2' },
               { label: 'Relationship', key: 'emergency_contact_relationship', colSpan: '2' },
@@ -175,7 +175,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               <label className="text-xs font-medium text-gray-700">Currency</label>
               <select value={form.currency} onChange={(e) => set('currency', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                {['PHP', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'].map((c) => (
+                {['PHP'].map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>

@@ -64,113 +64,303 @@ const translations = {
   footer_privacy: 'Política de Privacidad',
   footer_terms: 'Términos de Uso',
 
-  // ── Project 1: Metropolitan Healthcare Center ──
-  proj_metropolitan_healthcare_center_name: 'Centro Médico Metropolitano',
-  proj_metropolitan_healthcare_center_address: 'Ciudad de Makati, Metro Manila',
-  proj_metropolitan_healthcare_center_category: 'Salud',
-  proj_metropolitan_healthcare_center_description: 'El Centro Médico Metropolitano redefine el estándar de la arquitectura médica en Filipinas. Diseñado con una filosofía centrada en el paciente, el edificio integra luz natural, elementos biofílicos y una señalización intuitiva en un lenguaje arquitectónico coherente. La fachada blanca y los amplios acristalamientos generan una sensación de apertura y calma, contrarrestando la ansiedad asociada a los entornos clínicos. Cada detalle — desde el atrio de doble altura hasta los jardines curativos — fue concebido para apoyar tanto la recuperación del paciente como el bienestar del personal.',
-  proj_metropolitan_healthcare_center_fp0: 'Planta Baja',
-  proj_metropolitan_healthcare_center_fp1: 'Planta Segunda',
-  proj_metropolitan_healthcare_center_fp2: 'Planta Tercera',
 
-  // ── Project 2: Coastal Resort & Spa ──
-  proj_coastal_resort_spa_name: 'Resort Costero y Spa',
-  proj_coastal_resort_spa_address: 'Provincia de Leyte',
-  proj_coastal_resort_spa_category: 'Hospitalidad',
-  proj_coastal_resort_spa_description: 'Enclavado en la prístina costa de Leyte, este resort y spa es un estudio sobre la armonía entre arquitectura y naturaleza. El diseño se inspira en las tradiciones constructivas vernáculas filipinas — estructuras elevadas, celosías tejidas y amplios aleros — reinterpretadas a través de una óptica minimalista contemporánea. Cada villa está orientada para capturar las brisas marinas y enmarcar vistas curadas del océano. El pabellón del spa, rodeado de cocoteros maduros, utiliza piedra local y madera recuperada para crear una atmósfera de lujo sereno.',
-  proj_coastal_resort_spa_fp0: 'Plano de Conjunto',
-  proj_coastal_resort_spa_fp1: 'Planta de Villa',
-  proj_coastal_resort_spa_fp2: 'Planta del Spa',
+  // ── Mallberry Platinum Hall & Lounge ──
+  proj_mallberry_platinum_hall_lounge_name: 'Mallberry Platinum Hall & Lounge',
+  proj_mallberry_platinum_hall_lounge_address: 'Ciudad de Cagayan de Oro',
+  proj_mallberry_platinum_hall_lounge_category: 'Diseño de Interiores',
+  proj_mallberry_platinum_hall_lounge_description: 'El Mallberry Platinum Hall & Lounge es un exclusivo espacio para eventos y salón ubicado en el Mallberry Mall de Cagayan de Oro. El diseño crea un ambiente sofisticado para eventos corporativos, reuniones sociales y celebraciones privadas, equilibrando los detalles de lujo con los requisitos funcionales de un local polivalente. La paleta de materiales combina texturas ricas e iluminación cálida para lograr un interior que resulta a la vez refinado e acogedor.',
+  proj_mallberry_platinum_hall_lounge_quote: '"Un salón no es simplemente una sala — es la pausa entre el destino y la llegada, diseñada para que ese instante valga la pena."',
 
-  // ── Project 3: Urban Living Complex ──
-  proj_urban_living_complex_name: 'Complejo Residencial Urbano',
-  proj_urban_living_complex_address: 'Ciudad de Cebú',
-  proj_urban_living_complex_category: 'Uso Mixto',
-  proj_urban_living_complex_description: 'El Complejo Residencial Urbano en Cebú representa un nuevo modelo de desarrollo urbano de alta densidad en Filipinas. El proyecto integra torres residenciales, plataformas comerciales y plazas públicas en una sola manzana urbana cohesionada. El sistema de fachada — una cuadrícula modular de paneles de hormigón prefabricado y balcones rehundidos — crea una textura rítmica que responde al clima tropical manteniendo una identidad arquitectónica sólida. A nivel de calle, una arcada continua activa el espacio público y proporciona sombra a los peatones.',
-  proj_urban_living_complex_fp0: 'Planta Baja',
-  proj_urban_living_complex_fp1: 'Planta Residencial Tipo',
-  proj_urban_living_complex_fp2: 'Planta del Podio',
+  // ── Abucay Beach House ──
+  proj_abucay_beach_house_name: 'Casa de Playa Abucay',
+  proj_abucay_beach_house_address: 'Abucay, Bataan',
+  proj_abucay_beach_house_category: 'Residencial',
+  proj_abucay_beach_house_description: 'La Casa de Playa Abucay es un refugio residencial privado situado en la costa de Abucay, Bataan. Diseñada para abrazar su entorno costero, la arquitectura media entre los espacios habitables interiores y el paisaje circundante, captando las brisas marinas, la luz natural y las vistas panorámicas de la bahía. La paleta de materiales equilibra tonos cálidos de madera con líneas contemporáneas limpias, arraigando la residencia en su emplazamiento con una tranquila confianza formal.',
+  proj_abucay_beach_house_quote: '"Una casa de playa no es un refugio del mar — es un umbral hacia él, diseñado para que cada mañana parezca una llegada."',
 
-  // ── Project 4: Tech Hub Office Tower ──
-  proj_tech_hub_office_tower_name: 'Torre de Oficinas Tech Hub',
-  proj_tech_hub_office_tower_address: 'BGC, Taguig',
-  proj_tech_hub_office_tower_category: 'Oficinas',
-  proj_tech_hub_office_tower_description: 'Elevándose sobre el horizonte de Bonifacio Global City, la Torre de Oficinas Tech Hub es un hito para el sector tecnológico filipino. La doble piel de vidrio actúa como amortiguador térmico, reduciendo significativamente la ganancia solar sin comprometer las vistas panorámicas de la ciudad. El interior se organiza en torno a una serie de jardines aéreos cada cinco plantas, que ofrecen espacios informales de colaboración y alivio biofílico para los ocupantes. La planta baja está diseñada como un espacio público permeable, difuminando el límite entre el interior corporativo y la vibrante vida callejera de BGC.',
-  proj_tech_hub_office_tower_fp0: 'Planta Baja',
-  proj_tech_hub_office_tower_fp1: 'Planta de Oficinas Tipo',
-  proj_tech_hub_office_tower_fp2: 'Nivel de Jardín Aéreo',
+  // ── Salón Amelia Nail ──
+  proj_amelia_nail_salon_name: 'Salón Amelia Nail',
+  proj_amelia_nail_salon_address: 'Ciudad de Cagayan de Oro',
+  proj_amelia_nail_salon_category: 'Diseño de Interiores',
+  proj_amelia_nail_salon_description: 'El Salón Amelia Nail es un exclusivo espacio de belleza diseñado para la precisión y la calma. El interior parte de una paleta de neutros suaves, texturas cálidas e iluminación estudiada para crear un entorno donde la artesanía es la protagonista.',
+  proj_amelia_nail_salon_quote: '"Un salón de uñas no es solo un lugar de belleza — es un ritual de autocuidado, hecho memorable por la calidad del espacio que lo alberga."',
 
-  // ── Project 5: Hillside Residences ──
-  proj_hillside_residences_name: 'Residencias en la Ladera',
-  proj_hillside_residences_address: 'Ciudad de Davao',
-  proj_hillside_residences_category: 'Residencial',
-  proj_hillside_residences_description: 'Encaramadas en las verdes laderas con vistas a Davao, esta urbanización residencial toma sus señales de la topografía natural. Los edificios se disponen en una formación de terrazas en cascada, minimizando los movimientos de tierra y preservando el dosel arbóreo existente. Cada unidad cuenta con una generosa terraza privada orientada hacia la ciudad y la lejana silueta del Monte Apo. La paleta de materiales — hormigón encofrado, acero oxidado y madera local — está diseñada para envejecer con gracia y desarrollar una pátina que profundiza la conexión con el paisaje.',
-  proj_hillside_residences_fp0: 'Plano de Conjunto',
-  proj_hillside_residences_fp1: 'Planta de Unidad',
-  proj_hillside_residences_fp2: 'Planta de Terraza',
+  // ── Sala de Exposición Bacolod ──
+  proj_bacolod_showroom_name: 'Sala de Exposición Bacolod',
+  proj_bacolod_showroom_address: 'Ciudad de Bacolod',
+  proj_bacolod_showroom_category: 'Venta al Detalle',
+  proj_bacolod_showroom_description: 'La Sala de Exposición Bacolod es un espacio comercial contemporáneo diseñado para exhibir productos en un entorno limpio y refinado.',
+  proj_bacolod_showroom_quote: '"Una sala de exposición es un escenario — donde el producto es el protagonista y la arquitectura se convierte en el fondo perfecto."',
 
-  // ── Project 6: Lifestyle Shopping District ──
-  proj_lifestyle_shopping_district_name: 'Distrito Comercial Lifestyle',
-  proj_lifestyle_shopping_district_address: 'Ciudad de CDO',
-  proj_lifestyle_shopping_district_category: 'Comercial',
-  proj_lifestyle_shopping_district_description: 'El Distrito Comercial Lifestyle en Cagayan de Oro reimagina la experiencia minorista para el consumidor filipino moderno. En lugar de un centro comercial cerrado convencional, el proyecto se concibe como un distrito al aire libre de pabellones interconectados, plazas y paseos ajardinados. La arquitectura bebe de la rica herencia cultural de la ciudad, incorporando tradiciones artesanales locales en elementos constructivos contemporáneos. Una fuente central y un dosel de árboles maduros crean un microclima que hace cómodo el comercio al aire libre incluso en el calor tropical.',
-  proj_lifestyle_shopping_district_fp0: 'Plano de Conjunto',
-  proj_lifestyle_shopping_district_fp1: 'Planta Baja',
-  proj_lifestyle_shopping_district_fp2: 'Planta Superior',
+  // ── BC CDO ──
+  proj_bc_cdo_name: 'BC CDO',
+  proj_bc_cdo_address: 'Ciudad de Cagayan de Oro',
+  proj_bc_cdo_category: 'Uso Mixto',
+  proj_bc_cdo_description: 'BC CDO es un desarrollo de uso mixto en Cagayan de Oro que integra programas comerciales y comunitarios en un marco arquitectónico coherente.',
+  proj_bc_cdo_quote: '"Los edificios más duraderos son los que sirven a la calle tanto como a sus inquilinos — encontrando significado en el acto de pertenecer a una ciudad."',
 
-  // ── Project 7: Executive Suite Interiors ──
-  proj_executive_suite_interiors_name: 'Interiores de Suite Ejecutiva',
-  proj_executive_suite_interiors_address: 'Ciudad de Makati',
-  proj_executive_suite_interiors_category: 'Diseño de Interiores',
-  proj_executive_suite_interiors_description: 'Este proyecto de interiorismo para una destacada institución financiera en Makati demuestra el enfoque del estudio en el diseño de interiores corporativos: riguroso, refinado y profundamente meditado. El encargo pedía espacios que proyectaran autoridad y confianza sin perder calidez y escala humana. La solución emplea una paleta contenida de nogal oscuro, latón cepillado y mármol pulido, puntuada por obras cuidadosamente seleccionadas de artistas contemporáneos filipinos. La carpintería a medida y los muebles de encargo garantizan que cada elemento esté precisamente adaptado a las necesidades del cliente.',
-  proj_executive_suite_interiors_fp0: 'Planta Ejecutiva',
-  proj_executive_suite_interiors_fp1: 'Nivel de Sala de Juntas',
-  proj_executive_suite_interiors_fp2: 'Recepción y Salón',
+  // ── BYD CDO ──
+  proj_byd_cdo_name: 'BYD CDO',
+  proj_byd_cdo_address: 'Ciudad de Cagayan de Oro',
+  proj_byd_cdo_category: 'Venta al Detalle',
+  proj_byd_cdo_description: 'BYD CDO es una sala de exposición de automóviles diseñada para encarnar la identidad visionaria de la marca BYD.',
+  proj_byd_cdo_quote: '"Una sala de exposición de automóviles es una promesa de movimiento detenido — arquitectura que captura la esencia del movimiento en un espacio diseñado para pausar."',
 
-  // ── Project 8: Waterfront Villas ──
-  proj_waterfront_villas_name: 'Villas Frente al Mar',
-  proj_waterfront_villas_address: 'Ciudad de Zamboanga',
-  proj_waterfront_villas_category: 'Residencial',
-  proj_waterfront_villas_description: 'Las Villas Frente al Mar en Zamboanga son una colección de residencias privadas diseñadas para celebrar el extraordinario entorno natural de la Península de Zamboanga. Cada villa está emplazada individualmente para maximizar la privacidad y las vistas, con la arquitectura respondiendo a las condiciones específicas de cada parcela. El lenguaje de diseño está enraizado en la herencia cultural chavacana de la región, con columnatas arqueadas, tejas de terracota y exuberantes jardines de patio reinterpretados en un idioma contemporáneo. El resultado es una colección de hogares que se sienten atemporales e inconfundiblemente propios de su lugar.',
-  proj_waterfront_villas_fp0: 'Plano de Conjunto',
-  proj_waterfront_villas_fp1: 'Planta Baja',
-  proj_waterfront_villas_fp2: 'Planta Alta',
+  // ── BYD Tagum ──
+  proj_byd_tagum_name: 'BYD Tagum',
+  proj_byd_tagum_address: 'Ciudad de Tagum, Davao del Norte',
+  proj_byd_tagum_category: 'Venta al Detalle',
+  proj_byd_tagum_description: 'BYD Tagum trae la marca de automóviles BYD a Tagum con una sala de exposición diseñada para la claridad y el impacto.',
+  proj_byd_tagum_quote: '"Cada marca tiene un lenguaje espacial. El papel de la sala de exposición es hablar ese lenguaje con fluidez."',
 
-  // ── Project 9: City Medical Plaza ──
-  proj_city_medical_plaza_name: 'Plaza Médica de la Ciudad',
-  proj_city_medical_plaza_address: 'Ciudad de Cebú',
-  proj_city_medical_plaza_category: 'Salud',
-  proj_city_medical_plaza_description: 'La Plaza Médica de la Ciudad en Cebú es un completo centro médico ambulatorio diseñado para atender las crecientes necesidades sanitarias de la región de Visayas. El edificio se organiza en torno a un atrio central que sirve como eje principal de orientación, llevando luz natural al interior del plano y creando un entorno legible y sin estrés para pacientes y visitantes. La fachada presenta un sistema de brise-soleil de paneles de aluminio perforado que filtra el intenso sol tropical manteniendo una sensación de transparencia y conexión con el contexto urbano circundante.',
-  proj_city_medical_plaza_fp0: 'Planta Baja',
-  proj_city_medical_plaza_fp1: 'Planta Segunda',
-  proj_city_medical_plaza_fp2: 'Sección del Atrio',
+  // ── BYD Zamboanga ──
+  proj_byd_zamboanga_name: 'BYD Zamboanga',
+  proj_byd_zamboanga_address: 'Ciudad de Zamboanga',
+  proj_byd_zamboanga_category: 'Venta al Detalle',
+  proj_byd_zamboanga_description: 'BYD Zamboanga es una instalación de automoción que sirve a la región occidental de Mindanao.',
+  proj_byd_zamboanga_quote: '"La arquitectura para una marca es una forma de traducción — tomando la identidad de una empresa y dándole paredes, luz y escala."',
 
-  // ── Project 10: Boutique Hotel Downtown ──
-  proj_boutique_hotel_downtown_name: 'Hotel Boutique en el Centro',
-  proj_boutique_hotel_downtown_address: 'Manila',
-  proj_boutique_hotel_downtown_category: 'Hospitalidad',
-  proj_boutique_hotel_downtown_description: 'Ubicado en el corazón histórico de Manila, este hotel boutique ocupa un edificio patrimonial sensiblemente restaurado y ampliado con una extensión contemporánea trasera. El proyecto navega la compleja relación entre preservación e innovación, conservando la ornamentada fachada original y los interiores de techos altos mientras introduce un nuevo lenguaje arquitectónico en la extensión que es claramente de su tiempo. Las 48 habitaciones están diseñadas individualmente, cada una inspirada en un capítulo diferente de la rica y estratificada historia de Manila.',
-  proj_boutique_hotel_downtown_fp0: 'Planta Baja',
-  proj_boutique_hotel_downtown_fp1: 'Planta de Habitaciones Tipo',
-  proj_boutique_hotel_downtown_fp2: 'Planta de Azotea',
+  // ── Clínica Chiong ──
+  proj_chiong_clinic_name: 'Clínica Chiong',
+  proj_chiong_clinic_address: 'Ciudad de Cagayan de Oro',
+  proj_chiong_clinic_category: 'Salud',
+  proj_chiong_clinic_description: 'La Clínica Chiong es un centro médico diseñado para proporcionar un entorno tranquilo y profesional para pacientes y profesionales.',
+  proj_chiong_clinic_quote: '"Los mejores entornos sanitarios sanan antes de que comience el tratamiento — en la calidad de la luz, la fluidez del movimiento y la calma del espacio bien ordenado."',
 
-  // ── Project 11: Innovation Campus ──
-  proj_innovation_campus_name: 'Campus de Innovación',
-  proj_innovation_campus_address: 'Ciudad de Davao',
-  proj_innovation_campus_category: 'Uso Mixto',
-  proj_innovation_campus_description: 'El Campus de Innovación en Davao es un entorno construido específicamente para la investigación, la tecnología y las industrias creativas. El plan maestro organiza una serie de edificios flexibles de laboratorio y estudio en torno a una espina verde central, fomentando encuentros fortuitos y la colaboración interdisciplinar. La arquitectura es deliberadamente discreta — un telón de fondo para el trabajo y las personas que alberga — con un lenguaje material consistente de hormigón visto, acero envejecido y amplios acristalamientos. Una red de pasarelas cubiertas conecta todos los edificios, proporcionando refugio de la lluvia tropical manteniendo una fuerte conexión con el paisaje.',
-  proj_innovation_campus_fp0: 'Plan Maestro',
-  proj_innovation_campus_fp1: 'Planta del Edificio de Laboratorios',
-  proj_innovation_campus_fp2: 'Planta del Edificio de Estudios',
+  // ── Oficina Chiu ──
+  proj_chiu_office_name: 'Oficina Chiu',
+  proj_chiu_office_address: 'Ciudad de Cagayan de Oro',
+  proj_chiu_office_category: 'Oficinas',
+  proj_chiu_office_description: 'La Oficina Chiu es un espacio privado de oficinas diseñado para el trabajo concentrado y los encuentros profesionales.',
+  proj_chiu_office_quote: '"Una oficina no es simplemente un lugar para trabajar — es una declaración diaria de quién eres y qué valoras, hecha tangible a través del espacio."',
 
-  // ── Project 12: Corporate Headquarters ──
-  proj_corporate_headquarters_name: 'Sede Corporativa',
-  proj_corporate_headquarters_address: 'Ciudad de Makati',
-  proj_corporate_headquarters_category: 'Oficinas',
-  proj_corporate_headquarters_description: 'Esta sede corporativa para un destacado conglomerado filipino es una declaración de confianza institucional y ambición arquitectónica. La forma distintiva del edificio — una torre cónica con una corona esculpida — establece un nuevo hito en el horizonte de Makati. La fachada está compuesta por un sistema de muro cortina unitizado con aletas de protección solar integradas, logrando un alto nivel de eficiencia energética sin comprometer la presencia visual del edificio. El diseño interior, desarrollado en estrecha colaboración con el cliente, refleja los valores de la empresa: innovación, integridad y orgullo filipino.',
-  proj_corporate_headquarters_fp0: 'Planta Baja',
-  proj_corporate_headquarters_fp1: 'Planta de Oficinas Tipo',
-  proj_corporate_headquarters_fp2: 'Planta Ejecutiva',
+  // ── Sala de Exposición Davao ──
+  proj_davao_showroom_name: 'Sala de Exposición Davao',
+  proj_davao_showroom_address: 'Ciudad de Davao',
+  proj_davao_showroom_category: 'Venta al Detalle',
+  proj_davao_showroom_description: 'La Sala de Exposición Davao es un destino comercial diseñado para servir al dinámico panorama comercial de Davao.',
+  proj_davao_showroom_quote: '"La mejor arquitectura comercial hace que el acto de explorar se sienta como un placer, no como una tarea."',
+
+  // ── Proyectos Foxhome ──
+  proj_foxhome_name: 'Proyectos Foxhome',
+  proj_foxhome_address: 'Ciudad de Cagayan de Oro',
+  proj_foxhome_category: 'Residencial',
+  proj_foxhome_description: 'Foxhome Projects representa una serie de diseños residenciales desarrollados para el creciente mercado de vivienda en Cagayan de Oro.',
+  proj_foxhome_quote: '"Una casa es el más personal de todos los tipos arquitectónicos — el único edificio en la vida de una persona que debe contener no solo el cuerpo, sino la memoria, la aspiración y la pertenencia."',
+
+  // ── Resort Kaway ──
+  proj_kaway_resort_name: 'Resort Kaway',
+  proj_kaway_resort_address: 'Ciudad de Cagayan de Oro',
+  proj_kaway_resort_category: 'Hostelería',
+  proj_kaway_resort_description: 'Kaway Resort es un proyecto hotelero que extrae su carácter del paisaje natural de su entorno.',
+  proj_kaway_resort_quote: '"Un resort tiene éxito cuando los huéspedes olvidan que están en un edificio — cuando la arquitectura se disuelve en el paisaje y solo queda la sensación de llegada."',
+
+  // ── Palm Residences ──
+  proj_palm_residences_name: 'Palm Residences',
+  proj_palm_residences_address: 'Ciudad de Cagayan de Oro',
+  proj_palm_residences_category: 'Residencial',
+  proj_palm_residences_description: 'Palm Residences es un desarrollo residencial diseñado para ofrecer una vida de calidad dentro de una comunidad bien planificada.',
+  proj_palm_residences_quote: '"La gran arquitectura residencial no solo proporciona refugio — crea condiciones para una vida bien vivida, vecindario a vecindario, unidad a unidad."',
+
+  // ── Palm Sands Pool & Lounge ──
+  proj_palm_sands_name: 'Palm Sands Pool & Lounge',
+  proj_palm_sands_address: 'Ciudad de Cagayan de Oro',
+  proj_palm_sands_category: 'Hostelería',
+  proj_palm_sands_description: 'Palm Sands Pool & Lounge es un espacio de ocio y hostelería diseñado para la relajación y la reunión social.',
+  proj_palm_sands_quote: '"El agua y la arquitectura siempre han hablado el mismo idioma — el de la reflexión, la profundidad y el placer eterno de una superficie captando la luz."',
+
+  // ── Loft RC Mandani ──
+  proj_rc_mandani_loft_name: 'Loft RC Mandani',
+  proj_rc_mandani_loft_address: 'Ciudad de Mandaue, Cebú',
+  proj_rc_mandani_loft_category: 'Residencial',
+  proj_rc_mandani_loft_description: 'El Loft RC Mandani es un proyecto de interior residencial situado en el desarrollo Mandani Bay en Cebú.',
+  proj_rc_mandani_loft_quote: '"Un loft no es solo una planta — es una conversación vertical entre niveles, entre lo cotidiano y lo elevado, entre el refugio y el cielo."',
+
+  // ── Residencia Rosales ──
+  proj_rosales_residence_name: 'Residencia Rosales',
+  proj_rosales_residence_address: 'Ciudad de Cagayan de Oro',
+  proj_rosales_residence_category: 'Residencial',
+  proj_rosales_residence_description: 'La Residencia Rosales es una vivienda familiar privada diseñada para responder a las necesidades específicas de sus ocupantes y a las condiciones de su entorno.',
+  proj_rosales_residence_quote: '"La casa particular es el encuentro más directo de la arquitectura con una vida humana — el edificio donde quiénes somos se refleja más claramente en lo que construimos."',
+
+  // ── Squareview ──
+  proj_squareview_name: 'Squareview',
+  proj_squareview_address: 'Ciudad de Cagayan de Oro',
+  proj_squareview_category: 'Uso Mixto',
+  proj_squareview_description: 'Squareview es un desarrollo de uso mixto concebido como un nuevo nodo de actividad en Cagayan de Oro.',
+  proj_squareview_quote: '"Los mejores edificios de uso mixto no son solo edificios — son pequeñas ciudades, comprimidas y apiladas, donde la variedad de la actividad humana da a cada piso su propia vida."',
+
+  // ── Interiores de Administración VMC ──
+  proj_vmc_admin_name: 'Interiores de Administración VMC',
+  proj_vmc_admin_address: 'Ciudad de Cagayan de Oro',
+  proj_vmc_admin_category: 'Oficinas',
+  proj_vmc_admin_description: 'El proyecto de Interiores de Administración VMC transforma el entorno de trabajo de una importante institución médica en un espacio que refleja su misión de cuidado y profesionalismo.',
+  proj_vmc_admin_quote: '"Los espacios administrativos en entornos sanitarios tienen una responsabilidad única — deben proyectar competencia y calma a cada miembro del personal que trabaja en ellos, día tras día."',
+
+  // ── Viviendas VMC ──
+  proj_vmc_housing_name: 'Viviendas VMC',
+  proj_vmc_housing_address: 'Ciudad de Cagayan de Oro',
+  proj_vmc_housing_category: 'Residencial',
+  proj_vmc_housing_description: 'VMC Housing es un proyecto residencial que responde a las necesidades de vivienda asociadas a un importante complejo médico.',
+  proj_vmc_housing_quote: '"La vivienda para quienes dedican sus vidas al cuidado merece la misma calidad de atención que ellos ofrecen a los demás cada día."',
+
+  // ── Proyectos VMC ──
+  proj_vmc_projects_name: 'Proyectos VMC',
+  proj_vmc_projects_address: 'Ciudad de Cagayan de Oro',
+  proj_vmc_projects_category: 'Uso Mixto',
+  proj_vmc_projects_description: 'VMC Projects abarca una serie de obras arquitectónicas realizadas para el complejo institucional VMC.',
+  proj_vmc_projects_quote: '"Los campus institucionales no se construyen en un día — se acumulan a través de decisiones tomadas a lo largo de los años, cada una de las cuales añade o resta coherencia al conjunto."',
+  // ── Condominio CHOA Unidad 16C ──
+  proj_choa_unit_16c_name: 'Condominio CHOA Unidad 16C',
+  proj_choa_unit_16c_address: 'Ciudad de Cagayan de Oro',
+  proj_choa_unit_16c_category: 'Residencial',
+  proj_choa_unit_16c_description: 'El Condominio CHOA Unidad 16C es un proyecto de interior residencial en un edificio de gran altura en Cagayan de Oro. El diseño transforma una planta tipo en un hogar considerado, superando las limitaciones de la tipología compacta mediante capas de textura, luz y variedad espacial.',
+  proj_choa_unit_16c_quote: '"Un apartamento bien diseñado demuestra que la escala no es un requisito para la calidad — que la contención, aplicada con precisión, crea más de lo que la abundancia jamás podría."',
+  // ── Graphic Junior Hotel CDO ──
+  proj_graphic_junior_hotel_name: 'Graphic Junior Hotel CDO',
+  proj_graphic_junior_hotel_address: 'Ciudad de Cagayan de Oro',
+  proj_graphic_junior_hotel_category: 'Hostelería',
+  proj_graphic_junior_hotel_description: 'El Graphic Junior Hotel CDO es un proyecto de hostelería boutique diseñado para ofrecer una experiencia de huésped distintiva en el creciente paisaje urbano de Cagayan de Oro.',
+  proj_graphic_junior_hotel_quote: '"Un gran hotel no se mide por sus instalaciones sino por su atmósfera — la sensación de que alguien pensó cuidadosamente en lo que significaría alojarse aquí."',
+  // -- 207 Cafe --
+  proj_cafe_207_name: '207 Cafe',
+  proj_cafe_207_address: 'Ciudad de Cagayan de Oro',
+  proj_cafe_207_category: 'Hostelería',
+  proj_cafe_207_description: '207 Cafe es un espacio de café de especialidad diseñado en torno a los rituales del tostado, la preparación y el encuentro.',
+  proj_cafe_207_quote: '"Un gran café no es solo un lugar para tomar café — es un entorno que te hace ir más despacio, que hace que una sola taza valga la pena."',
+  // -- BYD Butuan --
+  proj_byd_butuan_name: 'BYD Butuan',
+  proj_byd_butuan_address: 'Ciudad de Butuan',
+  proj_byd_butuan_category: 'Venta al Detalle',
+  proj_byd_butuan_description: 'BYD Butuan lleva la marca BYD a Butuan con una sala de exposición que ancla el mercado automotriz en crecimiento de la región Caraga.',
+  proj_byd_butuan_quote: '"Una sala de exposición en una ciudad en crecimiento lleva un peso diferente — no es solo un espacio comercial, es una señal de que este lugar está listo para lo que viene."',
+  // -- BYD C5 Acropolis --
+  proj_byd_c5_acropolis_name: 'BYD C5 Acropolis',
+  proj_byd_c5_acropolis_address: 'Ciudad de Quezón',
+  proj_byd_c5_acropolis_category: 'Venta al Detalle',
+  proj_byd_c5_acropolis_description: 'BYD C5 Acropolis es una sala de exposición automotriz en el corredor C5 del Metro Manila diseñada para el exigente mercado de la capital.',
+  proj_byd_c5_acropolis_quote: '"En un corredor urbano, el edificio debe hablar primero a la calle — solo entonces puede invitarte a entrar."',
+  // -- BYD Iligan --
+  proj_byd_iligan_name: 'BYD Iligan',
+  proj_byd_iligan_address: 'Ciudad de Iligan',
+  proj_byd_iligan_category: 'Venta al Detalle',
+  proj_byd_iligan_description: 'BYD Iligan extiende la red BYD a Iligan con una sala de exposición concebida para el mercado regional de vehículos eléctricos.',
+  proj_byd_iligan_quote: '"Cada nueva sala de exposición en una nueva ciudad es un acto de confianza — la forma de la marca de decir que cree en el futuro de ese lugar."',
+  // -- BYD Marikina --
+  proj_byd_marikina_name: 'BYD Marikina',
+  proj_byd_marikina_address: 'Ciudad de Marikina',
+  proj_byd_marikina_category: 'Venta al Detalle',
+  proj_byd_marikina_description: 'BYD Marikina es una sala de exposición automotriz contemporánea que sirve al mercado del este del Metro Manila.',
+  proj_byd_marikina_quote: '"La buena arquitectura de marca nunca es genérica — habla el idioma de la marca con acento regional, haciéndola sentir a la vez familiar y nueva."',
+  // -- Residencia Balisbis --
+  proj_balisbis_residence_name: 'Residencia Balisbis',
+  proj_balisbis_residence_address: 'Ciudad de Cagayan de Oro',
+  proj_balisbis_residence_category: 'Residencial',
+  proj_balisbis_residence_description: 'La Residencia Balisbis es una vivienda familiar privada que evolucionó a través de varias fases de diseño.',
+  proj_balisbis_residence_quote: '"Los mejores hogares no se terminan en un solo gesto — evolucionan con la familia, acumulando decisiones que juntas suman algo profundamente personal."',
+  // -- Oficina Bellarie --
+  proj_bellarie_office_name: 'Oficina Bellarie',
+  proj_bellarie_office_address: 'Ciudad de Cagayan de Oro',
+  proj_bellarie_office_category: 'Oficinas',
+  proj_bellarie_office_description: 'La Oficina Bellarie es un edificio comercial de múltiples plantas diseñado para la comunidad empresarial de Cagayan de Oro.',
+  proj_bellarie_office_quote: '"La arquitectura de oficinas en su mejor expresión crea las condiciones para la productividad sin prescribir cómo debe ocurrir el trabajo."',
+  // -- Blush --
+  proj_blush_name: 'Blush',
+  proj_blush_address: 'Ciudad de Cagayan de Oro',
+  proj_blush_category: 'Diseño de Interiores',
+  proj_blush_description: 'Blush es un interior de belleza y bienestar diseñado con atención a la suavidad, el calor y el confort sensorial.',
+  proj_blush_quote: '"Los espacios de belleza triunfan cuando hacen que sus clientes se sientan cuidados y hermosos antes de que comience un solo servicio."',
+  // -- Residencia Dasmariñas Cavite --
+  proj_dasmarinas_residence_name: 'Residencia Dasmariñas Cavite',
+  proj_dasmarinas_residence_address: 'Dasmariñas, Cavite',
+  proj_dasmarinas_residence_category: 'Residencial',
+  proj_dasmarinas_residence_description: 'La Residencia Dasmariñas es una vivienda familiar de dos plantas en Cavite diseñada para proporcionar espacios habitables generosos.',
+  proj_dasmarinas_residence_quote: '"Una casa de dos plantas en un lote suburbano es uno de los desafíos más limitados de la arquitectura — y uno de los más gratificantes."',
+  // -- Sala de Exposición Denza --
+  proj_denza_showroom_name: 'Sala de Exposición Denza',
+  proj_denza_showroom_address: 'Ciudad de Cagayan de Oro',
+  proj_denza_showroom_category: 'Venta al Detalle',
+  proj_denza_showroom_description: 'La Sala de Exposición Denza trae la marca premium de vehículos eléctricos Denza a Cagayan de Oro.',
+  proj_denza_showroom_quote: '"Una sala de exposición automotriz de lujo es la expresión más física de la marca — cada superficie, proporción y fuente de luz dice algo sobre sus valores."',
+  // -- Foxhomes 2025 --
+  proj_foxhomes_2025_name: 'Foxhomes 2025',
+  proj_foxhomes_2025_address: 'Ciudad de Cagayan de Oro',
+  proj_foxhomes_2025_category: 'Residencial',
+  proj_foxhomes_2025_description: 'Foxhomes 2025 representa los últimos diseños residenciales de la serie Foxhome para Cagayan de Oro.',
+  proj_foxhomes_2025_quote: '"El diseño residencial en serie no se trata de repetición — se trata de refinamiento, construyendo sobre lo aprendido para hacer cada iteración más considerada."',
+  // -- Anexo Graphic --
+  proj_graphic_annex_name: 'Anexo Graphic',
+  proj_graphic_annex_address: 'Ciudad de Cagayan de Oro',
+  proj_graphic_annex_category: 'Hostelería',
+  proj_graphic_annex_description: 'El Anexo Graphic es una extensión de la marca de hostelería Graphic en Cagayan de Oro.',
+  proj_graphic_annex_quote: '"Un anexo es un acto de confianza — la decisión de ampliar un lugar que ya funciona."',
+  // -- Centro de Diálisis Ozamiz --
+  proj_ozamiz_dialysis_center_name: 'Centro de Diálisis Ozamiz',
+  proj_ozamiz_dialysis_center_address: 'Ciudad de Ozamiz',
+  proj_ozamiz_dialysis_center_category: 'Salud',
+  proj_ozamiz_dialysis_center_description: 'El Centro de Diálisis Ozamiz es un centro médico diseñado para proporcionar atención digna y cómoda para pacientes en Ozamiz.',
+  proj_ozamiz_dialysis_center_quote: '"La arquitectura de diálisis lleva una responsabilidad particular — los pacientes pasan horas en estos espacios cada semana."',
+  // -- Clínica de Belleza Raintree Mall --
+  proj_raintree_beauty_clinic_name: 'Clínica de Belleza Raintree Mall',
+  proj_raintree_beauty_clinic_address: 'Ciudad de Cagayan de Oro',
+  proj_raintree_beauty_clinic_category: 'Diseño de Interiores',
+  proj_raintree_beauty_clinic_description: 'La Clínica de Belleza Raintree Mall es un espacio de belleza y bienestar dentro del Raintree Mall en Cagayan de Oro.',
+  proj_raintree_beauty_clinic_quote: '"Una clínica de belleza dentro de un centro comercial debe crear una sensación de llegada y calma en un espacio rodeado de ruido comercial."',
+  // -- Diagnósticos Sanjus --
+  proj_sanjus_diagnostics_name: 'Diagnósticos Sanjus',
+  proj_sanjus_diagnostics_address: 'Ciudad de Cagayan de Oro',
+  proj_sanjus_diagnostics_category: 'Salud',
+  proj_sanjus_diagnostics_description: 'Sanjus Diagnostics es un centro médico de diagnóstico diseñado para ofrecer una experiencia al paciente eficiente y tranquilizadora.',
+  proj_sanjus_diagnostics_quote: '"La sala de espera de una clínica diagnóstica es donde coexisten la ansiedad y la esperanza."',
+  // -- Villas de la Isla Sorana --
+  proj_sorana_island_villas_name: 'Villas de la Isla Sorana',
+  proj_sorana_island_villas_address: 'Ciudad de Cagayan de Oro',
+  proj_sorana_island_villas_category: 'Hostelería',
+  proj_sorana_island_villas_description: 'Las Villas de la Isla Sorana es un desarrollo de ocio y hostelería concebido como un retiro tropical.',
+  proj_sorana_island_villas_quote: '"La arquitectura insular en su mejor expresión desaparece en el paisaje."',
+  // -- Proyectos Sytin --
+  proj_sytin_projects_name: 'Proyectos Sytin',
+  proj_sytin_projects_address: 'Metro Manila',
+  proj_sytin_projects_category: 'Venta al Detalle',
+  proj_sytin_projects_description: 'Sytin Projects abarca dos salas de exposición automotrices en Metro Manila — en Fairview y Pampanga.',
+  proj_sytin_projects_quote: '"La coherencia de marca en múltiples ubicaciones es una disciplina — respetar el lenguaje de la marca mientras se permite a cada edificio hablar el dialecto de su ciudad."',
+  // -- Tabas --
+  proj_tabas_name: 'Tabas',
+  proj_tabas_address: 'Ciudad de Cagayan de Oro',
+  proj_tabas_category: 'Residencial',
+  proj_tabas_description: 'Tabas es un proyecto residencial privado en Cagayan de Oro que equilibra los requisitos funcionales de la vida familiar con ambición de diseño.',
+  proj_tabas_quote: '"La mejor arquitectura residencial no se define por su presupuesto o tamaño — se define por el cuidado puesto en cada decisión."',
+  // -- Proyectos VMC Azucarera --
+  proj_vmc_projects_2025_name: 'Proyectos VMC Azucarera',
+  proj_vmc_projects_2025_address: 'Ciudad de Cagayan de Oro',
+  proj_vmc_projects_2025_category: 'Uso Mixto',
+  proj_vmc_projects_2025_description: 'Los Proyectos VMC de Azucarería representan obras arquitectónicas emprendidas para el complejo VMC.',
+  proj_vmc_projects_2025_quote: '"La arquitectura industrial ha sido tratada con demasiada frecuencia como una categoría exenta del diseño."',
+  // -- Residencia Yang --
+  proj_yang_residence_name: 'Residencia Yang',
+  proj_yang_residence_address: 'Ciudad de Cagayan de Oro',
+  proj_yang_residence_category: 'Residencial',
+  proj_yang_residence_description: 'La Residencia Yang es una vivienda familiar privada en Cagayan de Oro que pasó por múltiples rondas de refinamiento de diseño.',
+  proj_yang_residence_quote: '"Un hogar refinado a través de la iteración es un hogar construido con convicción."',
+  // -- Interiores Residencias Yap --
+  proj_yap_residences_interiors_name: 'Interiores Residencias Yap',
+  proj_yap_residences_interiors_address: 'Ciudad de Cagayan de Oro',
+  proj_yap_residences_interiors_category: 'Residencial',
+  proj_yap_residences_interiors_description: 'El proyecto de Interiores de las Residencias Yap transforma unidades residenciales existentes en entornos de vida considerados y personalizados.',
+  proj_yap_residences_interiors_quote: '"El diseño interior en su máxima expresión es invisible — cuando se hace bien, no notas el diseño; solo notas lo bien que te sientes en el espacio."',
+  // -- BAIC Radar CDO --
+  proj_baic_radar_cdo_name: 'BAIC Radar CDO',
+  proj_baic_radar_cdo_address: 'Ciudad de Cagayan de Oro',
+  proj_baic_radar_cdo_category: 'Venta al Detalle',
+  proj_baic_radar_cdo_description: 'BAIC Radar CDO trae la marca automotriz BAIC a Cagayan de Oro con una sala de exposición diseñada para presentar la línea Radar EV al mercado del norte de Mindanao.',
+  proj_baic_radar_cdo_quote: '"Cada nueva sala de exposición automotriz en una ciudad en crecimiento tiene un doble propósito: vende vehículos y señala que este mercado está listo para la tecnología del mañana."',
+  // -- Chen Residence --
+  proj_chen_residence_name: 'Residencia Chen',
+  proj_chen_residence_address: 'Ciudad de Cagayan de Oro',
+  proj_chen_residence_category: 'Residencial',
+  proj_chen_residence_description: 'La Residencia Chen es una vivienda familiar contemporánea en Cagayan de Oro diseñada para proporcionar espacios de vida generosos y bien equipados dentro de un refinado envoltorio arquitectónico.',
+  proj_chen_residence_quote: '"Los mejores hogares no se diseñan para el día de la inauguración — se diseñan para las décadas que siguen, cuando el edificio se ha asentado y la familia ha crecido en cada habitación."',
 
   // ── Studio Page ──
   studio_about_eyebrow: 'Sobre el Estudio',

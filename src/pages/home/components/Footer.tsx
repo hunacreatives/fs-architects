@@ -243,12 +243,21 @@ export default function Footer() {
         >
           {t('footer_website_by')} Huna Creatives
         </a>
-        <p
-          className="text-white/20 text-[11px]"
-          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
-        >
-          © {new Date().getFullYear()} FS Architects. All Rights Reserved.
-        </p>
+        <div className="flex items-center gap-4">
+          <a
+            href="/privacy"
+            className="text-white/20 text-[11px] hover:text-white/45 transition-colors duration-300"
+            style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+          >
+            Privacy Notice
+          </a>
+          <p
+            className="text-white/20 text-[11px]"
+            style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+          >
+            © {new Date().getFullYear()} FS Architects. All Rights Reserved.
+          </p>
+        </div>
       </div>
     </footer>
   );

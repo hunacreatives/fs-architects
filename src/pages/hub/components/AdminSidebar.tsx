@@ -4,7 +4,7 @@ import { useDemo } from '@/contexts/DemoContext';
 
 const navItems = [
   { to: '/hub/admin/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
-  { to: '/hub/admin/contractors', label: 'Contractors', icon: 'ri-team-line' },
+  { to: '/hub/admin/contractors', label: 'Employees', icon: 'ri-team-line' },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },
   { to: '/hub/admin/requests', label: 'Requests', icon: 'ri-inbox-line' },
   { to: '/hub/admin/timeoff', label: 'Time-Off', icon: 'ri-calendar-event-line' },
@@ -13,8 +13,9 @@ const navItems = [
   { divider: true, label: 'Finance' },
   { to: '/hub/admin/payroll', label: 'Payroll', icon: 'ri-bar-chart-2-line' },
   { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
-  { to: '/hub/admin/invoice-log', label: 'Invoice Log', icon: 'ri-bill-line' },
+  { divider: true, label: 'Documents' },
   { to: '/hub/admin/documents', label: 'Documents', icon: 'ri-file-text-line' },
+  { to: '/hub/admin/invoice-log', label: 'Invoice Log', icon: 'ri-bill-line' },
   { divider: true, label: 'Content' },
   { to: '/hub/admin/sop', label: 'SOP Library', icon: 'ri-book-open-line' },
   { to: '/hub/admin/announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
@@ -75,7 +76,7 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
           {!collapsed && (
             <>
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold truncate">Huna Ops</p>
+                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold truncate">FS Architects</p>
                 <p className="text-[16px] font-semibold text-gray-800 leading-none">Sentro</p>
               </div>
               <button

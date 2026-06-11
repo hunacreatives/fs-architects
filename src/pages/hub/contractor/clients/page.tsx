@@ -94,7 +94,7 @@ export default function ContractorClientsPage() {
   const inactive = clients.filter(c => !['active', 'ongoing'].includes(c.status));
 
   return (
-    <ContractorLayout title="My Clients">
+    <ContractorLayout title="My Projects">
       <div className="max-w-2xl space-y-6">
         {loading ? (
           <div className="flex justify-center py-12">

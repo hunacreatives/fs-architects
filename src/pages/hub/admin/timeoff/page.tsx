@@ -385,7 +385,7 @@ export default function AdminTimeOffPage() {
             {/* Add blackout */}
             <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
               <h3 className="text-sm font-semibold text-[#111827]">Add Blackout Period</h3>
-              <p className="text-xs text-gray-400">Contractors cannot file PTO or sick leave during blackout dates. Emergencies are exempt.</p>
+              <p className="text-xs text-gray-400">Employees cannot file PTO or sick leave during blackout dates. Emergencies are exempt.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Start Date</label>
@@ -555,7 +555,7 @@ export default function AdminTimeOffPage() {
 
               {selected.reason && (
                 <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1">Contractor's Reason</p>
+                  <p className="text-xs font-medium text-gray-700 mb-1">Employee's Reason</p>
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{selected.reason}</p>
                 </div>
               )}
@@ -565,7 +565,7 @@ export default function AdminTimeOffPage() {
                   {isOwner ? 'Notes (visible to contractor)' : 'HR Notes (forwarded to owner)'}
                 </label>
                 <textarea value={hrNotes} onChange={(e) => setHrNotes(e.target.value)} rows={3}
-                  placeholder={isOwner ? 'Add notes for the contractor...' : 'Add notes before forwarding to owner...'}
+                  placeholder={isOwner ? 'Add notes for the employee...' : 'Add notes before forwarding to owner...'}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
               </div>
 

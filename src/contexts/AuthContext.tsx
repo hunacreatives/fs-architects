@@ -97,7 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setAuthUser(s?.user ?? null);
       if (s?.user && !hubUserLoadedRef.current) {
-        const profile = await loadHubUser(s.user.id);
+        const timeout = new Promise<null>(r => setTimeout(() => r(null), 5000));
+        const profile = await Promise.race([loadHubUser(s.user.id).catch(() => null), timeout]);
         if (mountedRef.current) {
           setHubUser(profile);
           hubUserLoadedRef.current = true;

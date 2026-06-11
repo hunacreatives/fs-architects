@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     const redirectTo = window.location.hostname === 'localhost'
       ? `${window.location.origin}/hub/reset-password`
-      : 'https://www.hunacreatives.com/hub/reset-password';
+      : 'https://www.fsarchitects.ph/hub/reset-password';
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     setLoading(false);
     if (err) {

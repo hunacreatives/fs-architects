@@ -60,7 +60,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         shift_start: form.shift_start || null,
         shift_end: form.shift_end || null,
         work_days: form.work_days,
-        slack_id: form.slack_id || null,
+        slack_id: null,
       },
     });
 
@@ -102,7 +102,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
       <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div>
-            <h2 className="font-semibold text-[#111827]">Add Contractor</h2>
+            <h2 className="font-semibold text-[#111827]">Add Member</h2>
             <p className="text-xs text-gray-400 mt-0.5">Create their profile — they'll get an invite email to set their password.</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
@@ -119,7 +119,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Full Name *</label>
                   <input value={form.full_name} onChange={e => set('full_name', e.target.value)}
-                    placeholder="e.g. Angela Louise Ando"
+                    placeholder="Full name"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
                 <div className="space-y-1">
@@ -131,9 +131,9 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Department / Role Title</label>
+                  <label className="text-xs font-medium text-gray-700">Position / Role Title</label>
                   <input value={form.department} onChange={e => set('department', e.target.value)}
-                    placeholder="e.g. Media Buyer"
+                    placeholder="e.g. Architect, Draftsman"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
                 <div className="space-y-1">
@@ -142,20 +142,14 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Access Role</label>
                   <select value={form.role} onChange={e => set('role', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
-                    <option value="contractor">Contractor</option>
+                    <option value="contractor">Employee</option>
                     <option value="admin">HR / Admin</option>
                   </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Slack ID</label>
-                  <input value={form.slack_id} onChange={e => set('slack_id', e.target.value)}
-                    placeholder="e.g. U09NUQFTZL6"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
                 </div>
               </div>
             </div>
@@ -170,8 +164,6 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                 <div className="flex gap-2">
                   {[
                     { value: 'fixed', label: 'Fixed Monthly' },
-                    { value: 'hourly', label: 'Hourly' },
-                    { value: 'fixed_flexible', label: 'Fixed Flexible' },
                     { value: 'project_based', label: 'Project Based' },
                   ].map(opt => (
                     <button key={opt.value} type="button"

@@ -406,7 +406,7 @@ const translations = {
   studio_cta_btn: 'Start Your Project',
   studio_cta_btn_secondary: 'Request a Consultation',
   studio_about_headline: 'Architecture shaped\nwith clarity and restraint.',
-  studio_about_intro: 'Founded in 2008, FS Architects is a Cebu-based architectural practice dedicated to considered, human-centered design. The firm approaches each project with care and precision, guided by the belief that architecture should evolve at the pace of life—deliberate, thoughtful, and grounded in real use.',
+  studio_about_intro: 'FS Architects is a design practice guided by form, space, and intent. Our work is shaped through collaboration, curiosity, and a commitment to thoughtful architecture.',
   studio_about_intro_2: 'Working across scales from intimate interiors to large civic buildings, FS Architects is driven by a clear conviction: architecture should serve people, honor place, and endure.',
   studio_about_intro_short: 'Lorem ipsum dolor sit amet, consectetuer adipiscing',
   studio_principal_name: 'Denza',

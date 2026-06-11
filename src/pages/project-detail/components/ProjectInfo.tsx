@@ -74,24 +74,35 @@ export default function ProjectInfo({
       if (fadingRef.current) return;
       fadingRef.current = true;
       const idx = Math.floor(Math.random() * 12);
-      // Phase 1: fade out
-      setFadingIdx(idx);
-      // Phase 2: swap src while still invisible
-      setTimeout(() => {
-        setImgs(prev => {
-          const next = [...prev];
-          const outgoing = next[idx];
-          const incoming = unusedRef.current.shift()!;
-          unusedRef.current.push(outgoing);
-          next[idx] = incoming;
-          return next;
-        });
-        // Phase 3: fade in after a tick so the new src renders at opacity 0 first
+      const incomingSrc = unusedRef.current[0];
+
+      const doSwap = () => {
+        // Phase 1: fade out
+        setFadingIdx(idx);
+        // Phase 2: swap src while still invisible
         setTimeout(() => {
-          setFadingIdx(null);
-          fadingRef.current = false;
-        }, 60);
-      }, 700);
+          setImgs(prev => {
+            const next = [...prev];
+            const outgoing = next[idx];
+            const incoming = unusedRef.current.shift()!;
+            unusedRef.current.push(outgoing);
+            next[idx] = incoming;
+            return next;
+          });
+          // Phase 3: fade in
+          setTimeout(() => {
+            setFadingIdx(null);
+            fadingRef.current = false;
+          }, 60);
+        }, 700);
+      };
+
+      // Preload incoming image before starting the fade so there's no blank frame
+      const preload = new window.Image();
+      preload.onload = doSwap;
+      preload.onerror = doSwap;
+      preload.src = incomingSrc;
+      if (preload.complete) doSwap();
     }, 5000);
     return () => clearInterval(interval);
   }, []);

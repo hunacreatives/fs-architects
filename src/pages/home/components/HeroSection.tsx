@@ -154,33 +154,52 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 80%  { opacity: 1; transform: translateY(0); }
                 100% { opacity: 0; transform: translateY(-6px); }
               }
-              .tagline-word {
-                display: inline-block;
+              .tagline-word-active {
                 animation: taglineWordIn ${TAGLINE_CYCLE_MS}ms ease forwards;
               }
             `}</style>
-            <h1
-              style={{
-                fontFamily: 'Marcellus, serif',
-                fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
-                letterSpacing: '-0.01em',
-                lineHeight: '1.25',
-                textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-                color: 'white',
-              }}
-            >
-              {(() => {
-                const lines = [t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')];
-                const [pre, post] = lines[taglineIdx].split(' by ');
-                return (
-                  <>
-                    <span key={`pre-${taglineIdx}`} className="tagline-word">{pre}</span>
-                    <span style={{ opacity: 1 }}>{' by '}</span>
-                    <span key={`post-${taglineIdx}`} className="tagline-word">{post}</span>
-                  </>
-                );
-              })()}
-            </h1>
+            {(() => {
+              const lines = [t('studio_quote_line1'), t('studio_quote_line2'), t('studio_quote_line3')];
+              const parts = lines.map(l => { const idx = l.indexOf(' by '); return { pre: l.slice(0, idx), post: l.slice(idx + 4) }; });
+              return (
+                <h1
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '0.3em',
+                    fontFamily: 'Marcellus, serif',
+                    fontSize: 'clamp(1.35rem, 2.8vw, 2.6rem)',
+                    letterSpacing: '-0.01em',
+                    lineHeight: '1.25',
+                    textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+                    color: 'white',
+                  }}
+                >
+                  {/* Pre-word slot: all 3 stacked in same grid cell so width = widest word */}
+                  <span style={{ display: 'inline-grid', textAlign: 'right' }}>
+                    {parts.map(({ pre }, i) => (
+                      <span
+                        key={taglineIdx === i ? `pre-${i}-active` : `pre-${i}`}
+                        className={taglineIdx === i ? 'tagline-word-active' : ''}
+                        style={{ gridArea: '1/1', opacity: taglineIdx === i ? undefined : 0 }}
+                      >{pre}</span>
+                    ))}
+                  </span>
+                  {/* "by" never moves */}
+                  <span>by</span>
+                  {/* Post-word slot: same grid trick */}
+                  <span style={{ display: 'inline-grid' }}>
+                    {parts.map(({ post }, i) => (
+                      <span
+                        key={taglineIdx === i ? `post-${i}-active` : `post-${i}`}
+                        className={taglineIdx === i ? 'tagline-word-active' : ''}
+                        style={{ gridArea: '1/1', opacity: taglineIdx === i ? undefined : 0 }}
+                      >{post}</span>
+                    ))}
+                  </span>
+                </h1>
+              );
+            })()}
           </div>
 
           {/* Right CTA */}

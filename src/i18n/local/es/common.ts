@@ -23,9 +23,9 @@ const translations = {
   hero_subtitle: 'Forma en Quietud',
   hero_tagline_line1: 'Redefiniendo',
   hero_tagline_line2: 'Espacios.',
-  studio_quote_line1: 'Definido por la Forma.',
-  studio_quote_line2: 'Moldeado por el Espacio.',
-  studio_quote_line3: 'Guiado por la Intención.',
+  studio_quote_line1: 'Forma.',
+  studio_quote_line2: 'Espacio.',
+  studio_quote_line3: 'Intuición.',
   hero_cta: 'Ver Proyectos',
 
   // Map section

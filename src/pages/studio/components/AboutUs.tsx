@@ -246,9 +246,9 @@ export default function AboutUs() {
               key={li}
               className={`quote-word quote-w${li}`}
               style={{
-                fontFamily: 'Marcellus, serif',
+                fontFamily: 'Geist, sans-serif',
                 fontSize: 'clamp(1.05rem, 2vw, 1.7rem)',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.12em',
                 color: 'rgba(255,255,255,0.9)',
                 textAlign: 'center',
                 lineHeight: 1.55,

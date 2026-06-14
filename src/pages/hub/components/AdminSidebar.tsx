@@ -5,7 +5,7 @@ import { useDemo } from '@/contexts/DemoContext';
 const navItems = [
   { to: '/hub/admin/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
   { divider: true, label: 'People' },
-  { to: '/hub/admin/contractors', label: 'Employees', icon: 'ri-team-line' },
+  { to: '/hub/admin/employees', label: 'Employees', icon: 'ri-team-line' },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },
   { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line', devOnly: true },
   { divider: true, label: 'Inbound' },

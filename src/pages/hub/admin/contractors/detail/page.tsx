@@ -340,7 +340,7 @@ export default function ContractorDetailPage() {
       actions={
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/hub/admin/contractors')}
+            onClick={() => navigate('/hub/admin/employees')}
             className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 cursor-pointer whitespace-nowrap"
           >
             <i className="ri-arrow-left-line text-sm"></i>

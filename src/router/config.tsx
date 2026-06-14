@@ -18,8 +18,8 @@ const HubSignupPage = lazy(() => import('../pages/hub/signup/page'));
 const HubForgotPasswordPage = lazy(() => import('../pages/hub/forgot-password/page'));
 const HubResetPasswordPage = lazy(() => import('../pages/hub/reset-password/page'));
 const HubAdminDashboard = lazy(() => import('../pages/hub/admin/dashboard/page'));
-const HubAdminContractors = lazy(() => import('../pages/hub/admin/contractors/page'));
-const HubAdminContractorDetail = lazy(() => import('../pages/hub/admin/contractors/detail/page'));
+const HubAdminContractors = lazy(() => import('../pages/hub/admin/employees/page'));
+const HubAdminContractorDetail = lazy(() => import('../pages/hub/admin/employees/detail/page'));
 const HubAdminAttendance = lazy(() => import('../pages/hub/admin/attendance/page'));
 const HubAdminRequests = lazy(() => import('../pages/hub/admin/requests/page'));
 const HubAdminTimeOff = lazy(() => import('../pages/hub/admin/timeoff/page'));
@@ -91,8 +91,8 @@ const routes: RouteObject[] = [
 
   // Hub — admin
   { path: '/hub/admin/dashboard', element: <S>{withAdminGate(<HubAdminDashboard />)}</S> },
-  { path: '/hub/admin/contractors', element: <S>{withAdminGate(<HubAdminContractors />)}</S> },
-  { path: '/hub/admin/contractors/:id', element: <S>{withAdminGate(<HubAdminContractorDetail />)}</S> },
+  { path: '/hub/admin/employees', element: <S>{withAdminGate(<HubAdminContractors />)}</S> },
+  { path: '/hub/admin/employees/:id', element: <S>{withAdminGate(<HubAdminContractorDetail />)}</S> },
   { path: '/hub/admin/attendance', element: <S>{withAdminGate(<HubAdminAttendance />)}</S> },
   { path: '/hub/admin/requests', element: <S>{withAdminGate(<HubAdminRequests />)}</S> },
   { path: '/hub/admin/timeoff', element: <S>{withAdminGate(<HubAdminTimeOff />)}</S> },

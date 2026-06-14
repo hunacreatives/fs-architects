@@ -45,7 +45,7 @@ function GlobalSearch() {
 
     const out: SearchResult[] = [];
     for (const c of (cRes.data || [])) {
-      out.push({ type: 'contractor', id: c.id, title: c.full_name, subtitle: c.department || c.role, path: `/hub/admin/contractors/${c.id}`, icon: 'ri-user-line' });
+      out.push({ type: 'contractor', id: c.id, title: c.full_name, subtitle: c.department || c.role, path: `/hub/admin/employees/${c.id}`, icon: 'ri-user-line' });
     }
     for (const p of (pRes.data || [])) {
       out.push({ type: 'project', id: p.id, title: p.project_name, subtitle: p.client_name, path: '/hub/admin/projects', icon: 'ri-folder-line' });
@@ -103,7 +103,7 @@ function GlobalSearch() {
     { label: 'Dashboard page', path: '/hub/admin/dashboard', icon: 'ri-home-5-line' },
     { label: 'Projects page', path: '/hub/admin/projects', icon: 'ri-folder-line' },
     { label: 'Payroll page', path: '/hub/admin/payroll', icon: 'ri-bank-card-line' },
-    { label: 'Employees page', path: '/hub/admin/contractors', icon: 'ri-team-line' },
+    { label: 'Employees page', path: '/hub/admin/employees', icon: 'ri-team-line' },
     { label: 'Attendance page', path: '/hub/admin/attendance', icon: 'ri-time-line' },
     { label: 'Schedule invoice', path: '/hub/admin/invoice-log', icon: 'ri-calendar-schedule-line' },
   ];
@@ -167,7 +167,7 @@ function GlobalSearch() {
               {[
                 { name: 'Dashboard', icon: 'ri-home-5-line', path: '/hub/admin/dashboard' },
                 { name: 'Payroll', icon: 'ri-bank-card-line', path: '/hub/admin/payroll' },
-                { name: 'Team', icon: 'ri-team-line', path: '/hub/admin/contractors' },
+                { name: 'Team', icon: 'ri-team-line', path: '/hub/admin/employees' },
                 { name: 'Attendance', icon: 'ri-time-line', path: '/hub/admin/attendance' },
                 { name: 'Time Off', icon: 'ri-calendar-check-line', path: '/hub/admin/timeoff' },
                 { name: 'Invoices', icon: 'ri-file-text-line', path: '/hub/admin/invoice-log' },

@@ -249,7 +249,7 @@ export default function ContractorsPage() {
 
               return (
                 <div key={c.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50/60 transition-colors cursor-pointer group"
-                  onClick={() => navigate(`/hub/admin/contractors/${c.id}`)}>
+                  onClick={() => navigate(`/hub/admin/employees/${c.id}`)}>
 
                   {/* Avatar */}
                   <div className="flex-shrink-0 relative">
@@ -323,7 +323,7 @@ export default function ContractorsPage() {
                       </button>
                       {openMenu === c.id && (
                         <div className="absolute right-0 bottom-full mb-1 z-20 w-48 bg-white border border-gray-100 rounded-xl shadow-lg py-1 text-sm">
-                          <button onClick={() => navigate(`/hub/admin/contractors/${c.id}`)}
+                          <button onClick={() => navigate(`/hub/admin/employees/${c.id}`)}
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-gray-700 hover:bg-gray-50 cursor-pointer">
                             <i className="ri-eye-line text-gray-400"></i> View profile
                           </button>
@@ -365,7 +365,7 @@ export default function ContractorsPage() {
                         </div>
                       )}
                     </div>
-                    <button onClick={() => navigate(`/hub/admin/contractors/${c.id}`)}
+                    <button onClick={() => navigate(`/hub/admin/employees/${c.id}`)}
                       className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-[#1c2b3a] hover:bg-slate-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
                       <i className="ri-arrow-right-s-line text-lg"></i>
                     </button>

@@ -857,7 +857,7 @@ export default function AdminDashboardPage() {
                 <h3 className="font-semibold text-[#111827] text-sm mb-3">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Add Employee', icon: 'ri-user-add-line', path: '/hub/admin/contractors', color: 'text-[#1c2b3a]', bg: 'bg-[#1c2b3a]/5 hover:bg-[#1c2b3a]/10' },
+                    { label: 'Add Employee', icon: 'ri-user-add-line', path: '/hub/admin/employees', color: 'text-[#1c2b3a]', bg: 'bg-[#1c2b3a]/5 hover:bg-[#1c2b3a]/10' },
                     { label: 'View Attendance', icon: 'ri-time-line', path: '/hub/admin/attendance', color: 'text-sky-600', bg: 'bg-sky-50 hover:bg-sky-100' },
                     { label: 'Post Announcement', icon: 'ri-megaphone-line', path: '/hub/admin/announcements', color: 'text-[#1c2b3a]', bg: 'bg-slate-50 hover:bg-slate-100' },
                     { label: 'Run Payroll', icon: 'ri-money-dollar-circle-line', path: '/hub/admin/payroll', color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100' },

@@ -8,7 +8,7 @@ const ADMIN_SLACK_IDS: string[] = (Deno.env.get('ADMIN_SLACK_IDS') ?? '').split(
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@fsarchitects.ph';
 const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
 const HUB_SIGNUP_URL = `${HUB_BASE_URL}/hub/signup?invite=1`;
-const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL}/storage/v1/object/public/brand/fs-architects-logo-horizontal.jpg`;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 
 async function slackDm(userId: string, text: string) {
   if (!SLACK_BOT_TOKEN) return;
@@ -129,8 +129,18 @@ Deno.serve(async (req) => {
 
           <!-- Header -->
           <tr>
-            <td style="background:#a8b9c9;padding:28px 40px;text-align:center;">
-              <img src="${LOGO_URL}" alt="FS Architects" style="height:48px;width:auto;display:block;margin:0 auto;" />
+            <td style="background:#a8b9c9;padding:24px 40px;text-align:center;">
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <img src="${LOGO_URL}" alt="FS Architects" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:8px;object-fit:cover;" />
+                  </td>
+                  <td style="vertical-align:middle;padding-left:14px;">
+                    <p style="margin:0;font-size:16px;font-weight:700;color:#1c2b3a;letter-spacing:0.04em;">FS ARCHITECTS</p>
+                    <p style="margin:2px 0 0;font-size:10px;color:#1c2b3a;opacity:0.6;letter-spacing:0.12em;text-transform:uppercase;">Sentro Hub</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 

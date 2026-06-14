@@ -57,6 +57,12 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+function isAfterNoon(iso: string | null): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return d.getHours() >= 12;
+}
+
 function Avatar({ name, avatar_url }: { name: string; avatar_url: string | null }) {
   if (avatar_url) {
     return <img src={avatar_url} alt={name} className="w-9 h-9 rounded-full object-cover object-top flex-shrink-0" />;
@@ -732,7 +738,7 @@ export default function AdminAttendancePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Employee', 'Time In', 'Time Out', 'Raw Hrs', 'Billable', 'Status'].map(h => (
+                      {['Employee', 'Time In', 'Time Out', 'Raw Hrs', 'Billable', 'Status', ''].map(h => (
                         <th key={h} className="text-left text-xs text-gray-400 font-medium px-4 py-3">{h}</th>
                       ))}
                     </tr>
@@ -757,7 +763,14 @@ export default function AdminAttendancePage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">{formatTime(r.first_on)}</td>
+                        <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {formatTime(r.first_on)}
+                            {r.worked && isAfterNoon(r.first_on) && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium whitespace-nowrap">Late In</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">{formatTime(r.last_off)}</td>
                         <td className="px-4 py-3.5">
                           <span className={`text-sm font-semibold tabular-nums ${r.hours_raw != null && r.hours_capped != null && r.hours_raw > r.hours_capped ? 'text-amber-600' : 'text-[#111827]'}`}>
@@ -772,12 +785,16 @@ export default function AdminAttendancePage() {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              r.worked && isAfterNoon(r.first_on) ? 'bg-amber-100 text-amber-700' :
                               r.worked ? 'bg-emerald-100 text-emerald-700' :
                               r.first_on && !r.last_off ? 'bg-sky-100 text-sky-700' :
                               r.isDayOff ? 'bg-gray-100 text-gray-400' :
                               'bg-amber-100 text-amber-700'
                             }`}>
-                              {r.worked ? 'Worked' : r.first_on && !r.last_off ? 'In Progress' : r.isDayOff ? 'Day Off' : 'Absent'}
+                              {r.worked && isAfterNoon(r.first_on) ? 'Late' :
+                               r.worked ? 'Worked' :
+                               r.first_on && !r.last_off ? 'In Progress' :
+                               r.isDayOff ? 'Day Off' : 'Absent'}
                             </span>
                             <button
                               onClick={() => setEditHours({ userId: r.id, fullName: r.full_name, currentHours: r.hours_raw })}

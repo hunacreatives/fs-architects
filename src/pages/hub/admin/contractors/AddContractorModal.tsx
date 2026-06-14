@@ -13,6 +13,7 @@ const emptyForm = {
   email: '',
   role: 'contractor' as 'contractor' | 'admin',
   department: '',
+  employment_classification: '',
   start_date: new Date().toISOString().slice(0, 10),
   payment_type: 'fixed' as 'fixed' | 'hourly' | 'fixed_flexible' | 'project_based',
   monthly_rate: '',
@@ -52,6 +53,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         full_name: form.full_name.trim(),
         role: form.role,
         department: form.department || null,
+        employment_classification: form.employment_classification || null,
         start_date: form.start_date || null,
         payment_type: form.payment_type,
         hourly_rate: form.hourly_rate ? parseFloat(form.hourly_rate) : null,
@@ -132,16 +134,37 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Department / Role Title</label>
-                  <input value={form.department} onChange={e => set('department', e.target.value)}
-                    placeholder="e.g. Architect, Interior Designer"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                  <label className="text-xs font-medium text-gray-700">Job Title</label>
+                  <select value={form.department} onChange={e => set('department', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]">
+                    <option value="">Select or type...</option>
+                    <optgroup label="Architecture">
+                      {['Junior Architect', 'Architect', 'Project Architect', 'Studio Head'].map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Other">
+                      {['Interior Design', 'Design & Drafting', 'Project Management', 'Construction Admin', 'Business Development', 'Admin', 'Management'].map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </optgroup>
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Start Date</label>
                   <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Employment Classification</label>
+                <select value={form.employment_classification} onChange={e => set('employment_classification', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]">
+                  <option value="">Select...</option>
+                  {['Probationary', 'Regular', 'Project-Based', 'Apprentice/Intern'].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

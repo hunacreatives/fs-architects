@@ -14,13 +14,27 @@ const MAX_CONSECUTIVE = 3;
 const typeLabels: Record<string, string> = {
   pto: 'Vacation Leave (VL)',
   sick: 'Sick Leave (SL)',
+  birthday: 'Birthday Leave',
+  sil: 'Service Incentive Leave (SIL)',
   emergency: 'Emergency Leave',
+  maternity: 'Maternity Leave',
+  paternity: 'Paternity Leave',
+  solo_parent: 'Solo Parent Leave',
+  women_special: 'Special Leave for Women',
+  vawc: 'VAWC Leave',
   unpaid: 'Unpaid Leave',
 };
 const typeColors: Record<string, string> = {
   pto: 'bg-sky-100 text-sky-700',
   sick: 'bg-rose-100 text-rose-700',
+  birthday: 'bg-pink-100 text-pink-700',
+  sil: 'bg-teal-100 text-teal-700',
   emergency: 'bg-slate-100 text-[#1c2b3a]',
+  maternity: 'bg-purple-100 text-purple-700',
+  paternity: 'bg-indigo-100 text-indigo-700',
+  solo_parent: 'bg-orange-100 text-orange-700',
+  women_special: 'bg-fuchsia-100 text-fuchsia-700',
+  vawc: 'bg-rose-100 text-rose-800',
   unpaid: 'bg-gray-100 text-gray-600',
 };
 const statusColors: Record<string, string> = {
@@ -223,12 +237,15 @@ export default function ContractorTimeOffPage() {
         <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-1.5">
           <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5"><i className="ri-information-line"></i>Leave Policy</p>
           <ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
-            <li>VL: 6 days/year · available 6 months after start date · no carryover</li>
-            <li>SL: 4 days/year · available 6 months after start date · separate from VL</li>
-            <li>PTO must be filed <strong className="text-gray-500">30 days in advance</strong> · max 3 consecutive days per month</li>
-            <li>Emergencies: notify HR immediately</li>
+            <li>VL: 6 days/year · available after 6 months · no carryover</li>
+            <li>SL: 4 days/year · available after 6 months · separate from VL</li>
+            <li>Birthday Leave: 1 paid day · file 3 days in advance</li>
+            <li>SIL: 5 days/year · available after 1 year of service</li>
+            <li>VL must be filed <strong className="text-gray-500">30 days in advance</strong> · max 3 consecutive days per month</li>
+            <li>Maternity (105d), Paternity (7d), Solo Parent (7d), Women's Special (60d), VAWC (10d) — statutory; HR approval required with documentation</li>
+            <li>Emergency leave: notify HR immediately, no advance notice required</li>
             <li>Unpaid leave: subject to approval based on workload</li>
-            <li>Unused leaves are forfeited at year-end</li>
+            <li>Unused VL and SL are forfeited at year-end</li>
           </ul>
         </div>
 
@@ -315,53 +332,82 @@ export default function ContractorTimeOffPage() {
               {/* Type */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-700">Leave Type</label>
-                <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={type}
+                  onChange={(e) => { setType(e.target.value); setFormError(''); }}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white"
+                >
                   {Object.entries(typeLabels).map(([val, label]) => {
                     const locked = val === 'pto' && !isEligibleForPTO;
                     return (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => { if (!locked) { setType(val); setFormError(''); } }}
-                        className={`px-3 py-2.5 text-xs rounded-lg border text-left transition-all ${
-                          locked
-                            ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-                            : type === val
-                              ? 'border-[#1c2b3a] bg-slate-50 text-[#1c2b3a] font-medium cursor-pointer'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300 cursor-pointer'
-                        }`}
-                      >
-                        <span className="flex items-center gap-1">
-                          {locked && <i className="ri-lock-line text-gray-300 text-[10px]"></i>}
-                          {label}
-                        </span>
-                        {val === 'pto' && (
-                          <span className="block font-normal mt-0.5 text-[10px]">
-                            {locked
-                              ? `Available ${ptoEligibleLabel}`
-                              : `${ptoLeft}/${PTO_LIMIT} days left`}
-                          </span>
-                        )}
-                        {val === 'sick' && <span className="block text-gray-400 font-normal mt-0.5">{sickLeft}/{SICK_LIMIT} days left</span>}
-                      </button>
+                      <option key={val} value={val} disabled={locked}>
+                        {label}{locked ? ` — unlocks ${ptoEligibleLabel}` : ''}
+                      </option>
                     );
                   })}
-                </div>
+                </select>
+                {(type === 'pto' || type === 'sick') && (
+                  <p className="text-xs text-gray-400">
+                    {type === 'pto'
+                      ? `${ptoLeft}/${PTO_LIMIT} days remaining this year`
+                      : `${sickLeft}/${SICK_LIMIT} days remaining this year`}
+                  </p>
+                )}
               </div>
 
-              {/* Emergency notice */}
+              {/* Type-specific notices */}
               {type === 'emergency' && (
                 <div className="flex items-start gap-2 p-3 bg-slate-50 border border-slate-100 rounded-lg">
                   <i className="ri-alarm-warning-line text-[#1c2b3a]/70 text-sm mt-0.5 flex-shrink-0"></i>
                   <p className="text-xs text-[#1c2b3a]">Please notify HR immediately in addition to submitting this form. Emergencies do not require advance notice.</p>
                 </div>
               )}
-
-              {/* Unpaid notice */}
               {type === 'unpaid' && (
                 <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                   <i className="ri-information-line text-gray-400 text-sm mt-0.5 flex-shrink-0"></i>
                   <p className="text-xs text-gray-500">Unpaid leave is subject to approval based on current workload. It is not guaranteed.</p>
+                </div>
+              )}
+              {type === 'maternity' && (
+                <div className="flex items-start gap-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                  <i className="ri-information-line text-purple-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-purple-700">Maternity Leave — up to 105 days paid (RA 11210). Notify HR as early as possible with medical documentation.</p>
+                </div>
+              )}
+              {type === 'paternity' && (
+                <div className="flex items-start gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                  <i className="ri-information-line text-indigo-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-indigo-700">Paternity Leave — 7 days paid (RA 8187). Must be taken within 60 days of delivery. Notify HR with birth certificate.</p>
+                </div>
+              )}
+              {type === 'solo_parent' && (
+                <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                  <i className="ri-information-line text-orange-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-orange-700">Solo Parent Leave — 7 days paid (RA 8972). A valid Solo Parent ID is required.</p>
+                </div>
+              )}
+              {type === 'women_special' && (
+                <div className="flex items-start gap-2 p-3 bg-fuchsia-50 border border-fuchsia-100 rounded-lg">
+                  <i className="ri-information-line text-fuchsia-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-fuchsia-700">Special Leave for Women — up to 60 days (RA 9710, Magna Carta for Women). Requires medical certification.</p>
+                </div>
+              )}
+              {type === 'vawc' && (
+                <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-100 rounded-lg">
+                  <i className="ri-information-line text-rose-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-rose-700">VAWC Leave — up to 10 days paid (RA 9262). Requires barangay protection order or court documentation. Notify HR confidentially.</p>
+                </div>
+              )}
+              {type === 'birthday' && (
+                <div className="flex items-start gap-2 p-3 bg-pink-50 border border-pink-100 rounded-lg">
+                  <i className="ri-cake-line text-pink-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-pink-700">Birthday Leave — 1 paid day off on or near your birthday. File at least 3 days in advance.</p>
+                </div>
+              )}
+              {type === 'sil' && (
+                <div className="flex items-start gap-2 p-3 bg-teal-50 border border-teal-100 rounded-lg">
+                  <i className="ri-information-line text-teal-400 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-teal-700">Service Incentive Leave — 5 days/year (Labor Code). Available to employees with at least 1 year of service.</p>
                 </div>
               )}
 

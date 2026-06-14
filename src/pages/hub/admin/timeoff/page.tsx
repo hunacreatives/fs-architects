@@ -8,12 +8,26 @@ import { logAudit } from '@/lib/audit';
 import { DEMO_TIME_OFF } from '@/lib/demoData';
 
 const typeLabels: Record<string, string> = {
-  pto: 'PTO', vacation: 'PTO', sick: 'Sick', emergency: 'Emergency', unpaid: 'Unpaid', other: 'Other',
+  pto: 'Vacation (VL)', vacation: 'Vacation (VL)', sick: 'Sick (SL)',
+  birthday: 'Birthday', sil: 'SIL',
+  emergency: 'Emergency', unpaid: 'Unpaid',
+  maternity: 'Maternity', paternity: 'Paternity',
+  solo_parent: 'Solo Parent', women_special: "Women's Special", vawc: 'VAWC',
+  other: 'Other',
 };
 const typeColors: Record<string, string> = {
   pto: 'bg-sky-100 text-sky-700', vacation: 'bg-sky-100 text-sky-700',
-  sick: 'bg-rose-100 text-rose-700', emergency: 'bg-slate-100 text-[#1c2b3a]',
-  unpaid: 'bg-gray-100 text-gray-600', other: 'bg-purple-100 text-purple-700',
+  sick: 'bg-rose-100 text-rose-700',
+  birthday: 'bg-pink-100 text-pink-700',
+  sil: 'bg-teal-100 text-teal-700',
+  emergency: 'bg-slate-100 text-[#1c2b3a]',
+  unpaid: 'bg-gray-100 text-gray-600',
+  maternity: 'bg-purple-100 text-purple-700',
+  paternity: 'bg-indigo-100 text-indigo-700',
+  solo_parent: 'bg-orange-100 text-orange-700',
+  women_special: 'bg-fuchsia-100 text-fuchsia-700',
+  vawc: 'bg-rose-100 text-rose-800',
+  other: 'bg-purple-100 text-purple-700',
 };
 const statusColors: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',

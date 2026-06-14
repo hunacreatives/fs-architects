@@ -19,6 +19,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     emergency_contact_phone: (contractor as any).emergency_contact_phone || '',
     slack_username: contractor.slack_username || '',
     department: contractor.department || '',
+    employment_classification: (contractor as any).employment_classification || '',
     role: contractor.role || 'contractor',
     start_date: contractor.start_date || '',
     birthday: (contractor as any).birthday || '',
@@ -61,7 +62,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="font-semibold text-[#111827]">Edit Contractor</h2>
+          <h2 className="font-semibold text-[#111827]">Edit Employee</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer">
             <i className="ri-close-line text-lg"></i>
           </button>
@@ -154,12 +155,30 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Department</label>
+              <label className="text-xs font-medium text-gray-700">Job Title / Department</label>
               <select value={form.department} onChange={(e) => set('department', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="">Select...</option>
-                {['Architecture', 'Interior Design', 'Design & Drafting', 'Project Management', 'Construction Admin', 'Business Development', 'Admin', 'Management'].map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                <optgroup label="Architecture Career Levels">
+                  {['Junior Architect', 'Architect', 'Project Architect', 'Studio Head'].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Departments">
+                  {['Architecture', 'Interior Design', 'Design & Drafting', 'Project Management', 'Construction Admin', 'Business Development', 'Admin', 'Management'].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">Employment Classification</label>
+              <select value={form.employment_classification} onChange={(e) => set('employment_classification', e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                <option value="">Select...</option>
+                {['Probationary', 'Regular', 'Project-Based', 'Apprentice/Intern'].map((c) => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>

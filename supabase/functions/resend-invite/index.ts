@@ -32,15 +32,15 @@ function emailHtml(firstName: string, linkUrl: string, _isReset: boolean) {
 
           <!-- Header -->
           <tr>
-            <td style="background:#a8b9c9;padding:24px 32px;">
+            <td style="background:#334049;padding:24px 32px;">
               <table cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align:middle;">
                     <img src="${LOGO_URL}" alt="FS Architects" width="52" height="52" style="display:block;width:52px;height:52px;border-radius:6px;object-fit:cover;" />
                   </td>
                   <td style="vertical-align:middle;padding-left:14px;">
-                    <p style="margin:0;font-size:16px;font-weight:700;color:#1c2b3a;letter-spacing:0.04em;">FS ARCHITECTS</p>
-                    <p style="margin:2px 0 0;font-size:10px;color:#1c2b3a;opacity:0.6;letter-spacing:0.12em;text-transform:uppercase;">Sentro Hub · ${headline}</p>
+                    <p style="margin:0;font-size:16px;font-weight:700;color:#ffffff;letter-spacing:0.04em;">FS ARCHITECTS</p>
+                    <p style="margin:2px 0 0;font-size:10px;color:#a8b9c9;letter-spacing:0.12em;text-transform:uppercase;">Sentro Hub · ${headline}</p>
                   </td>
                 </tr>
               </table>

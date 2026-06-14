@@ -5,7 +5,7 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@fsarchitects.ph';
 const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
-const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
+const LOGO_URL = 'https://fsarchitects.ph/images/fs-architects-logo.jpg';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

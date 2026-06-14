@@ -8,6 +8,7 @@ const ADMIN_SLACK_IDS: string[] = (Deno.env.get('ADMIN_SLACK_IDS') ?? '').split(
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@fsarchitects.ph';
 const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
 const HUB_SIGNUP_URL = `${HUB_BASE_URL}/hub/signup?invite=1`;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL}/storage/v1/object/public/brand/fs-architects-logo-horizontal.jpg`;
 
 async function slackDm(userId: string, text: string) {
   if (!SLACK_BOT_TOKEN) return;
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background:#a8b9c9;padding:28px 40px;text-align:center;">
-              <img src="${HUB_BASE_URL}/images/fs-architects-logo-horizontal.jpg" alt="FS Architects" style="height:48px;width:auto;display:block;margin:0 auto;" />
+              <img src="${LOGO_URL}" alt="FS Architects" style="height:48px;width:auto;display:block;margin:0 auto;" />
             </td>
           </tr>
 

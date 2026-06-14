@@ -52,15 +52,19 @@ function toDateStr(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+const PHT = 'Asia/Manila';
+
 function formatTime(iso: string | null) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: PHT });
 }
 
 function isAfterNoon(iso: string | null): boolean {
   if (!iso) return false;
-  const d = new Date(iso);
-  return d.getHours() >= 12;
+  const hour = parseInt(
+    new Date(iso).toLocaleString('en-US', { timeZone: PHT, hour: 'numeric', hour12: false })
+  );
+  return hour >= 12;
 }
 
 function Avatar({ name, avatar_url }: { name: string; avatar_url: string | null }) {

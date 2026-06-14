@@ -144,11 +144,11 @@ export default function HubLoginPage() {
           -webkit-text-fill-color: rgba(255,255,255,0.85) !important;
         }
         .btn-glow {
-          background: linear-gradient(135deg, #1c2b3a, #e53a00);
+          background: linear-gradient(135deg, #FF6B35, #e53a00);
           transition: all 0.3s ease;
         }
         .btn-glow:hover {
-          background: linear-gradient(135deg, #ff7f4d, #1c2b3a);
+          background: linear-gradient(135deg, #ff7f4d, #c73000);
           box-shadow: 0 8px 32px rgba(255,107,53,0.55) !important;
           transform: translateY(-1px);
         }
@@ -181,11 +181,12 @@ export default function HubLoginPage() {
 
         {/* Logo */}
         <div className="relative z-10 p-8 md:p-10 flex items-center gap-2.5 form-in">
-          <div className="w-8 h-8 rounded-xl bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"
+          <div className="w-8 h-8 rounded-xl bg-[#FF6B35] flex items-center justify-center flex-shrink-0"
             style={{ boxShadow: '0 4px 14px rgba(255,107,53,0.4)' }}>
             <img src="/s-logo.png" alt="S" className="w-[18px] h-[18px] object-contain" style={{ filter: 'invert(1)' }} />
           </div>
-          <span className="font-bold tracking-widest text-sm text-white/90">SENTRO <span className="text-[#1c2b3a]">OS</span></span>
+          <span className="font-bold tracking-widest text-sm text-white/90">SENTRO <span className="text-[#FF6B35]">OS</span></span>
+          <span className="text-white/20 text-xs font-light tracking-widest ml-1">× FS Architects</span>
         </div>
 
         {/* Form */}
@@ -193,7 +194,7 @@ export default function HubLoginPage() {
           <div className="w-full max-w-[380px] form-in" style={{ animationDelay: '0.1s' }}>
 
             <div className="mb-10">
-              <p className="text-[#1c2b3a] text-[11px] font-semibold tracking-[0.25em] uppercase mb-3">Welcome back</p>
+              <p className="text-[#FF6B35] text-[11px] font-semibold tracking-[0.25em] uppercase mb-3">Welcome back</p>
               <h1 className="text-white font-bold leading-tight" style={{ fontSize: '2.6rem', letterSpacing: '-0.02em' }}>
                 Sign in to<br />your workspace.
               </h1>
@@ -220,7 +221,7 @@ export default function HubLoginPage() {
                 <div className="flex items-center justify-between">
                   <label className="block text-[11px] font-semibold text-white/40 tracking-widest uppercase">Password</label>
                   <button type="button" onClick={() => navigate('/hub/forgot-password')}
-                    className="text-xs text-[#1c2b3a] hover:text-[#ff8255] transition-colors cursor-pointer font-medium">
+                    className="text-xs text-[#FF6B35] hover:text-[#ff8255] transition-colors cursor-pointer font-medium">
                     Forgot password?
                   </button>
                 </div>
@@ -306,7 +307,7 @@ export default function HubLoginPage() {
               <p className="text-white/40 text-[10px] tracking-[0.35em] uppercase mb-2">Sentro OS</p>
               <p className="text-white/80 text-base font-medium" style={{ minWidth: '240px', minHeight: '28px' }}>
                 Centralize your{' '}
-                <span className="text-[#1c2b3a]">
+                <span className="text-[#FF6B35]">
                   {displayed}
                   <span className="inline-block w-[2px] h-[1em] bg-[#1c2b3a] ml-[1px] align-middle"
                     style={{ animation: 'blink 1s step-end infinite' }} />

@@ -116,7 +116,14 @@ Deno.serve(async (req) => {
     let linkData, linkErr, isReset = false;
 
     if (!onboarding_completed) {
-      // Employee never finished setup — delete stale auth user and send a fresh invite
+      // Employee never finished setup — delete stale auth user and re-invite
+      // Must save full hub_users row first since cascade will delete it
+      const { data: fullRow } = await supabase
+        .from('hub_users')
+        .select('*')
+        .eq('id', contractor_id)
+        .maybeSingle();
+
       const { data: { users } } = await supabase.auth.admin.listUsers();
       const stale = users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
       if (stale) await supabase.auth.admin.deleteUser(stale.id);
@@ -126,6 +133,12 @@ Deno.serve(async (req) => {
         email: email.toLowerCase(),
         options: { redirectTo: `${HUB_BASE_URL}/hub/signup?invite=1` },
       }));
+
+      // Re-insert hub_users with new auth user ID
+      if (linkData?.user && fullRow) {
+        const { id: _oldId, ...rest } = fullRow;
+        await supabase.from('hub_users').insert({ ...rest, id: linkData.user.id });
+      }
     } else {
       // Employee already has an account — send a password reset
       isReset = true;

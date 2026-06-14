@@ -205,6 +205,14 @@ Deno.serve(async (req) => {
         effectiveStatus = 'off';
       }
 
+      // Handbook rule: clock-in at/after 12 PM PHT → max half day (4 hrs)
+      if (firstOn) {
+        const firstOnHour = parseInt(new Date(firstOn.ts * 1000).toLocaleString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', hour12: false }));
+        if (firstOnHour >= 12) {
+          hoursCapped = Math.min(hoursCapped, 4);
+        }
+      }
+
       // overtime_hours is NOT set here — it is written when admin approves hub_overtime_requests
       if (hubUser && firstOn) {
         const validLastOff = (lastOff && lastOff.ts > firstOn.ts) ? new Date(lastOff.ts * 1000).toISOString() : null;

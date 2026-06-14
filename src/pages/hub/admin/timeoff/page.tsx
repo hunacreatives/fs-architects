@@ -396,7 +396,7 @@ export default function AdminTimeOffPage() {
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="col-span-1 sm:col-span-2 space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Reason <span className="text-gray-400 font-normal">(shown to contractors)</span></label>
+                  <label className="text-xs font-medium text-gray-700">Reason <span className="text-gray-400 font-normal">(shown to employees)</span></label>
                   <input value={bdForm.reason} onChange={(e) => setBdForm({ ...bdForm, reason: e.target.value })}
                     placeholder="e.g. Client launch period, Q4 crunch"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
@@ -448,7 +448,7 @@ export default function AdminTimeOffPage() {
             ) : balances.length === 0 ? (
               <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
                 <i className="ri-user-line text-3xl text-gray-200 mb-2 block"></i>
-                <p className="text-sm text-gray-400">No active contractors found</p>
+                <p className="text-sm text-gray-400">No active employees found</p>
               </div>
             ) : (
               <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">

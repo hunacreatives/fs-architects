@@ -24,6 +24,7 @@ const emptyForm = {
   shift_end: '',
   work_days: [] as string[],
   slack_id: '',
+  skip_email: false,
 };
 
 export default function AddContractorModal({ onClose, onSuccess }: Props) {
@@ -64,6 +65,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         shift_end: form.shift_end || null,
         work_days: form.work_days,
         slack_id: form.slack_id || null,
+        skip_email: form.skip_email,
       },
     });
 
@@ -82,15 +84,18 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
         <div className="bg-white rounded-2xl w-full max-w-md p-8 text-center space-y-4">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-            <i className="ri-mail-send-line text-emerald-600 text-2xl"></i>
+          <div className={`w-16 h-16 ${form.skip_email ? 'bg-blue-100' : 'bg-emerald-100'} rounded-full flex items-center justify-center mx-auto`}>
+            <i className={`${form.skip_email ? 'ri-user-add-line text-blue-600' : 'ri-mail-send-line text-emerald-600'} text-2xl`}></i>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 text-lg">Invite sent!</h3>
+            <h3 className="font-semibold text-gray-900 text-lg">{form.skip_email ? 'Employee added!' : 'Invite sent!'}</h3>
             <p className="text-sm text-gray-500 mt-1">
-              <strong>{form.full_name}</strong>'s profile has been created and an invite email has been sent to <strong>{form.email}</strong>.
+              <strong>{form.full_name}</strong>'s profile has been created.
+              {form.skip_email
+                ? ' No invite email was sent — you can share the hub link with them directly.'
+                : <> An invite email has been sent to <strong>{form.email}</strong>.</>}
             </p>
-            <p className="text-xs text-gray-400 mt-2">They'll set their password when they click the link.</p>
+            {!form.skip_email && <p className="text-xs text-gray-400 mt-2">They'll set their password when they click the link.</p>}
           </div>
           <button onClick={onClose} className="w-full py-2.5 bg-[#111827] text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800">
             Done
@@ -106,10 +111,20 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-[#111827]">Add Team Member</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Create their profile — they'll get an invite email to set their password.</p>
+            <p className="text-xs text-gray-400 mt-0.5">Create their profile and optionally send an invite email.</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
             <i className="ri-close-line text-lg"></i>
+          </button>
+        </div>
+        <div className="px-5 pt-4 flex gap-2">
+          <button type="button" onClick={() => set('skip_email', false)}
+            className={`flex-1 py-2 text-xs rounded-lg border transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${!form.skip_email ? 'bg-[#1c2b3a] text-white border-[#1c2b3a]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            <i className="ri-mail-send-line"></i> Send Invite Email
+          </button>
+          <button type="button" onClick={() => set('skip_email', true)}
+            className={`flex-1 py-2 text-xs rounded-lg border transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${form.skip_email ? 'bg-[#1c2b3a] text-white border-[#1c2b3a]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            <i className="ri-user-add-line"></i> Add Manually
           </button>
         </div>
 
@@ -161,7 +176,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                 <select value={form.employment_classification} onChange={e => set('employment_classification', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]">
                   <option value="">Select...</option>
-                  {['Probationary', 'Regular', 'Project-Based', 'Apprentice/Intern'].map(c => (
+                  {['Probationary', 'Regular', 'Project-Based', 'Apprentice', 'Intern'].map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -294,7 +309,11 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
           </button>
           <button onClick={save} disabled={saving || !form.full_name.trim() || !form.email.trim()}
             className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap flex items-center justify-center gap-2">
-            {saving ? <><i className="ri-loader-4-line animate-spin text-sm"></i> Sending invite…</> : <><i className="ri-mail-send-line text-sm"></i> Create & Send Invite</>}
+            {saving
+              ? <><i className="ri-loader-4-line animate-spin text-sm"></i> {form.skip_email ? 'Adding…' : 'Sending invite…'}</>
+              : form.skip_email
+                ? <><i className="ri-user-add-line text-sm"></i> Add Employee</>
+                : <><i className="ri-mail-send-line text-sm"></i> Create & Send Invite</>}
           </button>
         </div>
       </div>

@@ -177,7 +177,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               <select value={form.employment_classification} onChange={(e) => set('employment_classification', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="">Select...</option>
-                {['Probationary', 'Regular', 'Project-Based', 'Apprentice/Intern'].map((c) => (
+                {['Probationary', 'Regular', 'Project-Based', 'Apprentice', 'Intern'].map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>

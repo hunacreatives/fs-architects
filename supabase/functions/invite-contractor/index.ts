@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
       email, full_name, role = 'contractor', department, start_date,
       payment_type, hourly_rate, monthly_rate, project_percentage, currency = 'PHP',
       shift_start, shift_end, work_days, slack_id, employment_classification,
+      skip_email = false,
     } = await req.json();
 
     if (!email || !full_name) {
@@ -111,6 +112,10 @@ Deno.serve(async (req) => {
     if (insertErr) {
       await supabase.auth.admin.deleteUser(linkData.user.id);
       return new Response(JSON.stringify({ error: insertErr.message }), { status: 200, headers: cors });
+    }
+
+    if (skip_email) {
+      return new Response(JSON.stringify({ ok: true, user_id: linkData.user.id }), { headers: cors });
     }
 
     // Send branded welcome email via Resend

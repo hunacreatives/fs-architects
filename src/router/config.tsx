@@ -36,21 +36,21 @@ const HubAdminPerformance = lazy(() => import('../pages/hub/admin/performance/pa
 const HubAdminProjects = lazy(() => import('../pages/hub/admin/projects/page'));
 const HubAdminDocuments = lazy(() => import('../pages/hub/admin/documents/page'));
 const HubAdminOvertime = lazy(() => import('../pages/hub/admin/overtime/page'));
-const HubContractorDashboard = lazy(() => import('../pages/hub/contractor/dashboard/page'));
-const HubContractorAttendance = lazy(() => import('../pages/hub/contractor/attendance/page'));
-const HubContractorRequests = lazy(() => import('../pages/hub/contractor/requests/page'));
-const HubContractorTimeOff = lazy(() => import('../pages/hub/contractor/timeoff/page'));
-const HubContractorSop = lazy(() => import('../pages/hub/contractor/sop/page'));
-const HubContractorAnnouncements = lazy(() => import('../pages/hub/contractor/announcements/page'));
-const HubContractorProfile = lazy(() => import('../pages/hub/contractor/profile/page'));
-const HubContractorPayouts = lazy(() => import('../pages/hub/contractor/payouts/page'));
-const HubContractorDocuments = lazy(() => import('../pages/hub/contractor/documents/page'));
-const HubContractorCredentials = lazy(() => import('../pages/hub/contractor/credentials/page'));
-const HubContractorOvertime = lazy(() => import('../pages/hub/contractor/overtime/page'));
-const HubContractorOnboarding = lazy(() => import('../pages/hub/contractor/onboarding/page'));
-const HubContractorClients = lazy(() => import('../pages/hub/contractor/clients/page'));
-const HubContractorProjects = lazy(() => import('../pages/hub/contractor/projects/page'));
-const HubContractorProjectRedirect = lazy(() => import('../pages/hub/contractor/project-redirect/page'));
+const HubContractorDashboard = lazy(() => import('../pages/hub/employee/dashboard/page'));
+const HubContractorAttendance = lazy(() => import('../pages/hub/employee/attendance/page'));
+const HubContractorRequests = lazy(() => import('../pages/hub/employee/requests/page'));
+const HubContractorTimeOff = lazy(() => import('../pages/hub/employee/timeoff/page'));
+const HubContractorSop = lazy(() => import('../pages/hub/employee/sop/page'));
+const HubContractorAnnouncements = lazy(() => import('../pages/hub/employee/announcements/page'));
+const HubContractorProfile = lazy(() => import('../pages/hub/employee/profile/page'));
+const HubContractorPayouts = lazy(() => import('../pages/hub/employee/payouts/page'));
+const HubContractorDocuments = lazy(() => import('../pages/hub/employee/documents/page'));
+const HubContractorCredentials = lazy(() => import('../pages/hub/employee/credentials/page'));
+const HubContractorOvertime = lazy(() => import('../pages/hub/employee/overtime/page'));
+const HubContractorOnboarding = lazy(() => import('../pages/hub/employee/onboarding/page'));
+const HubContractorClients = lazy(() => import('../pages/hub/employee/clients/page'));
+const HubContractorProjects = lazy(() => import('../pages/hub/employee/projects/page'));
+const HubContractorProjectRedirect = lazy(() => import('../pages/hub/employee/project-redirect/page'));
 const HubAdminTasks = lazy(() => import('../pages/hub/admin/tasks/page'));
 const HubAdminInvoiceBuilder = lazy(() => import('../pages/hub/admin/invoice-builder/page'));
 const HubAdminApplications = lazy(() => import('../pages/hub/admin/applications/page'));
@@ -118,22 +118,22 @@ const routes: RouteObject[] = [
   { path: '/pay/:token', element: <S><PublicPaymentPage /></S> },
 
   // Hub — employee (contractor)
-  { path: '/hub/contractor/dashboard', element: <S>{withContractorGate(<HubContractorDashboard />)}</S> },
-  { path: '/hub/contractor/attendance', element: <S>{withContractorGate(<HubContractorAttendance />)}</S> },
-  { path: '/hub/contractor/requests', element: <S>{withContractorGate(<HubContractorRequests />)}</S> },
-  { path: '/hub/contractor/timeoff', element: <S>{withContractorGate(<HubContractorTimeOff />)}</S> },
-  { path: '/hub/contractor/overtime', element: <S>{withContractorGate(<HubContractorOvertime />)}</S> },
-  { path: '/hub/contractor/sop', element: <S>{withContractorGate(<HubContractorSop />)}</S> },
-  { path: '/hub/contractor/announcements', element: <S>{withContractorGate(<HubContractorAnnouncements />)}</S> },
-  { path: '/hub/contractor/profile', element: <S>{withContractorGate(<HubContractorProfile />)}</S> },
+  { path: '/hub/employee/dashboard', element: <S>{withContractorGate(<HubContractorDashboard />)}</S> },
+  { path: '/hub/employee/attendance', element: <S>{withContractorGate(<HubContractorAttendance />)}</S> },
+  { path: '/hub/employee/requests', element: <S>{withContractorGate(<HubContractorRequests />)}</S> },
+  { path: '/hub/employee/timeoff', element: <S>{withContractorGate(<HubContractorTimeOff />)}</S> },
+  { path: '/hub/employee/overtime', element: <S>{withContractorGate(<HubContractorOvertime />)}</S> },
+  { path: '/hub/employee/sop', element: <S>{withContractorGate(<HubContractorSop />)}</S> },
+  { path: '/hub/employee/announcements', element: <S>{withContractorGate(<HubContractorAnnouncements />)}</S> },
+  { path: '/hub/employee/profile', element: <S>{withContractorGate(<HubContractorProfile />)}</S> },
   { path: '/hub/admin/profile', element: <S>{withAdminGate(<HubContractorProfile />)}</S> },
-  { path: '/hub/contractor/payouts', element: <S>{withContractorGate(<HubContractorPayouts />)}</S> },
-  { path: '/hub/contractor/documents', element: <S>{withContractorGate(<HubContractorDocuments />)}</S> },
-  { path: '/hub/contractor/credentials', element: <S>{withContractorGate(<HubContractorCredentials />)}</S> },
-  { path: '/hub/contractor/clients', element: <S>{withContractorGate(<HubContractorClients />)}</S> },
-  { path: '/hub/contractor/projects', element: <S>{withContractorGate(<HubContractorProjects />)}</S> },
-  { path: '/hub/contractor/project/:slug', element: <S>{withContractorGate(<HubContractorProjectRedirect />)}</S> },
-  { path: '/hub/contractor/onboarding', element: <S><HubContractorOnboarding /></S> },
+  { path: '/hub/employee/payouts', element: <S>{withContractorGate(<HubContractorPayouts />)}</S> },
+  { path: '/hub/employee/documents', element: <S>{withContractorGate(<HubContractorDocuments />)}</S> },
+  { path: '/hub/employee/credentials', element: <S>{withContractorGate(<HubContractorCredentials />)}</S> },
+  { path: '/hub/employee/clients', element: <S>{withContractorGate(<HubContractorClients />)}</S> },
+  { path: '/hub/employee/projects', element: <S>{withContractorGate(<HubContractorProjects />)}</S> },
+  { path: '/hub/employee/project/:slug', element: <S>{withContractorGate(<HubContractorProjectRedirect />)}</S> },
+  { path: '/hub/employee/onboarding', element: <S><HubContractorOnboarding /></S> },
 
   { path: "*", element: <NotFound /> },
 ];

@@ -102,7 +102,7 @@ export default function AnnouncementsPage() {
                 type: 'announcement',
                 title: form.priority === 'urgent' ? '🚨 ' + form.title : form.title,
                 body: form.body.slice(0, 100),
-                link: '/hub/contractor/announcements',
+                link: '/hub/employee/announcements',
                 read: false,
               }))
             ).catch(() => {});

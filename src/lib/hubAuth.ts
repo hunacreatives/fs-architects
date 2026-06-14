@@ -7,5 +7,5 @@ export function isAdminRole(role?: string | null): role is UserRole {
 }
 
 export function getHubHomePath(role?: string | null) {
-  return isAdminRole(role) ? '/hub/admin/dashboard' : '/hub/contractor/dashboard';
+  return isAdminRole(role) ? '/hub/admin/dashboard' : '/hub/employee/dashboard';
 }

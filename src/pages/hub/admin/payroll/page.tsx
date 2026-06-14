@@ -404,7 +404,7 @@ export default function AdminPayrollPage() {
         user_id: contractorId, type: 'payroll_approved',
         title: 'Payout approved',
         body: `Your payout of ${fmt(finalPay)} for ${selectedPeriod.label} has been approved`,
-        link: '/hub/contractor/payouts', read: false,
+        link: '/hub/employee/payouts', read: false,
       }).catch(() => {});
     }
     await fetchWorkflow();
@@ -455,7 +455,7 @@ export default function AdminPayrollPage() {
           user_id: np.contractor_id, type: 'payroll_approved',
           title: 'Payout approved',
           body: `Your payout for ${selectedPeriod.label} has been approved`,
-          link: '/hub/contractor/payouts', read: false,
+          link: '/hub/employee/payouts', read: false,
         }).catch(() => {});
       }
     }
@@ -607,7 +607,7 @@ export default function AdminPayrollPage() {
   const approveHourlyRequest = async (payoutId: string, contractorId: string, finalPay: number) => {
     setHourlyWorkflowLoading(true);
     await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay }).eq('id', payoutId);
-    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payroll_approved', title: 'Payout approved', body: `Your fund transfer request of ${fmt(finalPay)} has been approved by HR.`, link: '/hub/contractor/payouts', read: false }).catch(() => {});
+    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payroll_approved', title: 'Payout approved', body: `Your fund transfer request of ${fmt(finalPay)} has been approved by HR.`, link: '/hub/employee/payouts', read: false }).catch(() => {});
     supabase.functions.invoke('notify-contractor', { body: { payout_id: payoutId, type: 'hr_approved' } }).catch(() => {});
     await fetchHourlyRequests();
     setHourlyWorkflowLoading(false);
@@ -647,7 +647,7 @@ export default function AdminPayrollPage() {
     setHourlyWorkflowLoading(true);
     await supabase.from('hub_payouts').update({ status: 'paid', payment_date: new Date().toISOString().slice(0, 10), paid_at: new Date().toISOString() }).eq('id', payoutId);
     supabase.functions.invoke('send-payslip', { body: { payout_id: payoutId } }).catch(() => {});
-    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payment_received', title: 'Payment sent', body: `Your fund transfer of ${fmt(amount)} has been processed.`, link: '/hub/contractor/payouts', read: false }).catch(() => {});
+    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payment_received', title: 'Payment sent', body: `Your fund transfer of ${fmt(amount)} has been processed.`, link: '/hub/employee/payouts', read: false }).catch(() => {});
     await fetchHourlyRequests();
     setHourlyWorkflowLoading(false);
   };

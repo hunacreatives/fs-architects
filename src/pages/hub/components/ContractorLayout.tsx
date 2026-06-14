@@ -9,19 +9,19 @@ import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
 
 const QUICK_ACTIONS = [
-  { label: 'Submit Payslip', icon: 'ri-send-plane-line', path: '/hub/contractor/payouts', iconCls: 'bg-slate-50 text-[#1c2b3a]' },
-  { label: 'Request Time Off', icon: 'ri-calendar-check-line', path: '/hub/contractor/timeoff', iconCls: 'bg-emerald-50 text-emerald-600' },
-  { label: 'Log Overtime', icon: 'ri-time-line', path: '/hub/contractor/overtime', iconCls: 'bg-purple-50 text-purple-600' },
+  { label: 'Submit Payslip', icon: 'ri-send-plane-line', path: '/hub/employee/payouts', iconCls: 'bg-slate-50 text-[#1c2b3a]' },
+  { label: 'Request Time Off', icon: 'ri-calendar-check-line', path: '/hub/employee/timeoff', iconCls: 'bg-emerald-50 text-emerald-600' },
+  { label: 'Log Overtime', icon: 'ri-time-line', path: '/hub/employee/overtime', iconCls: 'bg-purple-50 text-purple-600' },
 ];
 
 const HUB_PAGES = [
-  { label: 'Dashboard', description: 'Overview & stats', icon: 'ri-home-5-line', path: '/hub/contractor/dashboard', keywords: ['dashboard', 'home', 'overview', 'stats', 'summary'] },
-  { label: 'My Payouts', description: 'Submit payslip & payment history', icon: 'ri-money-dollar-circle-line', path: '/hub/contractor/payouts', keywords: ['payout', 'payslip', 'salary', 'payment', 'submit', 'payroll', 'earn', 'money', 'income'] },
-  { label: 'Time Off', description: 'Leave, vacation & sick days', icon: 'ri-calendar-check-line', path: '/hub/contractor/timeoff', keywords: ['time off', 'leave', 'vacation', 'sick', 'pto', 'absence', 'holiday', 'rest'] },
-  { label: 'Overtime', description: 'Log & track overtime', icon: 'ri-time-line', path: '/hub/contractor/overtime', keywords: ['overtime', 'ot', 'extra hours', 'extra', 'additional'] },
-  { label: 'Documents', description: 'Contracts, files & signing', icon: 'ri-file-text-line', path: '/hub/contractor/documents', keywords: ['documents', 'files', 'contract', 'sign', 'upload', 'pdf', 'forms'] },
-  { label: 'Attendance', description: 'Daily hours & clock log', icon: 'ri-calendar-todo-line', path: '/hub/contractor/dashboard', keywords: ['attendance', 'hours', 'clock', 'daily', 'log', 'slack', 'check in'] },
-  { label: 'Profile', description: 'Your account & settings', icon: 'ri-user-line', path: '/hub/contractor/dashboard', keywords: ['profile', 'account', 'settings', 'name', 'email', 'info'] },
+  { label: 'Dashboard', description: 'Overview & stats', icon: 'ri-home-5-line', path: '/hub/employee/dashboard', keywords: ['dashboard', 'home', 'overview', 'stats', 'summary'] },
+  { label: 'My Payouts', description: 'Submit payslip & payment history', icon: 'ri-money-dollar-circle-line', path: '/hub/employee/payouts', keywords: ['payout', 'payslip', 'salary', 'payment', 'submit', 'payroll', 'earn', 'money', 'income'] },
+  { label: 'Time Off', description: 'Leave, vacation & sick days', icon: 'ri-calendar-check-line', path: '/hub/employee/timeoff', keywords: ['time off', 'leave', 'vacation', 'sick', 'pto', 'absence', 'holiday', 'rest'] },
+  { label: 'Overtime', description: 'Log & track overtime', icon: 'ri-time-line', path: '/hub/employee/overtime', keywords: ['overtime', 'ot', 'extra hours', 'extra', 'additional'] },
+  { label: 'Documents', description: 'Contracts, files & signing', icon: 'ri-file-text-line', path: '/hub/employee/documents', keywords: ['documents', 'files', 'contract', 'sign', 'upload', 'pdf', 'forms'] },
+  { label: 'Attendance', description: 'Daily hours & clock log', icon: 'ri-calendar-todo-line', path: '/hub/employee/dashboard', keywords: ['attendance', 'hours', 'clock', 'daily', 'log', 'slack', 'check in'] },
+  { label: 'Profile', description: 'Your account & settings', icon: 'ri-user-line', path: '/hub/employee/dashboard', keywords: ['profile', 'account', 'settings', 'name', 'email', 'info'] },
 ];
 
 interface Props {
@@ -137,8 +137,8 @@ export default function ContractorLayout({ children, title, titleContent, action
   useEffect(() => {
     if (!loading && hubUser && hubUser.role === 'contractor' && hubUser.onboarding_completed === false) {
       const path = window.location.pathname;
-      if (path !== '/hub/contractor/onboarding') {
-        navigate('/hub/contractor/onboarding', { replace: true });
+      if (path !== '/hub/employee/onboarding') {
+        navigate('/hub/employee/onboarding', { replace: true });
       }
     }
     // developer viewing as contractor bypasses onboarding check
@@ -161,7 +161,7 @@ export default function ContractorLayout({ children, title, titleContent, action
                 key={role}
                 onClick={() => {
                   setDemoRole(role);
-                  navigate(role === 'contractor' ? '/hub/contractor/dashboard' : '/hub/admin/dashboard');
+                  navigate(role === 'contractor' ? '/hub/employee/dashboard' : '/hub/admin/dashboard');
                 }}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium capitalize transition-colors cursor-pointer ${demoRole === role ? 'bg-white text-[#111827]' : 'text-white/50 hover:text-white'}`}
               >
@@ -288,7 +288,7 @@ export default function ContractorLayout({ children, title, titleContent, action
                             <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold px-4 pt-3 pb-1 border-t border-gray-50">Projects</p>
                             {liveProjects.map(p => (
                               <button key={p.id}
-                                onClick={() => { navigate('/hub/contractor/projects'); setGlobalSearch(''); setSearchOpen(false); }}
+                                onClick={() => { navigate('/hub/employee/projects'); setGlobalSearch(''); setSearchOpen(false); }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer">
                                 <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
                                   <i className="ri-folder-line text-blue-500 text-sm"></i>
@@ -311,7 +311,7 @@ export default function ContractorLayout({ children, title, titleContent, action
                             <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold px-4 pt-3 pb-1 border-t border-gray-50">Tasks</p>
                             {liveTasks.map(t => (
                               <button key={t.id}
-                                onClick={() => { navigate('/hub/contractor/projects'); setGlobalSearch(''); setSearchOpen(false); }}
+                                onClick={() => { navigate('/hub/employee/projects'); setGlobalSearch(''); setSearchOpen(false); }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer">
                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${t.status === 'done' ? 'bg-emerald-50' : t.status === 'in_progress' ? 'bg-sky-50' : 'bg-gray-100'}`}>
                                   <i className={`text-sm ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : t.status === 'in_progress' ? 'ri-loader-2-line text-sky-500' : 'ri-checkbox-blank-circle-line text-gray-400'}`}></i>

@@ -63,7 +63,7 @@ export default function DevToolbar() {
 
   const handleSelect = (role: 'owner' | 'admin' | 'contractor') => {
     setDevViewAs(role);
-    navigate(role === 'contractor' ? '/hub/contractor/dashboard' : '/hub/admin/dashboard');
+    navigate(role === 'contractor' ? '/hub/employee/dashboard' : '/hub/admin/dashboard');
   };
 
   if (hidden) return null;

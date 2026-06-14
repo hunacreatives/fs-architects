@@ -56,7 +56,7 @@ export default function ContractorOnboardingPage() {
     await supabase.from('hub_users').update({ onboarding_completed: true }).eq('id', hubUser.id);
     await refreshHubUser();
     setSaving(false);
-    navigate('/hub/contractor/dashboard', { replace: true });
+    navigate('/hub/employee/dashboard', { replace: true });
   };
 
   const firstName = hubUser?.full_name?.split(' ')[0] || 'there';

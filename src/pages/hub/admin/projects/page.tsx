@@ -1007,7 +1007,7 @@ export default function AdminProjectsPage() {
           user_id: contractorId, type: 'project_assigned',
           title: 'New project assigned',
           body: `You've been added to "${proj.project_name}"`,
-          link: '/hub/contractor/projects', read: false,
+          link: '/hub/employee/projects', read: false,
         }]).catch(() => {});
       }
     }

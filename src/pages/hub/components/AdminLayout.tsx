@@ -227,7 +227,7 @@ export default function AdminLayout({ children, title, actions }: Props) {
                 key={role}
                 onClick={() => {
                   setDemoRole(role);
-                  navigate(role === 'contractor' ? '/hub/contractor/dashboard' : '/hub/admin/dashboard');
+                  navigate(role === 'contractor' ? '/hub/employee/dashboard' : '/hub/admin/dashboard');
                 }}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium capitalize transition-colors cursor-pointer ${demoRole === role ? 'bg-white text-[#111827]' : 'text-white/50 hover:text-white'}`}
               >

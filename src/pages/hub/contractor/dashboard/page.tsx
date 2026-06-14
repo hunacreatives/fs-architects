@@ -543,7 +543,7 @@ export default function ContractorDashboard() {
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate('/hub/contractor/payouts')}
+                  onClick={() => navigate('/hub/employee/payouts')}
                   className="flex-shrink-0 text-xs font-medium text-[#1c2b3a] hover:text-[#0f1c28] transition-colors cursor-pointer"
                 >
                   Submit →
@@ -728,7 +728,7 @@ export default function ContractorDashboard() {
                       const isOverdue = daysLeft !== null && daysLeft < 0;
                       const isDueSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
                       return (
-                        <button key={p.id} onClick={() => navigate('/hub/contractor/projects')}
+                        <button key={p.id} onClick={() => navigate('/hub/employee/projects')}
                           className="text-left rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer space-y-3 overflow-hidden"
                           style={{ background: `linear-gradient(135deg, ${pal.light} 0%, rgba(255,255,255,0.9) 100%)`, border: `1px solid rgba(255,255,255,0.8)`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
                           <div className="flex items-start justify-between gap-2">
@@ -771,27 +771,30 @@ export default function ContractorDashboard() {
             })()}
 
             {/* Announcements */}
-            {announcements.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-[#111827]">Announcements</h3>
-                {announcements.map((a) => (
-                  <AnnouncementCard
-                    key={a.id}
-                    a={a}
-                    currentUserId={user!.id}
-                    canDelete={user?.role === 'admin' || user?.role === 'owner'}
-                    onDeleted={(id) => setAnnouncements(prev => prev.filter(x => x.id !== id))}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[#111827]">Announcements</h3>
+              {announcements.length > 0 ? announcements.map((a) => (
+                <AnnouncementCard
+                  key={a.id}
+                  a={a}
+                  currentUserId={user!.id}
+                  canDelete={user?.role === 'admin' || user?.role === 'owner'}
+                  onDeleted={(id) => setAnnouncements(prev => prev.filter(x => x.id !== id))}
+                />
+              )) : (
+                <div className="bg-white border border-gray-100 rounded-xl p-5 text-center">
+                  <i className="ri-megaphone-line text-2xl text-gray-200 mb-2 block"></i>
+                  <p className="text-sm text-gray-400">No announcements yet</p>
+                </div>
+              )}
+            </div>
 
             {/* Requests + Time-off */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-[#111827]">My Requests</h3>
-                  <button onClick={() => navigate('/hub/contractor/requests')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
+                  <button onClick={() => navigate('/hub/employee/requests')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
                 </div>
                 {requests.length === 0 ? (
                   <p className="text-xs text-gray-400 py-2">No requests yet</p>
@@ -812,7 +815,7 @@ export default function ContractorDashboard() {
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-[#111827]">Time-Off</h3>
-                  <button onClick={() => navigate('/hub/contractor/timeoff')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">Request</button>
+                  <button onClick={() => navigate('/hub/employee/timeoff')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">Request</button>
                 </div>
                 {timeOffs.length === 0 ? (
                   <p className="text-xs text-gray-400 py-2">No time-off requests</p>
@@ -834,9 +837,9 @@ export default function ContractorDashboard() {
             {/* Quick links */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
-                { label: 'Attendance', icon: 'ri-time-line', path: '/hub/contractor/attendance' },
-                { label: 'Payslips', icon: 'ri-file-list-3-line', path: '/hub/contractor/payouts' },
-                { label: 'SOPs', icon: 'ri-book-open-line', path: '/hub/contractor/sop' },
+                { label: 'Attendance', icon: 'ri-time-line', path: '/hub/employee/attendance' },
+                { label: 'Payslips', icon: 'ri-file-list-3-line', path: '/hub/employee/payouts' },
+                { label: 'SOPs', icon: 'ri-book-open-line', path: '/hub/employee/sop' },
               ].map((a) => (
                 <button
                   key={a.label}

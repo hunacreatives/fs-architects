@@ -8,7 +8,7 @@ export default function ContractorProjectRedirect() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!slug) { navigate('/hub/contractor/projects', { replace: true }); return; }
+    if (!slug) { navigate('/hub/employee/projects', { replace: true }); return; }
 
     supabase
       .from('hub_projects')
@@ -18,9 +18,9 @@ export default function ContractorProjectRedirect() {
           (p) => p.slug === slug || slugify(p.client_name) === slug,
         );
         if (match) {
-          navigate(`/hub/contractor/projects?workspace=${match.id}`, { replace: true });
+          navigate(`/hub/employee/projects?workspace=${match.id}`, { replace: true });
         } else {
-          navigate('/hub/contractor/projects', { replace: true });
+          navigate('/hub/employee/projects', { replace: true });
         }
       });
   }, [slug, navigate]);

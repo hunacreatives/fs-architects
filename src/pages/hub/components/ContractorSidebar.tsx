@@ -3,19 +3,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useHubAuth } from '@/hooks/useHubAuth';
 
 const baseNavItems = [
-  { to: '/hub/contractor/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
-  { to: '/hub/contractor/attendance', label: 'My Attendance', icon: 'ri-time-line' },
-  { to: '/hub/contractor/requests', label: 'Requests', icon: 'ri-inbox-line' },
-  { to: '/hub/contractor/timeoff', label: 'Time-Off', icon: 'ri-calendar-event-line' },
-  { to: '/hub/contractor/overtime', label: 'Overtime', icon: 'ri-timer-flash-line' },
+  { to: '/hub/employee/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
+  { to: '/hub/employee/attendance', label: 'My Attendance', icon: 'ri-time-line' },
+  { to: '/hub/employee/requests', label: 'Requests', icon: 'ri-inbox-line' },
+  { to: '/hub/employee/timeoff', label: 'Time-Off', icon: 'ri-calendar-event-line' },
+  { to: '/hub/employee/overtime', label: 'Overtime', icon: 'ri-timer-flash-line' },
   { divider: true, label: 'Finance & Docs' },
-  { to: '/hub/contractor/payouts', label: 'My Payouts', icon: 'ri-money-dollar-circle-line' },
-  { to: '/hub/contractor/documents', label: 'Documents', icon: 'ri-file-list-3-line' },
-  { to: '/hub/contractor/credentials', label: 'Credentials', icon: 'ri-lock-2-line' },
+  { to: '/hub/employee/payouts', label: 'My Payouts', icon: 'ri-money-dollar-circle-line' },
+  { to: '/hub/employee/documents', label: 'Documents', icon: 'ri-file-list-3-line' },
+  { to: '/hub/employee/credentials', label: 'Credentials', icon: 'ri-lock-2-line' },
   { divider: true, label: 'Resources' },
-  { to: '/hub/contractor/sop', label: 'SOP Library', icon: 'ri-book-open-line' },
-  { to: '/hub/contractor/announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
-  { to: '/hub/contractor/profile', label: 'My Profile', icon: 'ri-user-line' },
+  { to: '/hub/employee/sop', label: 'SOP Library', icon: 'ri-book-open-line' },
+  { to: '/hub/employee/announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
+  { to: '/hub/employee/profile', label: 'My Profile', icon: 'ri-user-line' },
 ];
 
 interface Props {

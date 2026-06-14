@@ -7,7 +7,7 @@ import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_CONTRACTORS } from '@/lib/demoData';
 import AddContractorModal from './AddContractorModal';
 
-type ConfirmAction = { type: 'deactivate' | 'delete' | 'resend-invite'; contractor: HubUser };
+type ConfirmAction = { type: 'deactivate' | 'delete' | 'resend-invite' | 'reset-password'; contractor: HubUser };
 type Toast = { id: number; message: string; type: 'success' | 'error' };
 
 export default function ContractorsPage() {
@@ -109,10 +109,10 @@ export default function ContractorsPage() {
 
   const departmentColors: Record<string, string> = {
     Creative: 'bg-pink-100 text-pink-700',
-    'Media Buying': 'bg-orange-100 text-orange-700',
+    'Media Buying': 'bg-slate-100 text-[#1c2b3a]',
     Content: 'bg-amber-100 text-amber-700',
     'Social Media': 'bg-sky-100 text-sky-700',
-    Tech: 'bg-violet-100 text-violet-700',
+    Tech: 'bg-slate-100 text-[#1c2b3a]',
     'Account Management': 'bg-teal-100 text-teal-700',
     SEO: 'bg-green-100 text-green-700',
   };
@@ -123,10 +123,10 @@ export default function ContractorsPage() {
       actions={
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-[#FF6B35] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#e55a27] transition-colors cursor-pointer whitespace-nowrap"
+          className="flex items-center gap-1.5 bg-[#1c2b3a] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap"
         >
           <i className="ri-user-add-line text-sm"></i>
-          Add Member
+          Add Employee
         </button>
       }
     >
@@ -152,7 +152,7 @@ export default function ContractorsPage() {
                   }, {})
                 ).slice(0, 4).map(([dept, count]) => (
                   <div key={dept} className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B35] flex-shrink-0"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1c2b3a] flex-shrink-0"></span>
                     <span className="text-white/50 text-xs">{dept}</span>
                     <span className="text-white/30 text-xs">{count}</span>
                   </div>
@@ -183,7 +183,7 @@ export default function ContractorsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, email, department..."
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white"
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white"
             />
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
@@ -234,10 +234,10 @@ export default function ContractorsPage() {
         ) : filtered.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
             <i className="ri-user-search-line text-3xl text-gray-200 block mb-2"></i>
-            <p className="text-sm text-gray-400">No employees found</p>
+            <p className="text-sm text-gray-400">No contractors found</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
+          <div className="bg-white border border-gray-100 rounded-xl divide-y divide-gray-50">
             {filtered.map((c) => {
               const rateStr = c.payment_type === 'project_based' && c.project_percentage
                 ? `${c.project_percentage}% per project`
@@ -256,7 +256,7 @@ export default function ContractorsPage() {
                     {c.avatar_url ? (
                       <img src={c.avatar_url} alt={c.full_name} className="w-10 h-10 rounded-full object-cover object-top" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#FF6B35] flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-[#1c2b3a] flex items-center justify-center">
                         <span className="text-white text-sm font-bold">{c.full_name.charAt(0).toUpperCase()}</span>
                       </div>
                     )}
@@ -322,7 +322,7 @@ export default function ContractorsPage() {
                         <i className="ri-more-2-fill text-sm"></i>
                       </button>
                       {openMenu === c.id && (
-                        <div className="absolute right-0 top-9 z-20 w-48 bg-white border border-gray-100 rounded-xl shadow-lg py-1 text-sm">
+                        <div className="absolute right-0 bottom-full mb-1 z-20 w-48 bg-white border border-gray-100 rounded-xl shadow-lg py-1 text-sm">
                           <button onClick={() => navigate(`/hub/admin/contractors/${c.id}`)}
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-gray-700 hover:bg-gray-50 cursor-pointer">
                             <i className="ri-eye-line text-gray-400"></i> View profile
@@ -348,6 +348,15 @@ export default function ContractorsPage() {
                               <i className="ri-user-follow-line"></i> Reactivate
                             </button>
                           )}
+                          {c.status === 'active' && c.onboarding_completed && (
+                            <>
+                              <div className="border-t border-gray-50 my-1" />
+                              <button onClick={() => { setOpenMenu(null); setConfirm({ type: 'reset-password', contractor: c }); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-[#1c2b3a] hover:bg-slate-50 cursor-pointer">
+                                <i className="ri-lock-password-line"></i> Send password reset
+                              </button>
+                            </>
+                          )}
                           <div className="border-t border-gray-50 my-1" />
                           <button onClick={() => { setOpenMenu(null); setConfirm({ type: 'delete', contractor: c }); }}
                             className="w-full flex items-center gap-2.5 px-3 py-2 text-rose-600 hover:bg-rose-50 cursor-pointer">
@@ -357,7 +366,7 @@ export default function ContractorsPage() {
                       )}
                     </div>
                     <button onClick={() => navigate(`/hub/admin/contractors/${c.id}`)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-[#FF6B35] hover:bg-orange-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
+                      className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-[#1c2b3a] hover:bg-slate-50 rounded-lg transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
                       <i className="ri-arrow-right-s-line text-lg"></i>
                     </button>
                   </div>
@@ -391,21 +400,23 @@ export default function ContractorsPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${
-              confirm.type === 'delete' ? 'bg-rose-100' : confirm.type === 'resend-invite' ? 'bg-sky-100' : 'bg-amber-100'
+              confirm.type === 'delete' ? 'bg-rose-100' : confirm.type === 'resend-invite' ? 'bg-sky-100' : confirm.type === 'reset-password' ? 'bg-slate-100' : 'bg-amber-100'
             }`}>
               <i className={`text-xl ${
-                confirm.type === 'delete' ? 'ri-delete-bin-line text-rose-600' : confirm.type === 'resend-invite' ? 'ri-mail-send-line text-sky-600' : 'ri-user-forbid-line text-amber-600'
+                confirm.type === 'delete' ? 'ri-delete-bin-line text-rose-600' : confirm.type === 'resend-invite' ? 'ri-mail-send-line text-sky-600' : confirm.type === 'reset-password' ? 'ri-lock-password-line text-[#1c2b3a]' : 'ri-user-forbid-line text-amber-600'
               }`}></i>
             </div>
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-[#111827]">
-                {confirm.type === 'delete' ? 'Remove contractor?' : confirm.type === 'resend-invite' ? 'Resend invite?' : 'Deactivate contractor?'}
+                {confirm.type === 'delete' ? 'Remove contractor?' : confirm.type === 'resend-invite' ? 'Resend invite?' : confirm.type === 'reset-password' ? 'Send password reset?' : 'Deactivate contractor?'}
               </h3>
               <p className="text-sm text-gray-500">
                 {confirm.type === 'delete'
                   ? <>This will permanently delete <strong>{confirm.contractor.full_name}</strong> and all their data. This cannot be undone.</>
                   : confirm.type === 'resend-invite'
                   ? <>A fresh invite link will be sent to <strong>{confirm.contractor.email}</strong>. Any previous link will no longer work.</>
+                  : confirm.type === 'reset-password'
+                  ? <>A password reset link will be sent to <strong>{confirm.contractor.email}</strong>. They can use it to set a new password.</>
                   : <>This will mark <strong>{confirm.contractor.full_name}</strong> as inactive. They won't be able to log in. You can reactivate them later.</>
                 }
               </p>
@@ -437,6 +448,23 @@ export default function ContractorsPage() {
                       setResendingId(null);
                       setConfirm(null);
                     }
+                  } else if (confirm.type === 'reset-password') {
+                    setResendingId(confirm.contractor.id);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('resend-invite', {
+                        body: { contractor_id: confirm.contractor.id },
+                      });
+                      if (error || data?.error) {
+                        showToast(data?.error ?? 'Failed to send reset link', 'error');
+                      } else {
+                        showToast(`Password reset sent to ${confirm.contractor.email}`, 'success');
+                      }
+                    } catch {
+                      showToast('Failed to send reset link', 'error');
+                    } finally {
+                      setResendingId(null);
+                      setConfirm(null);
+                    }
                   } else if (confirm.type === 'delete') {
                     handleDelete(confirm.contractor);
                   } else {
@@ -445,10 +473,10 @@ export default function ContractorsPage() {
                 }}
                 disabled={actionLoading || resendingId !== null}
                 className={`flex-1 py-2.5 text-sm text-white rounded-lg cursor-pointer disabled:opacity-60 ${
-                  confirm.type === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : confirm.type === 'resend-invite' ? 'bg-sky-600 hover:bg-sky-700' : 'bg-amber-500 hover:bg-amber-600'
+                  confirm.type === 'delete' ? 'bg-rose-600 hover:bg-rose-700' : confirm.type === 'resend-invite' ? 'bg-sky-600 hover:bg-sky-700' : confirm.type === 'reset-password' ? 'bg-violet-600 hover:bg-[#0f1c28]' : 'bg-amber-500 hover:bg-amber-600'
                 }`}
               >
-                {(actionLoading || resendingId !== null) ? <i className="ri-loader-4-line animate-spin"></i> : confirm.type === 'delete' ? 'Remove' : confirm.type === 'resend-invite' ? 'Send Invite' : 'Deactivate'}
+                {(actionLoading || resendingId !== null) ? <i className="ri-loader-4-line animate-spin"></i> : confirm.type === 'delete' ? 'Remove' : confirm.type === 'resend-invite' ? 'Send Invite' : confirm.type === 'reset-password' ? 'Send Reset Link' : 'Deactivate'}
               </button>
             </div>
           </div>

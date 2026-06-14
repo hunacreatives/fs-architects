@@ -4,9 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 const ROLES = [
-  { value: 'owner', label: 'Owner', color: 'bg-violet-500' },
+  { value: 'owner', label: 'Owner', color: 'bg-[#1c2b3a]' },
   { value: 'admin', label: 'Admin', color: 'bg-sky-500' },
-  { value: 'contractor', label: 'Contractor', color: 'bg-emerald-500' },
+  { value: 'contractor', label: 'Employee', color: 'bg-emerald-500' },
 ] as const;
 
 const LS_KEY = 'hub_dev_toolbar_hidden';
@@ -18,7 +18,6 @@ export default function DevToolbar() {
   // Read from localStorage first (instant, no flicker) then sync with Supabase
   const [hidden, setHidden] = useState(() => localStorage.getItem(LS_KEY) === 'true');
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!hubUser?.is_developer || !hubUser?.id) return;
     supabase
@@ -34,7 +33,6 @@ export default function DevToolbar() {
   }, [hubUser?.id]);
 
   // Ctrl+Shift+D toggles the toolbar regardless of hidden state
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!hubUser?.is_developer) return;
     const handler = (e: KeyboardEvent) => {

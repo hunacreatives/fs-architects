@@ -7,19 +7,15 @@ import { supabase } from '@/lib/supabase';
 import ContractorSidebar from './ContractorSidebar';
 import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const QUICK_ACTIONS = [
-  { label: 'Submit Payslip', icon: 'ri-send-plane-line', path: '/hub/contractor/payouts', iconCls: 'bg-orange-50 text-[#FF6B35]' },
+  { label: 'Submit Payslip', icon: 'ri-send-plane-line', path: '/hub/contractor/payouts', iconCls: 'bg-slate-50 text-[#1c2b3a]' },
   { label: 'Request Time Off', icon: 'ri-calendar-check-line', path: '/hub/contractor/timeoff', iconCls: 'bg-emerald-50 text-emerald-600' },
   { label: 'Log Overtime', icon: 'ri-time-line', path: '/hub/contractor/overtime', iconCls: 'bg-purple-50 text-purple-600' },
-  { label: 'View Projects', icon: 'ri-folder-line', path: '/hub/contractor/projects', iconCls: 'bg-sky-50 text-sky-600' },
 ];
 
 const HUB_PAGES = [
   { label: 'Dashboard', description: 'Overview & stats', icon: 'ri-home-5-line', path: '/hub/contractor/dashboard', keywords: ['dashboard', 'home', 'overview', 'stats', 'summary'] },
-  { label: 'My Work', description: 'One-time projects & workspace', icon: 'ri-folder-line', path: '/hub/contractor/projects', keywords: ['projects', 'work', 'workspace', 'brief', 'one-time'] },
-  { label: 'Timeline', description: 'Gantt chart & schedule', icon: 'ri-bar-chart-grouped-line', path: '/hub/contractor/projects', keywords: ['timeline', 'gantt', 'schedule', 'chart', 'deadline', 'calendar'] },
   { label: 'My Payouts', description: 'Submit payslip & payment history', icon: 'ri-money-dollar-circle-line', path: '/hub/contractor/payouts', keywords: ['payout', 'payslip', 'salary', 'payment', 'submit', 'payroll', 'earn', 'money', 'income'] },
   { label: 'Time Off', description: 'Leave, vacation & sick days', icon: 'ri-calendar-check-line', path: '/hub/contractor/timeoff', keywords: ['time off', 'leave', 'vacation', 'sick', 'pto', 'absence', 'holiday', 'rest'] },
   { label: 'Overtime', description: 'Log & track overtime', icon: 'ri-time-line', path: '/hub/contractor/overtime', keywords: ['overtime', 'ot', 'extra hours', 'extra', 'additional'] },
@@ -41,7 +37,6 @@ export default function ContractorLayout({ children, title, titleContent, action
   const { hubUser } = useHubAuth();
   const { isDemo, demoRole, demoSignOut, setDemoRole } = useDemo();
   const navigate = useNavigate();
-  usePushNotifications();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('contractor_sidebar_collapsed') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -63,7 +58,6 @@ export default function ContractorLayout({ children, title, titleContent, action
     : [];
 
   // Cmd+K to open
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -78,7 +72,6 @@ export default function ContractorLayout({ children, title, titleContent, action
   }, []);
 
   // Click outside to close
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -90,9 +83,9 @@ export default function ContractorLayout({ children, title, titleContent, action
   }, []);
 
   // Live fetch tasks + projects on debounce
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!q || !hubUser) { setLiveProjects([]); setLiveTasks([]); return; }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       setLiveLoading(true);
       const [projectsRes, tasksRes] = await Promise.all([
@@ -106,6 +99,7 @@ export default function ContractorLayout({ children, title, titleContent, action
           .ilike('title', `%${globalSearch.trim()}%`)
           .limit(5),
       ]);
+      if (cancelled) return;
       const projects = ((projectsRes.data ?? []) as any[])
         .map((r: any) => {
           const p = Array.isArray(r.hub_projects) ? r.hub_projects[0] : r.hub_projects;
@@ -123,7 +117,7 @@ export default function ContractorLayout({ children, title, titleContent, action
       setLiveTasks(tasks.slice(0, 4));
       setLiveLoading(false);
     }, 250);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [globalSearch, hubUser]);
 
   const toggleCollapsed = () => {
@@ -196,7 +190,7 @@ export default function ContractorLayout({ children, title, titleContent, action
 
       {/* Main content */}
       <div className="relative z-10 flex-1 min-w-0 overflow-hidden lg:px-4 lg:pb-4 lg:pt-5 md:px-5 md:pb-5">
-        <div className="flex h-full flex-col lg:rounded-[34px] overflow-hidden lg:shadow-xl lg:shadow-indigo-100/50"
+        <div className="flex h-full flex-col lg:rounded-[34px] overflow-hidden lg:shadow-xl lg:shadow-slate-200/50"
           style={{ background: 'rgba(255,255,255,0.60)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.75)' }}
         >
           {/* Top bar */}
@@ -215,7 +209,7 @@ export default function ContractorLayout({ children, title, titleContent, action
 
               {/* Global search — hidden in workspace mode */}
               {!hideGlobalSearch && <div className="relative" ref={searchRef}>
-                <div className={`flex items-center gap-2 bg-white/70 backdrop-blur-sm border rounded-xl px-3 py-2 transition-all cursor-text ${searchOpen ? 'border-indigo-300 ring-2 ring-indigo-100 w-44 sm:w-52' : 'border-gray-200 w-9 sm:w-44 md:w-52'}`}
+                <div className={`flex items-center gap-2 bg-white/70 backdrop-blur-sm border rounded-xl px-3 py-2 transition-all cursor-text ${searchOpen ? 'border-slate-400 ring-2 ring-slate-100 w-44 sm:w-52' : 'border-gray-200 w-9 sm:w-44 md:w-52'}`}
                   onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}>
                   <i className="ri-search-line text-gray-400 text-sm flex-shrink-0"></i>
                   <input
@@ -275,8 +269,8 @@ export default function ContractorLayout({ children, title, titleContent, action
                               <button key={p.path + p.label}
                                 onClick={() => { navigate(p.path); setGlobalSearch(''); setSearchOpen(false); }}
                                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer">
-                                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                                  <i className={`${p.icon} text-indigo-500 text-sm`}></i>
+                                <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0">
+                                  <i className={`${p.icon} text-[#1c2b3a]/70 text-sm`}></i>
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium text-gray-800">{p.label}</p>
@@ -363,8 +357,9 @@ export default function ContractorLayout({ children, title, titleContent, action
             </div>
           </header>
 
+
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent">
+          <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
             <div className="max-w-7xl mx-auto">
               {children}
             </div>

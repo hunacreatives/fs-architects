@@ -41,10 +41,10 @@ Deno.serve(async (req) => {
     // Query tasks due today or tomorrow, not done, with an assignee
     const { data: tasks, error } = await supabase
       .from('hub_project_tasks')
-      .select('id, title, due_date, assigned_to, project_id, hub_projects(project_name)')
+      .select('id, title, due_date, assigned_to, assignee_ids, project_id, hub_projects(project_name)')
       .in('due_date', [today, tomorrow])
       .not('status', 'eq', 'done')
-      .not('assigned_to', 'is', null);
+      .or('assigned_to.not.is.null,assignee_ids.not.is.null');
 
     if (error) {
       return new Response(JSON.stringify({ error: String(error) }), { status: 500, headers: cors });
@@ -62,39 +62,46 @@ Deno.serve(async (req) => {
       const isToday = task.due_date === today;
       const whenLabel = isToday ? 'today' : 'tomorrow';
 
-      // Fetch assignee
-      const { data: assignee } = await supabase
+      const assigneeIds = [...new Set(
+        [
+          ...(Array.isArray((task as any).assignee_ids) ? (task as any).assignee_ids : []),
+          task.assigned_to,
+        ].filter(Boolean)
+      )];
+
+      if (assigneeIds.length === 0) continue;
+
+      const { data: assignees } = await supabase
         .from('hub_users')
         .select('id, full_name, email, slack_id')
-        .eq('id', task.assigned_to)
-        .single();
+        .in('id', assigneeIds);
 
-      if (!assignee) continue;
+      const deepLink = `${HUB_URL}?workspace=${task.project_id}&task=${task.id}`;
 
-      // In-app notification
-      await supabase.from('hub_notifications').insert({
-        user_id: task.assigned_to,
-        type: 'task_due_reminder',
-        title: `Task due ${whenLabel}`,
-        body: `"${task.title}" is due ${whenLabel} — ${projectName}`,
-        link: HUB_URL,
-        read: false,
-      }).catch(() => {});
-
-      // Slack DM if they have a slack_id
-      if (assignee.slack_id && SLACK_BOT_TOKEN) {
-        await fetch('https://slack.com/api/chat.postMessage', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            channel: assignee.slack_id,
-            text: `⏰ *Task due ${whenLabel}*\n*"${task.title}"* — ${projectName}\n<${HUB_URL}|Open workspace →>`,
-          }),
+      for (const assignee of assignees ?? []) {
+        await supabase.from('hub_notifications').insert({
+          user_id: assignee.id,
+          type: 'task_due_reminder',
+          title: `Task due ${whenLabel}`,
+          body: `"${task.title}" is due ${whenLabel} — ${projectName}`,
+          link: deepLink,
+          read: false,
         }).catch(() => {});
-      }
 
-      await sendPush(task.assigned_to, `Task due ${whenLabel}`, `"${task.title}" is due ${whenLabel} — ${projectName}`, HUB_URL);
-      notified++;
+        if (assignee.slack_id && SLACK_BOT_TOKEN) {
+          await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              channel: assignee.slack_id,
+              text: `⏰ *Task due ${whenLabel}*\n*"${task.title}"* — ${projectName}\n<${deepLink}|Open workspace →>`,
+            }),
+          }).catch(() => {});
+        }
+
+        await sendPush(assignee.id, `Task due ${whenLabel}`, `"${task.title}" is due ${whenLabel} — ${projectName}`, deepLink);
+        notified++;
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, notified, today, tomorrow }), { headers: cors });

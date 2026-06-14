@@ -4,9 +4,10 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 import { HubUser, HubAttendance, HubTimeOff, HubRequest, HubClient, HubAsset } from '@/lib/types';
 import EditContractorModal from './EditContractorModal';
-import { getPeriods, fmtTime, fmtDate } from '@/lib/formatUtils';
+import { getPeriods, fmtTime, fmtDate, localToday } from '@/lib/formatUtils';
 import { logAudit } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
+import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
 
 interface DayRow {
   date: string;
@@ -22,9 +23,13 @@ export default function ContractorDetailPage() {
   const navigate = useNavigate();
   const { hubUser: actor } = useAuth();
   const [contractor, setContractor] = useState<HubUser | null>(null);
+  const [attendance, setAttendance] = useState<HubAttendance[]>([]);
+  const [timeOff, setTimeOff] = useState<HubTimeOff[]>([]);
   const [requests, setRequests] = useState<HubRequest[]>([]);
+  const [clients, setClients] = useState<HubClient[]>([]);
   const [assets, setAssets] = useState<HubAsset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showEdit, setShowEdit] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'requests' | 'assets' | 'payslip' | 'contracts'>('overview');
   const [contracts, setContracts] = useState<any[]>([]);
@@ -80,38 +85,66 @@ export default function ContractorDetailPage() {
     if (!id) return;
     const { data } = await supabase
       .from('hub_rate_history')
-      .select('id, effective_date, payment_type, hourly_rate, monthly_rate, note, created_at')
+      .select('id, effective_date, payment_type, hourly_rate, monthly_rate, currency, note, created_at')
       .eq('contractor_id', id)
       .order('effective_date', { ascending: false });
     setRateHistory(data || []);
   };
 
   const fetch = async () => {
-    if (!id) return;
-    const [u, att, to, req, cl, ast] = await Promise.all([
-      supabase.from('hub_users').select('*').eq('id', id).maybeSingle(),
-      supabase.from('hub_attendance').select('*').eq('contractor_id', id).order('date', { ascending: false }).limit(10),
-      supabase.from('hub_time_off').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
-      supabase.from('hub_requests').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
-      supabase.from('hub_clients').select('*').eq('contractor_id', id),
-      supabase.from('hub_assets').select('*').eq('contractor_id', id),
-    ]);
-    const user = u.data as HubUser ?? null;
-    setContractor(user);
-    if (user) {
-      setScheduleForm({
-        shift_start: user.shift_start || '',
-        shift_end: user.shift_end || '',
-        work_days: user.work_days || [],
-      });
+    if (!id) {
+      setLoading(false);
+      setLoadError('Missing contractor ID.');
+      return;
     }
-    setAttendance((att.data as HubAttendance[]) ?? []);
+    setLoadError('');
+    setLoading(true);
+    try {
+      const [u, att, to, req, assignmentsRes, ast] = await Promise.all([
+        supabase.from('hub_users').select('*').eq('id', id).maybeSingle(),
+        supabase.from('hub_attendance').select('*').eq('contractor_id', id).order('date', { ascending: false }).limit(10),
+        supabase.from('hub_time_off').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
+        supabase.from('hub_requests').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
+        supabase.from('hub_client_assignments')
+          .select('role, hub_clients(*)')
+          .eq('contractor_id', id),
+        supabase.from('hub_assets').select('*').eq('contractor_id', id),
+      ]);
 
-    setTimeOff((to.data as HubTimeOff[]) ?? []);
-    setRequests((req.data as HubRequest[]) ?? []);
-    setClients((cl.data as HubClient[]) ?? []);
-    setAssets((ast.data as HubAsset[]) ?? []);
-    setLoading(false);
+      const user = (u.data as HubUser) ?? null;
+      setContractor(user);
+      if (user) {
+        setScheduleForm({
+          shift_start: user.shift_start || '',
+          shift_end: user.shift_end || '',
+          work_days: user.work_days || [],
+        });
+      }
+
+      const assignmentRows = ((assignmentsRes.data ?? []) as any[]);
+      const mappedClients = assignmentRows
+        .map((row) => {
+          const client = Array.isArray(row.hub_clients) ? row.hub_clients[0] : row.hub_clients;
+          return client ? { ...client, role: row.role ?? client.role ?? null } : null;
+        })
+        .filter(Boolean) as HubClient[];
+
+      setAttendance((att.data as HubAttendance[]) ?? []);
+      setTimeOff((to.data as HubTimeOff[]) ?? []);
+      setRequests((req.data as HubRequest[]) ?? []);
+      setClients(mappedClients);
+      setAssets((ast.data as HubAsset[]) ?? []);
+
+      const firstError = u.error || att.error || to.error || req.error || assignmentsRes.error || ast.error;
+      if (firstError) {
+        setLoadError(firstError.message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load contractor details.';
+      setLoadError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const saveSchedule = async () => {
@@ -207,7 +240,6 @@ export default function ContractorDetailPage() {
     await Promise.all([fetch(), fetchRateHistory()]);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetch(); fetchRateHistory(); }, [id]);
 
   const fetchAttendanceDays = async () => {
@@ -224,7 +256,6 @@ export default function ContractorDetailPage() {
     setAttLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (activeTab === 'payslip' && id) fetchPayslip();
     if (activeTab === 'contracts' && id) fetchContracts();
@@ -242,7 +273,10 @@ export default function ContractorDetailPage() {
 
   const fetchPayslip = async () => {
     setPayslipLoading(true);
-    const [daysRes, payoutRes] = await Promise.all([
+    const today = localToday();
+    const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
+    const [slackRes, daysRes, payoutRes] = await Promise.all([
+      isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase.from('hub_daily_hours')
         .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
         .eq('user_id', id!)
@@ -255,9 +289,22 @@ export default function ContractorDetailPage() {
         .eq('cutoff_start', selectedPeriod.start)
         .maybeSingle(),
     ]);
-    setPayslipDays((daysRes.data as DayRow[]) ?? []);
+    const mergedDays = mergeLiveAttendanceIntoDailyHours(
+      (((daysRes.data as DayRow[]) ?? []) as any[]).map((d: any) => ({ ...d, user_id: id! })),
+      (slackRes as any)?.data?.attendance || [],
+      [id!],
+      today,
+    ).map(({ user_id: _userId, ...rest }) => rest as DayRow);
+    setPayslipDays(mergedDays);
     setPayslipPayout(payoutRes.data ?? null);
     setPayslipLoading(false);
+  };
+
+  const statusColors = {
+    complete: 'bg-emerald-100 text-emerald-700',
+    missing_on: 'bg-red-100 text-red-700',
+    missing_off: 'bg-amber-100 text-amber-700',
+    manual: 'bg-slate-100 text-[#1c2b3a]',
   };
 
   const tabs = [
@@ -282,7 +329,7 @@ export default function ContractorDetailPage() {
   if (!contractor) {
     return (
       <AdminLayout title="Not Found">
-        <p className="text-gray-500">Employee not found.</p>
+        <p className="text-gray-500">{loadError || 'Employee not found.'}</p>
       </AdminLayout>
     );
   }
@@ -301,7 +348,7 @@ export default function ContractorDetailPage() {
           </button>
           <button
             onClick={() => setShowEdit(true)}
-            className="flex items-center gap-1.5 bg-[#FF6B35] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#e55a27] transition-colors cursor-pointer whitespace-nowrap"
+            className="flex items-center gap-1.5 bg-[#1c2b3a] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap"
           >
             <i className="ri-edit-line text-sm"></i>
             Edit
@@ -310,13 +357,18 @@ export default function ContractorDetailPage() {
       }
     >
       <div className="space-y-5">
+        {loadError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {loadError}
+          </div>
+        )}
         {/* Profile header */}
         <div className="bg-white border border-gray-100 rounded-xl p-5 flex flex-col sm:flex-row gap-5 items-start">
           <div className="relative flex-shrink-0">
             {contractor.avatar_url ? (
               <img src={contractor.avatar_url} alt={contractor.full_name} className="w-20 h-20 rounded-xl object-cover object-top" />
             ) : (
-              <div className="w-20 h-20 rounded-xl bg-[#FF6B35] flex items-center justify-center">
+              <div className="w-20 h-20 rounded-xl bg-[#1c2b3a] flex items-center justify-center">
                 <span className="text-white text-2xl font-bold">{contractor.full_name.charAt(0).toUpperCase()}</span>
               </div>
             )}
@@ -347,7 +399,7 @@ export default function ContractorDetailPage() {
                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{contractor.department}</span>
               )}
               {contractor.hourly_rate && (
-                <span className="text-xs bg-[#FF6B35]/10 text-[#FF6B35] px-2 py-0.5 rounded-full font-medium">
+                <span className="text-xs bg-[#1c2b3a]/10 text-[#1c2b3a] px-2 py-0.5 rounded-full font-medium">
                   ₱{contractor.hourly_rate}/hr {contractor.currency}
                 </span>
               )}
@@ -453,7 +505,7 @@ export default function ContractorDetailPage() {
                     setRateError('');
                     setShowRateModal(true);
                   }}
-                  className="flex items-center gap-1 text-xs text-[#FF6B35] hover:underline cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-[#1c2b3a] hover:underline cursor-pointer"
                 >
                   <i className="ri-arrow-up-circle-line text-sm"></i>
                   Update Rate
@@ -528,7 +580,7 @@ export default function ContractorDetailPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[#111827]">Work Schedule</h3>
                 {!scheduleEditing ? (
-                  <button onClick={() => setScheduleEditing(true)} className="text-xs text-[#FF6B35] hover:underline cursor-pointer flex items-center gap-1">
+                  <button onClick={() => setScheduleEditing(true)} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer flex items-center gap-1">
                     <i className="ri-edit-line text-sm"></i> Edit
                   </button>
                 ) : (
@@ -547,12 +599,12 @@ export default function ContractorDetailPage() {
                     <div>
                       <p className="text-xs text-gray-400 mb-1">Shift Start</p>
                       <input type="time" value={scheduleForm.shift_start} onChange={e => setScheduleForm(f => ({ ...f, shift_start: e.target.value }))}
-                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#FF6B35]" />
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1c2b3a]" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-400 mb-1">Shift End</p>
                       <input type="time" value={scheduleForm.shift_end} onChange={e => setScheduleForm(f => ({ ...f, shift_end: e.target.value }))}
-                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#FF6B35]" />
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1c2b3a]" />
                     </div>
                   </div>
                   <div>
@@ -738,14 +790,30 @@ export default function ContractorDetailPage() {
             const newHourly  = changeInPeriod.hourly_rate  || 0;
             displayMonthlyRate = newMonthly;
             displayHourlyRate  = newHourly;
-            const periodStart = new Date(selectedPeriod.start);
-            const periodEnd   = new Date(selectedPeriod.end);
-            const changeDate  = new Date(changeInPeriod.effective_date);
-            if (paymentType === 'fixed') {
-              const totalDays = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1;
-              const daysAtOld = Math.max(0, Math.round((changeDate.getTime() - periodStart.getTime()) / 86400000));
-              const daysAtNew = totalDays - daysAtOld;
-              basePay = (oldMonthly / 2 / totalDays * daysAtOld) + (newMonthly / 2 / totalDays * daysAtNew);
+            if (paymentType === 'fixed' || paymentType === 'fixed_flexible') {
+              const today = localToday();
+              const autoPayroll = isAutoPayrollUser(contractor as any);
+              const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
+              let hrsAtOld = 0;
+              let hrsAtNew = 0;
+              for (const d of payslipDays) {
+                if (d.date < changeInPeriod.effective_date) hrsAtOld += d.hours_capped;
+                else hrsAtNew += d.hours_capped;
+              }
+              const splitAccrual = computeSplitFixedAccrual({
+                periodStart: selectedPeriod.start,
+                periodEnd: selectedPeriod.end,
+                changeDate: changeInPeriod.effective_date,
+                workDays: (contractor as any)?.work_days || [],
+                oldMonthlyRate: oldMonthly,
+                newMonthlyRate: newMonthly,
+                oldCappedHours: autoPayroll ? Number.MAX_SAFE_INTEGER : hrsAtOld,
+                newCappedHours: autoPayroll ? Number.MAX_SAFE_INTEGER : hrsAtNew,
+              });
+              const isStillAccruing = !autoPayroll && isCurrentPeriod
+                && (splitAccrual.oldEarnedDayUnits + splitAccrual.newEarnedDayUnits) > 0
+                && (splitAccrual.oldEarnedDayUnits + splitAccrual.newEarnedDayUnits) < splitAccrual.totalScheduledDays;
+              basePay = splitAccrual.accruedPay;
               const oldOT = oldHourly || oldMonthly / 176;
               const newOT = newHourly || newMonthly / 176;
               let otAtOld = 0, otAtNew = 0;
@@ -755,7 +823,9 @@ export default function ContractorDetailPage() {
               }
               overtimePay = otAtOld * oldOT + otAtNew * newOT;
               otRate = newOT;
-              proratedLabel = `${daysAtOld}d @ ₱${oldMonthly.toLocaleString()}/mo · ${daysAtNew}d @ ₱${newMonthly.toLocaleString()}/mo`;
+              proratedLabel = autoPayroll
+                ? 'auto-included full cutoff'
+                : `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
             } else {
               let hrsAtOld = 0, hrsAtNew = 0;
               for (const d of payslipDays) {
@@ -772,8 +842,25 @@ export default function ContractorDetailPage() {
             const hourly  = eff?.hourly_rate  ?? currentHourlyRate;
             displayMonthlyRate = monthly;
             displayHourlyRate  = hourly;
-            if (paymentType === 'fixed') {
-              basePay = monthly / 2;
+            if (paymentType === 'fixed' || paymentType === 'fixed_flexible') {
+              const today = localToday();
+              const autoPayroll = isAutoPayrollUser(contractor as any);
+              const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
+              const fixedAccrual = computeFixedAccrual({
+                periodStart: selectedPeriod.start,
+                periodEnd: selectedPeriod.end,
+                monthlyRate: monthly,
+                workDays: (contractor as any)?.work_days || [],
+                cappedHours: autoPayroll ? Number.MAX_SAFE_INTEGER : totalHoursBillable,
+              });
+              const isStillAccruing = !autoPayroll && isCurrentPeriod
+                && fixedAccrual.earnedDayUnits > 0
+                && fixedAccrual.earnedDayUnits < fixedAccrual.totalScheduledDays;
+              basePay = fixedAccrual.accruedPay;
+              isProrated = true;
+              proratedLabel = autoPayroll
+                ? 'auto-included full cutoff'
+                : `${fixedAccrual.earnedDayUnits.toFixed(2)}/${fixedAccrual.totalScheduledDays} earned days${isStillAccruing ? ' · accruing' : ''}`;
               otRate = hourly || monthly / 176;
             } else {
               basePay = totalHoursBillable * hourly;
@@ -794,7 +881,7 @@ export default function ContractorDetailPage() {
                 <select
                   value={selectedPeriod.start}
                   onChange={(e) => setSelectedPeriod(periods.find(p => p.start === e.target.value)!)}
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer"
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer"
                 >
                   {periods.map((p) => (
                     <option key={p.start} value={p.start}>{p.label}</option>
@@ -811,11 +898,11 @@ export default function ContractorDetailPage() {
                   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                       <div>
-                        <p className="text-white font-bold text-base">FS Architects</p>
-                        <p className="text-white/40 text-xs mt-0.5">Contractor Payment Summary</p>
+                        <p className="text-white font-bold text-base">Huna Creatives</p>
+                        <p className="text-white/40 text-xs mt-0.5">Employee Payment Summary</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[#FF6B35] font-bold text-sm tracking-widest">PAYSLIP</p>
+                        <p className="text-[#1c2b3a] font-bold text-sm tracking-widest">PAYSLIP</p>
                         <p className="text-white/40 text-xs mt-1">{selectedPeriod.label}</p>
                       </div>
                     </div>
@@ -833,7 +920,7 @@ export default function ContractorDetailPage() {
                       <div>
                         <p className="text-xs text-gray-400 mb-0.5">Rate</p>
                         <p className="text-sm font-semibold text-gray-900">
-                          {isProrated ? 'Prorated' : paymentType === 'fixed' ? `₱${displayMonthlyRate.toLocaleString()}/mo` : `${isUSD ? '$' : '₱'}${displayHourlyRate}/hr`}
+                          {isProrated ? 'Prorated' : paymentType === 'fixed' || paymentType === 'fixed_flexible' ? `₱${displayMonthlyRate.toLocaleString()}/mo` : `${isUSD ? '$' : '₱'}${displayHourlyRate}/hr`}
                         </p>
                         <p className="text-xs text-gray-400">{isProrated ? proratedLabel : paymentType}</p>
                       </div>
@@ -890,8 +977,8 @@ export default function ContractorDetailPage() {
                           <span className="text-sm text-gray-500">
                             {isProrated
                               ? `Prorated base (${proratedLabel})`
-                              : paymentType === 'fixed'
-                                ? `Fixed rate (${fmt(displayMonthlyRate)}/mo ÷ 2)`
+                              : paymentType === 'fixed' || paymentType === 'fixed_flexible'
+                                ? `Fixed base (${fmt(displayMonthlyRate)}/mo, earned from capped hours)`
                                 : `Base pay (${totalHoursBillable.toFixed(2)}h × ${isUSD ? '$' : '₱'}${displayHourlyRate})`}
                           </span>
                           <span className="text-sm font-medium text-gray-800">{fmt(basePay)}</span>
@@ -904,7 +991,7 @@ export default function ContractorDetailPage() {
                         )}
                         <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
                           <span className="font-semibold text-gray-900">Total Payout</span>
-                          <span className="text-xl font-bold text-[#FF6B35]">{fmt(totalPay)}</span>
+                          <span className="text-xl font-bold text-[#1c2b3a]">{fmt(totalPay)}</span>
                         </div>
                       </div>
                     </div>
@@ -1041,7 +1128,7 @@ export default function ContractorDetailPage() {
                               Signed {new Date(a.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} as "{a.signed_name}"
                             </span>
                           )}
-                          <button onClick={openDoc} className="text-xs text-[#FF6B35] hover:underline cursor-pointer ml-auto">
+                          <button onClick={openDoc} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer ml-auto">
                             View <i className="ri-external-link-line"></i>
                           </button>
                         </div>
@@ -1101,7 +1188,7 @@ export default function ContractorDetailPage() {
                     value={rateForm.monthly_rate}
                     onChange={e => setRateForm(f => ({ ...f, monthly_rate: e.target.value }))}
                     placeholder="e.g. 35000"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1114,7 +1201,7 @@ export default function ContractorDetailPage() {
                     value={rateForm.hourly_rate}
                     onChange={e => setRateForm(f => ({ ...f, hourly_rate: e.target.value }))}
                     placeholder={rateForm.monthly_rate ? 'e.g. 166' : 'e.g. 200'}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
                   {rateForm.monthly_rate && (
                     <p className="text-[10px] text-gray-400">Used for overtime. Leave blank to auto-derive from monthly ÷ 176.</p>
@@ -1129,7 +1216,7 @@ export default function ContractorDetailPage() {
                   type="date"
                   value={rateForm.effective_date}
                   onChange={e => setRateForm(f => ({ ...f, effective_date: e.target.value }))}
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                 />
                 <p className="text-[10px] text-gray-400">If this falls mid-period, payroll will be prorated automatically.</p>
               </div>
@@ -1142,7 +1229,7 @@ export default function ContractorDetailPage() {
                   value={rateForm.note}
                   onChange={e => setRateForm(f => ({ ...f, note: e.target.value }))}
                   placeholder="e.g. Annual raise, promotion"
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                 />
               </div>
 
@@ -1155,7 +1242,7 @@ export default function ContractorDetailPage() {
                 <button
                   onClick={saveRate}
                   disabled={rateSaving}
-                  className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-50 cursor-pointer"
                 >
                   {rateSaving ? 'Saving…' : 'Save Rate'}
                 </button>

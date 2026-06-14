@@ -1,9 +1,15 @@
-import { ReactNode } from 'react';
+import { ReactNode, Suspense } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { UserRole } from '@/lib/types';
 import { getHubHomePath } from '@/lib/hubAuth';
+
+const HubPageSpinner = () => (
+  <div className="flex h-screen items-center justify-center bg-[#FAFAFA]">
+    <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
+  </div>
+);
 
 interface HubRouteGateProps {
   allowedRoles: UserRole[];
@@ -17,7 +23,7 @@ export default function HubRouteGate({ allowedRoles, children }: HubRouteGatePro
 
   if (isDemo) return <>{children}</>;
 
-  if (loading || (session && !effectiveRole)) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#FAFAFA]">
         <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
@@ -25,7 +31,7 @@ export default function HubRouteGate({ allowedRoles, children }: HubRouteGatePro
     );
   }
 
-  if (!session) {
+  if (!session || !effectiveRole) {
     return <Navigate to="/hub/login" replace state={{ from: location.pathname }} />;
   }
 
@@ -33,5 +39,5 @@ export default function HubRouteGate({ allowedRoles, children }: HubRouteGatePro
     return <Navigate to={getHubHomePath(effectiveRole)} replace />;
   }
 
-  return <>{children}</>;
+  return <Suspense fallback={<HubPageSpinner />}>{children}</Suspense>;
 }

@@ -17,7 +17,7 @@ const DOC_TYPES = [
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
-  in_progress: 'bg-orange-100 text-orange-700',
+  in_progress: 'bg-slate-100 text-[#1c2b3a]',
   completed: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-red-100 text-red-600',
 };
@@ -48,7 +48,6 @@ export default function ContractorDocumentsPage() {
   const [signName, setSignName] = useState('');
   const [signing, setSigning] = useState(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (hubUser?.id) {
       fetchRequests();
@@ -207,7 +206,7 @@ export default function ContractorDocumentsPage() {
           {tab === 'requests' && (
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 bg-[#FF6B35] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-2 bg-[#1c2b3a] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap"
             >
               <i className="ri-add-line"></i>
               Request Document
@@ -224,7 +223,7 @@ export default function ContractorDocumentsPage() {
             <i className="ri-pen-nib-line"></i>
             To Sign
             {pendingSignCount > 0 && (
-              <span className="w-4 h-4 bg-[#FF6B35] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{pendingSignCount}</span>
+              <span className="w-4 h-4 bg-[#1c2b3a] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{pendingSignCount}</span>
             )}
           </button>
           <button
@@ -256,10 +255,10 @@ export default function ContractorDocumentsPage() {
                   {pending.map(a => {
                     const doc = (a as any).hub_sign_documents;
                     return (
-                      <div key={a.id} className="bg-white rounded-xl border border-[#FF6B35]/20 p-5 shadow-sm">
+                      <div key={a.id} className="bg-white rounded-xl border border-[#1c2b3a]/20 p-5 shadow-sm">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
-                            <i className="ri-file-text-line text-[#FF6B35] text-lg"></i>
+                          <div className="w-10 h-10 rounded-xl bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                            <i className="ri-file-text-line text-[#1c2b3a] text-lg"></i>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-gray-900 text-sm">{doc?.title}</p>
@@ -269,7 +268,7 @@ export default function ContractorDocumentsPage() {
                               <button onClick={() => openDoc(doc)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
                                 <i className="ri-eye-line"></i> View
                               </button>
-                              <button onClick={() => openSignModal(a)} className="flex items-center gap-1.5 text-sm bg-[#FF6B35] text-white px-4 py-2 rounded-lg hover:bg-[#e55a24] cursor-pointer font-medium">
+                              <button onClick={() => openSignModal(a)} className="flex items-center gap-1.5 text-sm bg-[#1c2b3a] text-white px-4 py-2 rounded-lg hover:bg-[#e55a24] cursor-pointer font-medium">
                                 <i className="ri-pen-nib-line"></i> Sign Document
                               </button>
                             </div>
@@ -373,14 +372,14 @@ export default function ContractorDocumentsPage() {
                     <div key={r.id} className="p-4 hover:bg-gray-50/50 transition-colors">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#FF6B35]/10 mt-0.5 flex-shrink-0">
-                            <i className="ri-file-text-line text-[#FF6B35]"></i>
+                          <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#1c2b3a]/10 mt-0.5 flex-shrink-0">
+                            <i className="ri-file-text-line text-[#1c2b3a]"></i>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-gray-800">{r.doc_type}</p>
                             {r.notes && <p className="text-xs text-gray-500 mt-0.5">{r.notes}</p>}
                             {r.admin_notes && (
-                              <div className="mt-1.5 bg-gray-50 rounded-lg px-3 py-2 border-l-2 border-[#FF6B35]">
+                              <div className="mt-1.5 bg-gray-50 rounded-lg px-3 py-2 border-l-2 border-[#1c2b3a]">
                                 <p className="text-xs text-gray-500">Admin: <span className="text-gray-700">{r.admin_notes}</span></p>
                               </div>
                             )}
@@ -428,11 +427,11 @@ export default function ContractorDocumentsPage() {
             </div>
             <div className="p-5 space-y-4">
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <i className="ri-file-text-line text-[#FF6B35]"></i>
+                <i className="ri-file-text-line text-[#1c2b3a]"></i>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{(signModal as any).hub_sign_documents?.title}</p>
                 </div>
-                <button onClick={() => openDoc((signModal as any).hub_sign_documents)} className="text-xs text-[#FF6B35] cursor-pointer whitespace-nowrap">
+                <button onClick={() => openDoc((signModal as any).hub_sign_documents)} className="text-xs text-[#1c2b3a] cursor-pointer whitespace-nowrap">
                   View <i className="ri-external-link-line"></i>
                 </button>
               </div>
@@ -444,7 +443,7 @@ export default function ContractorDocumentsPage() {
                   value={signName}
                   onChange={e => setSignName(e.target.value)}
                   placeholder="Type your full name"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                 />
               </div>
               <div className="bg-amber-50 rounded-lg px-4 py-3 text-xs text-amber-700 flex gap-2">
@@ -455,7 +454,7 @@ export default function ContractorDocumentsPage() {
                 <button onClick={() => setSignModal(null)} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 cursor-pointer">
                   Cancel
                 </button>
-                <button onClick={submitSign} disabled={signing || !signName.trim()} className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">
+                <button onClick={submitSign} disabled={signing || !signName.trim()} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">
                   {signing ? 'Signing…' : 'Confirm Signature'}
                 </button>
               </div>
@@ -478,7 +477,7 @@ export default function ContractorDocumentsPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Document Type *</label>
                 <select
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer"
                   value={docType}
                   onChange={e => setDocType(e.target.value)}
                   required
@@ -489,7 +488,7 @@ export default function ContractorDocumentsPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Notes / Purpose</label>
                 <textarea
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                   rows={3}
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
@@ -505,7 +504,7 @@ export default function ContractorDocumentsPage() {
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
+                <button type="submit" disabled={submitting} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
                   {submitting ? 'Submitting…' : 'Submit Request'}
                 </button>
               </div>

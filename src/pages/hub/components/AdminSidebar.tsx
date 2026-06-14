@@ -4,24 +4,28 @@ import { useDemo } from '@/contexts/DemoContext';
 
 const navItems = [
   { to: '/hub/admin/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
+  { divider: true, label: 'People' },
   { to: '/hub/admin/contractors', label: 'Employees', icon: 'ri-team-line' },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },
+  { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line', devOnly: true },
+  { divider: true, label: 'Inbound' },
+  { to: '/hub/admin/applications', label: 'Applications', icon: 'ri-user-search-line' },
+  { to: '/hub/admin/contact', label: 'Contact Inbox', icon: 'ri-mail-line' },
+  { divider: true, label: 'Approvals' },
   { to: '/hub/admin/requests', label: 'Requests', icon: 'ri-inbox-line' },
   { to: '/hub/admin/timeoff', label: 'Time-Off', icon: 'ri-calendar-event-line' },
   { to: '/hub/admin/overtime', label: 'Overtime', icon: 'ri-timer-flash-line' },
-  { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line', devOnly: true },
   { divider: true, label: 'Finance' },
   { to: '/hub/admin/payroll', label: 'Payroll', icon: 'ri-bar-chart-2-line' },
-  { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
-  { divider: true, label: 'Documents' },
-  { to: '/hub/admin/documents', label: 'Documents', icon: 'ri-file-text-line' },
   { to: '/hub/admin/invoice-log', label: 'Invoice Log', icon: 'ri-bill-line' },
+  { to: '/hub/admin/documents', label: 'Documents', icon: 'ri-file-text-line' },
   { divider: true, label: 'Content' },
   { to: '/hub/admin/sop', label: 'SOP Library', icon: 'ri-book-open-line' },
   { to: '/hub/admin/announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
   { to: '/hub/admin/questionnaires', label: 'Questionnaires', icon: 'ri-questionnaire-line', devOnly: true },
   { to: '/hub/admin/assets', label: 'Asset Access', icon: 'ri-key-2-line' },
   { to: '/hub/admin/credentials', label: 'Credentials Vault', icon: 'ri-lock-2-line' },
+  { divider: true, label: '' },
   { to: '/hub/admin/auditlog', label: 'Audit Log', icon: 'ri-shield-check-line' },
   { to: '/hub/admin/settings', label: 'Settings', icon: 'ri-settings-3-line' },
 ];
@@ -69,15 +73,15 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
         <div className={`flex items-center gap-2.5 px-4 h-[66px] border-b border-white/60 ${collapsed ? 'justify-center px-0' : ''}`}>
           <div
             onClick={collapsed ? onToggle : undefined}
-            className={`w-10 h-10 rounded-2xl bg-[#FF6B35] text-white flex items-center justify-center shadow-sm flex-shrink-0 ${collapsed ? 'cursor-pointer hover:bg-[#e55a27] transition-colors' : ''}`}
+            className={`w-10 h-10 rounded-2xl overflow-hidden flex-shrink-0 ${collapsed ? 'cursor-pointer' : ''}`}
           >
-            <img src="/s-logo.png" alt="S" className="w-6 h-6 object-contain" style={{ filter: 'invert(1)' }} />
+            <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <>
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold truncate">FS Architects</p>
-                <p className="text-[16px] font-semibold text-gray-800 leading-none">Sentro</p>
+                <p className="text-[13px] font-semibold text-gray-800 truncate leading-tight">FS Architects</p>
+                <p className="text-[11px] text-gray-400 tracking-wide leading-tight">Sentro</p>
               </div>
               <button
                 onClick={onToggle}
@@ -94,8 +98,10 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
           {visibleNavItems.map((item, idx) => {
             if ((item as any).divider) {
               return !collapsed ? (
-                <div key={idx} className="pt-4 pb-2 px-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400/70">{item.label}</p>
+                <div key={idx} className={`px-3 ${item.label ? 'pt-4 pb-2' : 'pt-3'}`}>
+                  {item.label
+                    ? <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400/70">{item.label}</p>
+                    : <div className="border-t border-gray-200/50" />}
                 </div>
               ) : <div key={idx} className="mx-3 my-3 border-t border-gray-200/50"></div>;
             }
@@ -106,7 +112,7 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
                 className={({ isActive }) =>
                   `group flex items-center gap-3 px-3 py-2 rounded-2xl text-[13px] transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-white/70 text-[#FF6B35] shadow-sm shadow-orange-100/60'
+                      ? 'bg-white/70 text-[#1c2b3a] shadow-sm shadow-slate-200/60/60'
                       : 'text-gray-500 hover:bg-white/50 hover:text-gray-800'
                   } ${collapsed ? 'justify-center px-2' : ''}`
                 }
@@ -132,7 +138,7 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
               {activeUser.avatar_url ? (
                 <img src={activeUser.avatar_url} alt={activeUser.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-bold text-white">{activeUser.full_name.charAt(0)}</span>
                 </div>
               )}

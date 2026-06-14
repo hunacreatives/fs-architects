@@ -1,5 +1,3 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -111,10 +109,35 @@ async function getFolderForType(type: string, meta: Record<string, string>, acce
     return FOLDERS.contractors_agreements;
   }
 
+  if (type === 'careers_resume') {
+    // Sentro Root / Careers / {year}
+    const careersFolder = await createOrGetFolder('Careers', SENTRO_ROOT, accessToken);
+    return createOrGetFolder(year, careersFolder, accessToken);
+  }
+
   throw new Error(`Unknown upload type: ${type}`);
 }
 
-serve(async (req) => {
+async function ensureReadablePreview(fileId: string, accessToken: string) {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      role: 'reader',
+      type: 'anyone',
+    }),
+  });
+
+  if (!res.ok) {
+    const data = await res.text();
+    throw new Error(`Failed to set Drive permissions: ${data}`);
+  }
+}
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
@@ -172,6 +195,9 @@ serve(async (req) => {
     if (!uploadRes.ok) throw new Error(JSON.stringify(result));
 
     const fileId = result.id;
+    if (type === 'task_attachment') {
+      await ensureReadablePreview(fileId, accessToken);
+    }
     const url = `https://drive.google.com/file/d/${fileId}/view`;
 
     return new Response(JSON.stringify({ success: true, fileId, name: result.name, url }), {

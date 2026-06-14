@@ -1,5 +1,3 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY')!;
@@ -156,16 +154,23 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'user_id, title, body required' }), { status: 400, headers: cors });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: subs, error: subsError } = await supabase
-      .from('hub_push_subscriptions')
-      .select('endpoint, p256dh, auth')
-      .eq('user_id', user_id);
+    const subsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/hub_push_subscriptions?select=endpoint,p256dh,auth&user_id=eq.${encodeURIComponent(user_id)}`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+      },
+    );
 
-    if (subsError) {
-      console.error('send-push: subscription lookup failed', subsError);
-      return new Response(JSON.stringify({ error: subsError.message }), { status: 500, headers: cors });
+    if (!subsRes.ok) {
+      const err = await subsRes.text();
+      console.error('send-push: subscription lookup failed', err);
+      return new Response(JSON.stringify({ error: err }), { status: 500, headers: cors });
     }
+
+    const subs: Array<{ endpoint: string; p256dh: string; auth: string }> = await subsRes.json();
 
     if (!subs?.length) {
       return new Response(JSON.stringify({ ok: true, sent: 0 }), { headers: cors });
@@ -185,7 +190,16 @@ Deno.serve(async (req) => {
     });
 
     if (stale.length) {
-      await supabase.from('hub_push_subscriptions').delete().in('endpoint', stale);
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/hub_push_subscriptions?endpoint=in.(${stale.map(e => encodeURIComponent(e)).join(',')})`,
+        {
+          method: 'DELETE',
+          headers: {
+            apikey: SUPABASE_SERVICE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          },
+        },
+      );
     }
 
     const sent = results.filter(r => r.status === 'fulfilled').length;

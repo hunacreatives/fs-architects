@@ -25,7 +25,7 @@ interface Review {
 
 const RATING_LABELS: Record<number, string> = { 1: 'Poor', 2: 'Below Avg', 3: 'Average', 4: 'Good', 5: 'Excellent' };
 const RATING_COLORS: Record<number, string> = {
-  1: 'text-red-600 bg-red-50', 2: 'text-orange-600 bg-orange-50',
+  1: 'text-red-600 bg-red-50', 2: 'text-[#1c2b3a] bg-slate-50',
   3: 'text-amber-600 bg-amber-50', 4: 'text-sky-600 bg-sky-50', 5: 'text-emerald-600 bg-emerald-50',
 };
 
@@ -49,7 +49,7 @@ function Stars({ value, onChange }: { value: number; onChange?: (v: number) => v
 function Avatar({ name, url }: { name: string; url: string | null }) {
   if (url) return <img src={url} alt={name} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" />;
   return (
-    <div className="w-8 h-8 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+    <div className="w-8 h-8 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
       <span className="text-white text-xs font-bold">{name.charAt(0).toUpperCase()}</span>
     </div>
   );
@@ -209,16 +209,16 @@ export default function AdminPerformancePage() {
             <select
               value={filterContractor}
               onChange={e => setFilterContractor(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white"
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white"
             >
-              <option value="">All employees</option>
+              <option value="">All contractors</option>
               {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
             <span className="text-xs text-gray-400">{filtered.length} review{filtered.length !== 1 ? 's' : ''}</span>
           </div>
           <button
             onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-[#FF6B35] text-white rounded-xl text-sm font-medium hover:bg-[#e55a27] cursor-pointer transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[#1c2b3a] text-white rounded-xl text-sm font-medium hover:bg-[#0f1c28] cursor-pointer transition-colors"
           >
             <i className="ri-add-line"></i>
             New Review
@@ -280,7 +280,7 @@ export default function AdminPerformancePage() {
                                     <td className="px-4 py-3 text-xs text-gray-400">{(r.reviewer as any)?.full_name || '—'}</td>
                                     <td className="px-4 py-3">
                                       <button onClick={e => { e.stopPropagation(); startEdit(r); }}
-                                        className="text-gray-300 hover:text-[#FF6B35] transition-colors cursor-pointer">
+                                        className="text-gray-300 hover:text-[#1c2b3a] transition-colors cursor-pointer">
                                         <i className="ri-pencil-line text-sm"></i>
                                       </button>
                                     </td>
@@ -315,8 +315,8 @@ export default function AdminPerformancePage() {
                 <div className="space-y-1 col-span-2">
                   <label className="text-xs font-medium text-gray-700">Employee *</label>
                   <select required value={form.contractor_id} onChange={e => setF({ contractor_id: e.target.value })}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                    <option value="">Select employee...</option>
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                    <option value="">Select contractor...</option>
                     {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                   </select>
                 </div>
@@ -324,11 +324,11 @@ export default function AdminPerformancePage() {
                   <label className="text-xs font-medium text-gray-700">Period *</label>
                   <div className="flex gap-2">
                     <select value={form.period_quarter} onChange={e => setF({ period_quarter: e.target.value })}
-                      className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                      className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                       {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
                     </select>
                     <select value={form.period_year} onChange={e => setF({ period_year: parseInt(e.target.value) })}
-                      className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                      className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                       {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
@@ -361,21 +361,21 @@ export default function AdminPerformancePage() {
                 <label className="text-xs font-medium text-gray-700">Strengths</label>
                 <textarea value={form.strengths} onChange={e => setF({ strengths: e.target.value })} rows={2}
                   placeholder="What this employee does well..."
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Areas for Improvement</label>
                 <textarea value={form.improvements} onChange={e => setF({ improvements: e.target.value })} rows={2}
                   placeholder="What can they improve on..."
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Internal Notes <span className="text-gray-400 font-normal">(not shown to employee)</span></label>
+                <label className="text-xs font-medium text-gray-700">Internal Notes <span className="text-gray-400 font-normal">(not shown to contractor)</span></label>
                 <textarea value={form.notes} onChange={e => setF({ notes: e.target.value })} rows={2}
                   placeholder="Private notes for admin..."
-                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
 
               <div className="flex gap-3 pt-1">
@@ -384,7 +384,7 @@ export default function AdminPerformancePage() {
                   Cancel
                 </button>
                 <button type="submit" disabled={saving}
-                  className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-60 cursor-pointer font-medium">
+                  className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer font-medium">
                   {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Review'}
                 </button>
               </div>

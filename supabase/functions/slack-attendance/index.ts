@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const CHANNEL_ID = 'C0830PCGQK1';
+const CHANNEL_ID = Deno.env.get('SLACK_ATTENDANCE_CHANNEL_ID') ?? 'C0830PCGQK1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MAX_HOURS_FIXED = 8; // billable cap for fixed-rate contractors
@@ -231,6 +231,7 @@ Deno.serve(async (req) => {
           full_name: hubUser?.full_name || `Slack user (${slackId})`,
           avatar_url: hubUser?.avatar_url || null,
           department: hubUser?.department || null,
+          shift_date: shiftDate,
           status: effectiveStatus,
           last_punch: new Date(latestPunch.ts * 1000).toISOString(),
           punches: punchList,
@@ -241,10 +242,21 @@ Deno.serve(async (req) => {
     }
 
     // Upsert daily hours — do NOT touch overtime_hours column (managed by OT approval flow)
+    // Also never overwrite rows that were manually edited by an admin (is_manual = true)
     if (hoursUpserts.length > 0) {
-      await supabase
+      const userDatePairs = hoursUpserts.map((r: any) => `(user_id.eq.${r.user_id},date.eq.${r.date})`);
+      const { data: manualRows } = await supabase
         .from('hub_daily_hours')
-        .upsert(hoursUpserts, { onConflict: 'user_id,date' });
+        .select('user_id, date')
+        .eq('is_manual', true)
+        .or(userDatePairs.join(','));
+      const manualSet = new Set((manualRows || []).map((r: any) => `${r.user_id}::${r.date}`));
+      const safeUpserts = hoursUpserts.filter((r: any) => !manualSet.has(`${r.user_id}::${r.date}`));
+      if (safeUpserts.length > 0) {
+        await supabase
+          .from('hub_daily_hours')
+          .upsert(safeUpserts, { onConflict: 'user_id,date' });
+      }
     }
 
     if (hoursInProgress.length > 0) {
@@ -262,6 +274,7 @@ Deno.serve(async (req) => {
           full_name: c.full_name,
           avatar_url: c.avatar_url,
           department: c.department,
+          shift_date: null,
           status: 'absent',
           last_punch: null,
           punches: [],

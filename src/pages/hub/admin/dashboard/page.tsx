@@ -8,10 +8,10 @@ import { HubUser, HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { getSetting } from '@/lib/settings';
 import { getPeriods } from '@/lib/formatUtils';
 import { DEMO_ATTENDANCE, DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF, DEMO_INVOICES, DEMO_DASHBOARD } from '@/lib/demoData';
+import { mergeLiveAttendanceIntoDailyHours, fetchPayrollTotal } from '@/lib/payrollUtils';
 
 function useClock() {
   const [now, setNow] = useState(new Date());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
@@ -46,33 +46,6 @@ interface BirthdayPerson {
   birthday: string;
   daysUntil: number;
   isToday: boolean;
-}
-
-const DAY_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-function countWorkingDays(startDate: string, endDate: string, workDays: string[]): number {
-  const scheduled = workDays.length > 0
-    ? new Set(workDays.map(d => DAY_MAP[d]))
-    : new Set([1, 2, 3, 4, 5]);
-  let count = 0;
-  const end = new Date(endDate + 'T00:00:00');
-  const cur = new Date(startDate + 'T00:00:00');
-  while (cur <= end) {
-    if (scheduled.has(cur.getDay())) count++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return count;
-}
-
-function countScheduledHours(startDate: string, endDate: string, workDays: string[] | null | undefined): number {
-  if (!startDate || !endDate || endDate < startDate) return 0;
-  return countWorkingDays(startDate, endDate, workDays || []) * 8;
-}
-
-function dateBefore(dateStr: string, days = 1) {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
 }
 
 function getBirthdayAlerts(contractors: { full_name: string; avatar_url?: string; birthday?: string }[]): BirthdayPerson[] {
@@ -110,7 +83,7 @@ function Avatar({ name, url, size = 9 }: { name: string; url: string | null; siz
   const sz = `w-${size} h-${size}`;
   if (url) return <img src={url} alt={name} className={`${sz} rounded-full object-cover object-top flex-shrink-0`} />;
   return (
-    <div className={`${sz} rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0`}>
+    <div className={`${sz} rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0`}>
       <span className="text-white text-xs font-bold">{name.charAt(0).toUpperCase()}</span>
     </div>
   );
@@ -121,14 +94,12 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-type WidgetKey = 'kpi' | 'teamStatus' | 'payroll' | 'netProfit' | 'retainer' | 'requests' | 'timeOff' | 'announcements' | 'quickActions' | 'outstandingInvoices' | 'birthdays';
+type WidgetKey = 'kpi' | 'teamStatus' | 'payroll' | 'requests' | 'timeOff' | 'announcements' | 'quickActions' | 'outstandingInvoices' | 'birthdays';
 
 const ALL_WIDGETS: { key: WidgetKey; label: string; icon: string; ownerOnly?: boolean }[] = [
   { key: 'kpi',                label: 'KPI Stats',           icon: 'ri-bar-chart-2-line' },
   { key: 'teamStatus',         label: 'Team Status',         icon: 'ri-team-line' },
   { key: 'payroll',            label: 'Payroll Estimate',    icon: 'ri-money-dollar-circle-line' },
-  { key: 'netProfit',          label: 'Projects Net Profit', icon: 'ri-folder-chart-line' },
-  { key: 'retainer',           label: 'Monthly Retainers',   icon: 'ri-calendar-check-line', ownerOnly: true },
   { key: 'requests',           label: 'Pending Requests',    icon: 'ri-inbox-line' },
   { key: 'timeOff',            label: 'Time-Off Queue',      icon: 'ri-calendar-todo-line' },
   { key: 'announcements',      label: 'Announcements',       icon: 'ri-megaphone-line' },
@@ -141,9 +112,7 @@ function loadWidgetPrefs(): Record<WidgetKey, boolean> {
   try {
     const raw = localStorage.getItem('hub_admin_widgets');
     if (raw) return JSON.parse(raw);
-  } catch {
-    return defaults as Record<WidgetKey, boolean>;
-  }
+  } catch {}
   const defaults: Partial<Record<WidgetKey, boolean>> = {};
   ALL_WIDGETS.forEach(w => { defaults[w.key] = true; });
   return defaults as Record<WidgetKey, boolean>;
@@ -151,25 +120,29 @@ function loadWidgetPrefs(): Record<WidgetKey, boolean> {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { effectiveRole } = useAuth();
+  const { hubUser, effectiveRole } = useAuth();
   const { isDemo } = useDemo();
-  const [attendance, setAttendance] = useState<SlackRecord[]>([]);
-  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<HubRequest[]>([]);
-  const [pendingTimeOff, setPendingTimeOff] = useState<HubTimeOff[]>([]);
+  const [_cache] = useState<Record<string, any> | null>(() => {
+    try { const r = sessionStorage.getItem('hub_dashboard_cache'); return r ? JSON.parse(r) : null; }
+    catch { sessionStorage.removeItem('hub_dashboard_cache'); return null; }
+  });
+  const [attendance, setAttendance] = useState<SlackRecord[]>(_cache?.attendance ?? []);
+  const [announcements, setAnnouncements] = useState<HubAnnouncement[]>(_cache?.announcements ?? []);
+  const [pendingRequests, setPendingRequests] = useState<HubRequest[]>(_cache?.pendingRequests ?? []);
+  const [pendingTimeOff, setPendingTimeOff] = useState<HubTimeOff[]>(_cache?.pendingTimeOff ?? []);
   const [totalPayroll, setTotalPayroll] = useState(0);
-  const [totalHours, setTotalHours] = useState(0);
-  const [totalNetProfit, setTotalNetProfit] = useState(0);
-  const [totalContractValue, setTotalContractValue] = useState(0);
-  const [totalCollected, setTotalCollected] = useState(0);
-  const [activeProjectCount, setActiveProjectCount] = useState(0);
-  const [onTrackCount, setOnTrackCount] = useState(0);
-  const [atRiskCount, setAtRiskCount] = useState(0);
-  const [internalProjectCount, setInternalProjectCount] = useState(0);
-  const [monthlyRetainerTotal, setMonthlyRetainerTotal] = useState(0);
-  const [birthdays, setBirthdays] = useState<BirthdayPerson[]>([]);
-  const [outstandingInvoices, setOutstandingInvoices] = useState<OutstandingInvoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [totalHours, setTotalHours] = useState(_cache?.totalHours ?? 0);
+  const [totalNetProfit, setTotalNetProfit] = useState(_cache?.totalNetProfit ?? 0);
+  const [totalContractValue, setTotalContractValue] = useState(_cache?.totalContractValue ?? 0);
+  const [totalCollected, setTotalCollected] = useState(_cache?.totalCollected ?? 0);
+  const [activeProjectCount, setActiveProjectCount] = useState(_cache?.activeProjectCount ?? 0);
+  const [onTrackCount, setOnTrackCount] = useState(_cache?.onTrackCount ?? 0);
+  const [atRiskCount, setAtRiskCount] = useState(_cache?.atRiskCount ?? 0);
+  const [internalProjectCount, setInternalProjectCount] = useState(_cache?.internalProjectCount ?? 0);
+  const [monthlyRetainerTotal, setMonthlyRetainerTotal] = useState(_cache?.monthlyRetainerTotal ?? 0);
+  const [birthdays, setBirthdays] = useState<BirthdayPerson[]>(_cache?.birthdays ?? []);
+  const [outstandingInvoices, setOutstandingInvoices] = useState<OutstandingInvoice[]>(_cache?.outstandingInvoices ?? []);
+  const [loading, setLoading] = useState(!_cache);
   const [widgetPrefs, setWidgetPrefs] = useState<Record<WidgetKey, boolean>>(loadWidgetPrefs);
   const [showCustomize, setShowCustomize] = useState(false);
   const isOwner = effectiveRole === 'owner';
@@ -225,181 +198,40 @@ export default function AdminDashboardPage() {
       return;
     }
     const fetchAll = async () => {
-      const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, usdRateStr, invResult, linkResult, payoutsResult] = await Promise.all([
-        supabase.from('hub_attendance_punches')
-          .select('user_id, type, punched_at, hub_users(id, full_name, avatar_url, department)')
-          .eq('date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })())
-          .order('punched_at', { ascending: true }),
+      try {
+      const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, clientsResult, usdRateStr, invResult, linkResult] = await Promise.all([
+        supabase.functions.invoke('slack-attendance'),
         supabase.from('hub_announcements').select('*, hub_users(full_name)').order('created_at', { ascending: false }).limit(4),
         supabase.from('hub_requests').select('*, hub_users(full_name, avatar_url)').in('status', ['open', 'in_review']).order('created_at', { ascending: false }),
         supabase.from('hub_time_off').select('*, hub_users(full_name, avatar_url)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('hub_users').select('id, full_name, avatar_url, payment_type, hourly_rate, monthly_rate, currency, birthday, start_date, work_days').eq('status', 'active').in('role', ['contractor', 'admin']),
-        supabase.from('hub_daily_hours').select('user_id, hours_capped, hours_raw, overtime_hours, date').gte('date', cutoffStart).lte('date', cutoffEnd),
+        supabase.from('hub_daily_hours').select('user_id, hours_capped, hours_raw, overtime_hours, date, is_manual').gte('date', cutoffStart).lte('date', cutoffEnd),
         supabase.from('hub_projects').select('contract_price, status, deadline, project_type, monthly_rate, monthly_rate_currency, hub_project_costs(amount), hub_project_payments(amount)'),
         supabase.from('hub_clients').select('contract_value, contract_currency, status'),
         getSetting('usd_rate', '56'),
-        supabase.from('hub_invoice_log').select('id, invoice_number, client_name, project_name, project_id, balance, sent_at').eq('settled', false).order('sent_at', { ascending: false }),
+        supabase.from('hub_invoice_log').select('id, invoice_number, client_name, project_name, project_id, balance, sent_at').gt('balance', 0).eq('settled', false).order('sent_at', { ascending: false }),
         supabase.from('hub_invoice_payment_links').select('invoice_number, project_id, due_date').order('created_at', { ascending: false }),
-        supabase.from('hub_payouts').select('contractor_id, adjustments').eq('cutoff_start', cutoffStart),
       ]);
+      const payrollTotal = await fetchPayrollTotal(cutoffStart, cutoffEnd, parseFloat(usdRateStr || '56')).catch(() => 0);
 
-      if (!slackResult.error && slackResult.data) {
-        const allPunches: any[] = slackResult.data;
-        const punchMap: Record<string, any[]> = {};
-        for (const p of allPunches) {
-          if (!punchMap[p.user_id]) punchMap[p.user_id] = [];
-          punchMap[p.user_id].push(p);
-        }
-        const userMap: Record<string, any> = {};
-        for (const p of allPunches) { if (p.hub_users) userMap[p.user_id] = p.hub_users; }
-        // Also include users with no punches (absent)
-        for (const c of (contractorsResult.data ?? []) as any[]) {
-          if (!userMap[c.id]) userMap[c.id] = c;
-        }
-        const records = Object.entries(userMap).map(([uid, u]: [string, any]) => {
-          const punches = punchMap[uid] ?? [];
-          const last = punches[punches.length - 1] ?? null;
-          return {
-            hub_user_id: uid,
-            full_name: u.full_name,
-            avatar_url: u.avatar_url ?? null,
-            department: u.department ?? null,
-            status: punches.length === 0 ? 'absent' : last?.type === 'in' ? 'on' : 'off',
-            last_punch: last?.punched_at ?? null,
-            hours_today: 0,
-            overtime_today: 0,
-            punches: [],
-          };
-        });
-        setAttendance(records);
+      if (!slackResult.error && slackResult.data?.attendance) {
+        setAttendance(slackResult.data.attendance);
       }
-
-      let hrs = 0;
-      for (const h of (hoursResult.data as any[]) || []) hrs += h.hours_capped;
 
       const eligibleContractors = ((contractorsResult.data as any[]) || []).filter((c: any) =>
         c.payment_type !== 'project_based' &&
         (!c.start_date || c.start_date <= cutoffEnd)
       );
-      const hoursMap: Record<string, { capped: number; raw: number; overtime: number; days: number }> = {};
-      const hoursByDate: Record<string, Record<string, number>> = {};
-      const overtimeByDate: Record<string, Record<string, number>> = {};
-      for (const h of (hoursResult.data as any[]) || []) {
-        if (!hoursMap[h.user_id]) hoursMap[h.user_id] = { capped: 0, raw: 0, overtime: 0, days: 0 };
-        hoursMap[h.user_id].capped += h.hours_capped;
-        hoursMap[h.user_id].raw += h.hours_raw;
-        hoursMap[h.user_id].overtime += h.overtime_hours || 0;
-        hoursMap[h.user_id].days += 1;
-        if (!hoursByDate[h.user_id]) hoursByDate[h.user_id] = {};
-        hoursByDate[h.user_id][h.date] = (hoursByDate[h.user_id][h.date] || 0) + h.hours_capped;
-        if (h.overtime_hours) {
-          if (!overtimeByDate[h.user_id]) overtimeByDate[h.user_id] = {};
-          overtimeByDate[h.user_id][h.date] = (overtimeByDate[h.user_id][h.date] || 0) + h.overtime_hours;
-        }
-      }
-      const ids = eligibleContractors.map((c: any) => c.id);
-      const { data: rateHistoryAll } = ids.length > 0
-        ? await supabase
-            .from('hub_rate_history')
-            .select('contractor_id, effective_date, payment_type, hourly_rate, monthly_rate')
-            .in('contractor_id', ids)
-            .lte('effective_date', cutoffEnd)
-            .order('effective_date', { ascending: true })
-        : { data: [] as any[] };
+      const mergedHoursRows = mergeLiveAttendanceIntoDailyHours(
+        ((hoursResult.data as any[]) || []).map((h: any) => ({ ...h })),
+        (slackResult.data as any)?.attendance || [],
+        eligibleContractors.map((c: any) => c.id),
+        today,
+      );
 
-      const rateHistoryMap: Record<string, any[]> = {};
-      for (const r of rateHistoryAll || []) {
-        if (!rateHistoryMap[r.contractor_id]) rateHistoryMap[r.contractor_id] = [];
-        rateHistoryMap[r.contractor_id].push(r);
-      }
-      const adjMap: Record<string, number> = {};
-      for (const p of (payoutsResult.data as any[]) || []) {
-        const adjs: any[] = p.adjustments || [];
-        adjMap[p.contractor_id] = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
-      }
-      const usdRate = parseFloat(usdRateStr);
-      let payrollTotal = 0;
-      for (const c of eligibleContractors) {
-        const h = hoursMap[c.id] || { capped: 0, raw: 0, overtime: 0, days: 0 };
-        const payType = c.payment_type || 'hourly';
-        const history = rateHistoryMap[c.id] || [];
-        const changeInPeriod = history.find((r: any) => r.effective_date >= cutoffStart && r.effective_date <= cutoffEnd);
-        const rateAtStart = [...history].filter((r: any) => r.effective_date < cutoffStart).pop() || null;
-        let pay = 0;
-        let overtimePay = 0;
-        if (changeInPeriod) {
-          const beforeChange = [...history].filter((r: any) => r.effective_date < changeInPeriod.effective_date).pop();
-          const oldMonthly = beforeChange ? (beforeChange.monthly_rate || 0) : (c.monthly_rate || 0);
-          const oldHourly  = beforeChange ? (beforeChange.hourly_rate  || 0) : (c.hourly_rate  || 0);
-          const newMonthly = changeInPeriod.monthly_rate || 0;
-          const newHourly  = changeInPeriod.hourly_rate  || 0;
-          if (payType === 'fixed' || payType === 'fixed_flexible') {
-            const currentDate = new Date().toISOString().slice(0, 10);
-            const isCurrentPeriod = currentDate >= cutoffStart && currentDate <= cutoffEnd;
-            const effectiveEnd = isCurrentPeriod
-              ? (currentDate < cutoffEnd ? currentDate : cutoffEnd)
-              : cutoffEnd;
-            const oldSegmentEnd = changeInPeriod.effective_date > cutoffStart
-              ? dateBefore(changeInPeriod.effective_date)
-              : '';
-            const expectedOldHours = oldSegmentEnd
-              ? countScheduledHours(cutoffStart, oldSegmentEnd, c.work_days)
-              : 0;
-            const expectedNewHours = changeInPeriod.effective_date <= effectiveEnd
-              ? countScheduledHours(changeInPeriod.effective_date, effectiveEnd, c.work_days)
-              : 0;
-            const totalExpectedHours = expectedOldHours + expectedNewHours;
-            const oldPortion = totalExpectedHours > 0 ? (oldMonthly / 2) * (expectedOldHours / totalExpectedHours) : 0;
-            const newPortion = totalExpectedHours > 0 ? (newMonthly / 2) * (expectedNewHours / totalExpectedHours) : 0;
-            const datesMap = hoursByDate[c.id] || {};
-            let hrsAtOld = 0, hrsAtNew = 0;
-            for (const [date, hv] of Object.entries(datesMap)) {
-              if (date < changeInPeriod.effective_date) hrsAtOld += hv as number;
-              else if (date <= effectiveEnd) hrsAtNew += hv as number;
-            }
-            const basePay =
-              (expectedOldHours > 0 ? oldPortion * Math.min(hrsAtOld / expectedOldHours, 1) : 0) +
-              (expectedNewHours > 0 ? newPortion * Math.min(hrsAtNew / expectedNewHours, 1) : 0);
-            const oldOT = (beforeChange?.hourly_rate) || oldMonthly / 176;
-            const newOT = changeInPeriod.hourly_rate || newMonthly / 176;
-            const otDates = overtimeByDate[c.id] || {};
-            let otAtOld = 0, otAtNew = 0;
-            for (const [date, ot] of Object.entries(otDates)) {
-              if (date < changeInPeriod.effective_date) otAtOld += ot as number;
-              else if (date <= effectiveEnd) otAtNew += ot as number;
-            }
-            overtimePay = otAtOld * oldOT + otAtNew * newOT;
-            pay = basePay;
-          } else {
-            const datesMap = hoursByDate[c.id] || {};
-            let hrsAtOld = 0, hrsAtNew = 0;
-            for (const [date, hv] of Object.entries(datesMap)) {
-              if (date < changeInPeriod.effective_date) hrsAtOld += hv as number;
-              else hrsAtNew += hv as number;
-            }
-            overtimePay = h.overtime * newHourly;
-            pay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
-          }
-        } else {
-          const monthly = rateAtStart?.monthly_rate ?? c.monthly_rate ?? 0;
-          const hourly  = rateAtStart?.hourly_rate  ?? c.hourly_rate  ?? 0;
-          const derivedHourlyRate = payType === 'fixed' || payType === 'fixed_flexible' ? (hourly || monthly / 176) : hourly;
-          overtimePay = h.overtime * derivedHourlyRate;
-          if (payType === 'hourly') {
-            pay = h.capped * derivedHourlyRate;
-          } else {
-            const currentDate = new Date().toISOString().slice(0, 10);
-            const isCurrentPeriod = currentDate >= cutoffStart && currentDate <= cutoffEnd;
-            const effectiveEnd = isCurrentPeriod ? (currentDate < cutoffEnd ? currentDate : cutoffEnd) : cutoffEnd;
-            const expectedHours = countScheduledHours(cutoffStart, effectiveEnd, c.work_days);
-            const accrualRatio = expectedHours > 0 ? Math.min(h.capped / expectedHours, 1) : 0;
-            pay = (monthly / 2) * accrualRatio;
-          }
-        }
-        const inPHP = c.currency === 'USD' ? pay * usdRate : pay;
-        const otInPHP = c.currency === 'USD' ? overtimePay * usdRate : overtimePay;
-        payrollTotal += inPHP + otInPHP + (adjMap[c.id] || 0);
-      }
+      let hrs = 0;
+      for (const h of mergedHoursRows) hrs += h.hours_capped || 0;
+
       setTotalPayroll(payrollTotal);
       setTotalHours(parseFloat(hrs.toFixed(1)));
       setBirthdays(getBirthdayAlerts(contractorsResult.data || []));
@@ -461,13 +293,40 @@ export default function AdminDashboardPage() {
       }));
       setOutstandingInvoices(outstanding);
 
-      setAnnouncements((annResult.data as HubAnnouncement[]) ?? []);
-      setPendingRequests((reqResult.data as HubRequest[]) ?? []);
-      setPendingTimeOff((toResult.data as HubTimeOff[]) ?? []);
+      const nextAnnouncements = (annResult.data as HubAnnouncement[]) ?? [];
+      const nextRequests = (reqResult.data as HubRequest[]) ?? [];
+      const nextTimeOff = (toResult.data as HubTimeOff[]) ?? [];
+      setAnnouncements(nextAnnouncements);
+      setPendingRequests(nextRequests);
+      setPendingTimeOff(nextTimeOff);
+      try {
+        sessionStorage.setItem('hub_dashboard_cache', JSON.stringify({
+          attendance: slackResult.data?.attendance ?? [],
+          announcements: nextAnnouncements,
+          pendingRequests: nextRequests,
+          pendingTimeOff: nextTimeOff,
+          birthdays: getBirthdayAlerts(contractorsResult.data || []),
+          outstandingInvoices: outstanding,
+          totalPayroll: 0, // never cache payroll — always fetch fresh to stay in sync with payroll page
+          totalHours: parseFloat(hrs.toFixed(1)),
+          totalNetProfit: netProfitTotal,
+          totalContractValue: contractValueTotal,
+          totalCollected: collectedTotal,
+          activeProjectCount: activeCount,
+          onTrackCount: onTrack,
+          atRiskCount: atRisk,
+          internalProjectCount: internalCount,
+          monthlyRetainerTotal: retainerTotal,
+        }));
+      } catch {}
       setLoading(false);
+      } catch (err) {
+        console.error('Dashboard fetch failed:', err);
+        setLoading(false);
+      }
     };
     fetchAll();
-  }, [cutoffEnd, cutoffStart, isDemo, today]);
+  }, [isDemo]);
 
   const counts = {
     on: attendance.filter(r => r.status === 'on').length,
@@ -478,12 +337,12 @@ export default function AdminDashboardPage() {
   const annColors: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700', payroll: 'bg-amber-100 text-amber-700',
     meeting: 'bg-sky-100 text-sky-700', holiday: 'bg-green-100 text-green-700',
-    policy: 'bg-violet-100 text-violet-700', general: 'bg-gray-100 text-gray-600',
+    policy: 'bg-slate-100 text-[#1c2b3a]', general: 'bg-gray-100 text-gray-600',
   };
 
   const toColors: Record<string, string> = {
     vacation: 'bg-sky-100 text-sky-700', sick: 'bg-red-100 text-red-700',
-    emergency: 'bg-orange-100 text-orange-700', unpaid: 'bg-gray-100 text-gray-700',
+    emergency: 'bg-slate-100 text-[#1c2b3a]', unpaid: 'bg-gray-100 text-gray-700',
     other: 'bg-purple-100 text-purple-700',
   };
 
@@ -535,11 +394,11 @@ export default function AdminDashboardPage() {
                     onClick={() => toggleWidget(w.key)}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer text-left"
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${widgetPrefs[w.key] !== false ? 'bg-[#FF6B35]/10' : 'bg-gray-100'}`}>
-                      <i className={`${w.icon} text-sm ${widgetPrefs[w.key] !== false ? 'text-[#FF6B35]' : 'text-gray-400'}`}></i>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${widgetPrefs[w.key] !== false ? 'bg-[#1c2b3a]/10' : 'bg-gray-100'}`}>
+                      <i className={`${w.icon} text-sm ${widgetPrefs[w.key] !== false ? 'text-[#1c2b3a]' : 'text-gray-400'}`}></i>
                     </div>
                     <span className={`text-sm flex-1 ${widgetPrefs[w.key] !== false ? 'text-[#111827] font-medium' : 'text-gray-400'}`}>{w.label}</span>
-                    <div className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 ${widgetPrefs[w.key] !== false ? 'bg-[#FF6B35]' : 'bg-gray-200'}`}>
+                    <div className={`w-10 h-5 rounded-full transition-colors flex-shrink-0 ${widgetPrefs[w.key] !== false ? 'bg-[#1c2b3a]' : 'bg-gray-200'}`}>
                       <div className={`w-4 h-4 rounded-full bg-white shadow-sm mt-0.5 transition-all ${widgetPrefs[w.key] !== false ? 'ml-5' : 'ml-0.5'}`} />
                     </div>
                   </button>
@@ -614,7 +473,7 @@ export default function AdminDashboardPage() {
                 top: isMorning ? '20%' : isEvening ? '35%' : '10%',
                 width:38, height:38, borderRadius:'50%',
                 background: isEvening
-                  ? 'radial-gradient(circle, #FFBC70 0%, #FF6B35 55%, #C0392B 100%)'
+                  ? 'radial-gradient(circle, #FFBC70 0%, #1c2b3a 55%, #C0392B 100%)'
                   : isMorning
                   ? 'radial-gradient(circle, #FFE566 0%, #FFBB30 55%, #FF9500 100%)'
                   : 'radial-gradient(circle, #FFF176 0%, #FFD740 55%, #FFA000 100%)',
@@ -635,7 +494,7 @@ export default function AdminDashboardPage() {
               </p>
               <h2 className="text-xl font-bold">{greeting}, team.</h2>
               <p className="text-white/60 text-sm mt-1">
-                {counts.on > 0 ? `${counts.on} employee${counts.on > 1 ? 's' : ''} in the office today.` : 'No one clocked in yet today.'}
+                {counts.on > 0 ? `${counts.on} contractor${counts.on > 1 ? 's' : ''} in the office right now.` : 'No one in the office yet today.'}
               </p>
             </div>
             {/* Payroll period card */}
@@ -645,7 +504,7 @@ export default function AdminDashboardPage() {
                 {currentPeriod.label}
               </p>
               <div className="mt-2 h-1.5 rounded-full bg-white/20 overflow-hidden">
-                <div className="h-full bg-[#FF6B35] rounded-full transition-all" style={{ width: `${periodProgress}%` }} />
+                <div className="h-full bg-[#1c2b3a] rounded-full transition-all" style={{ width: `${periodProgress}%` }} />
               </div>
               <p className="text-white/40 text-xs mt-1.5">
                 {daysLeft === 0 ? `Payday: ${paydayLabel}` : `${daysLeft} day${daysLeft > 1 ? 's' : ''} until ${paydayLabel}`}
@@ -745,21 +604,21 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {(show('teamStatus') || show('payroll') || show('netProfit') || show('retainer') || show('requests') || show('timeOff')) && (
+        {(show('teamStatus') || show('payroll') || show('requests') || show('timeOff')) && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Team status — 3 cols */}
             {show('teamStatus') && (
               <div className="md:col-span-3 bg-white border border-gray-100 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-[#111827] text-sm">Team Status</h3>
-                  <button onClick={() => navigate('/hub/admin/attendance')} className="text-xs text-[#FF6B35] hover:underline cursor-pointer">Full view</button>
+                  <button onClick={() => navigate('/hub/admin/attendance')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">Full view</button>
                 </div>
 
                 {onlineList.length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                      In Office Now
+                      In Office
                     </p>
                     <div className="space-y-2">
                       {onlineList.map(r => (
@@ -826,7 +685,7 @@ export default function AdminDashboardPage() {
             )}
 
             {/* Right col — 2 cols */}
-            {(show('payroll') || show('netProfit') || show('retainer') || show('requests') || show('timeOff')) && (
+            {(show('payroll') || show('requests') || show('timeOff')) && (
               <div className={`${show('teamStatus') ? 'md:col-span-2' : 'md:col-span-5'} space-y-4`}>
                 {show('payroll') && (
                   <div
@@ -840,7 +699,7 @@ export default function AdminDashboardPage() {
                     }}
                   >
                     <div className="flex items-center gap-2 mb-3">
-                      <i className="ri-money-dollar-circle-line text-[#FF6B35]/60 text-sm"></i>
+                      <i className="ri-money-dollar-circle-line text-[#1c2b3a]/60 text-sm"></i>
                       <p className="text-[#c4522a] text-xs font-medium tracking-wide uppercase">Estimated Payroll</p>
                     </div>
                     <p className="text-2xl font-bold text-[#7a2e10]">₱{totalPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
@@ -849,7 +708,7 @@ export default function AdminDashboardPage() {
                     </p>
                     <button
                       onClick={() => navigate('/hub/admin/payroll')}
-                      className="mt-3 w-full rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer text-[#c4522a] hover:bg-[#FF6B35]/10"
+                      className="mt-3 w-full rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer text-[#c4522a] hover:bg-[#1c2b3a]/10"
                       style={{ background: 'rgba(255,107,53,0.10)' }}
                     >
                       View Payroll
@@ -857,71 +716,6 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
-                {show('netProfit') && isOwnerOrAdmin && (() => {
-                  const collectionPct = totalContractValue > 0 ? Math.min((totalCollected / totalContractValue) * 100, 100) : 0;
-                  return (
-                    <div
-                      className="rounded-2xl p-4"
-                      style={{
-                        background: 'rgba(179,240,228,0.95)',
-                        backdropFilter: 'blur(16px)',
-                        WebkitBackdropFilter: 'blur(16px)',
-                        border: '1px solid rgba(20,184,166,0.35)',
-                        boxShadow: '0 4px 24px rgba(20,184,166,0.15)',
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <i className="ri-folder-chart-line text-teal-500/60 text-sm"></i>
-                        <p className="text-teal-700 text-xs font-medium tracking-wide uppercase">Projects Net Profit</p>
-                      </div>
-                      <p className="text-2xl font-bold text-teal-900">₱{totalNetProfit.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
-                      <p className="text-teal-600/70 text-xs mt-0.5">after costs · {activeProjectCount} active project{activeProjectCount !== 1 ? 's' : ''}</p>
-                      <div className="mt-3">
-                        <div className="flex justify-between text-[10px] text-teal-600/50 mb-1">
-                          <span>Collected · {collectionPct.toFixed(0)}% of contract</span>
-                          <span>₱{totalCollected.toLocaleString('en-PH', { minimumFractionDigits: 0 })} / ₱{totalContractValue.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</span>
-                        </div>
-                        <div className="h-1.5 bg-teal-500/15 rounded-full overflow-hidden">
-                          <div className="h-full bg-teal-500/50 rounded-full transition-all" style={{ width: `${collectionPct}%` }} />
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => navigate('/hub/admin/projects')}
-                        className="mt-3 w-full rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer text-teal-700 hover:bg-teal-500/10"
-                        style={{ background: 'rgba(20,184,166,0.08)' }}
-                      >
-                        View Projects
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {show('retainer') && isOwner && (
-                  <div
-                    className="rounded-2xl p-4"
-                    style={{
-                      background: 'rgba(216,207,254,0.95)',
-                      backdropFilter: 'blur(16px)',
-                      WebkitBackdropFilter: 'blur(16px)',
-                      border: '1px solid rgba(139,92,246,0.35)',
-                      boxShadow: '0 4px 24px rgba(139,92,246,0.15)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <i className="ri-calendar-check-line text-violet-400/70 text-sm"></i>
-                      <p className="text-violet-700 text-xs font-medium tracking-wide uppercase">Monthly Retainers</p>
-                    </div>
-                    <p className="text-2xl font-bold text-violet-900">₱{monthlyRetainerTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
-                    <p className="text-violet-500/70 text-xs mt-1">active client contracts · converted to PHP</p>
-                    <button
-                      onClick={() => navigate('/hub/admin/projects')}
-                      className="mt-3 w-full rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer text-violet-700 hover:bg-violet-500/10"
-                      style={{ background: 'rgba(139,92,246,0.08)' }}
-                    >
-                      View Clients
-                    </button>
-                  </div>
-                )}
 
                 {show('requests') && (
                   <div className="bg-white border border-gray-100 rounded-xl p-4">
@@ -932,7 +726,7 @@ export default function AdminDashboardPage() {
                           <span className="ml-2 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">{pendingRequests.length}</span>
                         )}
                       </h3>
-                      <button onClick={() => navigate('/hub/admin/requests')} className="text-xs text-[#FF6B35] hover:underline cursor-pointer">View all</button>
+                      <button onClick={() => navigate('/hub/admin/requests')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
                     </div>
                     {pendingRequests.length === 0 ? (
                       <div className="flex items-center gap-2 py-2">
@@ -967,7 +761,7 @@ export default function AdminDashboardPage() {
                           <span className="ml-2 text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">{pendingTimeOff.length}</span>
                         )}
                       </h3>
-                      <button onClick={() => navigate('/hub/admin/time-off')} className="text-xs text-[#FF6B35] hover:underline cursor-pointer">View all</button>
+                      <button onClick={() => navigate('/hub/admin/time-off')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
                     </div>
                     {pendingTimeOff.length === 0 ? (
                       <div className="flex items-center gap-2 py-2">
@@ -1035,7 +829,7 @@ export default function AdminDashboardPage() {
               <div className="bg-white border border-gray-100 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-[#111827] text-sm">Announcements</h3>
-                  <button onClick={() => navigate('/hub/admin/announcements')} className="text-xs text-[#FF6B35] hover:underline cursor-pointer">Manage</button>
+                  <button onClick={() => navigate('/hub/admin/announcements')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">Manage</button>
                 </div>
                 {announcements.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-4">No announcements yet</p>
@@ -1063,9 +857,9 @@ export default function AdminDashboardPage() {
                 <h3 className="font-semibold text-[#111827] text-sm mb-3">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Add Member', icon: 'ri-user-add-line', path: '/hub/admin/contractors', color: 'text-[#FF6B35]', bg: 'bg-[#FF6B35]/5 hover:bg-[#FF6B35]/10' },
+                    { label: 'Add Employee', icon: 'ri-user-add-line', path: '/hub/admin/contractors', color: 'text-[#1c2b3a]', bg: 'bg-[#1c2b3a]/5 hover:bg-[#1c2b3a]/10' },
                     { label: 'View Attendance', icon: 'ri-time-line', path: '/hub/admin/attendance', color: 'text-sky-600', bg: 'bg-sky-50 hover:bg-sky-100' },
-                    { label: 'Post Announcement', icon: 'ri-megaphone-line', path: '/hub/admin/announcements', color: 'text-violet-600', bg: 'bg-violet-50 hover:bg-violet-100' },
+                    { label: 'Post Announcement', icon: 'ri-megaphone-line', path: '/hub/admin/announcements', color: 'text-[#1c2b3a]', bg: 'bg-slate-50 hover:bg-slate-100' },
                     { label: 'Run Payroll', icon: 'ri-money-dollar-circle-line', path: '/hub/admin/payroll', color: 'text-emerald-600', bg: 'bg-emerald-50 hover:bg-emerald-100' },
                   ].map((a) => (
                     <button

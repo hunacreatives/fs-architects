@@ -9,7 +9,7 @@ const actionColors: Record<string, string> = {
   update: 'bg-sky-100 text-sky-700',
   delete: 'bg-rose-100 text-rose-700',
   approve: 'bg-purple-100 text-purple-700',
-  reject: 'bg-orange-100 text-orange-700',
+  reject: 'bg-slate-100 text-[#1c2b3a]',
   upload: 'bg-amber-100 text-amber-700',
   login: 'bg-gray-100 text-gray-600',
 };
@@ -25,6 +25,16 @@ const actionIcons: Record<string, string> = {
 
 export default function AuditLogPage() {
   const { isDemo } = useDemo();
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
 
   const [logs, setLogs] = useState<HubAuditLog[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -52,11 +62,7 @@ export default function AuditLogPage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (isDemo) return;
-    fetchLogs();
-  }, [actionFilter, isDemo, page]);
+  useEffect(() => { fetchLogs(); }, [actionFilter, page]);
 
   const filtered = logs.filter((l) =>
     !search || l.description?.toLowerCase().includes(search.toLowerCase()) || l.entity_type?.toLowerCase().includes(search.toLowerCase())
@@ -73,16 +79,6 @@ export default function AuditLogPage() {
     return `${days}d ago`;
   };
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
-
   return (
     <AdminLayout title="Audit Log">
       <div className="space-y-4">
@@ -90,7 +86,7 @@ export default function AuditLogPage() {
           <div className="relative flex-1 min-w-48">
             <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search logs..."
-              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg flex-wrap">
             {['all', 'create', 'update', 'delete', 'approve', 'upload'].map((a) => (

@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Hero Ken Burns — chained cycle so each slide starts where the previous ended */
+@keyframes kb-0 { from { transform: scale(1.06) translate(0.8%,0.8%); }  to { transform: scale(1.02) translate(-0.8%,-0.8%); } }
+@keyframes kb-1 { from { transform: scale(1.02) translate(-0.8%,-0.8%); } to { transform: scale(1.06) translate(-0.6%,0.6%); } }
+@keyframes kb-2 { from { transform: scale(1.06) translate(-0.6%,0.6%); }  to { transform: scale(1.02) translate(0.6%,-0.6%); } }
+@keyframes kb-3 { from { transform: scale(1.02) translate(0.6%,-0.6%); }  to { transform: scale(1.06) translate(0.8%,0.8%); } }

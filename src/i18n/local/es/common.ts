@@ -67,6 +67,11 @@ const translations = {
   footer_privacy: 'Política de Privacidad',
   footer_terms: 'Términos de Uso',
 
+  // ── Párrafos de relleno genéricos del cuerpo del proyecto ──
+  extra_para_1: 'La materialidad del proyecto responde a su entorno mediante una cuidadosa selección de elementos locales — hormigón crudo, piedra natural y madera cálida — estableciendo un diálogo entre la estructura construida y el paisaje que la enmarca.',
+  extra_para_2: 'La luz natural se convierte en el material arquitectónico primario. Las aberturas estratégicamente ubicadas filtran la cambiante calidad de la luz a lo largo del día, transformando el ambiente interior desde la claridad fresca de la mañana hasta la cálida luz rasante de la tarde.',
+  extra_para_3: 'La secuencia espacial desde el umbral hasta el interior se despliega gradualmente, con cada transición revelando una nueva relación entre refugio y apertura — entre el mundo privado interior y el paisaje más amplio que lo habita.',
+  extra_para_4: 'Cada superficie, junta y borde ha sido considerado con el mismo rigor que la forma general. La arquitectura no se impone al sitio; en cambio, se asienta con calma, como si siempre hubiera estado ahí.',
 
   // ── Mallberry Platinum Hall & Lounge ──
   proj_mallberry_platinum_hall_lounge_name: 'Mallberry Platinum Hall & Lounge',

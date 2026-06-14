@@ -276,7 +276,7 @@ export default function QuestionnairesPage() {
               const cfg = statusCfg[q.status];
               return (
                 <button key={q.id} onClick={() => setActiveId(q.id)}
-                  className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${activeId === q.id ? 'border-[#FF6B35] bg-orange-50' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                  className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer ${activeId === q.id ? 'border-[#1c2b3a] bg-slate-50' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#111827] truncate">{q.client_name}</p>
@@ -353,7 +353,7 @@ export default function QuestionnairesPage() {
                       {hasAnswer ? (
                         Array.isArray(answer) ? (
                           <div className="flex flex-wrap gap-1.5">
-                            {answer.map(a => <span key={a} className="text-xs bg-[#FF6B35]/10 text-[#FF6B35] px-2 py-0.5 rounded-full font-medium">{a}</span>)}
+                            {answer.map(a => <span key={a} className="text-xs bg-[#1c2b3a]/10 text-[#1c2b3a] px-2 py-0.5 rounded-full font-medium">{a}</span>)}
                           </div>
                         ) : (
                           <p className="text-sm text-[#111827] bg-gray-50 rounded-lg px-3 py-2">{answer}</p>
@@ -407,7 +407,7 @@ export default function QuestionnairesPage() {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-700">Service type</label>
                 <select value={service} onChange={e => setService(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                   {SERVICES.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -417,12 +417,12 @@ export default function QuestionnairesPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-700">Client name <span className="text-red-400">*</span></label>
                   <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Juan dela Cruz"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-700">Client email <span className="text-red-400">*</span></label>
                   <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="client@email.com"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
 
@@ -431,7 +431,7 @@ export default function QuestionnairesPage() {
                 <label className="text-xs font-medium text-gray-700">Intro message <span className="text-gray-400 font-normal">(optional — shown in the email)</span></label>
                 <textarea value={introMsg} onChange={e => setIntroMsg(e.target.value)} rows={3}
                   placeholder="e.g. Hi! Thanks for getting in touch. Before we prepare your proposal, we'd love to understand your project better."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
 
               {/* Questions preview */}
@@ -455,7 +455,7 @@ export default function QuestionnairesPage() {
                 {creating ? 'Saving…' : 'Save as Draft'}
               </button>
               <button onClick={() => saveAndSend(true)} disabled={creating}
-                className="flex-1 py-2 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5">
+                className="flex-1 py-2 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5">
                 {creating ? <><i className="ri-loader-4-line animate-spin"></i> Sending…</> : <><i className="ri-mail-send-line"></i> Send to Client</>}
               </button>
             </div>

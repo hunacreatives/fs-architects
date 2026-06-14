@@ -51,8 +51,8 @@ export default function EditHoursModal({ userId, date, fullName, currentHours, o
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const h = parseFloat(hours);
-    if (isNaN(h) || h < 0 || h > 24) {
-      setError('Enter a valid number of hours (0–24).');
+    if (isNaN(h) || h < 0) {
+      setError('Enter a valid number of hours.');
       return;
     }
     setLoading(true);
@@ -171,11 +171,10 @@ export default function EditHoursModal({ userId, date, fullName, currentHours, o
                 type="number"
                 step="0.25"
                 min="0"
-                max="24"
                 value={hours}
                 onChange={e => setHours(e.target.value)}
-                placeholder="e.g. 8"
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] pr-10"
+                placeholder="e.g. 8.5"
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] pr-10"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">hrs</span>
             </div>
@@ -189,7 +188,7 @@ export default function EditHoursModal({ userId, date, fullName, currentHours, o
             <select
               value={reason}
               onChange={e => setReason(e.target.value)}
-              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white"
+              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white"
             >
               {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -202,7 +201,7 @@ export default function EditHoursModal({ userId, date, fullName, currentHours, o
               onChange={e => setNotes(e.target.value)}
               placeholder={reason === 'Paid Holiday' ? 'e.g. Cebu Day holiday' : 'Add details...'}
               required={reason === 'Other'}
-              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+              className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
             />
           </div>
 
@@ -221,7 +220,7 @@ export default function EditHoursModal({ userId, date, fullName, currentHours, o
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-60 cursor-pointer">
+              className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer">
               {loading ? 'Saving…' : 'Save & Apply'}
             </button>
           </div>

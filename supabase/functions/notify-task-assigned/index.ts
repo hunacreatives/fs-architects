@@ -25,45 +25,56 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const { task_id, task_title, project_id, project_name, assigned_to_id, assigned_by_name } = await req.json();
+    const { task_id, task_title, project_id, project_name, assigned_to_id, assigned_to_ids, assigned_by_name } = await req.json();
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const normalizedAssigneeIds = [...new Set(
+      [
+        ...(Array.isArray(assigned_to_ids) ? assigned_to_ids : []),
+        assigned_to_id,
+      ].filter(Boolean)
+    )];
+
+    if (normalizedAssigneeIds.length === 0) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'no assignees' }), { headers: cors });
+    }
 
     // Fetch assignee details
-    const { data: assignee } = await supabase
+    const { data: assignees } = await supabase
       .from('hub_users')
       .select('id, full_name, email, slack_id')
-      .eq('id', assigned_to_id)
-      .single();
+      .in('id', normalizedAssigneeIds);
 
-    if (!assignee) {
+    if (!assignees || assignees.length === 0) {
       return new Response(JSON.stringify({ ok: true, skipped: 'assignee not found' }), { headers: cors });
     }
 
-    // In-app notification
-    await supabase.from('hub_notifications').insert({
-      user_id: assigned_to_id,
-      type: 'task_assigned',
-      title: 'New task assigned',
-      body: `${assigned_by_name} assigned you "${task_title}" on ${project_name}`,
-      link: HUB_URL,
-      read: false,
-    }).catch(() => {});
+    const deepLink = `${HUB_URL}?workspace=${project_id}&task=${task_id}`;
 
-    // Slack DM if they have a slack_id
-    if (assignee.slack_id && SLACK_BOT_TOKEN) {
-      await fetch('https://slack.com/api/chat.postMessage', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channel: assignee.slack_id,
-          text: `🎯 *You've been assigned a task*\n*Task:* ${task_title}\n*Project:* ${project_name}\n*Assigned by:* ${assigned_by_name}\n<${HUB_URL}|Open in Sentro Hub →>`,
-        }),
+    for (const assignee of assignees) {
+      await supabase.from('hub_notifications').insert({
+        user_id: assignee.id,
+        type: 'task_assigned',
+        title: 'New task assigned',
+        body: `${assigned_by_name} assigned you "${task_title}" on ${project_name}`,
+        link: deepLink,
+        read: false,
       }).catch(() => {});
+
+      if (assignee.slack_id && SLACK_BOT_TOKEN) {
+        await fetch('https://slack.com/api/chat.postMessage', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            channel: assignee.slack_id,
+            text: `🎯 *You've been assigned a task*\n*Task:* ${task_title}\n*Project:* ${project_name}\n*Assigned by:* ${assigned_by_name}\n<${deepLink}|Open in Sentro Hub →>`,
+          }),
+        }).catch(() => {});
+      }
+
+      await sendPush(assignee.id, 'New task assigned', `${assigned_by_name} assigned you "${task_title}" on ${project_name}`, deepLink);
     }
 
-    await sendPush(assigned_to_id, 'New task assigned', `${assigned_by_name} assigned you "${task_title}" on ${project_name}`, HUB_URL);
-
-    return new Response(JSON.stringify({ ok: true, task_id, assigned_to: assignee.full_name }), { headers: cors });
+    return new Response(JSON.stringify({ ok: true, task_id, notified: assignees.length, project_id }), { headers: cors });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: cors });
   }

@@ -61,6 +61,16 @@ const STATUS_DOT: Record<string, string> = {
 export default function CredentialsVaultPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [requests, setRequests] = useState<CredentialRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,10 +109,7 @@ export default function CredentialsVaultPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (isDemo) return;
-    fetchData();
-  }, [isDemo]);
+  useEffect(() => { fetchData(); }, []);
 
   // Group credentials by client
   const filtered = credentials.filter((c) =>
@@ -126,8 +133,7 @@ export default function CredentialsVaultPage() {
   const toggleClient = (name: string) => {
     setExpandedClients((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      next.has(name) ? next.delete(name) : next.add(name);
       return next;
     });
   };
@@ -135,21 +141,10 @@ export default function CredentialsVaultPage() {
   const togglePassVis = (id: string) => {
     setShowPassIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
-
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
 
   const openNew = () => {
     setEditingCred(null);
@@ -218,7 +213,7 @@ export default function CredentialsVaultPage() {
     fetchData();
   };
 
-  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]';
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]';
 
   return (
     <AdminLayout title="Credentials Vault">
@@ -238,7 +233,7 @@ export default function CredentialsVaultPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search credentials..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
               />
             </div>
             {pendingRequests.length > 0 && (
@@ -279,8 +274,8 @@ export default function CredentialsVaultPage() {
                     className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 bg-[#FF6B35]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i className="ri-building-2-line text-[#FF6B35] text-sm"></i>
+                      <div className="w-7 h-7 bg-[#1c2b3a]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i className="ri-building-2-line text-[#1c2b3a] text-sm"></i>
                       </div>
                       <span className="text-sm font-semibold text-[#111827]">{clientName}</span>
                       <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
@@ -359,7 +354,7 @@ export default function CredentialsVaultPage() {
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
                                   onClick={() => openEdit(cred)}
-                                  className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#FF6B35] hover:bg-[#FF6B35]/10 rounded-lg transition-colors cursor-pointer"
+                                  className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-[#1c2b3a]/10 rounded-lg transition-colors cursor-pointer"
                                   title="Edit"
                                 >
                                   <i className="ri-pencil-line text-sm"></i>
@@ -387,7 +382,7 @@ export default function CredentialsVaultPage() {
         {/* Access Requests Section — always visible */}
         <div id="access-requests" className="bg-white border border-gray-100 rounded-xl overflow-hidden">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b border-gray-100">
-            <i className="ri-key-line text-[#FF6B35]"></i>
+            <i className="ri-key-line text-[#1c2b3a]"></i>
             <h2 className="text-sm font-semibold text-[#111827]">Access Requests</h2>
             {pendingRequests.length > 0 && (
               <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
@@ -412,8 +407,8 @@ export default function CredentialsVaultPage() {
                   <div key={req.id} className="px-5 py-4 flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="w-6 h-6 rounded-full bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
-                          <i className="ri-user-line text-[#FF6B35] text-xs"></i>
+                        <div className="w-6 h-6 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                          <i className="ri-user-line text-[#1c2b3a] text-xs"></i>
                         </div>
                         <span className="text-sm font-medium text-gray-800">{user?.full_name ?? 'Unknown'}</span>
                         <span className="text-xs text-gray-400">wants access to</span>
@@ -470,7 +465,7 @@ export default function CredentialsVaultPage() {
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg my-4">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <i className="ri-lock-2-line text-[#FF6B35]"></i>
+                <i className="ri-lock-2-line text-[#1c2b3a]"></i>
                 <h2 className="font-semibold text-[#111827]">
                   {editingCred ? 'Edit Credential' : 'Add Credential'}
                 </h2>

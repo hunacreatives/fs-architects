@@ -8,7 +8,7 @@ import ContractGeneratorModal from './ContractGeneratorModal';
 
 const DR_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
-  in_progress: 'bg-orange-100 text-orange-700',
+  in_progress: 'bg-slate-100 text-[#1c2b3a]',
   completed: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-red-100 text-red-600',
 };
@@ -24,7 +24,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
   const [fileName, setFileName] = useState(req.file_name || '');
   const [fileUrl, setFileUrl] = useState(req.file_url || '');
   const [saving, setSaving] = useState(false);
-  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]';
+  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]';
 
   const handleSave = async () => {
     setSaving(true);
@@ -42,7 +42,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
         </div>
         <div className="p-5 space-y-4">
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2"><i className="ri-file-text-line text-[#FF6B35]"></i><span className="font-medium text-gray-800 text-sm">{req.doc_type}</span></div>
+            <div className="flex items-center gap-2"><i className="ri-file-text-line text-[#1c2b3a]"></i><span className="font-medium text-gray-800 text-sm">{req.doc_type}</span></div>
             <p className="text-xs text-gray-500">Requested by: <span className="font-medium text-gray-700">{(req.hub_users as any)?.full_name}</span></p>
             {req.notes && <p className="text-sm text-gray-600 mt-1">{req.notes}</p>}
             <p className="text-xs text-gray-400">{new Date(req.created_at!).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
@@ -58,7 +58,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes</label>
-            <textarea className={`${inputCls} resize-none`} rows={3} value={adminNotes} onChange={e => setAdminNotes(e.target.value)} placeholder="Add notes for the employee..." maxLength={500} />
+            <textarea className={`${inputCls} resize-none`} rows={3} value={adminNotes} onChange={e => setAdminNotes(e.target.value)} placeholder="Add notes for the employee…" maxLength={500} />
           </div>
           <div className="border-t border-gray-100 pt-3">
             <p className="text-xs font-medium text-gray-600 mb-2">Upload Document Link</p>
@@ -69,7 +69,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
           </div>
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 cursor-pointer">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">{saving ? 'Saving…' : 'Save Changes'}</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">{saving ? 'Saving…' : 'Save Changes'}</button>
           </div>
         </div>
       </div>
@@ -80,6 +80,16 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
 export default function AdminDocumentsPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
   const [docs, setDocs] = useState<HubSignDocument[]>([]);
   const [contractors, setContractors] = useState<HubUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +132,13 @@ export default function AdminDocumentsPage() {
     toastRef.current = setTimeout(() => setToast(''), 3500);
   };
 
+  useEffect(() => {
+    fetchDocs();
+    fetchContractors();
+    fetchDocRequests();
+    if (hubUser?.id) fetchMyAssignments();
+  }, [hubUser]);
+
   const fetchDocRequests = async () => {
     setDrLoading(true);
     const { data } = await supabase
@@ -150,15 +167,6 @@ export default function AdminDocumentsPage() {
       .order('created_at', { ascending: false });
     setMyAssignments(data ?? []);
   };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (isDemo) return;
-    fetchDocs();
-    fetchContractors();
-    fetchDocRequests();
-    if (hubUser?.id) fetchMyAssignments();
-  }, [hubUser?.id, isDemo]);
 
   const submitSign = async () => {
     if (!signModal || !signName.trim()) return;
@@ -204,6 +212,7 @@ export default function AdminDocumentsPage() {
     }
     setUploading(true);
 
+    const ext = file.name.split('.').pop();
     const path = `contracts/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: false });
     if (upErr) {
@@ -271,6 +280,7 @@ export default function AdminDocumentsPage() {
     if (error || data?.error) {
       const msg = data?.error ?? error?.message ?? 'Unknown error';
       showToast(`Drive upload failed: ${msg}`);
+      console.error('Drive upload error:', data?.error, error);
     } else {
       showToast('Uploaded to Google Drive.');
       setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, drive_file_id: data?.fileId ?? 'uploaded' } : a));
@@ -281,16 +291,6 @@ export default function AdminDocumentsPage() {
     doc.hub_sign_assignments?.filter(a => a.status === 'signed').length ?? 0;
   const totalCount = (doc: HubSignDocument) =>
     doc.hub_sign_assignments?.length ?? 0;
-
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
 
   return (
     <AdminLayout title="Documents">
@@ -331,7 +331,7 @@ export default function AdminDocumentsPage() {
             </button>
             <button
               onClick={() => setShowGenerator(true)}
-              className="flex items-center gap-2 bg-[#FF6B35] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer"
+              className="flex items-center gap-2 bg-[#1c2b3a] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer"
             >
               <i className="ri-file-text-line"></i>
               Generate Contract
@@ -341,17 +341,17 @@ export default function AdminDocumentsPage() {
 
         {/* Documents assigned to this admin for signing */}
         {myAssignments.length > 0 && (
-          <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 space-y-3">
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <i className="ri-pen-nib-line text-violet-500"></i>
+              <i className="ri-pen-nib-line text-[#1c2b3a]/70"></i>
               <p className="text-sm font-semibold text-violet-800">You have {myAssignments.length} document{myAssignments.length > 1 ? 's' : ''} to sign</p>
             </div>
             {myAssignments.map((a: any) => {
               const doc = a.hub_sign_documents;
               return (
-                <div key={a.id} className="bg-white rounded-lg border border-violet-100 p-4 flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
-                    <i className="ri-file-text-line text-violet-500 text-sm"></i>
+                <div key={a.id} className="bg-white rounded-lg border border-slate-100 p-4 flex items-center gap-4">
+                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <i className="ri-file-text-line text-[#1c2b3a]/70 text-sm"></i>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{doc?.title}</p>
@@ -368,7 +368,7 @@ export default function AdminDocumentsPage() {
                     )}
                     <button
                       onClick={() => { setSignModal(a); setSignName(hubUser?.full_name ?? ''); }}
-                      className="text-xs font-medium bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-violet-700 cursor-pointer"
+                      className="text-xs font-medium bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-[#0f1c28] cursor-pointer"
                     >
                       <i className="ri-pen-nib-line mr-1"></i>Sign
                     </button>
@@ -408,8 +408,8 @@ export default function AdminDocumentsPage() {
                         <tr key={doc.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => openDetail(doc)}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 bg-[#FF6B35]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i className="ri-file-text-line text-[#FF6B35] text-xs"></i>
+                              <div className="w-7 h-7 bg-[#1c2b3a]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i className="ri-file-text-line text-[#1c2b3a] text-xs"></i>
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-gray-900 truncate max-w-[220px]">{doc.title}</p>
@@ -440,7 +440,7 @@ export default function AdminDocumentsPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-20 bg-gray-100 rounded-full h-1.5">
-                                <div className={`h-1.5 rounded-full ${allSigned ? 'bg-emerald-500' : 'bg-[#FF6B35]'}`}
+                                <div className={`h-1.5 rounded-full ${allSigned ? 'bg-emerald-500' : 'bg-[#1c2b3a]'}`}
                                   style={{ width: total > 0 ? `${(signed / total) * 100}%` : '0%' }} />
                               </div>
                               <span className={`text-xs font-medium ${allSigned ? 'text-emerald-600' : 'text-amber-600'}`}>
@@ -488,7 +488,7 @@ export default function AdminDocumentsPage() {
             <div className="flex flex-wrap gap-3">
               <div className="relative">
                 <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                <input type="text" placeholder="Search…" className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 w-48" value={drSearch} onChange={e => setDrSearch(e.target.value)} />
+                <input type="text" placeholder="Search…" className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 w-48" value={drSearch} onChange={e => setDrSearch(e.target.value)} />
               </div>
               <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white cursor-pointer" value={drFilterStatus} onChange={e => setDrFilterStatus(e.target.value)}>
                 <option value="all">All Statuses</option>
@@ -521,7 +521,7 @@ export default function AdminDocumentsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 border-b border-gray-100">
-                        <tr>{['Contractor','Type','Notes','Status','File','Requested',''].map(h => (
+                        <tr>{['Employee','Type','Notes','Status','File','Requested',''].map(h => (
                           <th key={h} className="text-left text-xs text-gray-400 font-medium px-4 py-3">{h}</th>
                         ))}</tr>
                       </thead>
@@ -532,8 +532,8 @@ export default function AdminDocumentsPage() {
                             <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FF6B35]/10 flex-shrink-0">
-                                    <span className="text-xs font-semibold text-[#FF6B35]">{user?.full_name?.charAt(0)}</span>
+                                  <div className="w-7 h-7 flex items-center justify-center rounded-full bg-[#1c2b3a]/10 flex-shrink-0">
+                                    <span className="text-xs font-semibold text-[#1c2b3a]">{user?.full_name?.charAt(0)}</span>
                                   </div>
                                   <span className="font-medium text-gray-800 whitespace-nowrap">{user?.full_name}</span>
                                 </div>
@@ -545,14 +545,14 @@ export default function AdminDocumentsPage() {
                               </td>
                               <td className="px-4 py-3">
                                 {r.file_url ? (
-                                  <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#FF6B35] hover:underline whitespace-nowrap cursor-pointer">
+                                  <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#1c2b3a] hover:underline whitespace-nowrap cursor-pointer">
                                     <i className="ri-download-2-line"></i>{r.file_name || 'Download'}
                                   </a>
                                 ) : <span className="text-gray-400 text-xs">—</span>}
                               </td>
                               <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{new Date(r.created_at!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                               <td className="px-4 py-3">
-                                <button onClick={() => setReviewing(r)} className="text-xs bg-gray-100 hover:bg-[#FF6B35] hover:text-white text-gray-600 px-3 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap">Review</button>
+                                <button onClick={() => setReviewing(r)} className="text-xs bg-gray-100 hover:bg-[#1c2b3a] hover:text-white text-gray-600 px-3 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap">Review</button>
                               </td>
                             </tr>
                           );
@@ -587,7 +587,7 @@ export default function AdminDocumentsPage() {
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. Independent Contractor Agreement 2025"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                 />
               </div>
               <div>
@@ -597,12 +597,12 @@ export default function AdminDocumentsPage() {
                   onChange={e => setDescription(e.target.value)}
                   rows={2}
                   placeholder="Brief note about this document..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">File (PDF or image) *</label>
-                <label className="flex items-center gap-3 border-2 border-dashed border-gray-200 rounded-lg p-4 cursor-pointer hover:border-[#FF6B35]/40 transition-colors">
+                <label className="flex items-center gap-3 border-2 border-dashed border-gray-200 rounded-lg p-4 cursor-pointer hover:border-[#1c2b3a]/40 transition-colors">
                   <i className="ri-upload-2-line text-gray-400 text-lg"></i>
                   <span className="text-sm text-gray-500">{file ? file.name : 'Click to select file…'}</span>
                   <input type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
@@ -612,7 +612,7 @@ export default function AdminDocumentsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-gray-600">Send to *</label>
                   <div className="flex gap-3">
-                    <button onClick={selectAll} className="text-xs text-[#FF6B35] cursor-pointer hover:underline">Select all</button>
+                    <button onClick={selectAll} className="text-xs text-[#1c2b3a] cursor-pointer hover:underline">Select all</button>
                     <button onClick={clearAll} className="text-xs text-gray-400 cursor-pointer hover:underline">Clear</button>
                   </div>
                 </div>
@@ -623,7 +623,7 @@ export default function AdminDocumentsPage() {
                         type="checkbox"
                         checked={selectedContractors.includes(c.id)}
                         onChange={() => toggleContractor(c.id)}
-                        className="accent-[#FF6B35]"
+                        className="accent-[#1c2b3a]"
                       />
                       <img src={c.avatar_url || ''} alt="" className="w-6 h-6 rounded-full object-cover object-top bg-gray-100" />
                       <span className="text-sm text-gray-700">{c.full_name}</span>
@@ -639,7 +639,7 @@ export default function AdminDocumentsPage() {
               <button onClick={() => { setShowUpload(false); resetForm(); }} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 cursor-pointer">
                 Cancel
               </button>
-              <button onClick={handleUpload} disabled={uploading} className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">
+              <button onClick={handleUpload} disabled={uploading} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">
                 {uploading ? 'Uploading…' : 'Send for Signature'}
               </button>
             </div>
@@ -669,8 +669,8 @@ export default function AdminDocumentsPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                <div className="w-8 h-8 bg-[#FF6B35]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <i className="ri-file-text-line text-[#FF6B35]"></i>
+                <div className="w-8 h-8 bg-[#1c2b3a]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <i className="ri-file-text-line text-[#1c2b3a]"></i>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{selectedDoc.file_name || selectedDoc.title}</p>
@@ -764,7 +764,7 @@ export default function AdminDocumentsPage() {
               <button
                 onClick={submitSign}
                 disabled={signing || !signName.trim()}
-                className="flex-1 bg-violet-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-violet-700 cursor-pointer disabled:opacity-40"
+                className="flex-1 bg-violet-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40"
               >
                 {signing ? 'Signing…' : 'Confirm Signature'}
               </button>

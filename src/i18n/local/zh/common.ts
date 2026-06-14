@@ -67,6 +67,11 @@ const translations = {
   footer_privacy: '隐私政策',
   footer_terms: '使用条款',
 
+  // ── 项目正文通用填充段落 ──
+  extra_para_1: '项目的材料性通过精心选择本地元素——原始混凝土、天然石材和温暖木材——来回应周围环境，在建筑结构与框定它的景观之间建立对话。',
+  extra_para_2: '自然光成为主要的建筑材料。战略性布置的开口过滤一天中不断变化的光线质量，将室内氛围从清晨的清透明亮转变为午后的温暖斜射光线。',
+  extra_para_3: '从门槛到室内的空间序列逐渐展开，每次过渡都揭示了遮蔽与开放之间——内部私密世界与更广阔景观之间——新的关系。',
+  extra_para_4: '每一个表面、接缝和边缘都与整体形式以同样的严谨度加以考量。建筑不强加于场地；相反，它悄然安住，仿佛它一直在那里。',
 
   // ── Mallberry Platinum Hall & Lounge ──
   proj_mallberry_platinum_hall_lounge_name: 'Mallberry铂金宴会厅与休息室',

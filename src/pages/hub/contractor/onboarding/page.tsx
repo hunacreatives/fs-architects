@@ -67,14 +67,14 @@ export default function ContractorOnboardingPage() {
 
         {/* Logo */}
         <div className="flex items-center justify-center">
-          <img src="/images/fc04818c74ad69bdfb22b93a6a0c6a72.png" alt="FS Architects" className="h-9 w-auto" />
+          <img src="/images/fc04818c74ad69bdfb22b93a6a0c6a72.png" alt="Huna Creatives" className="h-9 w-auto" />
         </div>
 
         {/* Progress */}
         <div className="flex items-center gap-1.5">
           {STEPS.slice(0, -1).map((s, i) => (
             <div key={s} className="flex-1 flex items-center gap-1.5">
-              <div className={`h-1.5 flex-1 rounded-full transition-all ${i <= step - 1 ? 'bg-[#FF6B35]' : i === step ? 'bg-[#FF6B35]/40' : 'bg-gray-200'}`} />
+              <div className={`h-1.5 flex-1 rounded-full transition-all ${i <= step - 1 ? 'bg-[#1c2b3a]' : i === step ? 'bg-[#1c2b3a]/40' : 'bg-gray-200'}`} />
             </div>
           ))}
         </div>
@@ -84,11 +84,11 @@ export default function ContractorOnboardingPage() {
           {/* Step 0: Welcome */}
           {step === 0 && (
             <div className="p-8 text-center space-y-5">
-              <div className="w-16 h-16 bg-[#FF6B35]/10 rounded-2xl flex items-center justify-center mx-auto">
-                <i className="ri-hand-heart-line text-3xl text-[#FF6B35]"></i>
+              <div className="w-16 h-16 bg-[#1c2b3a]/10 rounded-2xl flex items-center justify-center mx-auto">
+                <i className="ri-hand-heart-line text-3xl text-[#1c2b3a]"></i>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-[#111827]">Welcome to the FS Architects Hub, {firstName}!</h1>
+                <h1 className="text-xl font-bold text-[#111827]">Welcome to the Huna Hub, {firstName}!</h1>
                 <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                   Let's get your profile set up. This takes about 2 minutes. You can update any of these details later from your profile.
                 </p>
@@ -96,7 +96,7 @@ export default function ContractorOnboardingPage() {
               <div className="space-y-2 text-left bg-gray-50 rounded-xl p-4">
                 {['Personal info — phone, birthday, address', 'Emergency contact', 'Bank details for payroll'].map((item, i) => (
                   <div key={i} className="flex items-center gap-2.5 text-sm text-gray-600">
-                    <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+                    <div className="w-5 h-5 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-[10px] font-bold">{i + 1}</span>
                     </div>
                     {item}
@@ -104,7 +104,7 @@ export default function ContractorOnboardingPage() {
                 ))}
               </div>
               <button onClick={() => setStep(1)}
-                className="w-full py-3 bg-[#FF6B35] text-white rounded-xl font-medium hover:bg-[#e55a27] transition-colors cursor-pointer">
+                className="w-full py-3 bg-[#1c2b3a] text-white rounded-xl font-medium hover:bg-[#0f1c28] transition-colors cursor-pointer">
                 Let's go →
               </button>
             </div>
@@ -122,18 +122,18 @@ export default function ContractorOnboardingPage() {
                   <label className="text-xs font-medium text-gray-700">Phone Number</label>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                     placeholder="+63 912 345 6789"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-700">Birthday</label>
                   <input type="date" value={birthday} onChange={e => setBirthday(e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-700">Home Address</label>
                   <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2}
                     placeholder="Street, City, Province"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
                 </div>
               </div>
               <div className="px-6 pb-6 flex gap-2">
@@ -161,20 +161,20 @@ export default function ContractorOnboardingPage() {
                   <label className="text-xs font-medium text-gray-700">Full Name</label>
                   <input type="text" value={emergencyName} onChange={e => setEmergencyName(e.target.value)}
                     placeholder="e.g. Maria Santos"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-gray-700">Relationship</label>
                     <input type="text" value={emergencyRel} onChange={e => setEmergencyRel(e.target.value)}
                       placeholder="e.g. Mother"
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-gray-700">Phone Number</label>
                     <input type="tel" value={emergencyPhone} onChange={e => setEmergencyPhone(e.target.value)}
                       placeholder="+63 912 345 6789"
-                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                 </div>
               </div>
@@ -203,19 +203,19 @@ export default function ContractorOnboardingPage() {
                   <label className="text-xs font-medium text-gray-700">Bank Name</label>
                   <input type="text" value={bankName} onChange={e => setBankName(e.target.value)}
                     placeholder="e.g. BDO, BPI, GCash, Maya"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-700">Account Name</label>
                   <input type="text" value={bankAccountName} onChange={e => setBankAccountName(e.target.value)}
                     placeholder="Name as it appears on the account"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-700">Account Number / GCash Number</label>
                   <input type="text" value={bankAccountNumber} onChange={e => setBankAccountNumber(e.target.value)}
                     placeholder="e.g. 0917 123 4567"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-lg">
                   <i className="ri-lock-line text-amber-500 text-sm mt-0.5 flex-shrink-0"></i>
@@ -247,7 +247,7 @@ export default function ContractorOnboardingPage() {
                 </p>
               </div>
               <button onClick={finish} disabled={saving}
-                className="w-full py-3 bg-[#FF6B35] text-white rounded-xl font-medium hover:bg-[#e55a27] transition-colors cursor-pointer disabled:opacity-40">
+                className="w-full py-3 bg-[#1c2b3a] text-white rounded-xl font-medium hover:bg-[#0f1c28] transition-colors cursor-pointer disabled:opacity-40">
                 {saving ? 'Loading...' : 'Go to My Dashboard →'}
               </button>
             </div>
@@ -255,7 +255,7 @@ export default function ContractorOnboardingPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Private portal — FS Architects team only
+          Private portal — Huna Creatives team only
         </p>
       </div>
     </div>

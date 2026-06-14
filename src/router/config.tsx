@@ -49,7 +49,18 @@ const HubContractorDocuments = lazy(() => import('../pages/hub/contractor/docume
 const HubContractorCredentials = lazy(() => import('../pages/hub/contractor/credentials/page'));
 const HubContractorOvertime = lazy(() => import('../pages/hub/contractor/overtime/page'));
 const HubContractorOnboarding = lazy(() => import('../pages/hub/contractor/onboarding/page'));
+const HubContractorClients = lazy(() => import('../pages/hub/contractor/clients/page'));
 const HubContractorProjects = lazy(() => import('../pages/hub/contractor/projects/page'));
+const HubContractorProjectRedirect = lazy(() => import('../pages/hub/contractor/project-redirect/page'));
+const HubAdminTasks = lazy(() => import('../pages/hub/admin/tasks/page'));
+const HubAdminInvoiceBuilder = lazy(() => import('../pages/hub/admin/invoice-builder/page'));
+const HubAdminQuestionnaires = lazy(() => import('../pages/hub/admin/questionnaires/page'));
+const HubAdminApplications = lazy(() => import('../pages/hub/admin/applications/page'));
+const HubAdminContact = lazy(() => import('../pages/hub/admin/contact/page'));
+const HubAdminProjectRedirect = lazy(() => import('../pages/hub/admin/project-redirect/page'));
+const HubDemoPage = lazy(() => import('../pages/hub/demo/page'));
+const PublicQuestionnaire = lazy(() => import('../pages/q/page'));
+const PublicPaymentPage = lazy(() => import('../pages/pay/page'));
 
 const withAdminGate = (element: ReactNode) => (
   <HubRouteGate allowedRoles={['owner', 'admin', 'hr']}>{element}</HubRouteGate>
@@ -102,6 +113,15 @@ const routes: RouteObject[] = [
   { path: '/hub/admin/projects', element: <S>{withAdminGate(<HubAdminProjects />)}</S> },
   { path: '/hub/admin/documents', element: <S>{withAdminGate(<HubAdminDocuments />)}</S> },
   { path: '/hub/admin/invoice-log', element: <S>{withAdminGate(<HubAdminInvoiceLog />)}</S> },
+  { path: '/hub/admin/invoices/:projectId', element: <S>{withAdminGate(<HubAdminInvoiceBuilder />)}</S> },
+  { path: '/hub/admin/tasks', element: <S>{withAdminGate(<HubAdminTasks />)}</S> },
+  { path: '/hub/admin/questionnaires', element: <S>{withAdminGate(<HubAdminQuestionnaires />)}</S> },
+  { path: '/hub/admin/applications', element: <S>{withAdminGate(<HubAdminApplications />)}</S> },
+  { path: '/hub/admin/contact', element: <S>{withAdminGate(<HubAdminContact />)}</S> },
+  { path: '/hub/admin/project/:slug', element: <S>{withAdminGate(<HubAdminProjectRedirect />)}</S> },
+  { path: '/hub/demo', element: <S><HubDemoPage /></S> },
+  { path: '/q/:token', element: <S><PublicQuestionnaire /></S> },
+  { path: '/pay/:token', element: <S><PublicPaymentPage /></S> },
 
   // Hub — employee (contractor)
   { path: '/hub/contractor/dashboard', element: <S>{withContractorGate(<HubContractorDashboard />)}</S> },
@@ -115,7 +135,9 @@ const routes: RouteObject[] = [
   { path: '/hub/contractor/payouts', element: <S>{withContractorGate(<HubContractorPayouts />)}</S> },
   { path: '/hub/contractor/documents', element: <S>{withContractorGate(<HubContractorDocuments />)}</S> },
   { path: '/hub/contractor/credentials', element: <S>{withContractorGate(<HubContractorCredentials />)}</S> },
+  { path: '/hub/contractor/clients', element: <S>{withContractorGate(<HubContractorClients />)}</S> },
   { path: '/hub/contractor/projects', element: <S>{withContractorGate(<HubContractorProjects />)}</S> },
+  { path: '/hub/contractor/project/:slug', element: <S>{withContractorGate(<HubContractorProjectRedirect />)}</S> },
   { path: '/hub/contractor/onboarding', element: <S><HubContractorOnboarding /></S> },
 
   { path: "*", element: <NotFound /> },

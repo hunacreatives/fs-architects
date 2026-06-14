@@ -6,7 +6,7 @@ import { useDemo } from '@/contexts/DemoContext';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
-  in_progress: 'bg-orange-100 text-orange-700',
+  in_progress: 'bg-slate-100 text-[#1c2b3a]',
   completed: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-red-100 text-red-600',
 };
@@ -48,7 +48,7 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
     onSaved();
   };
 
-  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]';
+  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]';
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -62,7 +62,7 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
         <div className="p-5 space-y-4">
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2">
-              <i className="ri-file-text-line text-[#FF6B35]"></i>
+              <i className="ri-file-text-line text-[#1c2b3a]"></i>
               <span className="font-medium text-gray-800 text-sm">{req.doc_type}</span>
             </div>
             <p className="text-xs text-gray-500">Requested by: <span className="font-medium text-gray-700">{(req.hub_users as any)?.full_name}</span></p>
@@ -102,7 +102,7 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
 
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
@@ -115,6 +115,16 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
 export default function AdminDocRequestsPage() {
   const { isDemo } = useDemo();
 
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
+
   const [requests, setRequests] = useState<HubDocRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -124,10 +134,7 @@ export default function AdminDocRequestsPage() {
   const [toast, setToast] = useState('');
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (isDemo) return;
-    fetchRequests();
-  }, [isDemo]);
+  useEffect(() => { fetchRequests(); }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -156,16 +163,6 @@ export default function AdminDocRequestsPage() {
   const pendingCount = requests.filter(r => r.status === 'pending').length;
   const inProgressCount = requests.filter(r => r.status === 'in_progress').length;
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
-
   return (
     <AdminLayout>
       {toast && (
@@ -187,7 +184,7 @@ export default function AdminDocRequestsPage() {
               </span>
             )}
             {inProgressCount > 0 && (
-              <span className="bg-orange-100 text-orange-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              <span className="bg-slate-100 text-[#1c2b3a] text-xs font-semibold px-3 py-1.5 rounded-full">
                 {inProgressCount} in progress
               </span>
             )}
@@ -198,7 +195,7 @@ export default function AdminDocRequestsPage() {
         <div className="flex flex-wrap gap-3">
           <div className="relative">
             <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-            <input type="text" placeholder="Search..." className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 w-48" value={search} onChange={e => setSearch(e.target.value)} />
+            <input type="text" placeholder="Search..." className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 w-48" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white cursor-pointer" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="all">All Statuses</option>
@@ -227,7 +224,7 @@ export default function AdminDocRequestsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Contractor','Document Type','Notes','Status','File','Requested','Actions'].map(h => (
+                    {['Employee','Document Type','Notes','Status','File','Requested','Actions'].map(h => (
                       <th key={h} className="text-left text-xs text-gray-400 font-medium px-4 py-3">{h}</th>
                     ))}
                   </tr>
@@ -239,8 +236,8 @@ export default function AdminDocRequestsPage() {
                       <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 flex items-center justify-center rounded-full bg-[#FF6B35]/10 flex-shrink-0">
-                              <span className="text-xs font-semibold text-[#FF6B35]">{user?.full_name?.charAt(0)}</span>
+                            <div className="w-7 h-7 flex items-center justify-center rounded-full bg-[#1c2b3a]/10 flex-shrink-0">
+                              <span className="text-xs font-semibold text-[#1c2b3a]">{user?.full_name?.charAt(0)}</span>
                             </div>
                             <span className="font-medium text-gray-800 whitespace-nowrap">{user?.full_name}</span>
                           </div>
@@ -258,7 +255,7 @@ export default function AdminDocRequestsPage() {
                         </td>
                         <td className="px-4 py-3">
                           {r.file_url ? (
-                            <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#FF6B35] hover:underline whitespace-nowrap cursor-pointer">
+                            <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#1c2b3a] hover:underline whitespace-nowrap cursor-pointer">
                               <i className="ri-download-2-line"></i>
                               {r.file_name || 'Download'}
                             </a>
@@ -272,7 +269,7 @@ export default function AdminDocRequestsPage() {
                         <td className="px-4 py-3">
                           <button
                             onClick={() => setReviewing(r)}
-                            className="text-xs bg-gray-100 hover:bg-[#FF6B35] hover:text-white text-gray-600 px-3 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap"
+                            className="text-xs bg-gray-100 hover:bg-[#1c2b3a] hover:text-white text-gray-600 px-3 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap"
                           >
                             Review
                           </button>

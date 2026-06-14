@@ -43,12 +43,12 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
 <div class="page">
   <div class="header">
     <div class="logo-block">
-      <img src="${logoData}" alt="FS Architects" />
-      <div class="logo-tagline">Let's bring your <em>architecture</em> to life.</div>
+      <img src="${logoData}" alt="Huna Creatives" />
+      <div class="logo-tagline">Let's bring your <em>hunahuna</em> to life.</div>
     </div>
     <div class="header-contact">
       (032) 505 6921 | +63 952 447 2602<br />
-      contact@fsarchitects.ph<br />
+      contact@hunacreatives.com<br />
       Cebu, Philippines, 6004
     </div>
   </div>
@@ -59,7 +59,7 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
   <hr class="divider" style="margin-top:28pt;" />
   <div class="sig-grid">
     <div>
-      <p><strong>FS Architects</strong><br />("Client")</p>
+      <p><strong>Huna Creatives</strong><br />("Client")</p>
       <div style="height:44pt;display:flex;align-items:flex-end;padding-bottom:0;margin-top:16pt;">
         <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
       </div>
@@ -98,11 +98,11 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   const commissionSection = hasCommission ? `
   <hr class="divider" />
   <div class="section-title">10. Performance-Based Commission – ${commissionClient}</div>
-  <p>10.1 In recognition of the Contractor's role with <strong>${commissionClient}</strong>, the Contractor shall be entitled to a <strong>${commissionPercent}% commission</strong> derived from <strong>performance-based commissions actually received by FS Architects</strong> under its agreement with ${commissionClient}.</p>
-  <p>10.2 The commission shall be calculated <strong>solely on amounts received by FS Architects</strong>, and not on gross sales, gross revenue, or client-side net profit.</p>
+  <p>10.1 In recognition of the Contractor's role with <strong>${commissionClient}</strong>, the Contractor shall be entitled to a <strong>${commissionPercent}% commission</strong> derived from <strong>performance-based commissions actually received by Huna Creatives</strong> under its agreement with ${commissionClient}.</p>
+  <p>10.2 The commission shall be calculated <strong>solely on amounts received by Huna Creatives</strong>, and not on gross sales, gross revenue, or client-side net profit.</p>
   <p>10.3 The Contractor shall have <strong>no direct contractual relationship or claim</strong> against ${commissionClient}.</p>
-  <p>10.4 Commission eligibility applies only while the Contractor is <strong>actively engaged</strong> with FS Architects and providing services related to ${commissionClient}.</p>
-  <p>10.5 Commission payouts shall be settled on a <strong>monthly basis</strong>, aligned with FS Architects' receipt of commission payments.</p>
+  <p>10.4 Commission eligibility applies only while the Contractor is <strong>actively engaged</strong> with Huna Creatives and providing services related to ${commissionClient}.</p>
+  <p>10.5 Commission payouts shall be settled on a <strong>monthly basis</strong>, aligned with Huna Creatives' receipt of commission payments.</p>
   <p>10.6 No commission shall be due on refunded, reversed, disputed, unpaid, or cancelled transactions, or after termination of this Agreement.</p>
   <p>10.7 This commission is a <strong>performance-based incentive</strong> and does not form part of the Contractor's guaranteed compensation.</p>` : '';
 
@@ -137,12 +137,12 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
 <div class="page">
   <div class="header">
     <div class="logo-block">
-      <img src="${logoData}" alt="FS Architects" />
-      <div class="logo-tagline">Let's bring your <em>architecture</em> to life.</div>
+      <img src="${logoData}" alt="Huna Creatives" />
+      <div class="logo-tagline">Let's bring your <em>hunahuna</em> to life.</div>
     </div>
     <div class="header-contact">
       (032) 505 6921 | +63 952 447 2602<br />
-      contact@fsarchitects.ph<br />
+      contact@hunacreatives.com<br />
       Cebu, Philippines, 6004
     </div>
   </div>
@@ -150,21 +150,21 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
 
   <div class="doc-title">Independent Contractor Agreement</div>
   <p>This Independent Contractor Agreement ("Agreement") is made and entered into effective <strong>${fmt(effectiveDate)}</strong>, by and between:</p>
-  <p><strong>FS Architects</strong>, represented by <strong>Francis Fiel Roble</strong> ("Client"),</p>
+  <p><strong>Huna Creatives</strong>, represented by <strong>Francis Fiel Roble</strong> ("Client"),</p>
   <p>and <strong>${contractorName}</strong> ("Contractor").</p>
   <hr class="divider" />
 
   <div class="section-title">1. Scope of Work</div>
   <div class="sub-title">1.1 Primary Role</div>
-  <p>The Contractor's <strong>primary role</strong> shall be to serve as <strong>${role}</strong> for <strong>${primaryClient}</strong>, a client of FS Architects. Responsibilities may include, but are not limited to:</p>
+  <p>The Contractor's <strong>primary role</strong> shall be to serve as <strong>${role}</strong> for <strong>${primaryClient}</strong>, a client of Huna Creatives. Responsibilities may include, but are not limited to:</p>
   <ul>${respItems}</ul>
 
   ${addItems ? `<div class="sub-title">1.2 Additional Client Support</div>
-  <p>In addition to the primary role, the Contractor may also provide creative support services for <strong>FS Architects and its other clients</strong>, including but not limited to:</p>
+  <p>In addition to the primary role, the Contractor may also provide creative support services for <strong>Huna Creatives and its other clients</strong>, including but not limited to:</p>
   <ul>${addItems}</ul>` : ''}
 
   <div class="sub-title">${addItems ? '1.3' : '1.2'} General Duties</div>
-  <p>The Contractor agrees to perform tasks reasonably related to the scope above, consistent with the Contractor's skills, as assigned by FS Architects.</p>
+  <p>The Contractor agrees to perform tasks reasonably related to the scope above, consistent with the Contractor's skills, as assigned by Huna Creatives.</p>
 
   <div class="sub-title">${addItems ? '1.4' : '1.3'} Coordination</div>
   <p>The Contractor shall coordinate directly with the Client or a designated supervisor regarding deliverables, priorities, and timelines.</p>
@@ -174,7 +174,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   ${isFlexible ? `
   <p>2.1 The Contractor shall work on a <strong>flexible, as-needed basis</strong>, rendering services based on project requirements and mutual availability. There is no fixed minimum number of hours per day or days per week.</p>
   <p>2.2 The Contractor is expected to communicate availability in advance and remain responsive via Slack or email during agreed working windows.</p>
-  <p>2.3 Specific project timelines, deadlines, and deliverable windows will be communicated by FS Architects as work arises.</p>
+  <p>2.3 Specific project timelines, deadlines, and deliverable windows will be communicated by Huna Creatives as work arises.</p>
   ` : `
   <p>2.1 The Contractor shall be <strong>primarily available</strong> to render services for up to <strong>${hoursPerDay} hours per day</strong>, <strong>${workDays.length} days per week</strong> (${workDays.join(', ')}), based on agreed priorities and deliverables.</p>
   <p>2.2 Standard working hours shall follow the <strong>${shiftTime}</strong>, unless otherwise agreed in writing.</p>
@@ -187,7 +187,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <div class="sub-title">3.1 Hourly Rate</div>
   <p>Effective <strong>${fmt(effectiveDate)}</strong>, the Contractor shall be compensated at a rate of <strong>₱${rate} PHP per hour</strong> for all approved hours rendered.</p>
   <div class="sub-title">3.2 Hour Logging</div>
-  <p>The Contractor is responsible for accurately logging all hours worked through FS Architects' designated attendance system. Hours must be submitted and approved prior to payment processing.</p>
+  <p>The Contractor is responsible for accurately logging all hours worked through Huna Creatives' designated attendance system. Hours must be submitted and approved prior to payment processing.</p>
   <div class="sub-title">3.3 Payment Schedule</div>
   <p>Payments shall be made on a <strong>${paymentSchedule}</strong>, based on approved hours logged during the pay period.</p>
   <div class="sub-title">3.4 Adjustments</div>
@@ -208,40 +208,40 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <hr class="divider" />
 
   <div class="section-title">4. Tools &amp; Resources</div>
-  <p>FS Architects shall provide the Contractor with access to necessary tools and subscriptions required for work, which may include but are not limited to:</p>
+  <p>Huna Creatives shall provide the Contractor with access to necessary tools and subscriptions required for work, which may include but are not limited to:</p>
   <ul>${toolItems}</ul>
-  <p>All tools remain the property of FS Architects and are to be used solely for authorized work purposes.</p>
+  <p>All tools remain the property of Huna Creatives and are to be used solely for authorized work purposes.</p>
   <hr class="divider" />
 
   <div class="section-title">5. Discretionary Paid Time Away (PTA)</div>
-  <p>5.1 As a <strong>courtesy benefit voluntarily extended by FS Architects</strong>, the Contractor may be granted up to <strong>${ptaDays} days of Paid Time Away (PTA) per calendar year</strong>, effective after <strong>six (6) months</strong> of continuous engagement.</p>
-  <p>5.2 PTA is <strong>not an entitlement</strong>, does not form part of the Contractor's service fee, and is provided solely as a goodwill benefit at the discretion of FS Architects.</p>
+  <p>5.1 As a <strong>courtesy benefit voluntarily extended by Huna Creatives</strong>, the Contractor may be granted up to <strong>${ptaDays} days of Paid Time Away (PTA) per calendar year</strong>, effective after <strong>six (6) months</strong> of continuous engagement.</p>
+  <p>5.2 PTA is <strong>not an entitlement</strong>, does not form part of the Contractor's service fee, and is provided solely as a goodwill benefit at the discretion of Huna Creatives.</p>
   <p>5.3 PTA may be taken in increments, provided that <strong>no more than three (3) PTA days may be used within any rolling two-month period</strong>. PTA may not be taken consecutively beyond this limit unless expressly approved in writing.</p>
   <p>5.4 PTA requests must be submitted at least <strong>one (1) week in advance</strong>, except in cases of emergency or illness, and remain subject to approval based on operational needs.</p>
   <p>5.5 Unused PTA credits do not carry over and automatically expire at the end of each calendar year.</p>
-  <p>5.6 FS Architects reserves the right to modify, suspend, or withdraw this discretionary benefit at any time.</p>
+  <p>5.6 Huna Creatives reserves the right to modify, suspend, or withdraw this discretionary benefit at any time.</p>
   <hr class="divider" />
 
   <div class="section-title">6. Sick Leave</div>
   <p>6.1 The Contractor is entitled to <strong>${sickDays} days of paid sick leave per calendar year</strong>, effective upon the start of engagement.</p>
   <p>6.2 Sick leave is intended for use when the Contractor is genuinely ill or unwell and unable to render services. It is <strong>not interchangeable with PTA</strong> or other leave types.</p>
   <p>6.3 The Contractor must notify the Client or designated supervisor <strong>as early as possible</strong> on the day of absence, or in advance when foreseeable.</p>
-  <p>6.4 FS Architects may request reasonable documentation (e.g., a medical certificate) for sick leave absences exceeding two (2) consecutive days.</p>
+  <p>6.4 Huna Creatives may request reasonable documentation (e.g., a medical certificate) for sick leave absences exceeding two (2) consecutive days.</p>
   <p>6.5 Unused sick leave credits do not carry over and automatically expire at the end of each calendar year.</p>
   <p>6.6 Sick leave taken beyond the allotted days will be treated as unpaid leave or deducted proportionally from the Contractor's monthly service fee.</p>
   <hr class="divider" />
 
   <div class="section-title">7. Confidentiality</div>
-  <p>The Contractor agrees to maintain strict confidentiality over all proprietary, sensitive, and client-related information obtained during the engagement. No materials, strategies, files, or information may be shared or reused without prior written consent from FS Architects.</p>
+  <p>The Contractor agrees to maintain strict confidentiality over all proprietary, sensitive, and client-related information obtained during the engagement. No materials, strategies, files, or information may be shared or reused without prior written consent from Huna Creatives.</p>
   <hr class="divider" />
 
   <div class="section-title">8. Non-Compete &amp; Conflict of Interest</div>
-  <p>The Contractor agrees not to engage in work for <strong>direct competitors of FS Architects</strong> or participate in activities that create a conflict of interest during the term of this Agreement, without prior written approval.</p>
+  <p>The Contractor agrees not to engage in work for <strong>direct competitors of Huna Creatives</strong> or participate in activities that create a conflict of interest during the term of this Agreement, without prior written approval.</p>
   <hr class="divider" />
 
   <div class="section-title">9. Ownership of Work</div>
-  <p>9.1 All creative output, designs, content, and materials produced during this engagement shall be the <strong>exclusive property of FS Architects and/or its clients</strong>.</p>
-  <p>9.2 The Contractor may not use, repurpose, or redistribute such materials without prior written consent from FS Architects.</p>
+  <p>9.1 All creative output, designs, content, and materials produced during this engagement shall be the <strong>exclusive property of Huna Creatives and/or its clients</strong>.</p>
+  <p>9.2 The Contractor may not use, repurpose, or redistribute such materials without prior written consent from Huna Creatives.</p>
   <hr class="divider" />
 
   <div class="section-title">10. Communication &amp; Remote Work Expectations</div>
@@ -257,7 +257,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <hr class="divider" />
 
   <div class="section-title">${sectionNum(12)}. Independent Contractor Status</div>
-  <p>The Contractor is engaged as an independent contractor and not as an employee, agent, or partner of FS Architects. The Contractor is solely responsible for all applicable taxes, government contributions, and other obligations arising from this engagement. Nothing in this Agreement shall be construed to create an employer-employee relationship.</p>
+  <p>The Contractor is engaged as an independent contractor and not as an employee, agent, or partner of Huna Creatives. The Contractor is solely responsible for all applicable taxes, government contributions, and other obligations arising from this engagement. Nothing in this Agreement shall be construed to create an employer-employee relationship.</p>
   <hr class="divider" />
 
   <div class="section-title">${sectionNum(13)}. Governing Law</div>
@@ -268,7 +268,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <p>By signing below, both parties acknowledge that they have read, understood, and agreed to the terms of this Agreement.</p>
   <div class="sig-grid">
     <div>
-      <p><strong>FS Architects</strong><br />("Client")</p>
+      <p><strong>Huna Creatives</strong><br />("Client")</p>
       <div style="height:44pt;display:flex;align-items:flex-end;padding-bottom:0;margin-top:16pt;">
         <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
       </div>
@@ -482,13 +482,13 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
               <>
                 {/* Contractor */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Contractor *</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Employee *</label>
                   <select
                     value={fields.contractorId}
                     onChange={e => handleContractorChange(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer"
                   >
-                    <option value="">Select contractor…</option>
+                    <option value="">Select employee…</option>
                     {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                   </select>
                 </div>
@@ -498,12 +498,12 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Effective Date *</label>
                     <input type="date" value={fields.effectiveDate} onChange={e => set('effectiveDate', e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Contract Type</label>
                     <select value={fields.amendmentType} onChange={e => set('amendmentType', e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer">
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer">
                       <option value="initial">Initial Agreement</option>
                       <option value="rate_amendment">Rate Amendment</option>
                       <option value="scope_change">Scope Change</option>
@@ -520,8 +520,8 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     value={customBody}
                     onChange={e => setCustomBody(e.target.value)}
                     rows={18}
-                    placeholder={"Type or paste your contract here...\n\nSeparate paragraphs with a blank line.\n\nThe FS Architects header and signature block are added automatically."}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] font-mono resize-y"
+                    placeholder={"Type or paste your contract here...\n\nSeparate paragraphs with a blank line.\n\nThe Huna Creatives header and signature block are added automatically."}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] font-mono resize-y"
                   />
                   <p className="text-xs text-gray-400 mt-1">Blank line = new paragraph. Header + signature block added automatically.</p>
                 </div>
@@ -530,13 +530,13 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
               <>
             {/* Contractor */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Contractor *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Employee *</label>
               <select
                 value={fields.contractorId}
                 onChange={e => handleContractorChange(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer"
               >
-                <option value="">Select contractor…</option>
+                <option value="">Select employee…</option>
                 {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
               </select>
             </div>
@@ -556,7 +556,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     onClick={() => set('paymentType', t.key)}
                     className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                       fields.paymentType === t.key
-                        ? 'bg-[#FF6B35] border-[#FF6B35] text-white'
+                        ? 'bg-[#1c2b3a] border-[#1c2b3a] text-white'
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
@@ -584,7 +584,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     onClick={() => set('amendmentType', t.key)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
                       fields.amendmentType === t.key
-                        ? 'bg-[#FF6B35] border-[#FF6B35] text-white'
+                        ? 'bg-[#1c2b3a] border-[#1c2b3a] text-white'
                         : 'border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
@@ -600,13 +600,13 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Effective Date *</label>
                 <input type="date" value={fields.effectiveDate} onChange={e => set('effectiveDate', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Term Start Date</label>
                 <input type="date" value={fields.termDate} onChange={e => set('termDate', e.target.value)}
                   placeholder="Same as effective date"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
             </div>
 
@@ -616,13 +616,13 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                 <label className="block text-xs font-medium text-gray-600 mb-1">Role / Title *</label>
                 <input type="text" value={fields.role} onChange={e => set('role', e.target.value)}
                   placeholder="e.g. Graphic Designer and Admin Support"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Primary Client *</label>
                 <input type="text" value={fields.primaryClient} onChange={e => set('primaryClient', e.target.value)}
                   placeholder="e.g. Kei Concepts"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
             </div>
 
@@ -630,14 +630,14 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-medium text-gray-600">Responsibilities *</label>
-                <button onClick={() => addItem('responsibilities')} className="text-xs text-[#FF6B35] cursor-pointer hover:underline">+ Add</button>
+                <button onClick={() => addItem('responsibilities')} className="text-xs text-[#1c2b3a] cursor-pointer hover:underline">+ Add</button>
               </div>
               <div className="space-y-2">
                 {fields.responsibilities.map((r, i) => (
                   <div key={i} className="flex gap-2">
                     <input type="text" value={r} onChange={e => setListItem('responsibilities', i, e.target.value)}
                       placeholder={`Responsibility ${i + 1}`}
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     {fields.responsibilities.length > 1 && (
                       <button onClick={() => removeItem('responsibilities', i)} className="text-gray-300 hover:text-red-400 cursor-pointer flex-shrink-0">
                         <i className="ri-close-line"></i>
@@ -652,7 +652,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-medium text-gray-600">Additional Client Support <span className="text-gray-400 font-normal">(optional)</span></label>
-                <button onClick={() => addItem('additionalSupport')} className="text-xs text-[#FF6B35] cursor-pointer hover:underline">+ Add</button>
+                <button onClick={() => addItem('additionalSupport')} className="text-xs text-[#1c2b3a] cursor-pointer hover:underline">+ Add</button>
               </div>
               {fields.additionalSupport.length === 0 ? (
                 <p className="text-xs text-gray-400">None added.</p>
@@ -662,7 +662,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     <div key={i} className="flex gap-2">
                       <input type="text" value={r} onChange={e => setListItem('additionalSupport', i, e.target.value)}
                         placeholder={`Additional duty ${i + 1}`}
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                       <button onClick={() => removeItem('additionalSupport', i)} className="text-gray-300 hover:text-red-400 cursor-pointer flex-shrink-0">
                         <i className="ri-close-line"></i>
                       </button>
@@ -687,7 +687,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                             key={day}
                             type="button"
                             onClick={() => set('workDays', active ? fields.workDays.filter(d => d !== day) : [...fields.workDays, day])}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all border ${active ? 'bg-[#FF6B35] border-[#FF6B35] text-white' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all border ${active ? 'bg-[#1c2b3a] border-[#1c2b3a] text-white' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
                           >
                             {day.slice(0, 3)}
                           </button>
@@ -699,24 +699,24 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Hours/day</label>
                       <input type="number" value={fields.hoursPerDay} onChange={e => set('hoursPerDay', e.target.value)} min={1} max={24}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">PTA days/year</label>
                       <input type="number" value={fields.ptaDays} onChange={e => set('ptaDays', e.target.value)} min={0}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Sick days/year</label>
                       <input type="number" value={fields.sickDays} onChange={e => set('sickDays', e.target.value)} min={0}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                   </div>
                   {fields.paymentType === 'fixed' && (
                     <div className="mt-2">
                       <label className="block text-xs text-gray-500 mb-1">Shift / Working Hours</label>
                       <input type="text" value={fields.shiftTime} onChange={e => set('shiftTime', e.target.value)}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                   )}
                 </>
@@ -725,12 +725,12 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">PTA days/year</label>
                     <input type="number" value={fields.ptaDays} onChange={e => set('ptaDays', e.target.value)} min={0}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Sick days/year</label>
                     <input type="number" value={fields.sickDays} onChange={e => set('sickDays', e.target.value)} min={0}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                 </div>
               )}
@@ -744,21 +744,21 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     <label className="block text-xs font-medium text-gray-600 mb-1">Monthly Rate (₱) *</label>
                     <input type="number" value={fields.monthlyRate} onChange={e => set('monthlyRate', e.target.value)}
                       placeholder="55000"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </>
                 ) : (
                   <>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Hourly Rate (₱) *</label>
                     <input type="number" value={fields.hourlyRate} onChange={e => set('hourlyRate', e.target.value)}
                       placeholder="250"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </>
                 )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Payment Schedule</label>
                 <select value={fields.paymentSchedule} onChange={e => set('paymentSchedule', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer">
                   <option value="bi-monthly basis, on the 15th and the last working day of each month">Bi-monthly (15th & last day)</option>
                   <option value="monthly basis, on the last working day of each month">Monthly (last day)</option>
                   <option value="weekly basis, every Friday">Weekly (every Friday)</option>
@@ -770,13 +770,13 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-medium text-gray-600">Tools Provided</label>
-                <button onClick={() => addItem('tools')} className="text-xs text-[#FF6B35] cursor-pointer hover:underline">+ Add</button>
+                <button onClick={() => addItem('tools')} className="text-xs text-[#1c2b3a] cursor-pointer hover:underline">+ Add</button>
               </div>
               <div className="space-y-2">
                 {fields.tools.map((t, i) => (
                   <div key={i} className="flex gap-2">
                     <input type="text" value={t} onChange={e => setListItem('tools', i, e.target.value)}
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     <button onClick={() => removeItem('tools', i)} className="text-gray-300 hover:text-red-400 cursor-pointer flex-shrink-0">
                       <i className="ri-close-line"></i>
                     </button>
@@ -788,7 +788,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
             {/* Commission toggle */}
             <div className="border border-gray-200 rounded-xl p-4 space-y-3">
               <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={fields.hasCommission} onChange={e => set('hasCommission', e.target.checked)} className="accent-[#FF6B35]" />
+                <input type="checkbox" checked={fields.hasCommission} onChange={e => set('hasCommission', e.target.checked)} className="accent-[#1c2b3a]" />
                 <span className="text-sm font-medium text-gray-700">Include performance-based commission clause</span>
               </label>
               {fields.hasCommission && (
@@ -797,13 +797,13 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
                     <label className="block text-xs text-gray-500 mb-1">Client name</label>
                     <input type="text" value={fields.commissionClient} onChange={e => set('commissionClient', e.target.value)}
                       placeholder="e.g. The Second Haus"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Commission %</label>
                     <input type="number" value={fields.commissionPercent} onChange={e => set('commissionPercent', e.target.value)}
                       min={0} max={100} step={0.5}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                 </div>
               )}
@@ -819,7 +819,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
             <div className="flex items-center gap-3 px-5 py-3 bg-amber-50 border-b border-amber-100 flex-shrink-0">
               <i className="ri-information-line text-amber-500"></i>
               <p className="text-xs text-amber-700">Review the contract below. Your signature is already on it. Once sent, the contractor will be notified to sign.</p>
-              <button onClick={openPreviewInTab} className="ml-auto text-xs text-[#FF6B35] cursor-pointer whitespace-nowrap hover:underline flex-shrink-0">
+              <button onClick={openPreviewInTab} className="ml-auto text-xs text-[#1c2b3a] cursor-pointer whitespace-nowrap hover:underline flex-shrink-0">
                 Open in new tab <i className="ri-external-link-line"></i>
               </button>
             </div>
@@ -851,7 +851,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
             <button
               onClick={handleSendForSignature}
               disabled={saving}
-              className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-40"
+              className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-40"
             >
               {saving ? 'Sending…' : 'Send for Signature'}
             </button>

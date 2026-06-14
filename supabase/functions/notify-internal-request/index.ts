@@ -1,5 +1,7 @@
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const NOTIFY_USERS = ['U091BL9PQ77', 'U0838LWSY4E']; // Abigail, Francis
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +16,28 @@ async function slackPost(path: string, body: object) {
     body: JSON.stringify(body),
   });
   return res.json();
+}
+
+async function pushToHubAdmins(title: string, body: string, url: string) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+
+  const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/hub_users?select=id&status=eq.active&role=in.(owner,admin,hr)`, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+  }).catch(() => null);
+
+  const users = usersRes?.ok ? await usersRes.json().catch(() => []) : [];
+  await Promise.all(
+    (users ?? []).map((user: { id: string }) =>
+      fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, title, body, url }),
+      }).catch(() => {})
+    )
+  );
 }
 
 Deno.serve(async (req) => {
@@ -38,6 +62,10 @@ Deno.serve(async (req) => {
     const { emoji, label, url, btnLabel } = typeMap[type] ?? { emoji: '📋', label: type, url: 'https://hunacreatives.com/hub/admin', btnLabel: 'View Hub →' };
 
     const text = `${emoji} *${label}* from *${contractor_name}*${detail ? `\n> ${detail}` : ''}${notes ? `\n> _${notes}_` : ''}`;
+    const pushTitle = `${label}`;
+    const pushBody = detail
+      ? `${contractor_name}: ${detail}`
+      : `${contractor_name} sent a ${label.toLowerCase()}.`;
 
     await Promise.all(NOTIFY_USERS.map(async (userId) => {
       const opened = await slackPost('conversations.open', { users: userId });
@@ -60,6 +88,8 @@ Deno.serve(async (req) => {
         ],
       });
     }));
+
+    await pushToHubAdmins(pushTitle, pushBody, url);
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

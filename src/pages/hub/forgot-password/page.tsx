@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     const redirectTo = window.location.hostname === 'localhost'
       ? `${window.location.origin}/hub/reset-password`
-      : 'https://www.fsarchitects.ph/hub/reset-password';
+      : 'https://www.hunacreatives.com/hub/reset-password';
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     setLoading(false);
     if (err) {
@@ -29,10 +29,10 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-8">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#FF6B35] rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#1c2b3a] rounded-lg flex items-center justify-center">
             <img src="/s-logo.png" alt="S" className="w-5 h-5 object-contain" style={{ filter: 'invert(1)' }} />
           </div>
-          <span className="text-[#111827] font-bold text-base tracking-wide">SENTRO <span className="text-[#FF6B35]">OS</span></span>
+          <span className="text-[#111827] font-bold text-base tracking-wide">SENTRO <span className="text-[#1c2b3a]">OS</span></span>
         </div>
 
         {sent ? (
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@yourcompany.com"
                     required
-                    className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white transition-all"
+                    className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white transition-all"
                   />
                 </div>
               </div>
@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#FF6B35] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[#e55a27] transition-colors disabled:opacity-60 cursor-pointer whitespace-nowrap"
+                className="w-full bg-[#1c2b3a] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[#0f1c28] transition-colors disabled:opacity-60 cursor-pointer whitespace-nowrap"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

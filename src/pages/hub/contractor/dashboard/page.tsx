@@ -7,24 +7,9 @@ import { getPeriods } from '@/lib/formatUtils';
 import { supabase } from '@/lib/supabase';
 import { HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF } from '@/lib/demoData';
+import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
-const DAY_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-function countScheduledHours(startDate: string, endDate: string, workDays: string[] | null | undefined) {
-  if (!startDate || !endDate || endDate < startDate) return 0;
-  const scheduled = workDays && workDays.length > 0
-    ? new Set(workDays.map(d => DAY_MAP[d]))
-    : new Set([1, 2, 3, 4, 5]);
-  let count = 0;
-  const end = new Date(`${endDate}T00:00:00`);
-  const cur = new Date(`${startDate}T00:00:00`);
-  while (cur <= end) {
-    if (scheduled.has(cur.getDay())) count++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return count * 8;
-}
 
 interface Reaction { emoji: string; user_id: string; }
 interface Comment { id: string; body: string; user_id: string; created_at: string; hub_users: { full_name: string; avatar_url: string | null } | null; }
@@ -73,6 +58,24 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
     if (!error && data) {
       setComments(prev => [...prev, data as any]);
       setCommentText('');
+      const { data: admins } = await supabase
+        .from('hub_users')
+        .select('id')
+        .in('role', ['owner', 'admin', 'hr'])
+        .eq('status', 'active');
+
+      await Promise.allSettled(
+        (admins ?? []).map((admin) =>
+          supabase.functions.invoke('send-push', {
+            body: {
+              user_id: admin.id,
+              title: 'New announcement comment',
+              body: `${(data as any).hub_users?.full_name ?? 'A contractor'} commented on "${a.title}"`,
+              url: '/hub/admin/announcements',
+            },
+          })
+        )
+      );
     }
     setPosting(false);
   };
@@ -104,8 +107,8 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
       {/* Header */}
       <div className="px-4 pt-4 pb-3">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-[#FF6B35]/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-            <i className="ri-megaphone-line text-[#FF6B35] text-sm"></i>
+          <div className="w-8 h-8 bg-[#1c2b3a]/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i className="ri-megaphone-line text-[#1c2b3a] text-sm"></i>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
@@ -120,7 +123,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
                   <>
                     {poster.avatar_url
                       ? <img src={poster.avatar_url} alt={poster.full_name} className="w-4 h-4 rounded-full object-cover object-top flex-shrink-0" />
-                      : <div className="w-4 h-4 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold" style={{fontSize:'8px'}}>{poster.full_name.charAt(0)}</span></div>
+                      : <div className="w-4 h-4 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold" style={{fontSize:'8px'}}>{poster.full_name.charAt(0)}</span></div>
                     }
                     <p className="text-xs text-gray-400">
                       <span className="text-gray-500 font-medium">{poster.full_name.split(' ')[0]}</span>
@@ -152,7 +155,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
             onClick={() => toggleReaction(emoji)}
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-all cursor-pointer ${
               mine
-                ? 'border-[#FF6B35]/40 bg-[#FF6B35]/8 text-[#FF6B35]'
+                ? 'border-[#1c2b3a]/40 bg-[#1c2b3a]/8 text-[#1c2b3a]'
                 : 'border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200 hover:bg-gray-100'
             }`}
           >
@@ -183,7 +186,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
             <div key={c.id} className="flex items-start gap-2.5">
               {c.hub_users?.avatar_url
                 ? <img src={c.hub_users.avatar_url} alt={c.hub_users.full_name} className="w-6 h-6 rounded-full object-cover object-top flex-shrink-0 mt-0.5" />
-                : <div className="w-6 h-6 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0 mt-0.5">
+                : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-white text-xs font-bold">{(c.hub_users?.full_name ?? '?').charAt(0)}</span>
                   </div>
               }
@@ -215,12 +218,12 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment(); } }}
               placeholder="Write a comment..."
-              className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35] bg-white"
+              className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/20 focus:border-[#1c2b3a] bg-white"
             />
             <button
               onClick={postComment}
               disabled={!commentText.trim() || posting}
-              className="w-8 h-8 bg-[#FF6B35] rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40 cursor-pointer transition-opacity"
+              className="w-8 h-8 bg-[#1c2b3a] rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40 cursor-pointer transition-opacity"
             >
               <i className="ri-send-plane-fill text-white text-xs"></i>
             </button>
@@ -295,30 +298,6 @@ export default function ContractorDashboard() {
   const navigate = useNavigate();
   const now = useClock();
   const [slackStatus, setSlackStatus] = useState<'on' | 'off' | 'absent' | null>(null);
-  const [punching, setPunching] = useState(false);
-  const handlePunch = async (type: 'in' | 'out') => {
-    if (!user?.id || punching) return;
-    setPunching(true);
-    const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const { data: existing } = await supabase.from('hub_attendance_punches').select('type').eq('user_id', user.id).eq('date', todayStr).order('punched_at', { ascending: false }).limit(1);
-    const lastType = existing?.[0]?.type ?? null;
-    if (type === 'in' && lastType === 'in') { setPunching(false); setSlackStatus('on'); return; }
-    if (type === 'out' && lastType !== 'in') { setPunching(false); setSlackStatus('off'); return; }
-    await supabase.from('hub_attendance_punches').insert({ user_id: user.id, type, punched_at: new Date().toISOString(), date: todayStr });
-    setSlackStatus(type === 'in' ? 'on' : 'off');
-    if (type === 'out') {
-      const { data: ps } = await supabase.from('hub_attendance_punches').select('type, punched_at').eq('user_id', user.id).eq('date', todayStr).order('punched_at', { ascending: true });
-      let ms = 0, lastIn: string | null = null, first_on: string | null = null, last_off: string | null = null;
-      for (const p of (ps ?? []) as { type: string; punched_at: string }[]) {
-        if (p.type === 'in') { lastIn = p.punched_at; if (!first_on) first_on = p.punched_at; }
-        else if (p.type === 'out' && lastIn) { ms += new Date(p.punched_at).getTime() - new Date(lastIn).getTime(); last_off = p.punched_at; lastIn = null; }
-      }
-      const raw = ms / 3600000;
-      await supabase.from('hub_daily_hours').upsert({ user_id: user.id, date: todayStr, hours_raw: +raw.toFixed(2), hours_capped: +Math.min(raw,8).toFixed(2), overtime_hours: +Math.max(0,raw-8).toFixed(2), first_on, last_off }, { onConflict: 'user_id,date' });
-    }
-    setPunching(false);
-  };
   const [hoursThisCutoff, setHoursThisCutoff] = useState(0);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
   const [showPayout, setShowPayout] = useState(() => localStorage.getItem('hub_showPayout') === 'true');
@@ -371,145 +350,158 @@ export default function ContractorDashboard() {
 
     const periodStartStr = cutoffStartStr;
     const periodEndStr   = cutoffEndStr;
-
-    // Fetch active projects
-    supabase
-      .from('hub_project_contractors')
-      .select('hub_projects(id, project_name, client_name, service, status, deadline)')
-      .eq('contractor_id', user.id)
-      .then(async ({ data }) => {
-        const projects = ((data ?? []) as any[])
-          .map((r: any) => Array.isArray(r.hub_projects) ? r.hub_projects[0] : r.hub_projects)
-          .filter((p: any) => p && p.status === 'ongoing');
-        if (projects.length === 0) { setActiveProjects([]); return; }
-        const projectIds = projects.map((p: any) => p.id);
-        const { data: tasks } = await supabase.from('hub_project_tasks').select('project_id, status').in('project_id', projectIds);
-        setActiveProjects(projects.map((p: any) => {
-          const pts = (tasks ?? []).filter((t: any) => t.project_id === p.id);
-          return { id: p.id, project_name: p.project_name, client_name: p.client_name, service: p.service, status: p.status, deadline: p.deadline, tasksDone: pts.filter((t: any) => t.status === 'done').length, tasksTotal: pts.length };
-        }));
-      });
-
-    const [attResult, annResult, reqResult, toResult, slackResult, rateRes, payoutRes] = await Promise.all([
+    try {
+      // Fetch active projects
       supabase
-        .from('hub_daily_hours')
-        .select('hours_capped, overtime_hours, date')
-        .eq('user_id', user.id)
-        .gte('date', periodStartStr)
-        .lte('date', periodEndStr),
-      supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(10),
-      supabase.from('hub_requests').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
-      supabase.from('hub_time_off').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
-      supabase.from('hub_attendance_punches')
-        .select('user_id, type, punched_at')
-        .eq('date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })())
-        .order('punched_at', { ascending: true }),
-      supabase.from('hub_rate_history')
-        .select('effective_date, payment_type, hourly_rate, monthly_rate')
+        .from('hub_project_contractors')
+        .select('hub_projects(id, project_name, client_name, service, status, deadline)')
         .eq('contractor_id', user.id)
-        .lte('effective_date', periodEndStr)
-        .order('effective_date', { ascending: true }),
-      supabase.from('hub_payouts')
-        .select('status')
-        .eq('contractor_id', user.id)
-        .eq('cutoff_start', periodStartStr)
-        .maybeSingle(),
-    ]);
+        .then(async ({ data }) => {
+          const projects = ((data ?? []) as any[])
+            .map((r: any) => Array.isArray(r.hub_projects) ? r.hub_projects[0] : r.hub_projects)
+            .filter((p: any) => p && p.status === 'ongoing');
+          if (projects.length === 0) { setActiveProjects([]); return; }
+          const projectIds = projects.map((p: any) => p.id);
+          const { data: tasks } = await supabase.from('hub_project_tasks').select('project_id, status').in('project_id', projectIds);
+          setActiveProjects(projects.map((p: any) => {
+            const pts = (tasks ?? []).filter((t: any) => t.project_id === p.id);
+            return { id: p.id, project_name: p.project_name, client_name: p.client_name, service: p.service, status: p.status, deadline: p.deadline, tasksDone: pts.filter((t: any) => t.status === 'done').length, tasksTotal: pts.length };
+          }));
+        })
+        .catch(() => setActiveProjects([]));
 
-    const days = attResult.data ?? [];
-    const totalHours = days.reduce((s: number, r: any) => s + (r.hours_capped || 0), 0);
-    const totalOT    = days.reduce((s: number, r: any) => s + (r.overtime_hours || 0), 0);
-    setHoursThisCutoff(parseFloat(totalHours.toFixed(2)));
+      const [attResult, annResult, reqResult, toResult, slackResult, rateRes, payoutRes] = await Promise.all([
+        supabase
+          .from('hub_daily_hours')
+          .select('hours_capped, overtime_hours, date')
+          .eq('user_id', user.id)
+          .gte('date', periodStartStr)
+          .lte('date', periodEndStr),
+        supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(10),
+        supabase.from('hub_requests').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.from('hub_time_off').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.functions.invoke('slack-attendance'),
+        supabase.from('hub_rate_history')
+          .select('effective_date, payment_type, hourly_rate, monthly_rate')
+          .eq('contractor_id', user.id)
+          .lte('effective_date', periodEndStr)
+          .order('effective_date', { ascending: true }),
+        supabase.from('hub_payouts')
+          .select('status')
+          .eq('contractor_id', user.id)
+          .eq('cutoff_start', periodStartStr)
+          .maybeSingle(),
+      ]);
 
-    // Prorated pay using rate history (same logic as payroll page)
-    const currentMonthly = (user as any).monthly_rate || 0;
-    const currentHourly  = (user as any).hourly_rate  || 0;
-    const history: any[] = rateRes.data ?? [];
-    const changeInPeriod = history.find(r => r.effective_date >= periodStartStr && r.effective_date <= periodEndStr);
-    const rateAtStart = [...history].filter(r => r.effective_date < periodStartStr).pop() || null;
+      const days = mergeLiveAttendanceIntoDailyHours(
+        ((attResult.data ?? []) as any[]).map((d: any) => ({ ...d, user_id: user.id })),
+        (slackResult.data as any)?.attendance || [],
+        [user.id],
+        today,
+      ).map(({ user_id: _userId, ...rest }) => rest);
+      const totalHours = days.reduce((s: number, r: any) => s + (r.hours_capped || 0), 0);
+      const totalOT    = days.reduce((s: number, r: any) => s + (r.overtime_hours || 0), 0);
+      setHoursThisCutoff(parseFloat(totalHours.toFixed(2)));
 
-    let estimated = 0;
-    if (changeInPeriod) {
-      const before = [...history].filter(r => r.effective_date < changeInPeriod.effective_date).pop();
-      const oldMonthly = before?.monthly_rate ?? currentMonthly;
-      const oldHourly  = before?.hourly_rate  ?? currentHourly;
-      const newMonthly = changeInPeriod.monthly_rate || 0;
-      const newHourly  = changeInPeriod.hourly_rate  || 0;
-      if (isFixed) {
-        const todayStr = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        const isCurrentPeriod = todayStr >= periodStartStr && todayStr <= periodEndStr;
-        const effectiveEnd = isCurrentPeriod ? (todayStr < periodEndStr ? todayStr : periodEndStr) : periodEndStr;
-        const oldSegmentEnd = changeInPeriod.effective_date > periodStartStr
-          ? new Date(new Date(`${changeInPeriod.effective_date}T00:00:00`).getTime() - 86400000).toISOString().slice(0, 10)
-          : '';
-        const expectedOldHours = oldSegmentEnd
-          ? countScheduledHours(periodStartStr, oldSegmentEnd, (user as any)?.work_days || [])
-          : 0;
-        const expectedNewHours = changeInPeriod.effective_date <= effectiveEnd
-          ? countScheduledHours(changeInPeriod.effective_date, effectiveEnd, (user as any)?.work_days || [])
-          : 0;
-        const totalExpectedHours = expectedOldHours + expectedNewHours;
-        let hrsAtOld = 0, hrsAtNew = 0;
-        for (const d of days as any[]) {
-          if (d.date < changeInPeriod.effective_date) hrsAtOld += d.hours_capped || 0;
-          else if (d.date <= effectiveEnd) hrsAtNew += d.hours_capped || 0;
+      const currentMonthly = (user as any).monthly_rate || 0;
+      const currentHourly  = (user as any).hourly_rate  || 0;
+      const history: any[] = rateRes.data ?? [];
+      const changeInPeriod = history.find(r => r.effective_date >= periodStartStr && r.effective_date <= periodEndStr);
+      const rateAtStart = [...history].filter(r => r.effective_date < periodStartStr).pop() || null;
+
+      let estimated = 0;
+      if (changeInPeriod) {
+        const before = [...history].filter(r => r.effective_date < changeInPeriod.effective_date).pop();
+        const oldMonthly = before?.monthly_rate ?? currentMonthly;
+        const oldHourly  = before?.hourly_rate  ?? currentHourly;
+        const newMonthly = changeInPeriod.monthly_rate || 0;
+        const newHourly  = changeInPeriod.hourly_rate  || 0;
+        if (isFixed) {
+          let hrsAtOld = 0;
+          let hrsAtNew = 0;
+          for (const d of days as any[]) {
+            if (d.date < changeInPeriod.effective_date) hrsAtOld += d.hours_capped || 0;
+            else hrsAtNew += d.hours_capped || 0;
+          }
+          const base = computeSplitFixedAccrual({
+            periodStart: periodStartStr,
+            periodEnd: periodEndStr,
+            changeDate: changeInPeriod.effective_date,
+            workDays: (user as any)?.work_days || [],
+            oldMonthlyRate: oldMonthly,
+            newMonthlyRate: newMonthly,
+            oldCappedHours: hrsAtOld,
+            newCappedHours: hrsAtNew,
+          }).accruedPay;
+          const oldOT = oldHourly || oldMonthly / 176;
+          const newOT = newHourly || newMonthly / 176;
+          let otAtOld = 0;
+          let otAtNew = 0;
+          for (const d of days as any[]) {
+            if (d.date < changeInPeriod.effective_date) otAtOld += d.overtime_hours || 0;
+            else otAtNew += d.overtime_hours || 0;
+          }
+          estimated = base + otAtOld * oldOT + otAtNew * newOT;
+        } else {
+          estimated = totalHours * newHourly + totalOT * newHourly;
         }
-        const oldPortion = totalExpectedHours > 0 ? (oldMonthly / 2) * (expectedOldHours / totalExpectedHours) : 0;
-        const newPortion = totalExpectedHours > 0 ? (newMonthly / 2) * (expectedNewHours / totalExpectedHours) : 0;
-        const base =
-          (expectedOldHours > 0 ? oldPortion * Math.min(hrsAtOld / expectedOldHours, 1) : 0) +
-          (expectedNewHours > 0 ? newPortion * Math.min(hrsAtNew / expectedNewHours, 1) : 0);
-        const oldOT = oldHourly || oldMonthly / 176;
-        const newOT = newHourly || newMonthly / 176;
-        let otAtOld = 0, otAtNew = 0;
-        for (const d of days as any[]) {
-          if (d.date < changeInPeriod.effective_date) otAtOld += d.overtime_hours || 0;
-          else if (d.date <= effectiveEnd) otAtNew += d.overtime_hours || 0;
+      } else {
+        const monthly = rateAtStart?.monthly_rate ?? currentMonthly;
+        const hourly  = rateAtStart?.hourly_rate  ?? currentHourly;
+        if (isFixed) {
+          estimated = computeFixedAccrual({
+            periodStart: periodStartStr,
+            periodEnd: periodEndStr,
+            monthlyRate: monthly,
+            workDays: (user as any)?.work_days || [],
+            cappedHours: totalHours,
+          }).accruedPay + totalOT * (hourly || monthly / 176);
+        } else {
+          estimated = totalHours * hourly + totalOT * hourly;
         }
-        estimated = base + otAtOld * oldOT + otAtNew * newOT;
-      } else {
-        estimated = totalHours * newHourly + totalOT * newHourly;
       }
-    } else {
-      const monthly = rateAtStart?.monthly_rate ?? currentMonthly;
-      const hourly  = rateAtStart?.hourly_rate  ?? currentHourly;
-      if (isFixed) {
-        const todayStr = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        const isCurrentPeriod = todayStr >= periodStartStr && todayStr <= periodEndStr;
-        const effectiveEnd = isCurrentPeriod ? (todayStr < periodEndStr ? todayStr : periodEndStr) : periodEndStr;
-        const expectedHours = countScheduledHours(periodStartStr, effectiveEnd, (user as any)?.work_days || []);
-        const accrualRatio = expectedHours > 0 ? Math.min(totalHours / expectedHours, 1) : 0;
-        estimated = (monthly / 2) * accrualRatio + totalOT * (hourly || monthly / 176);
-      } else {
-        estimated = totalHours * hourly + totalOT * hourly;
-      }
-    }
-    setEstimatedPayout(parseFloat(estimated.toFixed(2)));
+      setEstimatedPayout(parseFloat(estimated.toFixed(2)));
 
-    if (!slackResult.error && slackResult.data) {
-      const allPunches: any[] = slackResult.data;
-      const punchMap: Record<string, any[]> = {};
-      for (const p of allPunches) {
-        if (!punchMap[p.user_id]) punchMap[p.user_id] = [];
-        punchMap[p.user_id].push(p);
+      if (!slackResult.error && slackResult.data?.attendance) {
+        const all: any[] = slackResult.data.attendance;
+        const mine = all.find((r: any) => r.email === user.email || r.hub_user_id === user.id);
+        setSlackStatus(mine?.status ?? 'absent');
+        setTeamStatus(
+          all
+            .filter((r: any) => r.hub_user_id !== user.id && r.email !== user.email)
+            .map((r: any) => ({
+              full_name: r.full_name,
+              avatar_url: r.avatar_url,
+              status: r.status,
+              hours_today: r.hours_today || 0,
+            }))
+        );
+      } else {
+        setSlackStatus('absent');
+        setTeamStatus([]);
       }
-      const getStatus = (uid: string) => {
-        const ps = punchMap[uid] ?? [];
-        if (!ps.length) return 'absent' as const;
-        return ps[ps.length - 1].type === 'in' ? 'on' as const : 'off' as const;
-      };
-      setSlackStatus(getStatus(user.id));
-    }
 
-    setAnnouncements((annResult.data as HubAnnouncement[]) ?? []);
-    setRequests((reqResult.data as HubRequest[]) ?? []);
-    setTimeOffs((toResult.data as HubTimeOff[]) ?? []);
-    setPayoutStatus(payoutRes.data?.status ?? null);
-    setLoading(false);
+      setAnnouncements((annResult.data as HubAnnouncement[]) ?? []);
+      setRequests((reqResult.data as HubRequest[]) ?? []);
+      setTimeOffs((toResult.data as HubTimeOff[]) ?? []);
+      setPayoutStatus(payoutRes.data?.status ?? null);
+    } catch (error) {
+      console.error('Contractor dashboard load failed:', error);
+      setActiveProjects([]);
+      setAnnouncements([]);
+      setRequests([]);
+      setTimeOffs([]);
+      setTeamStatus([]);
+      setSlackStatus('absent');
+      setPayoutStatus(null);
+      setHoursThisCutoff(0);
+      setEstimatedPayout(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchData(); }, [isDemo, user]);
+  useEffect(() => { fetchData(); }, [user, isDemo]);
 
   const hour = now.getHours();
   const phTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -552,7 +544,7 @@ export default function ContractorDashboard() {
                 </div>
                 <button
                   onClick={() => navigate('/hub/contractor/payouts')}
-                  className="flex-shrink-0 text-xs font-medium text-[#FF6B35] hover:text-[#e55a27] transition-colors cursor-pointer"
+                  className="flex-shrink-0 text-xs font-medium text-[#1c2b3a] hover:text-[#0f1c28] transition-colors cursor-pointer"
                 >
                   Submit →
                 </button>
@@ -616,7 +608,7 @@ export default function ContractorDashboard() {
                     top: isMorning ? '18%' : isEvening ? '30%' : '8%',
                     width:38, height:38, borderRadius:'50%',
                     background: isEvening
-                      ? 'radial-gradient(circle, #FFBC70 0%, #FF6B35 55%, #C0392B 100%)'
+                      ? 'radial-gradient(circle, #FFBC70 0%, #1c2b3a 55%, #C0392B 100%)'
                       : isMorning
                       ? 'radial-gradient(circle, #FFE566 0%, #FFBB30 55%, #FF9500 100%)'
                       : 'radial-gradient(circle, #FFF176 0%, #FFD740 55%, #FFA000 100%)',
@@ -647,7 +639,7 @@ export default function ContractorDashboard() {
                       slackStatus === 'on' ? 'bg-emerald-400 animate-pulse' :
                       slackStatus === 'off' ? 'bg-white/40' : 'bg-amber-400'
                     }`} />
-                    {slackStatus === 'on' ? 'Online' : slackStatus === 'off' ? 'Logged Off' : 'Not clocked in'}
+                    {slackStatus === 'on' ? 'In Office' : slackStatus === 'off' ? 'Logged Off' : 'Not clocked in'}
                   </div>
                 </div>
                 <div className="mt-4">
@@ -660,9 +652,13 @@ export default function ContractorDashboard() {
                     </p>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-full bg-[#FF6B35] rounded-full" style={{ width: `${(daysElapsed / periodTotal) * 100}%` }} />
+                    <div className="h-full bg-[#1c2b3a] rounded-full" style={{ width: `${(daysElapsed / periodTotal) * 100}%` }} />
                   </div>
                 </div>
+                <p className="text-white/30 text-xs mt-3 flex items-center gap-1">
+                  <i className="ri-slack-line"></i>
+                  Type <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On</span> or <span className="font-mono bg-white/10 px-1 rounded mx-0.5">Off</span> in the Slack attendance channel
+                </p>
               </div>
             </div>
 
@@ -671,28 +667,6 @@ export default function ContractorDashboard() {
 
           {/* ── LEFT COLUMN (2/3) ── */}
           <div className="lg:col-span-2 space-y-4">
-
-            {/* Clock In / Out */}
-            <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${slackStatus === 'on' ? 'bg-emerald-100' : slackStatus === 'off' ? 'bg-gray-100' : 'bg-amber-50'}`}>
-                  <i className={`text-lg ${slackStatus === 'on' ? 'ri-user-follow-line text-emerald-600' : slackStatus === 'off' ? 'ri-user-unfollow-line text-gray-500' : 'ri-time-line text-amber-500'}`} />
-                </div>
-                <div>
-                  <p className={`text-sm font-bold ${slackStatus === 'on' ? 'text-emerald-600' : slackStatus === 'off' ? 'text-gray-700' : 'text-amber-600'}`}>
-                    {slackStatus === 'on' ? "You're In Office" : slackStatus === 'off' ? 'Clocked Out' : 'Not Clocked In'}
-                  </p>
-                  <p className="text-xs text-gray-400">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => handlePunch(slackStatus === 'on' ? 'out' : 'in')}
-                disabled={punching}
-                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 ${slackStatus === 'on' ? 'bg-gray-900 text-white hover:bg-gray-700' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`}
-              >
-                {punching ? 'Recording...' : slackStatus === 'on' ? 'Clock Out' : 'Clock In'}
-              </button>
-            </div>
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -714,7 +688,7 @@ export default function ContractorDashboard() {
                 )}
               </div>
 
-              <div className="bg-[#FF6B35] rounded-xl p-4">
+              <div className="bg-[#1c2b3a] rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-white/70">Est. Payout</span>
                   <button
@@ -817,7 +791,7 @@ export default function ContractorDashboard() {
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-[#111827]">My Requests</h3>
-                  <button onClick={() => navigate('/hub/contractor/requests')} className="text-xs text-[#FF6B35] hover:underline cursor-pointer">View all</button>
+                  <button onClick={() => navigate('/hub/contractor/requests')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
                 </div>
                 {requests.length === 0 ? (
                   <p className="text-xs text-gray-400 py-2">No requests yet</p>
@@ -838,7 +812,7 @@ export default function ContractorDashboard() {
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-[#111827]">Time-Off</h3>
-                  <button onClick={() => navigate('/hub/contractor/timeoff')} className="text-xs text-[#FF6B35] hover:underline cursor-pointer">Request</button>
+                  <button onClick={() => navigate('/hub/contractor/timeoff')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">Request</button>
                 </div>
                 {timeOffs.length === 0 ? (
                   <p className="text-xs text-gray-400 py-2">No time-off requests</p>
@@ -867,10 +841,10 @@ export default function ContractorDashboard() {
                 <button
                   key={a.label}
                   onClick={() => navigate(a.path)}
-                  className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-100 hover:border-[#FF6B35]/30 hover:bg-[#FF6B35]/5 rounded-xl transition-all cursor-pointer"
+                  className="flex flex-col items-center gap-2 p-4 bg-white border border-gray-100 hover:border-[#1c2b3a]/30 hover:bg-[#1c2b3a]/5 rounded-xl transition-all cursor-pointer"
                 >
                   <div className="w-9 h-9 bg-gray-50 rounded-lg flex items-center justify-center">
-                    <i className={`${a.icon} text-[#FF6B35] text-base`}></i>
+                    <i className={`${a.icon} text-[#1c2b3a] text-base`}></i>
                   </div>
                   <span className="text-xs text-gray-600 font-medium">{a.label}</span>
                 </button>
@@ -910,7 +884,7 @@ export default function ContractorDashboard() {
                 </div>
                 {onlineCount > 0 && (
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                    {onlineCount} online
+                    {onlineCount} in office
                   </span>
                 )}
               </div>
@@ -922,7 +896,7 @@ export default function ContractorDashboard() {
                     <div className="relative flex-shrink-0">
                       {t.avatar_url
                         ? <img src={t.avatar_url} alt={t.full_name} className="w-7 h-7 rounded-full object-cover object-top" />
-                        : <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center"><span className="text-white text-xs font-bold">{t.full_name.charAt(0)}</span></div>
+                        : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-xs font-bold">{t.full_name.charAt(0)}</span></div>
                       }
                       <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
                         t.status === 'on' ? 'bg-emerald-500' : t.status === 'off' ? 'bg-gray-400' : 'bg-amber-400'
@@ -935,7 +909,7 @@ export default function ContractorDashboard() {
                       t.status === 'on' ? 'text-emerald-600 font-medium' :
                       t.status === 'off' ? 'text-gray-400' : 'text-amber-500'
                     }`}>
-                      {t.status === 'on' ? `${t.hours_today > 0 ? t.hours_today.toFixed(1) + 'h' : 'Online'}` : t.status === 'off' ? 'Off' : 'Away'}
+                      {t.status === 'on' ? `${t.hours_today > 0 ? t.hours_today.toFixed(1) + 'h' : 'In Office'}` : t.status === 'off' ? 'Off' : 'Away'}
                     </span>
                   </div>
                 ))}

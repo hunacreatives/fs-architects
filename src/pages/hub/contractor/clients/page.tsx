@@ -36,6 +36,7 @@ export default function ContractorClientsPage() {
   useEffect(() => {
     if (!hubUser) return;
     (async () => {
+      try {
       const [{ data: pcData }, { data: assignData }] = await Promise.all([
         // Local retainer projects
         supabase
@@ -86,15 +87,19 @@ export default function ContractorClientsPage() {
         });
 
       setClients([...retainers, ...assignments]);
+    } catch {
+      // ignore fetch errors, show empty state
+    } finally {
       setLoading(false);
-    })();
+    }
+  })();
   }, [hubUser]);
 
   const active = clients.filter(c => ['active', 'ongoing'].includes(c.status));
   const inactive = clients.filter(c => !['active', 'ongoing'].includes(c.status));
 
   return (
-    <ContractorLayout title="My Projects">
+    <ContractorLayout title="My Clients">
       <div className="max-w-2xl space-y-6">
         {loading ? (
           <div className="flex justify-center py-12">
@@ -133,8 +138,8 @@ function ClientCard({ client: c }: { client: ClientEntry }) {
   const statusLabel = c.status === 'ongoing' ? 'Active' : c.status.charAt(0).toUpperCase() + c.status.slice(1);
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-start gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${c.type === 'retainer' ? 'bg-indigo-50' : 'bg-[#FF6B35]/10'}`}>
-        <i className={`text-base ${c.type === 'retainer' ? 'ri-repeat-line text-indigo-500' : 'ri-building-line text-[#FF6B35]'}`}></i>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${c.type === 'retainer' ? 'bg-slate-50' : 'bg-[#1c2b3a]/10'}`}>
+        <i className={`text-base ${c.type === 'retainer' ? 'ri-repeat-line text-[#1c2b3a]/70' : 'ri-building-line text-[#1c2b3a]'}`}></i>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -142,7 +147,7 @@ function ClientCard({ client: c }: { client: ClientEntry }) {
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColors[c.status] ?? 'bg-gray-100 text-gray-500'}`}>
             {statusLabel}
           </span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.type === 'retainer' ? 'bg-indigo-50 text-indigo-600' : 'bg-orange-50 text-orange-600'}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.type === 'retainer' ? 'bg-slate-50 text-[#1c2b3a]' : 'bg-slate-50 text-[#1c2b3a]'}`}>
             {c.type === 'retainer' ? 'Local Retainer' : 'International'}
           </span>
         </div>
@@ -153,7 +158,7 @@ function ClientCard({ client: c }: { client: ClientEntry }) {
             </span>
           )}
           {c.role && (
-            <span className="inline-flex items-center gap-1 text-xs text-[#FF6B35] font-medium">
+            <span className="inline-flex items-center gap-1 text-xs text-[#1c2b3a] font-medium">
               <i className="ri-user-line text-xs"></i>{c.role}
             </span>
           )}
@@ -163,7 +168,7 @@ function ClientCard({ client: c }: { client: ClientEntry }) {
             </span>
           )}
           {c.type === 'retainer' && c.monthly_rate ? (
-            <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-medium">
+            <span className="inline-flex items-center gap-1 text-xs text-[#1c2b3a] font-medium">
               <i className="ri-money-dollar-circle-line text-xs"></i>{fmt(c.monthly_rate)}/mo · {c.months_paid} month{c.months_paid !== 1 ? 's' : ''} paid
             </span>
           ) : null}

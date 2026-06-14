@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,22 +25,28 @@ function timeAgo(d: Date) {
 
 export default function NotificationBell() {
   const { hubUser } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [unread, setUnread] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const lsKey = `hub_notif_seen_${hubUser?.id}`;
+  const clearKey = `hub_notif_cleared_${hubUser?.id}`;
   const getLastSeen = (): Date => {
     const s = localStorage.getItem(lsKey);
     return s ? new Date(s) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   };
+  const getClearedAt = (): Date | null => {
+    const s = localStorage.getItem(clearKey);
+    return s ? new Date(s) : null;
+  };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchNotifs = useCallback(async () => {
     if (!hubUser) return;
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(); // last 7 days
     const lastSeen = getLastSeen();
+    const clearedAt = getClearedAt();
     const items: Notif[] = [];
 
     const isAdmin = hubUser.role === 'admin' || hubUser.role === 'owner';
@@ -238,8 +245,8 @@ export default function NotificationBell() {
         items.push({
           id: `ann-${a.id}`,
           icon: 'ri-megaphone-line',
-          iconBg: 'bg-orange-50',
-          iconColor: 'text-[#FF6B35]',
+          iconBg: 'bg-slate-50',
+          iconColor: 'text-[#1c2b3a]',
           title: 'New announcement',
           body: a.title,
           time: new Date(a.created_at!),
@@ -414,8 +421,8 @@ export default function NotificationBell() {
         items.push({
           id: `sign-${a.id}`,
           icon: 'ri-pen-nib-line',
-          iconBg: 'bg-violet-50',
-          iconColor: 'text-violet-500',
+          iconBg: 'bg-slate-50',
+          iconColor: 'text-[#1c2b3a]/70',
           title: 'Document awaiting your signature',
           body: doc?.title ?? 'Contract',
           time: new Date(a.created_at),
@@ -423,23 +430,27 @@ export default function NotificationBell() {
       }
     }
 
-    // hub_notifications — unified inbox from all edge functions
+    // hub_notifications — only fetch unread so cleared ones never come back
     const { data: hubNotifs } = await supabase
       .from('hub_notifications')
       .select('id, type, title, body, link, read, created_at')
       .eq('user_id', hubUser.id)
+      .eq('read', false)
       .order('created_at', { ascending: false })
       .limit(20);
 
     const typeIcon: Record<string, { icon: string; iconBg: string; iconColor: string }> = {
-      task_assigned:         { icon: 'ri-task-line',              iconBg: 'bg-indigo-50',  iconColor: 'text-indigo-500' },
-      task_mention:          { icon: 'ri-at-line',                iconBg: 'bg-violet-50',  iconColor: 'text-violet-500' },
+      task_assigned:         { icon: 'ri-task-line',              iconBg: 'bg-slate-50',  iconColor: 'text-[#1c2b3a]/70' },
+      task_mention:          { icon: 'ri-at-line',                iconBg: 'bg-slate-50',  iconColor: 'text-[#1c2b3a]/70' },
       task_due:              { icon: 'ri-alarm-line',             iconBg: 'bg-amber-50',   iconColor: 'text-amber-500' },
       payroll_batch_approved:{ icon: 'ri-money-dollar-circle-line',iconBg: 'bg-emerald-50',iconColor: 'text-emerald-500' },
       timeoff_approved:      { icon: 'ri-checkbox-circle-line',   iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500' },
       timeoff_rejected:      { icon: 'ri-close-circle-line',      iconBg: 'bg-rose-50',    iconColor: 'text-rose-500' },
       payment_received:      { icon: 'ri-bank-card-line',         iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500' },
       project_assigned:      { icon: 'ri-folder-add-line',        iconBg: 'bg-sky-50',     iconColor: 'text-sky-500' },
+      payroll_approved:      { icon: 'ri-money-dollar-circle-line',iconBg: 'bg-emerald-50',iconColor: 'text-emerald-500' },
+      announcement:          { icon: 'ri-megaphone-line',          iconBg: 'bg-slate-50',  iconColor: 'text-[#1c2b3a]/70' },
+      attendance:            { icon: 'ri-time-line',               iconBg: 'bg-sky-50',     iconColor: 'text-sky-600' },
       default:               { icon: 'ri-notification-3-line',    iconBg: 'bg-gray-50',    iconColor: 'text-gray-400' },
     };
 
@@ -454,21 +465,22 @@ export default function NotificationBell() {
         body: n.body,
         link: n.link ?? undefined,
         time: new Date(n.created_at),
-        unreadDot: !n.read,
+        unreadDot: true, // only unread are fetched
       });
-    }
-
-    // Mark hub_notifications as read when bell is opened
-    const unreadHubIds = (hubNotifs ?? []).filter(n => !n.read).map(n => n.id);
-    if (unreadHubIds.length > 0) {
-      supabase.from('hub_notifications').update({ read: true }).in('id', unreadHubIds).then(() => {});
     }
 
     // Sort by newest
     items.sort((a, b) => b.time.getTime() - a.time.getTime());
-    setNotifs(items);
-    setUnread(items.filter(n => n.time > lastSeen).length);
+    const visibleItems = clearedAt
+      ? items.filter((n) => n.time > clearedAt)
+      : items;
+    setNotifs(visibleItems);
+    setUnread(visibleItems.filter(n => n.time > lastSeen).length);
   }, [hubUser]);
+
+  // Keep a stable ref to fetchNotifs so the realtime subscription never needs to recreate
+  const fetchNotifsRef = useRef(fetchNotifs);
+  useEffect(() => { fetchNotifsRef.current = fetchNotifs; }, [fetchNotifs]);
 
   useEffect(() => {
     if (!hubUser) return;
@@ -484,7 +496,7 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Realtime subscription — re-fetch on any relevant table change
+  // Realtime subscription — stable channel, never recreates unless user changes
   useEffect(() => {
     if (!hubUser) return;
 
@@ -493,11 +505,10 @@ export default function NotificationBell() {
     const contractorTables = ['hub_announcements', 'hub_payouts', 'hub_payroll_batches', 'hub_time_off', 'hub_requests', 'hub_overtime_requests', 'hub_notifications'];
     const tables = isAdmin ? adminTables : contractorTables;
 
-    // Debounce to avoid flooding on burst inserts
     let debounce: ReturnType<typeof setTimeout>;
     const refetch = () => {
       clearTimeout(debounce);
-      debounce = setTimeout(() => fetchNotifs(), 800);
+      debounce = setTimeout(() => fetchNotifsRef.current(), 800);
     };
 
     const channel = supabase.channel(`hub-notifs-${hubUser.id}`);
@@ -510,20 +521,35 @@ export default function NotificationBell() {
       clearTimeout(debounce);
       supabase.removeChannel(channel);
     };
-  }, [hubUser, fetchNotifs]);
+  }, [hubUser]); // stable — only recreates if user changes
 
   const handleOpen = () => {
-    setOpen(v => !v);
-    if (!open) {
+    const opening = !open;
+    setOpen(opening);
+    if (opening) {
       localStorage.setItem(lsKey, new Date().toISOString());
       setUnread(0);
+      // Mark all unread hub_notifications as read in DB when user opens the bell
+      if (hubUser) {
+        supabase.from('hub_notifications').update({ read: true })
+          .eq('user_id', hubUser.id).eq('read', false).then(() => {});
+      }
     }
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
+    const nowIso = new Date().toISOString();
     setNotifs([]);
     setUnread(0);
-    localStorage.setItem(lsKey, new Date().toISOString());
+    localStorage.setItem(lsKey, nowIso);
+    localStorage.setItem(clearKey, nowIso);
+    if (hubUser) {
+      await supabase
+        .from('hub_notifications')
+        .update({ read: true })
+        .eq('user_id', hubUser.id)
+        .eq('read', false);
+    }
   };
 
   if (!hubUser) return null;
@@ -536,7 +562,7 @@ export default function NotificationBell() {
       >
         <i className="ri-notification-3-line text-base"></i>
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#FF6B35] rounded-full flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#1c2b3a] rounded-full flex items-center justify-center">
             <span className="text-white text-[9px] font-bold">{unread > 9 ? '9+' : unread}</span>
           </span>
         )}
@@ -567,7 +593,7 @@ export default function NotificationBell() {
                 {notifs.map((n) => {
                   const inner = (
                     <div key={n.id} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors relative">
-                      {n.unreadDot && <span className="absolute top-3.5 right-4 w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />}
+                      {n.unreadDot && <span className="absolute top-3.5 right-4 w-1.5 h-1.5 rounded-full bg-[#1c2b3a] flex-shrink-0" />}
                       <div className={`w-8 h-8 rounded-lg ${n.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                         <i className={`${n.icon} ${n.iconColor} text-sm`}></i>
                       </div>
@@ -579,7 +605,7 @@ export default function NotificationBell() {
                     </div>
                   );
                   return n.link
-                    ? <a key={n.id} href={n.link} target="_blank" rel="noopener noreferrer" className="block">{inner}</a>
+                    ? <button key={n.id} onClick={() => { setOpen(false); navigate(n.link!); }} className="block w-full text-left cursor-pointer">{inner}</button>
                     : <div key={n.id}>{inner}</div>;
                 })}
               </div>

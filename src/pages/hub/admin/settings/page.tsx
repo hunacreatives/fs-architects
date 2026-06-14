@@ -8,13 +8,22 @@ import { supabase } from '@/lib/supabase';
 export default function SettingsPage() {
   const { isDemo } = useDemo();
   const { user } = useAuth();
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
   const { hubUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'system'>('profile');
   const [devToolbarHidden, setDevToolbarHidden] = useState(() => localStorage.getItem('hub_dev_toolbar_hidden') === 'true');
 
   // Sync from Supabase on mount
   useEffect(() => {
-    if (isDemo) return;
     if ((hubUser as any)?.is_developer && hubUser?.id) {
       supabase.from('hub_users').select('dev_toolbar_hidden').eq('id', hubUser.id).single()
         .then(({ data }) => {
@@ -23,7 +32,7 @@ export default function SettingsPage() {
           localStorage.setItem('hub_dev_toolbar_hidden', String(v));
         });
     }
-  }, [hubUser, isDemo]);
+  }, [hubUser?.id]);
   const [profileForm, setProfileForm] = useState({ full_name: user?.full_name || '', email: user?.email || '', phone: user?.phone || '', slack_username: user?.slack_username || '' });
   const [passwordForm, setPasswordForm] = useState({ current: '', newPass: '', confirm: '' });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -62,16 +71,6 @@ export default function SettingsPage() {
     }
   };
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
-
   const tabs = [
     { id: 'profile' as const, label: 'Profile', icon: 'ri-user-line' },
     { id: 'password' as const, label: 'Password', icon: 'ri-lock-line' },
@@ -100,10 +99,7 @@ export default function SettingsPage() {
           <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-5">
             <h3 className="font-semibold text-[#111827]">Profile Information</h3>
             <div className="flex items-center gap-4">
-              {user?.avatar_url
-                ? <img src={user.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover object-top" />
-                : <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-500">{user?.full_name?.[0]}</div>
-              }
+              <img src={user?.avatar_url || ''} alt="" className="w-16 h-16 rounded-full object-cover object-top" />
               <div>
                 <p className="text-sm font-medium text-[#111827]">{user?.full_name}</p>
                 <p className="text-xs text-gray-400 capitalize">{user?.role} · {user?.department}</p>
@@ -113,7 +109,7 @@ export default function SettingsPage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Full Name</label>
                 <input value={profileForm.full_name} onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Email</label>
@@ -124,13 +120,13 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-gray-700">Phone</label>
                 <input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                   placeholder="+63 9XX XXX XXXX"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Phone Number</label>
+                <label className="text-xs font-medium text-gray-700">Slack Username</label>
                 <input value={profileForm.slack_username} onChange={(e) => setProfileForm({ ...profileForm, slack_username: e.target.value })}
                   placeholder="@username"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
             </div>
             <button onClick={saveProfile} disabled={profileSaving}
@@ -148,13 +144,13 @@ export default function SettingsPage() {
                 <label className="text-xs font-medium text-gray-700">New Password</label>
                 <input type="password" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })}
                   placeholder="At least 8 characters"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Confirm New Password</label>
                 <input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
                   placeholder="Repeat new password"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
             </div>
             <button onClick={savePassword} disabled={passwordSaving || !passwordForm.newPass || !passwordForm.confirm}
@@ -170,9 +166,9 @@ export default function SettingsPage() {
               <h3 className="font-semibold text-[#111827]">System Info</h3>
               <div className="space-y-3">
                 {[
-                  { label: 'Platform', value: 'FS Hub' },
+                  { label: 'Platform', value: 'Huna Hub' },
                   { label: 'Version', value: '1.0.0' },
-                  { label: 'Agency', value: 'FS Architects' },
+                  { label: 'Agency', value: 'Huna Creatives' },
                   { label: 'Timezone', value: 'Asia/Manila (PHT)' },
                   { label: 'Cutoff Period', value: '1st–15th / 16th–EOM' },
                   { label: 'Default Currency', value: 'PHP' },
@@ -204,7 +200,7 @@ export default function SettingsPage() {
                       localStorage.setItem('hub_dev_toolbar_hidden', String(next));
                       await supabase.from('hub_users').update({ dev_toolbar_hidden: next } as any).eq('id', hubUser!.id);
                     }}
-                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${devToolbarHidden ? 'bg-gray-600' : 'bg-indigo-500'}`}
+                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${devToolbarHidden ? 'bg-gray-600' : 'bg-[#1c2b3a]'}`}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${devToolbarHidden ? '' : 'translate-x-5'}`} />
                   </button>

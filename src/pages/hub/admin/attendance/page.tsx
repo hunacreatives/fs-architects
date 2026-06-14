@@ -62,7 +62,7 @@ function Avatar({ name, avatar_url }: { name: string; avatar_url: string | null 
     return <img src={avatar_url} alt={name} className="w-9 h-9 rounded-full object-cover object-top flex-shrink-0" />;
   }
   return (
-    <div className="w-9 h-9 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+    <div className="w-9 h-9 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
       <span className="text-white text-sm font-bold">{name.charAt(0).toUpperCase()}</span>
     </div>
   );
@@ -116,7 +116,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
     .from('hub_users')
     .select('id, full_name, department, start_date, payment_type')
     .eq('status', 'active')
-    
+    .in('role', ['contractor', 'admin'])
     .neq('payment_type', 'project_based');
 
   const userMap: Record<string, { full_name: string; department: string | null; start_date: string | null }> = {};
@@ -218,7 +218,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111827; background: #fff; padding: 40px; font-size: 12px; }
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #FF6B35; padding-bottom: 20px; margin-bottom: 28px; }
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1c2b3a; padding-bottom: 20px; margin-bottom: 28px; }
     .header img { height: 48px; object-fit: contain; }
     .header-right { text-align: right; }
     .header-right h1 { font-size: 20px; font-weight: 700; color: #111827; }
@@ -241,7 +241,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
 </head>
 <body>
   <div class="header">
-    <img src="${logoUrl}" alt="FS Architects" onerror="this.style.display='none'" />
+    <img src="${logoUrl}" alt="Huna Creatives" onerror="this.style.display='none'" />
     <div class="header-right">
       <h1>Attendance Report</h1>
       <p>${label}: <strong>${rangeLabelFmt(start, end)}</strong></p>
@@ -259,7 +259,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
     </div>
     <div class="summary-item">
       <div class="slabel">Total Hours</div>
-      <div class="svalue" style="color:#FF6B35">${totalHours.toFixed(1)}h</div>
+      <div class="svalue" style="color:#1c2b3a">${totalHours.toFixed(1)}h</div>
     </div>
   </div>
   <table>
@@ -277,8 +277,8 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
     </thead>
     <tbody>${tableRows || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#9ca3af;">No data for this range</td></tr>'}</tbody>
   </table>
-  <div class="footer">FS Architects · Attendance Report · ${label}</div>
-  <script>window.onload = function() { setTimeout(function() { window.print(); }, 400); };</script>
+  <div class="footer">Huna Creatives · Attendance Report · ${label}</div>
+  <script>window.onload = function() { setTimeout(function() { window.print(); }, 400); };<\/script>
 </body>
 </html>`);
   win.document.close();
@@ -314,41 +314,13 @@ export default function AdminAttendancePage() {
     if (showRefreshing) setRefreshing(true);
     else setLoading(true);
 
-    const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const { data, error } = await supabase.functions.invoke('slack-attendance');
 
-    const [usersRes, punchesRes, hoursRes] = await Promise.all([
-      supabase.from('hub_users').select('id, full_name, avatar_url, department').eq('status', 'active'),
-      supabase.from('hub_attendance_punches').select('user_id, type, punched_at').eq('date', todayStr).order('punched_at', { ascending: true }),
-      supabase.from('hub_daily_hours').select('user_id, hours_raw, hours_capped, first_on, last_off').eq('date', todayStr),
-    ]);
-
-    const punchMap: Record<string, { type: string; punched_at: string }[]> = {};
-    for (const p of (punchesRes.data ?? [])) {
-      if (!punchMap[p.user_id]) punchMap[p.user_id] = [];
-      punchMap[p.user_id].push(p);
+    if (!error && data?.attendance) {
+      setRecords(data.attendance);
+      setLastRefresh(new Date());
     }
-    const hoursMap: Record<string, any> = {};
-    for (const h of (hoursRes.data ?? [])) hoursMap[h.user_id] = h;
 
-    const built: AttendanceRecord[] = (usersRes.data ?? []).map((u: any) => {
-      const punches = punchMap[u.id] ?? [];
-      const last = punches[punches.length - 1] ?? null;
-      const hours = hoursMap[u.id];
-      return {
-        id: u.id, hub_user_id: u.id, email: null,
-        full_name: u.full_name, avatar_url: u.avatar_url, department: u.department,
-        status: punches.length === 0 ? 'absent' : last?.type === 'in' ? 'on' : 'off',
-        last_punch: last?.punched_at ?? null,
-        overtime_today: 0,
-        hours_raw: hours?.hours_raw ?? null,
-        hours_capped: hours?.hours_capped ?? null,
-        punches: punches.map((p: any) => ({ status: p.type as 'on' | 'off', time: p.punched_at })),
-      };
-    });
-
-    setRecords(built);
-    setLastRefresh(new Date());
     setLoading(false);
     setRefreshing(false);
   }, []);
@@ -368,7 +340,7 @@ export default function AdminAttendancePage() {
       .from('hub_users')
       .select('id, full_name, avatar_url, department, start_date, shift_start, shift_end, work_days, payment_type')
       .eq('status', 'active')
-      
+      .in('role', ['contractor', 'admin'])
       .neq('payment_type', 'project_based');
 
     const hoursMap: Record<string, typeof hoursData extends (infer T)[] | null ? T : never> = {};
@@ -521,7 +493,7 @@ export default function AdminAttendancePage() {
                 <p className="text-xs text-white/40">
                   Updated {lastRefresh.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
                   <span className="mx-1.5 opacity-40">·</span>
-                  via Hub
+                  <i className="ri-slack-line mr-0.5"></i>via Slack
                 </p>
               )}
             </div>
@@ -532,12 +504,12 @@ export default function AdminAttendancePage() {
                   value={selectedDate}
                   max={todayStr}
                   onChange={e => setSelectedDate(e.target.value || todayStr)}
-                  className="text-xs bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#FF6B35] cursor-pointer [color-scheme:dark]"
+                  className="text-xs bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#1c2b3a] cursor-pointer [color-scheme:dark]"
                 />
                 {!isToday && (
                   <button
                     onClick={() => setSelectedDate(todayStr)}
-                    className="text-xs text-[#FF6B35] hover:text-[#FF6B35]/80 cursor-pointer whitespace-nowrap transition-colors"
+                    className="text-xs text-[#1c2b3a] hover:text-[#1c2b3a]/80 cursor-pointer whitespace-nowrap transition-colors"
                   >
                     Today
                   </button>
@@ -574,7 +546,7 @@ export default function AdminAttendancePage() {
                   <p className="text-xs text-amber-400 mt-0.5 font-medium">Absent</p>
                 </div>
                 <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                  <p className="text-2xl font-bold text-[#FF6B35] tabular-nums">{histCounts.totalHours.toFixed(1)}h</p>
+                  <p className="text-2xl font-bold text-[#1c2b3a] tabular-nums">{histCounts.totalHours.toFixed(1)}h</p>
                   <p className="text-xs text-white/50 mt-0.5">Total Hours</p>
                 </div>
               </>
@@ -613,12 +585,16 @@ export default function AdminAttendancePage() {
                 <button
                   onClick={async () => {
                     setSyncing(true);
+                    await supabase.functions.invoke('slack-attendance', { body: { date: selectedDate } });
                     await fetchHistorical(selectedDate);
                     setSyncing(false);
                   }}
                   disabled={syncing}
-                  className="hidden"
-                />
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  <i className={`ri-slack-line text-sm ${syncing ? 'animate-pulse' : ''}`}></i>
+                  {syncing ? 'Syncing…' : 'Sync Slack'}
+                </button>
               )}
             </div>
           </div>
@@ -628,7 +604,7 @@ export default function AdminAttendancePage() {
         <div className="flex items-center justify-between gap-3">
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
             {(['all', 'worked', 'absent'] as const).map(f => {
-              const label = f === 'all' ? 'All' : f === 'worked' ? (isToday ? 'In Office / Out' : 'Worked') : (isToday ? 'Not In' : 'Absent');
+              const label = f === 'all' ? 'All' : f === 'worked' ? (isToday ? 'In Office / Off' : 'Worked') : (isToday ? 'Not In' : 'Absent');
               const count = isToday
                 ? (f === 'all' ? records.length : f === 'worked' ? liveCounts.on + liveCounts.off : liveCounts.absent)
                 : (f === 'all' ? histRows.length : f === 'worked' ? histCounts.worked : histCounts.absent);
@@ -688,7 +664,7 @@ export default function AdminAttendancePage() {
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               r.status === 'on' ? 'bg-emerald-100 text-emerald-700' : r.status === 'off' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-700'
                             }`}>
-                              {r.status === 'on' ? 'In Office' : r.status === 'off' ? 'Clocked Out' : 'Not In'}
+                              {r.status === 'on' ? 'In Office' : r.status === 'off' ? 'Logged Off' : 'Not In'}
                             </span>
                             {r.overtime_today > 0 && (
                               <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
@@ -722,7 +698,7 @@ export default function AdminAttendancePage() {
                                 <div key={i} className="flex items-center gap-2.5">
                                   <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${p.status === 'on' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                                   <span className={`text-xs font-medium w-20 flex-shrink-0 ${p.status === 'on' ? 'text-emerald-700' : 'text-gray-600'}`}>
-                                    {p.status === 'on' ? 'Clocked In' : 'Clocked Out'}
+                                    {p.status === 'on' ? 'Logged On' : 'Logged Off'}
                                   </span>
                                   <span className="text-xs text-gray-400">{formatTime(p.time)}</span>
                                 </div>
@@ -756,7 +732,7 @@ export default function AdminAttendancePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Contractor', 'Time In', 'Time Out', 'Raw Hrs', 'Billable', 'Status'].map(h => (
+                      {['Employee', 'Time In', 'Time Out', 'Raw Hrs', 'Billable', 'Status'].map(h => (
                         <th key={h} className="text-left text-xs text-gray-400 font-medium px-4 py-3">{h}</th>
                       ))}
                     </tr>
@@ -805,7 +781,7 @@ export default function AdminAttendancePage() {
                             </span>
                             <button
                               onClick={() => setEditHours({ userId: r.id, fullName: r.full_name, currentHours: r.hours_raw })}
-                              className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-[#FF6B35] hover:bg-orange-50 transition-colors cursor-pointer flex-shrink-0"
+                              className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-[#1c2b3a] hover:bg-slate-50 transition-colors cursor-pointer flex-shrink-0"
                               title="Edit hours"
                             >
                               <i className="ri-pencil-line text-xs"></i>

@@ -47,7 +47,6 @@ export default function PayoutEditModal({ payout, contractors, onClose, onSaved 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   // If contractor changes, auto-fill hourly rate
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isNew && form.contractor_id) {
       const c = contractors.find(u => u.id === form.contractor_id);
@@ -92,7 +91,7 @@ export default function PayoutEditModal({ payout, contractors, onClose, onSaved 
     onSaved();
   };
 
-  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white';
+  const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white';
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -110,7 +109,7 @@ export default function PayoutEditModal({ payout, contractors, onClose, onSaved 
           {/* Contractor + Period */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Contractor *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Employee *</label>
               <select className={inputCls} value={form.contractor_id} onChange={e => set('contractor_id', e.target.value)} required disabled={!isNew}>
                 <option value="">Select...</option>
                 {contractors.map(c => (
@@ -181,9 +180,9 @@ export default function PayoutEditModal({ payout, contractors, onClose, onSaved 
           </div>
 
           {/* Final Preview */}
-          <div className="bg-[#FF6B35]/5 border border-[#FF6B35]/20 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="bg-[#1c2b3a]/5 border border-[#1c2b3a]/20 rounded-lg px-4 py-3 flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Final Payout</span>
-            <span className="text-xl font-bold text-[#FF6B35]">
+            <span className="text-xl font-bold text-[#1c2b3a]">
               {preview.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
             </span>
           </div>
@@ -214,7 +213,7 @@ export default function PayoutEditModal({ payout, contractors, onClose, onSaved 
             <button type="button" onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
               Cancel
             </button>
-            <button type="submit" disabled={saving} className="flex-1 bg-[#FF6B35] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
+            <button type="submit" disabled={saving} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
               {saving ? 'Saving…' : isNew ? 'Add Payout' : 'Save Changes'}
             </button>
           </div>

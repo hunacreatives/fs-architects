@@ -15,30 +15,34 @@ interface Slide {
 }
 
 const SLIDES: Slide[] = [
-  { src: "/images/hero-slide-1.webp",                              title: "FS Architects",                    location: "Philippines",       year: "2025" },
-  { src: "/images/projects/mallberry-hero.webp",                   title: "Mallberry Platinum Hall & Lounge", location: "Cagayan de Oro",    year: "2023" },
-  { src: "/images/projects/abucay-hero.webp",                      title: "Abucay Beach House",               location: "Bataan",            year: "2024" },
-  { src: "/images/projects/sorana-island-villas-hero.webp",        title: "Sorana Island Villas",             location: "Cagayan de Oro",    year: "2025" },
-  { src: "/images/projects/byd-iligan-hero.webp",                  title: "BYD Iligan",                       location: "Iligan City",       year: "2025" },
-  { src: "/images/projects/sytin-projects-hero.webp",              title: "Sytin Projects",                   location: "Metro Manila",      year: "2025" },
-  { src: "/images/projects/bellarie-office-hero.webp",             title: "Bellarie Office",                  location: "Cagayan de Oro",    year: "2025" },
-  { src: "/images/projects/palm-sands-hero.webp",                  title: "Palm Sands Pool & Lounge",         location: "Cagayan de Oro",    year: "2024" },
-  { src: "/images/projects/yang-residence-hero.webp",              title: "Yang Residence",                   location: "Cagayan de Oro",    year: "2025" },
-  { src: "/images/projects/vmc-admin-hero.webp",                   title: "VMC Administration Interiors",     location: "Cagayan de Oro",    year: "2024" },
+  { src: "/images/hero-denza-greenhills.webp",        title: "Denza Greenhills",           location: "Mandaluyong City",        year: "2025" },
+  { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025" },
+  { src: "/images/hero-byd-butuan.webp",              title: "BYD Butuan",                 location: "Butuan City",             year: "2025" },
+  { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025" },
+  { src: "/images/hero-byd-marikina.webp",            title: "BYD Marikina",               location: "Marikina City",           year: "2025" },
+  { src: "/images/hero-byd-marikina-interiors.webp",  title: "BYD Marikina Interiors",     location: "Marikina City",           year: "2025" },
+  { src: "/images/hero-byd-zamboanga.webp",           title: "BYD Zamboanga",              location: "Zamboanga City",          year: "2024" },
+  { src: "/images/hero-byd-zamboanga-interiors.webp", title: "BYD Zamboanga Interiors",    location: "Zamboanga City",          year: "2024" },
+  { src: "/images/hero-graphic-gadget.webp",          title: "Graphic Gadget Store",       location: "Cagayan de Oro",          year: "2025" },
+  { src: "/images/hero-mixed-use-car-showroom.webp",  title: "Mixed Use Car Showroom",     location: "San Fernando, Pampanga",  year: "2025" },
+  { src: "/images/hero-sorana-cafe.webp",             title: "Sorana Cafe",                location: "Bantayan, Cebu",          year: "2025" },
+  { src: "/images/hero-yang-residence-cebu.webp",     title: "Yang Residence",             location: "Consolacion, Cebu",       year: "2025" },
 ];
 
 const TAGLINES = [
+  'Guided by Intent.',
   'Defined by Form.',
   'Shaped by Space.',
-  'Guided by Intent.',
 ];
 
-// Varied Ken Burns directions so each slide feels different
+// Chained cycle: each entry's `to` equals the next entry's `from`.
+// This means the camera never jumps — each incoming slide starts exactly
+// where the outgoing slide stopped.
 const KENBURNS = [
-  { from: 'scale(1.08) translate(1%, 1%)',   to: 'scale(1.03) translate(-1%, -1%)' },
-  { from: 'scale(1.03) translate(-1%, -1%)', to: 'scale(1.08) translate(1%,  1%)' },
-  { from: 'scale(1.07) translate(0%,  1%)',  to: 'scale(1.03) translate(0%,  -1%)' },
-  { from: 'scale(1.03) translate(1%,  0%)',  to: 'scale(1.07) translate(-1%, 0%)' },
+  { from: 'scale(1.06) translate(0.8%, 0.8%)',   to: 'scale(1.02) translate(-0.8%, -0.8%)' }, // A→B
+  { from: 'scale(1.02) translate(-0.8%, -0.8%)', to: 'scale(1.06) translate(-0.6%, 0.6%)' },  // B→C
+  { from: 'scale(1.06) translate(-0.6%, 0.6%)',  to: 'scale(1.02) translate(0.6%, -0.6%)' },  // C→D
+  { from: 'scale(1.02) translate(0.6%, -0.6%)',  to: 'scale(1.06) translate(0.8%, 0.8%)' },   // D→A
 ];
 
 const CROSSFADE_MS = 1800;
@@ -48,40 +52,17 @@ const HOLD_REST_MS  = 6000;
 
 export default function HeroSection({ isVisible }: HeroSectionProps) {
   const [showContent, setShowContent] = useState(false);
+  const [taglineIndex, setTaglineIndex] = useState(0);
+  const [taglineVisible, setTaglineVisible] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
-  const [kbActive, setKbActive] = useState<boolean[]>(SLIDES.map((_, i) => i === 0));
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeSlideRef = useRef(0);
+  // Tracks which slides have completed at least one full animation run.
+  // Used to park the slide at kb.to (its end position) instead of kb.from.
+  const activatedRef = useRef<boolean[]>(new Array(SLIDES.length).fill(false));
   const navigate = useNavigate();
   const { t } = useTranslation();
-
-  // Typewriter tagline state
-  const [taglineIndex, setTaglineIndex] = useState(0);
-  const [displayed, setDisplayed] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!showContent) return;
-    const target = TAGLINES[taglineIndex];
-    let i = 0;
-    setDisplayed('');
-    setIsTyping(true);
-
-    const type = () => {
-      if (i < target.length) {
-        setDisplayed(target.slice(0, i + 1));
-        i++;
-        typeTimerRef.current = setTimeout(type, 38);
-      } else {
-        setIsTyping(false);
-        typeTimerRef.current = setTimeout(() => {
-          setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
-        }, 2800);
-      }
-    };
-    typeTimerRef.current = setTimeout(type, 200);
-    return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
-  }, [taglineIndex, showContent]);
 
   useEffect(() => {
     if (isVisible) {
@@ -90,43 +71,56 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     }
   }, [isVisible]);
 
-
-  const scheduleNext = (current: number, isFirst: boolean) => {
-    const hold = isFirst ? HOLD_FIRST_MS : HOLD_REST_MS;
-    timerRef.current = setTimeout(() => {
-      const next = (current + 1) % SLIDES.length;
-      setActiveSlide(next);
-      // Start Ken Burns on incoming slide shortly after crossfade begins
+  useEffect(() => {
+    if (!showContent) return;
+    setTaglineVisible(true);
+    const interval = setInterval(() => {
+      setTaglineVisible(false);
       setTimeout(() => {
-        setKbActive(prev => {
-          const updated = [...prev];
-          updated[next] = true;
-          return updated;
-        });
-      }, 100);
-      scheduleNext(next, false);
-    }, hold);
-  };
+        setTaglineIndex(prev => (prev + 1) % TAGLINES.length);
+        setTaglineVisible(true);
+      }, 600);
+    }, 3800);
+    return () => clearInterval(interval);
+  }, [showContent]);
 
   useEffect(() => {
-    scheduleNext(0, true);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    const advance = () => {
+      setActiveSlide(prev => {
+        // Mark the outgoing slide as having completed so it parks at kb.to
+        activatedRef.current[prev] = true;
+        const next = (prev + 1) % SLIDES.length;
+        activeSlideRef.current = next;
+        return next;
+      });
+    };
+    // First slide holds HOLD_FIRST_MS; every subsequent slide holds HOLD_REST_MS
+    timerRef.current = setTimeout(() => {
+      advance();
+      intervalRef.current = setInterval(advance, HOLD_REST_MS);
+    }, HOLD_FIRST_MS);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goToSlide = (i: number) => {
-    if (i === activeSlide) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
+    if (i === activeSlideRef.current) return;
+    // Mark the outgoing slide as activated (even if mid-animation)
+    activatedRef.current[activeSlideRef.current] = true;
+    activeSlideRef.current = i;
     setActiveSlide(i);
-    setTimeout(() => {
-      setKbActive(prev => {
-        const updated = [...prev];
-        // Reset outgoing, activate incoming
-        updated[activeSlide] = false;
-        updated[i] = true;
-        return updated;
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setActiveSlide(prev => {
+        activatedRef.current[prev] = true;
+        const next = (prev + 1) % SLIDES.length;
+        activeSlideRef.current = next;
+        return next;
       });
-    }, 100);
-    scheduleNext(i, false);
+    }, HOLD_REST_MS);
   };
 
   return (
@@ -135,13 +129,14 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         isVisible ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Slideshow — all slides stacked, crossfade via opacity only, no React remounting */}
-      <div className="absolute inset-0 overflow-hidden">
+      {/* Slideshow — all slides stacked, crossfade via opacity, Ken Burns via global @keyframes */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{ backgroundColor: '#1a2028', zIndex: 0 }}
+      >
         {SLIDES.map((slide, i) => {
           const kb = KENBURNS[i % KENBURNS.length];
           const isActive = i === activeSlide;
-          const isMoving = kbActive[i];
-
           return (
             <img
               key={i}
@@ -150,12 +145,13 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               className="absolute inset-0 w-full h-full object-cover object-center"
               style={{
                 opacity: isActive ? 1 : 0,
-                transform: isMoving ? kb.to : kb.from,
-                transition: [
-                  `opacity ${CROSSFADE_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
-                  `transform ${isMoving ? 10000 : 0}ms ease-in-out`,
-                ].join(', '),
-                willChange: 'opacity, transform',
+                animation: isActive ? `kb-${i % KENBURNS.length} ${HOLD_REST_MS}ms ease-in-out forwards` : 'none',
+                // Inactive slides park at kb.to once they've completed their run (so the
+                // outgoing slide stays at its end position during the crossfade), or at
+                // kb.from on first load. No CSS transform transition — avoids browser
+                // inconsistencies with "from value" capture when removing an animation.
+                transform: isActive ? undefined : (activatedRef.current[i] ? kb.to : kb.from),
+                transition: `opacity ${CROSSFADE_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
                 zIndex: isActive ? 1 : 0,
               }}
             />
@@ -171,57 +167,149 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
       <Navigation theme="light" showContent={showContent} />
 
       {/* Hero Content */}
-      <div className="relative z-20 h-screen flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-12 md:pb-20">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 md:gap-0">
-          {/* Left — typewriter tagline */}
+      <div className="relative z-20 h-screen flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-10 md:pb-20">
+
+        {/* ── MOBILE layout ── */}
+        <div className="flex flex-col gap-3 md:hidden">
+          {/* Project title + location */}
           <div
-            className={`transition-all duration-1000 delay-300 ${
-              showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+            className={`transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
           >
-            <h1
-              style={{
-                fontFamily: 'Marcellus, serif',
-                fontStyle: 'italic',
-                fontWeight: 700,
-                fontSize: 'clamp(1.3rem, 2.4vw, 2.4rem)',
-                letterSpacing: '-0.01em',
-                lineHeight: '1.2',
-                textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-                color: 'white',
-                minHeight: '1.4em',
-              }}
-            >
-              {displayed}
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '2px',
-                  height: '0.9em',
-                  backgroundColor: 'white',
-                  marginLeft: '2px',
-                  verticalAlign: 'middle',
-                  opacity: isTyping ? 1 : 0,
-                  transition: 'opacity 0.15s ease',
-                }}
-              />
-            </h1>
+            <p style={{ fontFamily: 'Marcellus, serif', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
+              {SLIDES[activeSlide].title}
+            </p>
+            <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', fontWeight: 400, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+              {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+            </p>
           </div>
 
-          {/* Right — slide metadata + CTA */}
+          {/* Tagline — sits just above the switcher */}
+          <h1
+            style={{
+              fontSize: '1.25rem',
+              lineHeight: '1.4',
+              textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+              color: 'rgba(255,255,255,0.88)',
+              opacity: taglineVisible ? 1 : 0,
+              transition: 'opacity 0.6s ease',
+              margin: 0,
+              marginBottom: '-4px',
+            }}
+          >
+            {(() => {
+              const words = TAGLINES[taglineIndex].split(' ');
+              const prefix = words.slice(0, 2).join(' ') + ' ';
+              const suffix = words.slice(2).join(' ');
+              return (
+                <>
+                  <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
+                  <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: '1.5rem' }}>{suffix}</span>
+                </>
+              );
+            })()}
+          </h1>
+
+          {/* Switcher + CTA */}
+          <div className={`flex items-end justify-between transition-all duration-1000 delay-700 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+            <div className="flex items-center gap-2">
+              {SLIDES.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goToSlide(i)}
+                  className="cursor-pointer flex items-center justify-center"
+                  style={{ width: i === activeSlide ? '28px' : '8px', height: '22px', background: 'none', transition: 'width 500ms' }}
+                  aria-label={`Slide ${i + 1}`}
+                >
+                  <div style={{ width: '100%', height: '2px', backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)', transition: 'background-color 500ms' }} />
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/projects')}
+              className="px-5 py-2 border border-white/80 rounded-full text-white text-xs cursor-pointer transition-all duration-500 hover:bg-white/10 whitespace-nowrap"
+              style={{ letterSpacing: '0.1em', fontFamily: 'Geist, sans-serif' }}
+            >
+              {t('hero_cta')}
+            </button>
+          </div>
+        </div>
+
+        {/* ── DESKTOP layout ── */}
+        <div className="hidden md:grid" style={{ gridTemplateColumns: '1fr auto', rowGap: '6px' }}>
+          {/* Row 1 left — tagline, pushed to bottom of cell so it sits just above the indicators */}
+          <h1
+            style={{
+              fontSize: 'clamp(1.1rem, 1.9vw, 1.75rem)',
+              lineHeight: '1.5',
+              textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+              color: 'rgba(255,255,255,0.88)',
+              opacity: taglineVisible ? 1 : 0,
+              transition: 'opacity 0.6s ease',
+              margin: 0,
+              alignSelf: 'end',
+            }}
+          >
+            {(() => {
+              const words = TAGLINES[taglineIndex].split(' ');
+              const prefix = words.slice(0, 2).join(' ') + ' ';
+              const suffix = words.slice(2).join(' ');
+              return (
+                <>
+                  <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
+                  <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: 'clamp(1.4rem, 2.4vw, 2.2rem)' }}>{suffix}</span>
+                </>
+              );
+            })()}
+          </h1>
+
+          {/* Row 1 right — project title + location */}
           <div
-            className={`flex flex-col items-end gap-3 transition-all duration-1000 delay-500 ${
+            className={`text-right transition-all duration-1000 delay-500 ${
               showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
+            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)', alignSelf: 'start', paddingLeft: '2rem', paddingTop: '0.9rem' }}
           >
-            <div className="text-right" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
-              <p style={{ fontFamily: 'Marcellus, serif', fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
-                {SLIDES[activeSlide].title}
-              </p>
-              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', fontWeight: 400, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
-                {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
-              </p>
-            </div>
+            <p style={{ fontFamily: 'Marcellus, serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
+              {SLIDES[activeSlide].title}
+            </p>
+            <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', fontWeight: 400, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
+              {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+            </p>
+          </div>
+
+          {/* Row 2 left — slide indicators */}
+          <div
+            className={`flex items-center gap-2 transition-all duration-1000 delay-700 ${
+              showContent ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ alignSelf: 'end' }}
+          >
+            {SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToSlide(i)}
+                className="cursor-pointer flex items-center justify-center"
+                style={{ width: i === activeSlide ? '28px' : '8px', height: '22px', background: 'none', transition: 'width 500ms' }}
+                aria-label={`Slide ${i + 1}`}
+              >
+                <div style={{
+                  width: '100%',
+                  height: '2px',
+                  backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)',
+                  transition: 'background-color 500ms',
+                }} />
+              </button>
+            ))}
+          </div>
+
+          {/* Row 2 right — CTA */}
+          <div
+            className={`flex justify-end transition-all duration-1000 delay-500 ${
+              showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+            style={{ alignSelf: 'end', paddingLeft: '2rem', paddingBottom: '11px' }}
+          >
             <button
               onClick={() => navigate('/projects')}
               className="group px-7 py-2.5 border border-white/80 rounded-full text-white text-xs tracking-wide transition-all duration-500 hover:bg-white/10 hover:border-white whitespace-nowrap cursor-pointer"
@@ -232,29 +320,6 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
           </div>
         </div>
 
-        {/* Slide indicators */}
-        <div
-          className={`flex items-center gap-2 mt-10 transition-all duration-1000 delay-700 ${
-            showContent ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          {SLIDES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goToSlide(i)}
-              className="cursor-pointer flex items-center justify-center"
-              style={{ width: i === activeSlide ? '28px' : '8px', height: '22px', background: 'none', transition: 'width 500ms' }}
-              aria-label={`Slide ${i + 1}`}
-            >
-              <div style={{
-                width: '100%',
-                height: '2px',
-                backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)',
-                transition: 'background-color 500ms',
-              }} />
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

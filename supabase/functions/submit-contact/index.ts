@@ -1,4 +1,13 @@
-const WEB3FORMS_KEY = Deno.env.get('WEB3FORMS_KEY')!;
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
+const NOTIFY_EMAIL = 'contact@hunacreatives.com';
+const FROM_EMAIL = 'Huna Creatives <noreply@hunacreatives.com>';
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+);
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -11,30 +20,51 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { name, email, service, message } = body;
+    const { name, email, subject, service, message } = body;
 
     if (!name || !email || !message) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: cors });
     }
 
-    const data = new URLSearchParams({
-      access_key: WEB3FORMS_KEY,
+    // Save to DB
+    const { error: dbError } = await supabase.from('contact_submissions').insert({
       name,
       email,
-      service: service ?? '',
+      subject: subject ?? '',
+      service: service ?? null,
       message,
     });
 
-    const res = await fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: data.toString(),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      return new Response(JSON.stringify({ error: err }), { status: 502, headers: cors });
+    if (dbError) {
+      return new Response(JSON.stringify({ error: dbError.message }), { status: 500, headers: cors });
     }
+
+    // Send email notification via Resend
+    const html = `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">
+        <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin-bottom:24px">New Contact Form Submission</p>
+        <h2 style="margin:0 0 20px;font-size:20px">${name}</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
+          <tr><td style="padding:8px 0;color:#666;width:100px">From</td><td style="padding:8px 0">${email}</td></tr>
+          ${service ? `<tr><td style="padding:8px 0;color:#666">Service</td><td style="padding:8px 0">${service}</td></tr>` : ''}
+          ${subject ? `<tr><td style="padding:8px 0;color:#666">Subject</td><td style="padding:8px 0">${subject}</td></tr>` : ''}
+        </table>
+        <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</div>
+        <p style="margin-top:32px;font-size:11px;color:#bbb">Submitted via hunacreatives.com — view all in the Hub</p>
+      </div>
+    `;
+
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [NOTIFY_EMAIL],
+        reply_to: email,
+        subject: `New inquiry from ${name}${service ? ` — ${service}` : subject ? ` — ${subject}` : ''}`,
+        html,
+      }),
+    });
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

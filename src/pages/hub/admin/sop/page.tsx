@@ -17,7 +17,7 @@ const categoryIcons: Record<string, string> = {
 const categoryColors: Record<string, string> = {
   onboarding: 'bg-emerald-100 text-emerald-700',
   reporting: 'bg-sky-100 text-sky-700',
-  ad_launch: 'bg-orange-100 text-orange-700',
+  ad_launch: 'bg-slate-100 text-[#1c2b3a]',
   slack: 'bg-purple-100 text-purple-700',
   training: 'bg-rose-100 text-rose-700',
   branding: 'bg-amber-100 text-amber-700',
@@ -95,7 +95,7 @@ export default function SopPage() {
           <div className="relative flex-1 min-w-48">
             <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search SOPs..."
-              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
             {categories.slice(0, 5).map((c) => (
@@ -128,7 +128,7 @@ export default function SopPage() {
                   </div>
                   <div className="flex gap-1">
                     {!s.published && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-400">Draft</span>}
-                    {(s as any).visibility === 'admin_only' && <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-600">Admin only</span>}
+                    {(s as any).visibility === 'admin_only' && <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-[#1c2b3a]">Admin only</span>}
                   </div>
                 </div>
                 <h3 className="text-sm font-semibold text-[#111827] mb-1 line-clamp-2">{s.title}</h3>
@@ -193,7 +193,7 @@ export default function SopPage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="SOP title..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  placeholder="SOP title..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Category</label>
@@ -208,7 +208,7 @@ export default function SopPage() {
                 <label className="text-xs font-medium text-gray-700">Content</label>
                 <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={6}
                   placeholder="Write the SOP content..." maxLength={500}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Video URL (optional)</label>

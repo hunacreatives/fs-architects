@@ -37,6 +37,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const currencySymbol = form.currency === 'USD' ? '$' : form.currency === 'EUR' ? 'EUR ' : form.currency === 'GBP' ? 'GBP ' : form.currency === 'AUD' ? 'AUD ' : form.currency === 'CAD' ? 'CAD ' : '₱';
 
   const set = (key: string, val: string) => setForm((p) => ({ ...p, [key]: val }));
 
@@ -60,7 +61,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="font-semibold text-[#111827]">Edit Employee</h2>
+          <h2 className="font-semibold text-[#111827]">Edit Contractor</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer">
             <i className="ri-close-line text-lg"></i>
           </button>
@@ -72,7 +73,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               { label: 'Full Name *', key: 'full_name', required: true, colSpan: '2' },
               { label: 'Email *', key: 'email', required: true, type: 'email', colSpan: '2' },
               { label: 'Phone', key: 'phone' },
-              { label: 'Phone', key: 'phone' },
+              { label: 'Slack Username', key: 'slack_username' },
               { label: 'Address', key: 'address', colSpan: '2' },
               { label: 'Emergency Contact Name', key: 'emergency_contact_name', colSpan: '2' },
               { label: 'Relationship', key: 'emergency_contact_relationship', colSpan: '2' },
@@ -87,7 +88,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                   required={f.required}
                   value={(form as Record<string, string>)[f.key]}
                   onChange={(e) => set(f.key, e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                 />
               </div>
             ))}
@@ -96,15 +97,26 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
             <div className="col-span-2 pt-1">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Compensation</p>
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Payment Type</label>
-                  <select value={form.payment_type} onChange={(e) => set('payment_type', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                    <option value="hourly">Hourly</option>
-                    <option value="fixed">Fixed Monthly</option>
-                    <option value="fixed_flexible">Fixed Flexible</option>
-                    <option value="project_based">Project Based</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <label className="text-xs font-medium text-gray-700">Payment Type</label>
+                    <select value={form.payment_type} onChange={(e) => set('payment_type', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                      <option value="hourly">Hourly</option>
+                      <option value="fixed">Fixed Monthly</option>
+                      <option value="fixed_flexible">Fixed Flexible</option>
+                      <option value="project_based">Project Based</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <label className="text-xs font-medium text-gray-700">Currency</label>
+                    <select value={form.currency} onChange={(e) => set('currency', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                      {['PHP', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 {form.payment_type === 'project_based' ? (
                   <div className="space-y-1">
@@ -113,7 +125,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                       <input type="number" step="0.5" min="1" max="100"
                         value={form.project_percentage} onChange={(e) => set('project_percentage', e.target.value)}
                         placeholder="e.g. 40"
-                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">%</span>
                     </div>
                     <p className="text-[11px] text-gray-400">They earn this % of the project fee after operational costs are deducted.</p>
@@ -122,18 +134,18 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                   <div className="grid grid-cols-2 gap-3">
                     {(form.payment_type === 'fixed' || form.payment_type === 'fixed_flexible') && (
                       <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-700">Monthly Rate (PHP)</label>
+                        <label className="text-xs font-medium text-gray-700">Monthly Rate ({form.currency})</label>
                         <input type="number" step="0.01" value={form.monthly_rate} onChange={(e) => set('monthly_rate', e.target.value)}
-                          placeholder="e.g. 20000"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                          placeholder={`e.g. ${currencySymbol}20000`}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                       </div>
                     )}
                     {(form.payment_type === 'hourly' || form.payment_type === 'fixed_flexible') && (
                       <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-700">Hourly Rate (PHP)</label>
+                        <label className="text-xs font-medium text-gray-700">Hourly Rate ({form.currency})</label>
                         <input type="number" step="0.01" value={form.hourly_rate} onChange={(e) => set('hourly_rate', e.target.value)}
-                          placeholder="e.g. 5.00"
-                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                          placeholder={`e.g. ${currencySymbol}5.00`}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                       </div>
                     )}
                   </div>
@@ -144,9 +156,9 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-700">Department</label>
               <select value={form.department} onChange={(e) => set('department', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="">Select...</option>
-                {['Creative', 'Media Buying', 'Content', 'Social Media', 'Tech', 'Account Management', 'SEO', 'Management', 'Admin'].map((d) => (
+                {['Architecture', 'Interior Design', 'Design & Drafting', 'Project Management', 'Construction Admin', 'Business Development', 'Admin', 'Management'].map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
@@ -155,8 +167,8 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-700">Role</label>
               <select value={form.role} onChange={(e) => set('role', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                <option value="contractor">Contractor</option>
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                <option value="contractor">Employee</option>
                 <option value="admin">Admin</option>
                 <option value="owner">Owner</option>
               </select>
@@ -165,26 +177,16 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
             <div className="space-y-1">
               <label className="text-xs font-medium text-gray-700">Status</label>
               <select value={form.status} onChange={(e) => set('status', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Currency</label>
-              <select value={form.currency} onChange={(e) => set('currency', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
-                {['PHP'].map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
               <label className="text-xs font-medium text-gray-700">Payment Method</label>
               <select value={form.payment_method} onChange={(e) => set('payment_method', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="">Select...</option>
                 {['PayPal', 'Wise', 'GCash', 'Bank Transfer', 'Other'].map((m) => (
                   <option key={m} value={m}>{m}</option>
@@ -200,12 +202,12 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                   <label className="text-xs font-medium text-gray-700">Bank Name</label>
                   <input value={form.bank_name} onChange={(e) => set('bank_name', e.target.value)}
                     placeholder="e.g. BDO, BPI, Metrobank"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Account Type</label>
                   <select value={form.bank_account_type} onChange={(e) => set('bank_account_type', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                     <option value="">Select...</option>
                     {['Savings', 'Checking', 'Payroll', 'Current'].map((t) => (
                       <option key={t} value={t}>{t}</option>
@@ -216,13 +218,13 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                   <label className="text-xs font-medium text-gray-700">Account Name</label>
                   <input value={form.bank_account_name} onChange={(e) => set('bank_account_name', e.target.value)}
                     placeholder="Name on bank account"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="col-span-2 space-y-1">
                   <label className="text-xs font-medium text-gray-700">Account Number</label>
                   <input value={form.bank_account_number} onChange={(e) => set('bank_account_number', e.target.value)}
                     placeholder="Account number"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
             </div>
@@ -231,7 +233,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               <label className="text-xs font-medium text-gray-700">Notes</label>
               <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
               />
             </div>
           </div>
@@ -249,7 +251,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-60 cursor-pointer whitespace-nowrap">
+              className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer whitespace-nowrap">
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>

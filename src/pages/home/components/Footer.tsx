@@ -45,106 +45,85 @@ export default function Footer() {
 
   return (
     <footer style={{ backgroundColor: '#1a2028' }} className="w-full text-white">
-      <div className="w-full px-4 md:px-16 lg:px-24 pt-6 pb-5 lg:py-8">
+      <div className="w-full px-4 md:px-16 lg:px-24 py-8 lg:py-12">
 
         {/* ─────────────── MOBILE layout (hidden on lg+) ─────────────── */}
-        <div className="flex flex-col gap-5 lg:hidden">
+        <div className="flex flex-col gap-6 lg:hidden">
 
-          {/* Row 1: logo + social icons */}
-          <div className="flex flex-row items-center justify-between">
-            <img
-              src="/images/logo-wordmark-alt.png"
-              alt="FS Architects"
-              className="h-8 w-auto object-contain brightness-0 invert"
-              draggable={false}
-            />
-            <div className="flex items-center gap-3">
-              {socialLinks.map(({ icon, label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/65 transition-colors duration-300 cursor-pointer"
-                >
-                  <i className={`${icon} text-sm`} />
-                </a>
-              ))}
-            </div>
-          </div>
+          {/* Logo */}
+          <img
+            src="/images/logo-wordmark-alt.png"
+            alt="FS Architects"
+            className="h-10 w-auto object-contain object-left brightness-0 invert self-start"
+            draggable={false}
+          />
 
-          {/* Row 2: Projects + Studio side by side */}
-          <div className="grid grid-cols-2 gap-5">
-
-            {/* Projects */}
+          {/* Projects + Studio */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4">
             <div className="flex flex-col gap-2">
               <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
                 {t('footer_projects')}
               </p>
               <div className="flex flex-col gap-1.5">
                 {projectLinks.map(({ label, href }) => (
-                  <a
-                    key={label}
-                    href={href}
-                    onClick={(e) => { e.preventDefault(); navigate(href); }}
-                    className={linkClass}
-                    style={linkStyle}
-                  >
+                  <a key={label} href={href} onClick={(e) => { e.preventDefault(); navigate(href); }} className={linkClass} style={linkStyle}>
                     {label}
                   </a>
                 ))}
               </div>
             </div>
-
-            {/* Studio + Get in touch */}
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
-                  {t('footer_studio')}
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {studioLinks.map(({ label, href, hash }) => (
-                    <a
-                      key={label}
-                      href={hash ? `${href}#${hash}` : href}
-                      onClick={(e) => { e.preventDefault(); handleStudioLink(href, hash); }}
-                      className={linkClass}
-                      style={linkStyle}
-                    >
-                      {label}
-                    </a>
-                  ))}
-                </div>
-              </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
+                {t('footer_studio')}
+              </p>
               <div className="flex flex-col gap-1.5">
-                <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
-                  {t('footer_get_in_touch')}
-                </p>
-                <a href="mailto:info@fsarchitects.ph" className={linkClass} style={linkStyle}>
-                  info@fsarchitects.ph
-                </a>
+                {studioLinks.map(({ label, href, hash }) => (
+                  <a key={label} href={hash ? `${href}#${hash}` : href} onClick={(e) => { e.preventDefault(); handleStudioLink(href, hash); }} className={linkClass} style={linkStyle}>
+                    {label}
+                  </a>
+                ))}
               </div>
             </div>
           </div>
+
+          {/* Get in Touch + social */}
+          <div className="flex items-end justify-between pt-5 border-t border-white/10">
+            <div className="flex flex-col gap-1">
+              <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
+                {t('footer_get_in_touch')}
+              </p>
+              <a href="mailto:info@fsarchitects.ph" className={linkClass} style={linkStyle}>
+                info@fsarchitects.ph
+              </a>
+            </div>
+            <div className="flex items-center gap-3">
+              {socialLinks.map(({ icon, label, href }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                  className="flex items-center justify-center text-white/30 hover:text-white/65 transition-colors duration-300 cursor-pointer">
+                  <i className={`${icon} text-base`} />
+                </a>
+              ))}
+            </div>
+          </div>
+
         </div>
 
         {/* ─────────────── DESKTOP layout (hidden below lg) ─────────────── */}
-        <div className="hidden lg:flex lg:flex-row lg:items-start lg:justify-between gap-8">
+        <div className="hidden lg:flex lg:flex-row lg:items-center lg:justify-between gap-8">
 
           {/* Left — Logo + divider + Get in Touch + social */}
-          <div className="flex flex-row items-start gap-10">
+          <div className="flex flex-row items-center gap-10">
             {/* Logo + tagline */}
-            <div className="shrink-0 -mt-5">
+            <div className="shrink-0 flex flex-col -mt-5">
               <img
                 src="/images/logo-wordmark-alt.png"
                 alt="FS Architects"
-                className="h-16 w-auto object-contain object-top brightness-0 invert block -ml-2"
+                className="h-20 w-auto object-contain brightness-0 invert block"
                 draggable={false}
               />
               <p
-                className="text-white/30 text-[13px] leading-relaxed max-w-[180px] -mt-2"
-                style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.05em' }}
+                className="text-white/30 text-[12px] leading-relaxed -mt-4"
+                style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.05em', paddingLeft: '0.75rem' }}
               >
                 Form. Space. Intent.
               </p>
@@ -154,7 +133,7 @@ export default function Footer() {
             <div className="w-px bg-white/10 self-stretch" />
 
             {/* Get in Touch + social */}
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-1">
               <p className="text-white/70 text-[10px] leading-none tracking-widest uppercase" style={headingStyle}>
                 {t('footer_get_in_touch')}
               </p>
@@ -165,7 +144,7 @@ export default function Footer() {
               >
                 info@fsarchitects.ph
               </a>
-              <div className="flex items-center gap-3 mt-0.5">
+              <div className="flex items-center gap-3">
                 {socialLinks.map(({ icon, label, href }) => (
                   <a
                     key={label}

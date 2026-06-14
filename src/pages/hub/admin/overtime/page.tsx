@@ -36,7 +36,6 @@ export default function AdminOvertimePage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isDemo) {
       const filtered = statusFilter === 'all' ? DEMO_OVERTIME : DEMO_OVERTIME.filter(r => r.status === statusFilter);
@@ -123,7 +122,7 @@ export default function AdminOvertimePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  {['Contractor', 'Date', 'Hours', 'Reason', 'Status', 'Filed', ''].map(h => (
+                  {['Employee', 'Date', 'Hours', 'Reason', 'Status', 'Filed', ''].map(h => (
                     <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3">{h}</th>
                   ))}
                 </tr>
@@ -135,8 +134,8 @@ export default function AdminOvertimePage() {
                     <tr key={r.id} className="hover:bg-gray-50/50">
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
-                            <span className="text-[#FF6B35] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
+                          <div className="w-7 h-7 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-[#1c2b3a] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
                           </div>
                           <div>
                             <p className="text-sm font-medium text-[#111827]">{u?.full_name}</p>
@@ -163,7 +162,7 @@ export default function AdminOvertimePage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <button onClick={() => openReview(r)}
-                          className="text-xs text-gray-500 hover:text-[#FF6B35] cursor-pointer transition-colors font-medium whitespace-nowrap">
+                          className="text-xs text-gray-500 hover:text-[#1c2b3a] cursor-pointer transition-colors font-medium whitespace-nowrap">
                           {r.status === 'pending' ? 'Review' : 'View'}
                         </button>
                       </td>
@@ -206,7 +205,7 @@ export default function AdminOvertimePage() {
                   onChange={(e) => setAdminNotes(e.target.value)}
                   rows={2}
                   placeholder="Optional notes..."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                 />
               </div>
               {selected.status === 'pending' ? (

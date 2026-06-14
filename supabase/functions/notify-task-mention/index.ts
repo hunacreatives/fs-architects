@@ -1,9 +1,36 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
+const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN');
 const HUB_URL = 'https://www.hunacreatives.com/hub/contractor/projects';
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json',
+};
+
+const db = {
+  headers: {
+    'apikey': SUPABASE_SERVICE_KEY,
+    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+  },
+};
+
+async function pgGet(table: string, params: string): Promise<any[]> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { headers: db.headers });
+  if (!res.ok) throw new Error(`pgGet ${table}: ${await res.text()}`);
+  return res.json();
+}
+
+async function pgInsert(table: string, body: object): Promise<void> {
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: db.headers,
+    body: JSON.stringify(body),
+  });
+}
 
 async function sendPush(user_id: string, title: string, body: string, url?: string) {
   try {
@@ -15,84 +42,75 @@ async function sendPush(user_id: string, title: string, body: string, url?: stri
   } catch {}
 }
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
-};
-
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   try {
-    const { comment_id, task_id, author_id, body, project_id } = await req.json();
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const { task_id, author_id, author_name, body, project_id } = await req.json();
 
-    // Extract @mentions (first name, case-insensitive)
+    if (!body || typeof body !== 'string') {
+      return new Response(JSON.stringify({ ok: true, skipped: 'no body' }), { headers: CORS });
+    }
+
     const mentions = [...body.matchAll(/@(\w+)/g)].map(m => m[1].toLowerCase());
-    if (!mentions.length) return new Response(JSON.stringify({ ok: true, skipped: true }), { headers: cors });
+    if (!mentions.length) return new Response(JSON.stringify({ ok: true, skipped: 'no mentions' }), { headers: CORS });
 
-    // Fetch all hub_users for this project to match mentions
-    const { data: contractors } = await supabase
-      .from('hub_project_contractors')
-      .select('hub_users(id, full_name, slack_id, email)')
-      .eq('project_id', project_id);
+    // Fetch project contractors
+    const pcRows = await pgGet('hub_project_contractors', `select=contractor_id&project_id=eq.${project_id}`);
+    const contractorIds: string[] = pcRows.map((r: any) => r.contractor_id);
 
-    const teamMembers = (contractors ?? [])
-      .map((c: any) => Array.isArray(c.hub_users) ? c.hub_users[0] : c.hub_users)
-      .filter(Boolean);
+    // Fetch contractors + admins
+    const [contractors, admins] = await Promise.all([
+      contractorIds.length > 0
+        ? pgGet('hub_users', `select=id,full_name,slack_id&id=in.(${contractorIds.join(',')})`)
+        : Promise.resolve([]),
+      pgGet('hub_users', `select=id,full_name,slack_id&role=in.(admin,owner)`),
+    ]);
 
-    // Fetch author name
-    const { data: author } = await supabase
-      .from('hub_users')
-      .select('full_name')
-      .eq('id', author_id)
-      .single();
-
-    const authorName = author?.full_name ?? 'Someone';
+    const seen = new Set<string>();
+    const team = [...contractors, ...admins].filter((u: any) => {
+      if (seen.has(u.id)) return false;
+      seen.add(u.id);
+      return true;
+    });
 
     // Fetch task title
-    const { data: task } = await supabase
-      .from('hub_project_tasks')
-      .select('title')
-      .eq('id', task_id)
-      .single();
+    const tasks = await pgGet('hub_project_tasks', `select=title&id=eq.${task_id}`);
+    const taskTitle = tasks[0]?.title ?? 'a task';
 
-    const taskTitle = task?.title ?? 'a task';
-
-    // Notify each mentioned user
     for (const mention of mentions) {
-      const mentioned = teamMembers.find((m: any) =>
-        m.full_name?.split(' ')[0]?.toLowerCase() === mention
+      const mentioned = team.find((m: any) =>
+        (m.full_name ?? '').toLowerCase().split(' ').some((p: string) => p === mention)
       );
       if (!mentioned || mentioned.id === author_id) continue;
 
-      // In-app notification
-      await supabase.from('hub_notifications').insert({
+      const deepLink = `${HUB_URL}?workspace=${project_id}&task=${task_id}`;
+
+      await pgInsert('hub_notifications', {
         user_id: mentioned.id,
         type: 'task_mention',
-        title: `${authorName} mentioned you`,
+        title: `${author_name} mentioned you`,
         body: `In "${taskTitle}": ${body.slice(0, 100)}`,
-        link: HUB_URL,
+        link: deepLink,
         read: false,
-      }).catch(() => {});
+      });
 
-      // Slack DM if they have a slack_id
       if (mentioned.slack_id && SLACK_BOT_TOKEN) {
         await fetch('https://slack.com/api/chat.postMessage', {
           method: 'POST',
           headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             channel: mentioned.slack_id,
-            text: `💬 *${authorName}* mentioned you in a task comment on *"${taskTitle}"*:\n> ${body.slice(0, 200)}\n<${HUB_URL}|Open in Sentro Hub →>`,
+            text: `💬 *${author_name}* mentioned you in *"${taskTitle}"*:\n> ${body.slice(0, 200)}\n<${deepLink}|Open in Sentro Hub →>`,
           }),
         }).catch(() => {});
       }
-      await sendPush(mentioned.id, `${authorName} mentioned you`, `In "${taskTitle}": ${body.slice(0, 100)}`, HUB_URL);
+
+      await sendPush(mentioned.id, `${author_name} mentioned you`, `In "${taskTitle}": ${body.slice(0, 100)}`, deepLink);
     }
 
-    return new Response(JSON.stringify({ ok: true, mentions }), { headers: cors });
+    return new Response(JSON.stringify({ ok: true, mentions }), { headers: CORS });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: cors });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: CORS });
   }
 });

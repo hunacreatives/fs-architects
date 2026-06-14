@@ -40,7 +40,6 @@ export default function ContractorOvertimePage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll(); }, [user]);
 
   const openModal = () => {
@@ -164,7 +163,7 @@ export default function ContractorOvertimePage() {
                     value={date}
                     max={today()}
                     onChange={(e) => { setDate(e.target.value); setFormError(''); }}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -177,7 +176,7 @@ export default function ContractorOvertimePage() {
                     step="0.5"
                     placeholder="e.g. 2"
                     onChange={(e) => { setHours(e.target.value); setFormError(''); }}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
                 </div>
               </div>
@@ -191,7 +190,7 @@ export default function ContractorOvertimePage() {
                   rows={2}
                   placeholder="What work requires overtime?"
                   maxLength={300}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                 />
               </div>
             </div>

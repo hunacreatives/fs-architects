@@ -1524,6 +1524,7 @@ export default function ProjectDetailPage() {
       )}
 
       <ProjectInfo
+        key={project.slug}
         name={name}
         description={description}
         mainImage={project.mainImage}

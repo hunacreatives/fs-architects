@@ -32,6 +32,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
   const [done, setDone] = useState(false);
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
+  const currencySymbol = form.currency === 'USD' ? '$' : '₱';
 
   const toggleDay = (d: string) =>
     set('work_days', form.work_days.includes(d) ? form.work_days.filter(x => x !== d) : [...form.work_days, d]);
@@ -39,7 +40,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
   const save = async () => {
     if (!form.full_name.trim() || !form.email.trim()) { setError('Name and email are required.'); return; }
     if (form.payment_type === 'hourly' && !form.hourly_rate) { setError('Hourly rate is required for hourly contractors.'); return; }
-    if ((form.payment_type === 'fixed' || form.payment_type === 'fixed_flexible') && !form.monthly_rate) { setError('Monthly rate is required.'); return; }
+    if ((form.payment_type === 'fixed' || form.payment_type === 'fixed_flexible') && !form.monthly_rate && form.role === 'contractor') { setError('Monthly rate is required.'); return; }
     if (form.payment_type === 'project_based' && !form.project_percentage) { setError('Project percentage is required.'); return; }
 
     setSaving(true);
@@ -60,7 +61,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         shift_start: form.shift_start || null,
         shift_end: form.shift_end || null,
         work_days: form.work_days,
-        slack_id: null,
+        slack_id: form.slack_id || null,
       },
     });
 
@@ -102,7 +103,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
       <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div>
-            <h2 className="font-semibold text-[#111827]">Add Member</h2>
+            <h2 className="font-semibold text-[#111827]">Add Team Member</h2>
             <p className="text-xs text-gray-400 mt-0.5">Create their profile — they'll get an invite email to set their password.</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
@@ -119,37 +120,44 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Full Name *</label>
                   <input value={form.full_name} onChange={e => set('full_name', e.target.value)}
-                    placeholder="Full name"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    placeholder="e.g. Juan dela Cruz"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Email *</label>
                   <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
                     placeholder="their@email.com"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Position / Role Title</label>
+                  <label className="text-xs font-medium text-gray-700">Department / Role Title</label>
                   <input value={form.department} onChange={e => set('department', e.target.value)}
-                    placeholder="e.g. Architect, Draftsman"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    placeholder="e.g. Architect, Interior Designer"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Start Date</label>
                   <input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Access Role</label>
                   <select value={form.role} onChange={e => set('role', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
                     <option value="contractor">Employee</option>
                     <option value="admin">HR / Admin</option>
+                    <option value="owner">Owner</option>
                   </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Slack ID</label>
+                  <input value={form.slack_id} onChange={e => set('slack_id', e.target.value)}
+                    placeholder="e.g. U09NUQFTZL6"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
             </div>
@@ -181,7 +189,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                     <div className="relative">
                       <input type="number" value={form.project_percentage} onChange={e => set('project_percentage', e.target.value)}
                         placeholder="e.g. 40" min="1" max="100" step="0.5"
-                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">%</span>
                     </div>
                     <p className="text-[11px] text-gray-400">They earn this % of the project fee after operational costs are deducted.</p>
@@ -189,20 +197,29 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <label className="text-xs font-medium text-gray-700">Currency</label>
+                    <select value={form.currency} onChange={e => set('currency', e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]">
+                      {['PHP', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                   {(form.payment_type === 'fixed' || form.payment_type === 'fixed_flexible') && (
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-700">Monthly Rate (PHP) *</label>
+                      <label className="text-xs font-medium text-gray-700">Monthly Rate ({form.currency}) *</label>
                       <input type="number" value={form.monthly_rate} onChange={e => set('monthly_rate', e.target.value)}
-                        placeholder="0.00"
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        placeholder={`${currencySymbol}0.00`}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                   )}
                   {(form.payment_type === 'hourly' || form.payment_type === 'fixed_flexible') && (
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-700">Hourly Rate (PHP) *</label>
+                      <label className="text-xs font-medium text-gray-700">Hourly Rate ({form.currency}) *</label>
                       <input type="number" value={form.hourly_rate} onChange={e => set('hourly_rate', e.target.value)}
-                        placeholder="0.00"
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        placeholder={`${currencySymbol}0.00`}
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                   )}
                 </div>
@@ -218,12 +235,12 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Shift Start</label>
                   <input type="time" value={form.shift_start} onChange={e => set('shift_start', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Shift End</label>
                   <input type="time" value={form.shift_end} onChange={e => set('shift_end', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               <div className="space-y-1">
@@ -253,7 +270,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
             Cancel
           </button>
           <button onClick={save} disabled={saving || !form.full_name.trim() || !form.email.trim()}
-            className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap flex items-center justify-center gap-2">
+            className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap flex items-center justify-center gap-2">
             {saving ? <><i className="ri-loader-4-line animate-spin text-sm"></i> Sending invite…</> : <><i className="ri-mail-send-line text-sm"></i> Create & Send Invite</>}
           </button>
         </div>

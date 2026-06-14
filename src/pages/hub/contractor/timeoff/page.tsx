@@ -20,7 +20,7 @@ const typeLabels: Record<string, string> = {
 const typeColors: Record<string, string> = {
   pto: 'bg-sky-100 text-sky-700',
   sick: 'bg-rose-100 text-rose-700',
-  emergency: 'bg-orange-100 text-orange-700',
+  emergency: 'bg-slate-100 text-[#1c2b3a]',
   unpaid: 'bg-gray-100 text-gray-600',
 };
 const statusColors: Record<string, string> = {
@@ -73,7 +73,6 @@ export default function ContractorTimeOffPage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchAll(); }, [user]);
 
   // Balance calculation (current year, approved only)
@@ -328,7 +327,7 @@ export default function ContractorTimeOffPage() {
                           locked
                             ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
                             : type === val
-                              ? 'border-[#FF6B35] bg-orange-50 text-[#FF6B35] font-medium cursor-pointer'
+                              ? 'border-[#1c2b3a] bg-slate-50 text-[#1c2b3a] font-medium cursor-pointer'
                               : 'border-gray-200 text-gray-600 hover:border-gray-300 cursor-pointer'
                         }`}
                       >
@@ -352,9 +351,9 @@ export default function ContractorTimeOffPage() {
 
               {/* Emergency notice */}
               {type === 'emergency' && (
-                <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-100 rounded-lg">
-                  <i className="ri-alarm-warning-line text-orange-500 text-sm mt-0.5 flex-shrink-0"></i>
-                  <p className="text-xs text-orange-700">Please notify HR immediately in addition to submitting this form. Emergencies do not require advance notice.</p>
+                <div className="flex items-start gap-2 p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                  <i className="ri-alarm-warning-line text-[#1c2b3a]/70 text-sm mt-0.5 flex-shrink-0"></i>
+                  <p className="text-xs text-[#1c2b3a]">Please notify HR immediately in addition to submitting this form. Emergencies do not require advance notice.</p>
                 </div>
               )}
 
@@ -375,7 +374,7 @@ export default function ContractorTimeOffPage() {
                 <button
                   type="button"
                   onClick={() => { setHalfDay(!halfDay); setEndDate(''); setFormError(''); }}
-                  className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${halfDay ? 'bg-[#FF6B35]' : 'bg-gray-200'}`}
+                  className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${halfDay ? 'bg-[#1c2b3a]' : 'bg-gray-200'}`}
                 >
                   <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${halfDay ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
@@ -389,7 +388,7 @@ export default function ContractorTimeOffPage() {
                       type="button"
                       onClick={() => setHalfDayPeriod(p)}
                       className={`py-2 text-xs rounded-lg border transition-all cursor-pointer capitalize ${
-                        halfDayPeriod === p ? 'border-[#FF6B35] bg-orange-50 text-[#FF6B35] font-medium' : 'border-gray-200 text-gray-600'
+                        halfDayPeriod === p ? 'border-[#1c2b3a] bg-slate-50 text-[#1c2b3a] font-medium' : 'border-gray-200 text-gray-600'
                       }`}
                     >
                       {p}
@@ -407,7 +406,7 @@ export default function ContractorTimeOffPage() {
                     value={startDate}
                     min={type === 'emergency' ? undefined : type === 'pto' ? addDays(today(), ADVANCE_DAYS) : today()}
                     onChange={(e) => { setStartDate(e.target.value); setFormError(''); }}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
                 </div>
                 {!halfDay && (
@@ -419,7 +418,7 @@ export default function ContractorTimeOffPage() {
                       min={startDate || today()}
                       max={type === 'pto' && startDate ? addDays(startDate, MAX_CONSECUTIVE - 1) : undefined}
                       onChange={(e) => { setEndDate(e.target.value); setFormError(''); }}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                     />
                   </div>
                 )}
@@ -463,7 +462,7 @@ export default function ContractorTimeOffPage() {
                   rows={2}
                   placeholder="Brief description..."
                   maxLength={300}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                 />
               </div>
             </div>

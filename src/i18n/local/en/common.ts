@@ -68,6 +68,11 @@ const translations = {
   footer_privacy: 'Privacy Policy',
   footer_terms: 'Terms of Use',
 
+  // ── Generic project body filler paragraphs ──
+  extra_para_1: 'The materiality of the project responds to its surroundings through a careful selection of local elements — raw concrete, natural stone, and warm timber — establishing a dialogue between the built structure and the landscape that frames it.',
+  extra_para_2: 'Natural light becomes the primary architectural material. Strategically placed openings filter the changing quality of light throughout the day, transforming the interior atmosphere from the cool clarity of morning to the warm, raking light of late afternoon.',
+  extra_para_3: 'The spatial sequence from threshold to interior unfolds gradually, each transition revealing a new relationship between shelter and openness — between the private world within and the broader landscape it inhabits.',
+  extra_para_4: 'Every surface, joint, and edge has been considered with the same rigour as the overall form. The architecture does not impose itself on the site; instead, it settles quietly, as though it had always been there.',
 
   // ── Mallberry Platinum Hall & Lounge ──
   proj_mallberry_platinum_hall_lounge_name: 'Mallberry Platinum Hall & Lounge',

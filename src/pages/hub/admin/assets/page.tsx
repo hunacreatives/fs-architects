@@ -17,7 +17,7 @@ const platformColors: Record<string, string> = {
   canva: 'bg-purple-100 text-purple-700',
   meta: 'bg-sky-100 text-sky-700',
   google_drive: 'bg-amber-100 text-amber-700',
-  client_account: 'bg-orange-100 text-orange-700',
+  client_account: 'bg-slate-100 text-[#1c2b3a]',
   email: 'bg-rose-100 text-rose-700',
   slack: 'bg-emerald-100 text-emerald-700',
   other: 'bg-gray-100 text-gray-600',
@@ -32,6 +32,16 @@ const emptyForm = { contractor_id: '', platform: 'canva', account_name: '', acce
 
 export default function AssetsPage() {
   const { isDemo } = useDemo();
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
 
   const [assets, setAssets] = useState<HubAsset[]>([]);
   const [contractors, setContractors] = useState<HubUser[]>([]);
@@ -54,10 +64,7 @@ export default function AssetsPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (isDemo) return;
-    fetchData();
-  }, [isDemo]);
+  useEffect(() => { fetchData(); }, []);
 
   const platforms = ['all', ...Array.from(new Set(assets.map((a) => a.platform)))];
 
@@ -88,16 +95,6 @@ export default function AssetsPage() {
     fetchData();
   };
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
-
   return (
     <AdminLayout title="Asset Access">
       <div className="space-y-4">
@@ -105,7 +102,7 @@ export default function AssetsPage() {
           <div className="relative flex-1 min-w-48">
             <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search assets..."
-              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg flex-wrap">
             {platforms.slice(0, 5).map((p) => (
@@ -130,7 +127,7 @@ export default function AssetsPage() {
                 <tr className="border-b border-gray-100">
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Platform</th>
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Account</th>
-                  <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Assigned To</th>
+                  <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Employee</th>
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Access Level</th>
                   <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Status</th>
                   <th className="px-5 py-3"></th>
@@ -160,7 +157,7 @@ export default function AssetsPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${accessColors[a.status]}`}>{a.status}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <button onClick={() => openEdit(a)} className="text-xs text-gray-500 hover:text-[#FF6B35] cursor-pointer font-medium transition-colors">Edit</button>
+                        <button onClick={() => openEdit(a)} className="text-xs text-gray-500 hover:text-[#1c2b3a] cursor-pointer font-medium transition-colors">Edit</button>
                       </td>
                     </tr>
                   );
@@ -183,10 +180,10 @@ export default function AssetsPage() {
             </div>
             <div className="p-5 space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Assigned To *</label>
+                <label className="text-xs font-medium text-gray-700">Employee *</label>
                 <select value={form.contractor_id} onChange={(e) => setForm({ ...form, contractor_id: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
-                  <option value="">Select contractor...</option>
+                  <option value="">Select employee...</option>
                   {contractors.map((u) => <option key={u.id} value={String(u.id)}>{u.full_name}</option>)}
                 </select>
               </div>
@@ -213,7 +210,7 @@ export default function AssetsPage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Account Name *</label>
                 <input value={form.account_name} onChange={(e) => setForm({ ...form, account_name: e.target.value })}
-                  placeholder="e.g. FS Architects AutoCAD License" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  placeholder="e.g. Huna Creatives Canva Team" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Status</label>

@@ -21,6 +21,16 @@ const cors = {
 const fmt = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+function normalizeRecipients(input: unknown) {
+  if (Array.isArray(input)) {
+    return input.map((value) => String(value || '').trim()).filter(Boolean);
+  }
+  if (typeof input === 'string') {
+    return input.split(/[,\n;]+/).map((value) => value.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -48,7 +58,12 @@ Deno.serve(async (req) => {
       project_id,
       app_base_url,
       amount_requested,
+      existing_invoice_log_id,
+      preview_only,
+      issue_date,
     } = await req.json();
+    const toList = normalizeRecipients(to);
+    const ccList = normalizeRecipients(cc);
 
     const lineItems: { description: string; amount: string }[] = line_items?.length
       ? line_items
@@ -56,18 +71,30 @@ Deno.serve(async (req) => {
     const lineItemsTotal = lineItems.reduce((s: number, i: any) => s + (parseFloat(i.amount) || 0), 0);
     const showPayments = show_payments !== false;
 
-    if (!to || !client_name || !project_name) {
+    if (toList.length === 0 || !client_name || !project_name) {
       return new Response(JSON.stringify({ error: 'to, client_name, and project_name are required' }), { status: 200, headers: cors });
     }
 
     const totalPaid: number = (payments ?? []).reduce((s: number, p: any) => s + p.amount, 0);
-    const balance = lineItemsTotal - totalPaid;
-    // amount_requested overrides the balance shown on invoice and payment link
-    const amountDue: number = amount_requested != null ? Number(amount_requested) : Math.max(balance, 0);
+    const requestedAmount = amount_requested != null && String(amount_requested).trim() !== '' ? Number(amount_requested) : NaN;
+    const amountDue: number = Number.isFinite(requestedAmount) ? requestedAmount : lineItemsTotal;
     const isPaid = amountDue <= 0;
     const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
-    const invoiceDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const fmtDate = (d: string | null | undefined) => d
+      ? new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : '—';
+    const issueDateFmt = fmtDate(issue_date || new Date().toISOString().slice(0, 10));
+    const dueDateFmt = fmtDate(deadline);
     const billedTo = bill_to_name || client_name;
+    if (existing_invoice_log_id) {
+      await supabase
+        .from('hub_invoice_payment_links')
+        .update({ status: 'closed' })
+        .eq('invoice_number', String(invoice_number))
+        .eq('project_id', project_id ?? null)
+        .eq('status', 'open');
+    }
+
     const { data: paymentLink, error: paymentLinkError } = await supabase
       .from('hub_invoice_payment_links')
       .insert({
@@ -75,7 +102,7 @@ Deno.serve(async (req) => {
         invoice_number: String(invoice_number),
         client_name,
         project_name,
-        to_email: to,
+        to_email: toList.join(', '),
         amount_due: amountDue,
         due_date: deadline ?? null,
         line_items: lineItems,
@@ -95,15 +122,20 @@ Deno.serve(async (req) => {
         : DEFAULT_BASE_URL;
     const payUrl = `${normalizedAppBase}/pay/${paymentLink.token}`;
 
+    // If this request is only for preview purposes, skip sending emails and return the token
+    if (preview_only) {
+      return new Response(JSON.stringify({ ok: true, token: paymentLink.token }), { headers: cors });
+    }
+
     const paymentsRows = (payments ?? []).map((p: any) => `
       <tr>
-        <td style="padding:10px 16px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">
+        <td style="padding:10px 16px;font-size:13px;color:#374151;border-top:1px solid #f3f4f6;">
           ${new Date(p.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </td>
-        <td style="padding:10px 16px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">
+        <td style="padding:10px 16px;font-size:13px;color:#374151;border-top:1px solid #f3f4f6;">
           ${p.notes ? p.notes : 'Payment received'}
         </td>
-        <td style="padding:10px 16px;font-size:13px;color:#059669;font-weight:600;text-align:right;border-bottom:1px solid #f3f4f6;">
+        <td style="padding:10px 16px;font-size:13px;color:#059669;font-weight:600;text-align:right;border-top:1px solid #f3f4f6;">
           ${fmt(p.amount)}
         </td>
       </tr>`).join('');
@@ -125,10 +157,10 @@ Deno.serve(async (req) => {
             <td style="background:#111827;padding:28px 40px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td>
+                  <td valign="middle">
                     <img src="${logoUrl}" alt="Huna Creatives" height="34" style="display:block;" />
                   </td>
-                  <td style="text-align:right;">
+                  <td align="right" valign="middle" style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Invoice</p>
                     <p style="margin:4px 0 0;color:#ffffff;font-size:16px;font-weight:700;">#${String(invoice_number).padStart(4, '0')}</p>
                   </td>
@@ -160,20 +192,38 @@ Deno.serve(async (req) => {
             </td>
           </tr>
 
-          <!-- Contract price -->
+          <!-- Dates row -->
           <tr>
-            <td style="padding:24px 40px 0;">
+            <td style="padding:20px 40px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width:50%;padding:0;">
+                    <p style="margin:0 0 4px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Issue Date</p>
+                    <p style="margin:0;font-size:13px;font-weight:700;color:#111827;">${issueDateFmt}</p>
+                  </td>
+                  <td style="width:50%;padding:0;text-align:right;">
+                    <p style="margin:0 0 4px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Due Date</p>
+                    <p style="margin:0;font-size:13px;font-weight:700;color:#111827;">${dueDateFmt}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Line items -->
+          <tr>
+            <td style="padding:16px 40px 0;">
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
                 <thead>
-                  <tr style="background:#f9fafb;">
-                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Description</th>
-                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:right;text-transform:uppercase;letter-spacing:0.05em;">Amount</th>
+                  <tr>
+                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:left;text-transform:uppercase;letter-spacing:0.05em;background:#f9fafb;">Description</th>
+                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:right;text-transform:uppercase;letter-spacing:0.05em;background:#f9fafb;">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${lineItems.map((i: any) => `<tr>
-                    <td style="padding:14px 16px;font-size:13px;color:#111827;font-weight:500;">${i.description}</td>
-                    <td style="padding:14px 16px;font-size:14px;font-weight:700;color:#111827;text-align:right;">${fmt(parseFloat(i.amount) || 0)}</td>
+                    <td style="padding:14px 16px;font-size:13px;color:#111827;font-weight:500;border-top:1px solid #f3f4f6;">${i.description}</td>
+                    <td style="padding:14px 16px;font-size:14px;font-weight:700;color:#111827;text-align:right;border-top:1px solid #f3f4f6;">${fmt(parseFloat(i.amount) || 0)}</td>
                   </tr>`).join('')}
                 </tbody>
               </table>
@@ -183,14 +233,13 @@ Deno.serve(async (req) => {
           <!-- Payments received -->
           ${showPayments && paymentsRows ? `
           <tr>
-            <td style="padding:20px 40px 0;">
-              <p style="margin:0 0 10px;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Payments Received</p>
+            <td style="padding:16px 40px 0;">
               <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
                 <thead>
-                  <tr style="background:#f9fafb;">
-                    <th style="padding:8px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:left;">Date</th>
-                    <th style="padding:8px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:left;">Note</th>
-                    <th style="padding:8px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:right;">Amount</th>
+                  <tr>
+                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:left;text-transform:uppercase;letter-spacing:0.05em;background:#f9fafb;">Date</th>
+                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:left;text-transform:uppercase;letter-spacing:0.05em;background:#f9fafb;">Note</th>
+                    <th style="padding:10px 16px;font-size:11px;color:#6b7280;font-weight:600;text-align:right;text-transform:uppercase;letter-spacing:0.05em;background:#f9fafb;">Payment</th>
                   </tr>
                 </thead>
                 <tbody>${paymentsRows}</tbody>
@@ -201,21 +250,24 @@ Deno.serve(async (req) => {
           <!-- Balance summary -->
           <tr>
             <td style="padding:20px 40px 28px;">
-              <table width="100%" cellpadding="0" cellspacing="0">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:14px 18px;">
                 <tr>
-                  <td style="padding:6px 0;font-size:13px;color:#6b7280;">Subtotal</td>
-                  <td style="padding:6px 0;font-size:13px;color:#6b7280;text-align:right;">${fmt(lineItemsTotal)}</td>
+                  <td colspan="2" style="padding:0 0 8px;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;">Invoice Summary</td>
+                </tr>
+                <tr>
+                  <td style="padding:7px 0;font-size:13px;color:#6b7280;">Subtotal</td>
+                  <td style="padding:7px 0;font-size:13px;color:#6b7280;text-align:right;white-space:nowrap;">${fmt(lineItemsTotal)}</td>
                 </tr>
                 ${showPayments ? `<tr>
-                  <td style="padding:6px 0;font-size:13px;color:#6b7280;">Total paid</td>
-                  <td style="padding:6px 0;font-size:13px;color:#059669;font-weight:600;text-align:right;">− ${fmt(totalPaid)}</td>
+                  <td style="padding:7px 0;font-size:13px;color:#6b7280;">Total paid so far</td>
+                  <td style="padding:7px 0;font-size:13px;color:#059669;font-weight:600;text-align:right;white-space:nowrap;">− ${fmt(totalPaid)}</td>
                 </tr>` : ''}
                 <tr>
-                  <td colspan="2" style="padding:2px 0;"><div style="border-top:2px solid #e5e7eb;margin:4px 0;"></div></td>
+                  <td colspan="2" style="padding:4px 0 0;"><div style="border-top:2px solid #e5e7eb;"></div></td>
                 </tr>
                 <tr>
-                  <td style="padding:8px 0;font-size:15px;font-weight:700;color:#111827;">Balance due</td>
-                  <td style="padding:8px 0;font-size:18px;font-weight:800;color:${isPaid ? '#059669' : '#FF6B35'};text-align:right;">${isPaid ? 'Paid in full' : fmt(amountDue)}</td>
+                  <td style="padding:12px 0 0;font-size:15px;font-weight:700;color:#111827;">Amount due</td>
+                  <td style="padding:12px 0 0;font-size:18px;font-weight:800;color:${isPaid ? '#059669' : '#FF6B35'};text-align:right;white-space:nowrap;">${isPaid ? 'Paid in full' : fmt(amountDue)}</td>
                 </tr>
               </table>
             </td>
@@ -267,37 +319,49 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         from: FROM_EMAIL,
-        to: [to],
-        ...(cc ? { cc: [cc] } : {}),
+        to: toList,
+        ...(ccList.length > 0 ? { cc: ccList } : {}),
+        bcc: ['contact@hunacreatives.com'],
         subject: subject ?? `Invoice #${String(invoice_number).padStart(4, '0')} — ${project_name}`,
         html,
       }),
     });
+    clearTimeout(timeout);
 
     const resBody = await res.json();
     if (!res.ok) {
       return new Response(JSON.stringify({ error: resBody?.message ?? 'Failed to send email' }), { status: 200, headers: cors });
     }
 
-    await supabase.from('hub_invoice_log').insert({
+    const logPayload = {
       invoice_number: String(invoice_number),
       project_id: project_id ?? null,
       client_name,
       project_name,
-      sent_to: to,
-      sent_cc: cc ?? null,
+      sent_to: toList.join(', '),
+      sent_cc: ccList.length > 0 ? ccList.join(', ') : null,
       subject: subject ?? null,
       contract_price: lineItemsTotal,
       total_paid: totalPaid,
       balance: amountDue,
       line_items: lineItems,
       show_payments: showPayments,
-    });
+      sent_at: new Date().toISOString(),
+    };
+
+    if (existing_invoice_log_id) {
+      await supabase.from('hub_invoice_log').update(logPayload).eq('id', existing_invoice_log_id);
+    } else {
+      await supabase.from('hub_invoice_log').insert(logPayload);
+    }
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

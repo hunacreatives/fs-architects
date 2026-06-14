@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHubAuth } from '@/hooks/useHubAuth';
 
@@ -24,9 +24,10 @@ interface Props {
 }
 
 export default function ContractorSidebar({ collapsed, onToggle }: Props) {
-  const { signOut } = useAuth();
+  const { signOut, hubUser: realHubUser } = useAuth();
   const { hubUser } = useHubAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isProjectBased = hubUser?.payment_type === 'project_based';
   const filteredBase = isProjectBased
@@ -35,7 +36,6 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
   const dividerIdx = filteredBase.findIndex(i => (i as any).divider);
   const navItems = [
     ...filteredBase.slice(0, dividerIdx),
-    { to: '/hub/contractor/projects', label: 'My Work', icon: 'ri-folder-line' },
     ...filteredBase.slice(dividerIdx),
   ];
 
@@ -64,15 +64,15 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
         <div className={`flex items-center gap-2.5 px-4 h-[66px] border-b border-white/60 ${collapsed ? 'justify-center px-0' : ''}`}>
           <div
             onClick={collapsed ? onToggle : undefined}
-            className={`w-10 h-10 rounded-2xl bg-[#FF6B35] text-white flex items-center justify-center shadow-sm flex-shrink-0 ${collapsed ? 'cursor-pointer hover:bg-[#e55a27] transition-colors' : ''}`}
+            className={`w-10 h-10 rounded-2xl overflow-hidden flex-shrink-0 ${collapsed ? 'cursor-pointer' : ''}`}
           >
-            <img src="/s-logo.png" alt="S" className="w-6 h-6 object-contain" style={{ filter: 'invert(1)' }} />
+            <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <>
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold truncate">FS Architects</p>
-                <p className="text-[16px] font-semibold text-gray-800 leading-none">Sentro</p>
+                <p className="text-[13px] font-semibold text-gray-800 truncate leading-tight">FS Architects</p>
+                <p className="text-[11px] text-gray-400 tracking-wide leading-tight">Sentro</p>
               </div>
               <button
                 onClick={onToggle}
@@ -101,7 +101,7 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
                 className={({ isActive }) =>
                   `group flex items-center gap-3 px-3 py-2 rounded-2xl text-[13px] transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-white/70 text-[#FF6B35] shadow-sm shadow-orange-100/60'
+                      ? 'bg-white/70 text-[#1c2b3a] shadow-sm shadow-slate-200/60/60'
                       : 'text-gray-500 hover:bg-white/50 hover:text-gray-800'
                   } ${collapsed ? 'justify-center px-2' : ''}`
                 }
@@ -127,13 +127,13 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
               {hubUser.avatar_url ? (
                 <img src={hubUser.avatar_url} alt={hubUser.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-bold text-white">{hubUser.full_name.charAt(0)}</span>
                 </div>
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{hubUser.full_name}</p>
-                <p className="text-[11px] text-gray-400 truncate">{hubUser.department ?? 'Contractor'}</p>
+                <p className="text-[11px] text-gray-400 truncate">{hubUser.department ?? 'Employee'}</p>
               </div>
               <button onClick={handleSignOut} title="Sign out"
                 className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-500 hover:bg-white/50 transition-colors cursor-pointer flex-shrink-0">

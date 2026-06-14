@@ -39,7 +39,6 @@ export default function ContractorRequestsPage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchRequests(); }, [user]);
 
   const submit = async () => {
@@ -76,7 +75,7 @@ export default function ContractorRequestsPage() {
           <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
             <i className="ri-inbox-line text-3xl text-gray-200 mb-2 block"></i>
             <p className="text-sm text-gray-400">No requests yet</p>
-            <button onClick={() => setShowModal(true)} className="mt-3 text-sm text-[#FF6B35] hover:underline cursor-pointer">Create your first request</button>
+            <button onClick={() => setShowModal(true)} className="mt-3 text-sm text-[#1c2b3a] hover:underline cursor-pointer">Create your first request</button>
           </div>
         ) : (
           <div className="space-y-2">
@@ -122,13 +121,13 @@ export default function ContractorRequestsPage() {
                 <label className="text-xs font-medium text-gray-700">Subject *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Brief subject of your request..."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Details</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4}
                   placeholder="Describe your request in detail..." maxLength={500}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">

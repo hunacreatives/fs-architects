@@ -5,6 +5,7 @@ import { HubAnnouncement } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_ANNOUNCEMENTS } from '@/lib/demoData';
+import { createHubNotifications } from '@/lib/hubNotifications';
 
 const priorityColors: Record<string, string> = {
   normal: 'bg-gray-100 text-gray-600',
@@ -15,7 +16,7 @@ const categoryColors: Record<string, string> = {
   payroll: 'bg-emerald-100 text-emerald-700',
   meeting: 'bg-sky-100 text-sky-700',
   holiday: 'bg-purple-100 text-purple-700',
-  policy: 'bg-orange-100 text-orange-700',
+  policy: 'bg-slate-100 text-[#1c2b3a]',
   general: 'bg-gray-100 text-gray-600',
 };
 
@@ -92,6 +93,20 @@ export default function AnnouncementsPage() {
           supabase.functions.invoke('notify-announcement', {
             body: { title: form.title, body: form.body, priority: form.priority, category: form.category, poster_name: hubUser?.full_name, poster_avatar: hubUser?.avatar_url },
           }).catch(() => {});
+          // In-app notifications for all active contractors
+          supabase.from('hub_users').select('id').eq('status', 'active').eq('role', 'contractor').then(({ data }) => {
+            if (!data?.length) return;
+            createHubNotifications(
+              data.map(u => ({
+                user_id: u.id,
+                type: 'announcement',
+                title: form.priority === 'urgent' ? '🚨 ' + form.title : form.title,
+                body: form.body.slice(0, 100),
+                link: '/hub/contractor/announcements',
+                read: false,
+              }))
+            ).catch(() => {});
+          });
         }
       }
       if (error) { setSaveError(error.message); return; }
@@ -148,7 +163,7 @@ export default function AnnouncementsPage() {
                     <div className="flex items-center gap-2 mt-2">
                       {(a as any).hub_users?.avatar_url
                         ? <img src={(a as any).hub_users.avatar_url} className="w-5 h-5 rounded-full object-cover object-top" />
-                        : <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center"><span className="text-white text-[9px] font-bold">{(a as any).hub_users?.full_name?.charAt(0) ?? '?'}</span></div>
+                        : <div className="w-5 h-5 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-[9px] font-bold">{(a as any).hub_users?.full_name?.charAt(0) ?? '?'}</span></div>
                       }
                       <p className="text-xs text-gray-400">{(a as any).hub_users?.full_name ?? 'Unknown'} · {new Date(a.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                     </div>
@@ -181,19 +196,19 @@ export default function AnnouncementsPage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Announcement title..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  placeholder="Announcement title..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Message *</label>
                 <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={4}
                   placeholder="Write your announcement..." maxLength={500}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Category</label>
                   <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                     {['general', 'payroll', 'meeting', 'holiday', 'policy'].map((c) => (
                       <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                     ))}
@@ -202,7 +217,7 @@ export default function AnnouncementsPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Priority</label>
                   <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white">
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                     {['normal', 'important', 'urgent'].map((p) => (
                       <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
                     ))}
@@ -235,7 +250,7 @@ export default function AnnouncementsPage() {
                     value={form.scheduled_at}
                     onChange={e => setForm({ ...form, scheduled_at: e.target.value })}
                     min={new Date().toISOString().slice(0, 16)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
                 )}
               </div>
@@ -295,7 +310,7 @@ export default function AnnouncementsPage() {
                 <div className="flex items-center gap-2 mt-3">
                   {(detailAnn as any).hub_users?.avatar_url
                     ? <img src={(detailAnn as any).hub_users.avatar_url} className="w-6 h-6 rounded-full object-cover object-top" />
-                    : <div className="w-6 h-6 rounded-full bg-[#FF6B35] flex items-center justify-center"><span className="text-white text-[10px] font-bold">{(detailAnn as any).hub_users?.full_name?.charAt(0) ?? '?'}</span></div>
+                    : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-[10px] font-bold">{(detailAnn as any).hub_users?.full_name?.charAt(0) ?? '?'}</span></div>
                   }
                   <p className="text-xs text-gray-400">{(detailAnn as any).hub_users?.full_name ?? 'Unknown'} · {new Date(detailAnn.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 </div>
@@ -341,7 +356,7 @@ export default function AnnouncementsPage() {
                             <div key={c.id} className="flex items-start gap-2.5">
                               {poster?.avatar_url
                                 ? <img src={poster.avatar_url} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-                                : <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{poster?.full_name?.charAt(0) ?? '?'}</span></div>
+                                : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{poster?.full_name?.charAt(0) ?? '?'}</span></div>
                               }
                               <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2">
                                 <div className="flex items-center justify-between mb-0.5">

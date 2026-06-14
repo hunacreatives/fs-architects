@@ -20,6 +20,7 @@ export default function ContractorProfilePage() {
     full_name: u?.full_name || '',
     phone: u?.phone || '',
     address: u?.address || '',
+    slack_username: u?.slack_username || '',
     emergency_contact_name: u?.emergency_contact_name || '',
     emergency_contact_relationship: u?.emergency_contact_relationship || '',
     emergency_contact_phone: u?.emergency_contact_phone || '',
@@ -42,6 +43,7 @@ export default function ContractorProfilePage() {
       full_name: form.full_name,
       phone: form.phone || null,
       address: form.address || null,
+      slack_username: form.slack_username || null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_relationship: form.emergency_contact_relationship || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
@@ -99,7 +101,7 @@ export default function ContractorProfilePage() {
   const ecPhone = u.emergency_contact_phone;
   const ecDisplay = [ecName, ecRel, ecPhone].filter(Boolean).join(' · ') || '—';
 
-  const inputCls = 'w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]';
+  const inputCls = 'w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]';
 
   return (
     <ContractorLayout title="My Profile">
@@ -117,7 +119,7 @@ export default function ContractorProfilePage() {
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt={user.full_name} className="w-20 h-20 rounded-2xl object-cover object-top" />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-[#FF6B35] flex items-center justify-center">
+                <div className="w-20 h-20 rounded-2xl bg-[#1c2b3a] flex items-center justify-center">
                   <span className="text-white text-2xl font-bold">{user.full_name.charAt(0).toUpperCase()}</span>
                 </div>
               )}
@@ -169,7 +171,7 @@ export default function ContractorProfilePage() {
                 { label: 'Phone', value: user.phone || '—' },
                 { label: 'Address', value: user.address || '—' },
                 { label: 'Emergency Contact', value: ecDisplay },
-                { label: 'Phone Number', value: user.phone || '—' },
+                { label: 'Slack Display Name', value: user.slack_username || '—' },
                 { label: 'Department', value: user.department || '—' },
                 { label: 'Birthday', value: u.birthday ? new Date(u.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
                 { label: 'Start Date', value: user.start_date ? new Date(user.start_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
@@ -205,8 +207,8 @@ export default function ContractorProfilePage() {
                 <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="City, Province" className={inputCls} />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Phone Number</label>
-                <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="e.g. +63 9XX XXX XXXX" className={inputCls} />
+                <label className="text-xs font-medium text-gray-700">Slack Display Name</label>
+                <input value={form.slack_username} onChange={(e) => setForm({ ...form, slack_username: e.target.value })} placeholder="Your name as it appears in Slack" className={inputCls} />
               </div>
 
               {/* Emergency Contact */}
@@ -219,7 +221,7 @@ export default function ContractorProfilePage() {
 
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setEditing(false)} className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 cursor-pointer whitespace-nowrap">Cancel</button>
-                <button type="submit" disabled={saving} className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-60 cursor-pointer whitespace-nowrap">
+                <button type="submit" disabled={saving} className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer whitespace-nowrap">
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>

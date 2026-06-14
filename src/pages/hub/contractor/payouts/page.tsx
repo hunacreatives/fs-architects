@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPeriods, fmtTime, fmtDate, fmtPHP } from '@/lib/formatUtils';
+import { getPeriods, fmtTime, fmtDate, fmtPHP, localToday } from '@/lib/formatUtils';
+import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
 
 interface DayRow {
   date: string;
@@ -18,33 +19,6 @@ interface RateEntry {
   payment_type: string;
   hourly_rate: number | null;
   monthly_rate: number | null;
-}
-
-const DAY_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-function countWorkingDays(startDate: string, endDate: string, workDays: string[] = []) {
-  const scheduled = workDays.length > 0
-    ? new Set(workDays.map(d => DAY_MAP[d]))
-    : new Set([1, 2, 3, 4, 5]);
-  let count = 0;
-  const end = new Date(`${endDate}T00:00:00`);
-  const cur = new Date(`${startDate}T00:00:00`);
-  while (cur <= end) {
-    if (scheduled.has(cur.getDay())) count++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return count;
-}
-
-function countScheduledHours(startDate: string, endDate: string, workDays: string[] | null | undefined) {
-  if (!startDate || !endDate || endDate < startDate) return 0;
-  return countWorkingDays(startDate, endDate, workDays || []) * 8;
-}
-
-function dateBefore(dateStr: string, days = 1) {
-  const d = new Date(`${dateStr}T00:00:00`);
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
 }
 
 function generatePayslipHTML(opts: {
@@ -110,36 +84,36 @@ function generatePayslipHTML(opts: {
 <body>
 
   <!-- Letterhead -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #FF6B35;margin-bottom:28px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #1c2b3a;margin-bottom:28px;">
     <div style="display:flex;align-items:center;gap:14px;">
-      <img src="${logoUrl}" alt="FS Architects" style="height:44px;width:auto;object-fit:contain;" />
+      <img src="${logoUrl}" alt="Huna Creatives" style="height:44px;width:auto;object-fit:contain;" />
       <div>
-        <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">FS Architects</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · fsarchitects.ph</div>
+        <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">Huna Creatives</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · hunacreatives.com</div>
       </div>
     </div>
     <div style="text-align:right;">
-      <div style="font-size:22px;font-weight:800;color:#FF6B35;letter-spacing:3px;">PAYSLIP</div>
+      <div style="font-size:22px;font-weight:800;color:#1c2b3a;letter-spacing:3px;">PAYSLIP</div>
       <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Document No. HC-${Date.now().toString().slice(-8)}</div>
       <div style="font-size:11px;color:#9ca3af;">Issued: ${generatedDate}</div>
     </div>
   </div>
 
   <!-- Certification statement -->
-  <div style="background:#f9fafb;border-left:3px solid #FF6B35;padding:14px 16px;border-radius:0 8px 8px 0;margin-bottom:28px;">
+  <div style="background:#f9fafb;border-left:3px solid #1c2b3a;padding:14px 16px;border-radius:0 8px 8px 0;margin-bottom:28px;">
     <p style="font-size:12px;color:#374151;line-height:1.7;">
       <strong>To Whom It May Concern:</strong><br>
-      This is to certify that <strong>${name}</strong>${department ? `, assigned to the <strong>${department}</strong> department,` : ''} is an active employee of <strong>FS Architects</strong>, a creative agency based in Cebu, Philippines. This document serves as an official record of compensation rendered for the pay period indicated below, and may be used for financial, banking, or institutional purposes.
+      This is to certify that <strong>${name}</strong>${department ? `, assigned to the <strong>${department}</strong> department,` : ''} is an active independent contractor of <strong>Huna Creatives</strong>, a creative agency based in Cebu, Philippines. This document serves as an official record of compensation rendered for the pay period indicated below, and may be used for financial, banking, or institutional purposes.
     </p>
   </div>
 
-  <!-- Employee + Period info -->
+  <!-- Contractor + Period info -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:28px;">
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Employee</div>
       <div style="font-size:15px;font-weight:700;color:#111827;">${name}</div>
       ${department ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${department}</div>` : ''}
-      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Employee</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Independent Contractor</div>
     </div>
     <div>
       <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Pay Period</div>
@@ -218,7 +192,7 @@ function generatePayslipHTML(opts: {
             TOTAL COMPENSATION
             <div style="font-size:11px;font-weight:400;color:#9ca3af;margin-top:2px;">For the period ${period.label}</div>
           </td>
-          <td style="padding:16px;text-align:right;font-weight:900;font-size:22px;color:#FF6B35;">${fmt(totalPay)}</td>
+          <td style="padding:16px;text-align:right;font-weight:900;font-size:22px;color:#1c2b3a;">${fmt(totalPay)}</td>
         </tr>
       </tbody>
     </table>
@@ -229,14 +203,14 @@ function generatePayslipHTML(opts: {
     <div>
       <div style="border-top:1.5px solid #374151;padding-top:8px;margin-top:48px;">
         <div style="font-size:12px;font-weight:700;color:#111827;">Francis Fiel Roble</div>
-        <div style="font-size:11px;color:#6b7280;">Owner, FS Architects</div>
+        <div style="font-size:11px;color:#6b7280;">Owner, Huna Creatives</div>
         <div style="font-size:11px;color:#6b7280;">Date: ${generatedDate}</div>
       </div>
     </div>
     <div>
       <div style="border-top:1.5px solid #d1d5db;padding-top:8px;margin-top:48px;">
         <div style="font-size:12px;font-weight:700;color:#111827;">${name}</div>
-        <div style="font-size:11px;color:#6b7280;">Employee</div>
+        <div style="font-size:11px;color:#6b7280;">Independent Contractor</div>
         <div style="font-size:11px;color:#6b7280;">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
       </div>
     </div>
@@ -245,11 +219,11 @@ function generatePayslipHTML(opts: {
   <!-- Footer -->
   <div style="border-top:1px solid #f0f0f0;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-start;">
     <div style="font-size:10px;color:#9ca3af;max-width:420px;line-height:1.7;">
-      This document is an officially issued payslip by FS Architects. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
-      <br>For verification, contact us at <strong>fsarchitects.ph</strong>.
+      This document is an officially issued payslip by Huna Creatives. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
+      <br>For verification, contact us at <strong>hunacreatives.com</strong>.
     </div>
     <div style="text-align:right;">
-      <img src="${logoUrl}" alt="FS Architects" style="height:28px;width:auto;opacity:0.3;" />
+      <img src="${logoUrl}" alt="Huna Creatives" style="height:28px;width:auto;opacity:0.3;" />
     </div>
   </div>
 
@@ -265,13 +239,14 @@ export default function ContractorPayoutsPage() {
   const periods = startDate
     ? allPeriods.filter(p => p.end >= startDate)
     : allPeriods;
-  const [selectedPeriod, setSelectedPeriod] = useState(periods[periods.length - 1]);
+  const [selectedPeriod, setSelectedPeriod] = useState<(typeof periods)[number] | null>(periods[periods.length - 1] ?? null);
   const [days, setDays] = useState<DayRow[]>([]);
 
   // Button unlocks on the cutoff day itself (compare date only, not time)
   const todayPHT = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const canSubmitPeriod = todayPHT >= selectedPeriod.end;
+  const canSubmitPeriod = selectedPeriod ? todayPHT >= selectedPeriod.end : false;
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [existingPayout, setExistingPayout] = useState<any>(null);
   const [rateHistory, setRateHistory] = useState<RateEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -280,51 +255,144 @@ export default function ContractorPayoutsPage() {
   const [disputeSaving, setDisputeSaving] = useState(false);
   const [existingDispute, setExistingDispute] = useState<any>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Hourly-only: ad-hoc fund transfer request state
+  const [hourlyPeriod, setHourlyPeriod] = useState<{ start: string; end: string; label: string } | null>(null);
+  const [hourlyDays, setHourlyDays] = useState<DayRow[]>([]);
+  const [hourlyRequest, setHourlyRequest] = useState<any>(null);
+  const [hourlyLoading, setHourlyLoading] = useState(false);
+
   useEffect(() => {
-    if (hubUser?.id) fetchDays();
-  }, [hubUser, selectedPeriod]);
+    if (!periods.length) {
+      setSelectedPeriod(null);
+      setDays([]);
+      setExistingPayout(null);
+      setExistingDispute(null);
+      setRateHistory([]);
+      setLoading(false);
+      return;
+    }
+
+    setSelectedPeriod((current) => {
+      if (current && periods.some((period) => period.start === current.start)) return current;
+      return periods[periods.length - 1];
+    });
+  }, [periods]);
 
   const fetchDays = async () => {
-    setLoading(true);
-    const [daysRes, payoutRes, rateRes] = await Promise.all([
-      supabase
-        .from('hub_daily_hours')
-        .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
-        .eq('user_id', hubUser!.id)
-        .gte('date', selectedPeriod.start)
-        .lte('date', selectedPeriod.end)
-        .order('date', { ascending: true }),
-      supabase
-        .from('hub_payouts')
-        .select('id, status, final_payout, payment_date')
-        .eq('contractor_id', hubUser!.id)
-        .eq('cutoff_start', selectedPeriod.start)
-        .maybeSingle(),
-      supabase
-        .from('hub_rate_history')
-        .select('effective_date, payment_type, hourly_rate, monthly_rate')
-        .eq('contractor_id', hubUser!.id)
-        .lte('effective_date', selectedPeriod.end)
-        .order('effective_date', { ascending: true }),
-    ]);
-    const payout = payoutRes.data ?? null;
-    setDays((daysRes.data as DayRow[]) ?? []);
-    setRateHistory((rateRes.data as RateEntry[]) ?? []);
-    setExistingPayout(payout);
+    if (!hubUser || !selectedPeriod) return;
 
-    if (payout?.id) {
-      const { data: dispute } = await supabase
-        .from('hub_payslip_disputes')
-        .select('id, reason, status, admin_notes, created_at')
-        .eq('payout_id', payout.id)
-        .maybeSingle();
-      setExistingDispute(dispute ?? null);
-    } else {
+    setLoadError('');
+    setLoading(true);
+    try {
+      const isCurrentPeriod = todayPHT >= selectedPeriod.start && todayPHT <= selectedPeriod.end;
+      const [slackRes, daysRes, payoutRes, rateRes] = await Promise.all([
+        isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
+        supabase
+          .from('hub_daily_hours')
+          .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
+          .eq('user_id', hubUser.id)
+          .gte('date', selectedPeriod.start)
+          .lte('date', selectedPeriod.end)
+          .order('date', { ascending: true }),
+        supabase
+          .from('hub_payouts')
+          .select('id, status, final_payout, payment_date, approved_hours, hourly_rate, base_pay, overtime_pay, bonus, incentives, reimbursements, deductions, advances, penalties, adjustments')
+          .eq('contractor_id', hubUser.id)
+          .eq('cutoff_start', selectedPeriod.start)
+          .maybeSingle(),
+        supabase
+          .from('hub_rate_history')
+          .select('effective_date, payment_type, hourly_rate, monthly_rate')
+          .eq('contractor_id', hubUser.id)
+          .lte('effective_date', selectedPeriod.end)
+          .order('effective_date', { ascending: true }),
+      ]);
+      const payout = payoutRes.data ?? null;
+      const mergedDays = mergeLiveAttendanceIntoDailyHours(
+        (((daysRes.data as DayRow[]) ?? []) as any[]).map((d: any) => ({ ...d, user_id: hubUser.id })),
+        (slackRes as any)?.data?.attendance || [],
+        [hubUser.id],
+        todayPHT,
+      ).map(({ user_id: _userId, ...rest }) => rest as DayRow);
+      setDays(mergedDays);
+      setRateHistory((rateRes.data as RateEntry[]) ?? []);
+      setExistingPayout(payout);
+
+      if (payout?.id) {
+        const { data: dispute } = await supabase
+          .from('hub_payslip_disputes')
+          .select('id, reason, status, admin_notes, created_at')
+          .eq('payout_id', payout.id)
+          .maybeSingle();
+        setExistingDispute(dispute ?? null);
+      } else {
+        setExistingDispute(null);
+      }
+    } catch (error) {
+      console.error('Contractor payouts load failed:', error);
+      setLoadError('Unable to load payout details right now.');
+      setDays([]);
+      setRateHistory([]);
+      setExistingPayout(null);
       setExistingDispute(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  useEffect(() => {
+    if (hubUser?.id && selectedPeriod) fetchDays();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hubUser?.id, selectedPeriod?.start]);
+
+  // Hourly contractors use a separate ad-hoc period (not bi-monthly)
+  const fetchHourlyData = async () => {
+    if (!hubUser) return;
+    setHourlyLoading(true);
+    try {
+      const today = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      // Last paid payout determines the start of the new period
+      const { data: lastPaid } = await supabase
+        .from('hub_payouts').select('cutoff_end').eq('contractor_id', hubUser.id).eq('status', 'paid')
+        .order('cutoff_end', { ascending: false }).limit(1).maybeSingle();
+      const rawStart = lastPaid
+        ? (() => { const d = new Date(lastPaid.cutoff_end + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })()
+        : ((hubUser as any).start_date ?? today);
+      const periodStart = rawStart > today ? today : rawStart;
+
+      const [daysRes, slackRes, openReqRes] = await Promise.all([
+        supabase.from('hub_daily_hours')
+          .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
+          .eq('user_id', hubUser.id).gte('date', periodStart).lte('date', today).order('date', { ascending: true }),
+        supabase.functions.invoke('slack-attendance'),
+        supabase.from('hub_payouts')
+          .select('id, status, final_payout, payment_date, cutoff_start, cutoff_end')
+          .eq('contractor_id', hubUser.id).in('status', ['submitted', 'hr_approved'])
+          .order('cutoff_end', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+
+      const merged = mergeLiveAttendanceIntoDailyHours(
+        ((daysRes.data as DayRow[]) ?? []).map((d: any) => ({ ...d, user_id: hubUser.id })),
+        (slackRes as any)?.data?.attendance || [],
+        [hubUser.id], today,
+      ).map(({ user_id: _uid, ...rest }) => rest as DayRow);
+
+      const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+      const s = new Date(periodStart + 'T12:00:00').toLocaleDateString('en-US', opts);
+      const e = new Date(today + 'T12:00:00').toLocaleDateString('en-US', opts);
+      setHourlyPeriod({ start: periodStart, end: today, label: `${s} – ${e}` });
+      setHourlyDays(merged);
+      setHourlyRequest(openReqRes.data ?? null);
+    } catch (err) {
+      console.error('Hourly data fetch failed:', err);
+    } finally {
+      setHourlyLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if ((hubUser as any)?.payment_type === 'hourly' && hubUser?.id) fetchHourlyData();
+  }, [hubUser]);
 
   const paymentType = (hubUser as any)?.payment_type || 'hourly';
   const currentHourlyRate = Number((hubUser as any)?.hourly_rate || 0);
@@ -339,10 +407,11 @@ export default function ContractorPayoutsPage() {
   const totalOvertime = days.reduce((s, d) => s + (d.overtime_hours || 0), 0);
 
   // Prorated pay calculation using rate history (same logic as admin payroll page)
-  const changeInPeriod = rateHistory.find(r =>
-    r.effective_date >= selectedPeriod.start && r.effective_date <= selectedPeriod.end
-  );
-  const rateAtStart = [...rateHistory].filter(r => r.effective_date < selectedPeriod.start).pop() || null;
+  const activePeriod = selectedPeriod ?? periods[periods.length - 1] ?? null;
+  const changeInPeriod = activePeriod ? rateHistory.find(r =>
+    r.effective_date >= activePeriod.start && r.effective_date <= activePeriod.end
+  ) : undefined;
+  const rateAtStart = activePeriod ? [...rateHistory].filter(r => r.effective_date < activePeriod.start).pop() || null : null;
 
   let basePay: number;
   let overtimePay: number;
@@ -362,41 +431,38 @@ export default function ContractorPayoutsPage() {
     displayMonthlyRate = newMonthly;
     displayHourlyRate  = newHourly;
     if (paymentType === 'fixed' || paymentType === 'fixed_flexible') {
-      const today = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
-      const effectiveEnd = isCurrentPeriod
-        ? (today < selectedPeriod.end ? today : selectedPeriod.end)
-        : selectedPeriod.end;
-      const oldSegmentEnd = changeInPeriod.effective_date > selectedPeriod.start
-        ? dateBefore(changeInPeriod.effective_date)
-        : '';
-      const expectedOldHours = oldSegmentEnd
-        ? countScheduledHours(selectedPeriod.start, oldSegmentEnd, workDays)
-        : 0;
-      const expectedNewHours = changeInPeriod.effective_date <= effectiveEnd
-        ? countScheduledHours(changeInPeriod.effective_date, effectiveEnd, workDays)
-        : 0;
-      const totalExpectedHours = expectedOldHours + expectedNewHours;
-      let hrsAtOld = 0, hrsAtNew = 0;
+      const today = localToday();
+      const isCurrentPeriod = !!activePeriod && today >= activePeriod.start && today <= activePeriod.end;
+      let hrsAtOld = 0;
+      let hrsAtNew = 0;
       for (const d of days) {
         if (d.date < changeInPeriod.effective_date) hrsAtOld += d.hours_capped;
-        else if (d.date <= effectiveEnd) hrsAtNew += d.hours_capped;
+        else hrsAtNew += d.hours_capped;
       }
-      const oldPortion = totalExpectedHours > 0 ? (oldMonthly / 2) * (expectedOldHours / totalExpectedHours) : 0;
-      const newPortion = totalExpectedHours > 0 ? (newMonthly / 2) * (expectedNewHours / totalExpectedHours) : 0;
-      basePay =
-        (expectedOldHours > 0 ? oldPortion * Math.min(hrsAtOld / expectedOldHours, 1) : 0) +
-        (expectedNewHours > 0 ? newPortion * Math.min(hrsAtNew / expectedNewHours, 1) : 0);
+      const splitAccrual = computeSplitFixedAccrual({
+        periodStart: activePeriod!.start,
+        periodEnd: activePeriod!.end,
+        changeDate: changeInPeriod.effective_date,
+        workDays,
+        oldMonthlyRate: oldMonthly,
+        newMonthlyRate: newMonthly,
+        oldCappedHours: hrsAtOld,
+        newCappedHours: hrsAtNew,
+      });
+      const isStillAccruing = isCurrentPeriod
+        && (splitAccrual.oldEarnedDayUnits + splitAccrual.newEarnedDayUnits) > 0
+        && (splitAccrual.oldEarnedDayUnits + splitAccrual.newEarnedDayUnits) < splitAccrual.totalScheduledDays;
+      basePay = splitAccrual.accruedPay;
       const oldOT = oldHourly || oldMonthly / 176;
       const newOT = newHourly || newMonthly / 176;
       let otAtOld = 0, otAtNew = 0;
       for (const d of days) {
         if (d.date < changeInPeriod.effective_date) otAtOld += d.overtime_hours || 0;
-        else if (d.date <= effectiveEnd) otAtNew += d.overtime_hours || 0;
+        else otAtNew += d.overtime_hours || 0;
       }
       overtimePay = otAtOld * oldOT + otAtNew * newOT;
       otRate = newOT;
-      proratedLabel = `${hrsAtOld.toFixed(1)}/${expectedOldHours || 0}h @ ₱${oldMonthly.toLocaleString()}/mo · ${hrsAtNew.toFixed(1)}/${expectedNewHours || 0}h @ ₱${newMonthly.toLocaleString()}/mo`;
+      proratedLabel = `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
     } else {
       let hrsAtOld = 0, hrsAtNew = 0;
       for (const d of days) {
@@ -414,14 +480,21 @@ export default function ContractorPayoutsPage() {
     displayMonthlyRate = monthly;
     displayHourlyRate  = hourly;
     if (paymentType === 'fixed' || paymentType === 'fixed_flexible') {
-      const today = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
-      const effectiveEnd = isCurrentPeriod ? (today < selectedPeriod.end ? today : selectedPeriod.end) : selectedPeriod.end;
-      const expectedHours = countScheduledHours(selectedPeriod.start, effectiveEnd, workDays);
-      const accrualRatio = expectedHours > 0 ? Math.min(totalHoursBillable / expectedHours, 1) : 0;
-      basePay = (monthly / 2) * accrualRatio;
+      const today = localToday();
+      const isCurrentPeriod = !!activePeriod && today >= activePeriod.start && today <= activePeriod.end;
+      const fixedAccrual = computeFixedAccrual({
+        periodStart: activePeriod!.start,
+        periodEnd: activePeriod!.end,
+        monthlyRate: monthly,
+        workDays,
+        cappedHours: totalHoursBillable,
+      });
+      const isStillAccruing = isCurrentPeriod
+        && fixedAccrual.earnedDayUnits > 0
+        && fixedAccrual.earnedDayUnits < fixedAccrual.totalScheduledDays;
+      basePay = fixedAccrual.accruedPay;
       isProrated = true;
-      proratedLabel = `${totalHoursBillable.toFixed(1)}/${expectedHours}h scheduled${isCurrentPeriod ? ' · accruing' : ''}`;
+      proratedLabel = `${fixedAccrual.earnedDayUnits.toFixed(2)}/${fixedAccrual.totalScheduledDays} earned days${isStillAccruing ? ' · accruing' : ''}`;
       otRate = hourly || monthly / 176;
     } else {
       basePay = totalHoursBillable * hourly;
@@ -430,14 +503,35 @@ export default function ContractorPayoutsPage() {
     overtimePay = totalOvertime * otRate;
   }
   const totalPay = basePay + overtimePay;
+  const payoutAdjustments = (() => {
+    if (!existingPayout) return 0;
+    const arrayTotal = Array.isArray(existingPayout.adjustments)
+      ? existingPayout.adjustments.reduce((sum: number, item: any) => sum + Number(item?.amount || 0), 0)
+      : 0;
+    const legacyTotal =
+      Number(existingPayout.bonus || 0)
+      + Number(existingPayout.incentives || 0)
+      + Number(existingPayout.reimbursements || 0)
+      - Number(existingPayout.deductions || 0)
+      - Number(existingPayout.advances || 0)
+      - Number(existingPayout.penalties || 0);
+    return arrayTotal || legacyTotal;
+  })();
+  const persistedBasePay = existingPayout?.base_pay != null ? Number(existingPayout.base_pay) : null;
+  const persistedOvertimePay = existingPayout?.overtime_pay != null ? Number(existingPayout.overtime_pay) : null;
+  const displayBasePay = persistedBasePay ?? basePay;
+  const displayOvertimePay = persistedOvertimePay ?? overtimePay;
+  const displayTotalPay = existingPayout?.final_payout != null
+    ? Number(existingPayout.final_payout)
+    : totalPay;
 
   const handleSubmit = async () => {
     if (!hubUser || submitting) return;
     setSubmitting(true);
     const { data, error } = await supabase.from('hub_payouts').upsert({
       contractor_id: hubUser.id,
-      cutoff_start: selectedPeriod.start,
-      cutoff_end: selectedPeriod.end,
+      cutoff_start: activePeriod!.start,
+      cutoff_end: activePeriod!.end,
       approved_hours: totalHoursBillable,
       hourly_rate: paymentType === 'hourly' ? displayHourlyRate : displayMonthlyRate / 176,
       base_pay: basePay,
@@ -463,6 +557,35 @@ export default function ContractorPayoutsPage() {
     ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val)
     : fmtPHP(val);
 
+  const handleHourlyRequest = async () => {
+    if (!hubUser || !hourlyPeriod || submitting) return;
+    const totalHoursBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
+    const totalOvertime = hourlyDays.reduce((s, d) => s + (d.overtime_hours || 0), 0);
+    const rate = Number((hubUser as any).hourly_rate || 0);
+    const basePay = totalHoursBillable * rate;
+    const overtimePay = totalOvertime * rate;
+    const totalPay = basePay + overtimePay;
+    setSubmitting(true);
+    const { data, error } = await supabase.from('hub_payouts').upsert({
+      contractor_id: hubUser.id,
+      cutoff_start: hourlyPeriod.start,
+      cutoff_end: hourlyPeriod.end,
+      approved_hours: totalHoursBillable,
+      hourly_rate: rate,
+      base_pay: basePay,
+      overtime_pay: overtimePay,
+      final_payout: totalPay,
+      status: 'submitted',
+      submitted_at: new Date().toISOString(),
+      locked: false,
+    }, { onConflict: 'contractor_id,cutoff_start' }).select('id, status, final_payout, cutoff_start, cutoff_end').single();
+    if (!error && data) {
+      setHourlyRequest(data);
+      supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } }).catch(() => {});
+    }
+    setSubmitting(false);
+  };
+
   const submitDispute = async () => {
     if (!hubUser || !existingPayout || !disputeReason.trim()) return;
     setDisputeSaving(true);
@@ -479,10 +602,11 @@ export default function ContractorPayoutsPage() {
   };
 
   const handleDownload = () => {
+    if (!activePeriod) return;
     const html = generatePayslipHTML({
       name: hubUser?.full_name || '',
       department: (hubUser as any)?.department || null,
-      period: selectedPeriod,
+      period: activePeriod,
       days,
       paymentType,
       hourlyRate: displayHourlyRate,
@@ -492,9 +616,9 @@ export default function ContractorPayoutsPage() {
       totalHoursRaw,
       totalHoursBillable,
       totalOvertime,
-      basePay,
-      overtimePay,
-      totalPay,
+      basePay: displayBasePay,
+      overtimePay: displayOvertimePay,
+      totalPay: displayTotalPay,
       generatedDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       logoUrl: `${window.location.origin}/images/547b59870e776a20eb28e4f20931787c.png`,
     });
@@ -505,18 +629,165 @@ export default function ContractorPayoutsPage() {
     setTimeout(() => win.print(), 400);
   };
 
+  // Hourly contractors get a completely separate, simpler payout flow
+  if (paymentType === 'hourly') {
+    const hBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
+    const hOvertime = hourlyDays.reduce((s, d) => s + (d.overtime_hours || 0), 0);
+    const hRaw = hourlyDays.reduce((s, d) => s + d.hours_raw, 0);
+    const hRate = Number((hubUser as any).hourly_rate || 0);
+    const hBase = hBillable * hRate;
+    const hOT = hOvertime * hRate;
+    const hTotal = hBase + hOT;
+    const fmtH = (v: number) => isUSD ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v) : fmtPHP(v);
+
+    return (
+      <ContractorLayout title="My Payouts">
+        <div className="max-w-2xl space-y-5">
+          {hourlyLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
+            </div>
+          ) : (
+            <>
+              {/* Period info */}
+              <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Current Pay Period</p>
+                  <p className="text-sm font-semibold text-gray-900">{hourlyPeriod?.label ?? 'Computing…'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400 mb-0.5">Rate</p>
+                  <p className="text-sm font-semibold text-gray-900">{isUSD ? '$' : '₱'}{hRate}/hr</p>
+                </div>
+              </div>
+
+              {/* Payslip card */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
+                  <div>
+                    <p className="text-white font-bold text-base">Huna Creatives</p>
+                    <p className="text-white/40 text-xs mt-0.5">Fund Transfer Request</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#1c2b3a] font-bold text-sm tracking-widest">HOURLY</p>
+                    <p className="text-white/40 text-xs mt-1">{hourlyPeriod?.label ?? '—'}</p>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-b border-gray-50 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  {[
+                    { label: 'Days Worked', value: hourlyDays.length, color: 'text-gray-900' },
+                    { label: 'Hours Logged', value: `${hRaw.toFixed(1)}h`, color: 'text-gray-900' },
+                    { label: 'Billable Hours', value: `${hBillable.toFixed(1)}h`, color: 'text-sky-700' },
+                    { label: 'Overtime', value: hOvertime > 0 ? `+${hOvertime}h` : '—', color: hOvertime > 0 ? 'text-purple-700' : 'text-gray-400' },
+                  ].map(s => (
+                    <div key={s.label} className="bg-gray-50 rounded-xl py-3">
+                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {hourlyDays.length > 0 ? (
+                  <div className="px-6 py-4 border-b border-gray-50">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Attendance Log</p>
+                    <div className="space-y-1.5">
+                      {hourlyDays.map(d => (
+                        <div key={d.date} className="flex items-center gap-2 text-sm py-1.5 border-b border-gray-50 last:border-0">
+                          <span className="text-gray-500 w-24 flex-shrink-0 text-xs">{fmtDate(d.date)}</span>
+                          <span className="text-gray-400 text-xs flex-shrink-0 hidden sm:block">{fmtTime(d.first_on)}<i className="ri-arrow-right-line text-gray-300 mx-1"></i>{fmtTime(d.last_off)}</span>
+                          <span className="flex-1 text-right">
+                            <span className="font-medium text-gray-800 text-sm">{d.hours_capped.toFixed(2)}h</span>
+                            {d.hours_raw > d.hours_capped && <span className="text-xs text-amber-500 ml-1">↑{d.hours_raw.toFixed(1)}h</span>}
+                          </span>
+                          {d.overtime_hours > 0 && <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium flex-shrink-0">+{d.overtime_hours}h OT</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-6 py-8 text-center border-b border-gray-50">
+                    <i className="ri-calendar-line text-2xl text-gray-200 block mb-2"></i>
+                    <p className="text-sm text-gray-400">No hours logged in this period yet</p>
+                  </div>
+                )}
+
+                <div className="px-6 py-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Earnings</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Base pay ({hBillable.toFixed(2)}h × {isUSD ? '$' : '₱'}{hRate}/hr)</span>
+                      <span className="text-sm font-medium text-gray-800">{fmtH(hBase)}</span>
+                    </div>
+                    {hOT > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-purple-600">Overtime ({hOvertime}h × {isUSD ? '$' : '₱'}{hRate}/hr)</span>
+                        <span className="text-sm font-medium text-purple-700">+{fmtH(hOT)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
+                      <span className="font-semibold text-gray-900">Total Payout</span>
+                      <span className="text-xl font-bold text-[#1c2b3a]">{fmtH(hTotal)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status / Action */}
+              {hourlyRequest ? (
+                <div className={`rounded-xl px-4 py-3.5 flex items-center gap-3 ${
+                  hourlyRequest.status === 'hr_approved' ? 'bg-sky-50 border border-sky-100' : 'bg-amber-50 border border-amber-100'
+                }`}>
+                  <i className={`text-lg ${hourlyRequest.status === 'hr_approved' ? 'ri-shield-check-fill text-sky-500' : 'ri-time-fill text-amber-500'}`}></i>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${hourlyRequest.status === 'hr_approved' ? 'text-sky-800' : 'text-amber-800'}`}>
+                      {hourlyRequest.status === 'hr_approved' ? 'Approved — payment incoming' : 'Submitted — awaiting HR review'}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${hourlyRequest.status === 'hr_approved' ? 'text-sky-600' : 'text-amber-600'}`}>
+                      {hourlyRequest.status === 'hr_approved' ? 'Payment will be sent once the fund transfer is processed.' : 'Your request is under review.'}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-gray-800">{fmtH(hourlyRequest.final_payout)}</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <button
+                    onClick={handleHourlyRequest}
+                    disabled={submitting || hourlyDays.length === 0 || hTotal === 0}
+                    className="w-full flex items-center justify-center gap-2 bg-[#1c2b3a] hover:bg-[#0f1c28] disabled:opacity-40 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {submitting ? <><i className="ri-loader-4-line animate-spin"></i> Submitting…</> : <><i className="ri-exchange-dollar-line"></i> Request Fund Transfer</>}
+                  </button>
+                  {hourlyDays.length === 0 && <p className="text-xs text-center text-gray-400">No hours logged yet — log attendance first.</p>}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </ContractorLayout>
+    );
+  }
+
   return (
     <ContractorLayout title="My Payouts">
       <div className="max-w-2xl space-y-5">
+        {!activePeriod ? (
+          <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
+            <i className="ri-calendar-event-line text-2xl text-gray-300 block mb-2"></i>
+            <p className="text-sm font-medium text-gray-700">No payout periods available yet</p>
+            <p className="text-sm text-gray-400 mt-1">This usually means the contractor start date is missing or set in the future.</p>
+          </div>
+        ) : (
+          <>
 
         {/* Period selector */}
         <div className="bg-white border border-gray-100 rounded-xl p-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-gray-800">Pay Period</p>
             <select
-              value={selectedPeriod.start}
-              onChange={(e) => setSelectedPeriod(periods.find(p => p.start === e.target.value)!)}
-              className="flex-1 max-w-[220px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] bg-white cursor-pointer"
+              value={activePeriod.start}
+              onChange={(e) => setSelectedPeriod(periods.find(p => p.start === e.target.value) ?? activePeriod)}
+              className="flex-1 max-w-[220px] border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer"
             >
               {periods.map((p) => (
                 <option key={p.start} value={p.start}>{p.label}</option>
@@ -529,6 +800,22 @@ export default function ContractorPayoutsPage() {
           <div className="flex items-center justify-center py-20">
             <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
           </div>
+        ) : loadError ? (
+          <div className="bg-white border border-red-100 rounded-xl p-5">
+            <div className="flex items-start gap-3">
+              <i className="ri-error-warning-line text-red-500 text-lg mt-0.5"></i>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Payout page couldn&apos;t load</p>
+                <p className="text-sm text-gray-500 mt-1">{loadError}</p>
+                <button
+                  onClick={fetchDays}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#111827] px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             {/* Payslip preview card */}
@@ -537,16 +824,16 @@ export default function ContractorPayoutsPage() {
               {/* Payslip header */}
               <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                 <div>
-                  <p className="text-white font-bold text-base">FS Architects</p>
-                  <p className="text-white/40 text-xs mt-0.5">Employee Payment Summary</p>
+                  <p className="text-white font-bold text-base">Huna Creatives</p>
+                  <p className="text-white/40 text-xs mt-0.5">Contractor Payment Summary</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[#FF6B35] font-bold text-sm tracking-widest">PAYSLIP</p>
-                  <p className="text-white/40 text-xs mt-1">{selectedPeriod.label}</p>
+                  <p className="text-[#1c2b3a] font-bold text-sm tracking-widest">PAYSLIP</p>
+                  <p className="text-white/40 text-xs mt-1">{activePeriod.label}</p>
                 </div>
               </div>
 
-              {/* Employee info row */}
+              {/* Contractor info row */}
               <div className="px-6 py-4 border-b border-gray-50 grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Employee</p>
@@ -555,7 +842,7 @@ export default function ContractorPayoutsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Pay Period</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedPeriod.label}</p>
+                  <p className="text-sm font-semibold text-gray-900">{activePeriod.label}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Rate</p>
@@ -619,22 +906,30 @@ export default function ContractorPayoutsPage() {
                       {isProrated
                         ? `Prorated base (${proratedLabel})`
                         : paymentType !== 'hourly'
-                          ? `Fixed rate (${fmt(displayMonthlyRate)}/mo ÷ 2)`
+                          ? `Fixed base (${fmt(displayMonthlyRate)}/mo, earned from capped hours)`
                           : `Base pay (${totalHoursBillable.toFixed(2)}h × ${isUSD ? '$' : '₱'}${displayHourlyRate})`}
                     </span>
-                    <span className="text-sm font-medium text-gray-800">{fmt(basePay)}</span>
+                    <span className="text-sm font-medium text-gray-800">{fmt(displayBasePay)}</span>
                   </div>
-                  {overtimePay > 0 && (
+                  {displayOvertimePay > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-purple-600">
                         Overtime ({totalOvertime}h × {isUSD ? '$' : '₱'}{otRate.toFixed(2)}/hr)
                       </span>
-                      <span className="text-sm font-medium text-purple-700">+{fmt(overtimePay)}</span>
+                      <span className="text-sm font-medium text-purple-700">+{fmt(displayOvertimePay)}</span>
+                    </div>
+                  )}
+                  {payoutAdjustments !== 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">HR adjustments</span>
+                      <span className={`text-sm font-medium ${payoutAdjustments > 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                        {payoutAdjustments > 0 ? '+' : ''}{fmt(payoutAdjustments)}
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
                     <span className="font-semibold text-gray-900">Total Payout</span>
-                    <span className="text-xl font-bold text-[#FF6B35]">{fmt(totalPay)}</span>
+                    <span className="text-xl font-bold text-[#1c2b3a]">{fmt(displayTotalPay)}</span>
                   </div>
                 </div>
               </div>
@@ -715,13 +1010,13 @@ export default function ContractorPayoutsPage() {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || days.length === 0 || !canSubmitPeriod}
-                  className="w-full flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-[#e55a27] disabled:opacity-40 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 bg-[#1c2b3a] hover:bg-[#0f1c28] disabled:opacity-40 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
                 >
                   {submitting ? <i className="ri-loader-4-line animate-spin"></i> : <i className="ri-send-plane-line"></i>}
                   {submitting ? 'Submitting...' : 'Submit for Payment'}
                 </button>
                 {!canSubmitPeriod && (
-                  <p className="text-xs text-center text-gray-400">Available on {selectedPeriod.end} (cutoff day)</p>
+                  <p className="text-xs text-center text-gray-400">Available on {activePeriod.end} (cutoff day)</p>
                 )}
                 {canSubmitPeriod && (
                   <p className="text-xs text-center text-gray-400">Make sure all your hours are logged before submitting.</p>
@@ -740,6 +1035,8 @@ export default function ContractorPayoutsPage() {
             )}
           </>
         )}
+          </>
+        )}
       </div>
       {/* Dispute modal */}
       {disputeModal && (
@@ -748,7 +1045,7 @@ export default function ContractorPayoutsPage() {
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
                 <h2 className="font-semibold text-[#111827]">Flag a Payslip Issue</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{selectedPeriod.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{activePeriod.label}</p>
               </div>
               <button onClick={() => setDisputeModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
                 <i className="ri-close-line text-lg"></i>
@@ -762,7 +1059,7 @@ export default function ContractorPayoutsPage() {
                 rows={4}
                 placeholder="e.g. My hours show 20h but I worked 32h this period..."
                 maxLength={500}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
               />
               <div className="flex gap-2">
                 <button onClick={() => setDisputeModal(false)}

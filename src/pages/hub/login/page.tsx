@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getHubHomePath } from '@/lib/hubAuth';
 
 export default function HubLoginPage() {
-  const { signIn, hubUser } = useAuth();
+  const { signIn, hubUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const justSignedUp = searchParams.get('welcome') === '1';
@@ -21,7 +21,6 @@ export default function HubLoginPage() {
   const [deleting, setDeleting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const current = WORDS[wordIdx];
     if (!deleting && displayed.length < current.length) {
@@ -38,30 +37,43 @@ export default function HubLoginPage() {
   }, [displayed, deleting, wordIdx]);
 
   useEffect(() => {
-    if (hubUser) navigate(getHubHomePath(hubUser.role), { replace: true });
-    else if (!loading && hubUser === null) setLoading(false);
-  }, [hubUser, navigate, loading]);
+    if (!hubUser) return;
+    setLoading(false);
+    navigate(getHubHomePath(hubUser.role), { replace: true });
+  }, [hubUser, navigate]);
+
+  useEffect(() => {
+    if (!loading) return;
+    if (!authLoading && !hubUser) {
+      setLoading(false);
+    }
+  }, [loading, authLoading, hubUser]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const { error: err } = await signIn(email, password);
+      const { error: err, hubUser: nextHubUser } = await signIn(email, password);
       if (err) {
         setError(err.message || 'Invalid email or password. Please try again.');
         setLoading(false);
         return;
       }
-      // Success — keep spinner while onAuthStateChange loads the hub profile
+      if (nextHubUser) {
+        navigate(getHubHomePath(nextHubUser.role), { replace: true });
+        return;
+      }
+      setError('Sign-in completed, but your workspace profile could not be loaded.');
+      setLoading(false);
     } catch {
       setError('Something went wrong. Please try again.');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen min-h-dvh flex bg-[#0a0608]">
       <style>{`
         @keyframes logo-glow {
           0%, 100% { opacity: 0.6; filter: invert(1) opacity(0.6) drop-shadow(0 0 0px rgba(255,255,255,0)); }
@@ -132,11 +144,11 @@ export default function HubLoginPage() {
           -webkit-text-fill-color: rgba(255,255,255,0.85) !important;
         }
         .btn-glow {
-          background: linear-gradient(135deg, #FF6B35, #e53a00);
+          background: linear-gradient(135deg, #1c2b3a, #e53a00);
           transition: all 0.3s ease;
         }
         .btn-glow:hover {
-          background: linear-gradient(135deg, #ff7f4d, #FF6B35);
+          background: linear-gradient(135deg, #ff7f4d, #1c2b3a);
           box-shadow: 0 8px 32px rgba(255,107,53,0.55) !important;
           transform: translateY(-1px);
         }
@@ -146,6 +158,7 @@ export default function HubLoginPage() {
           border: 1px solid rgba(255,255,255,0.1);
           color: rgba(255,255,255,0.85);
           transition: border 0.2s, background 0.2s, box-shadow 0.2s;
+          font-size: 16px;
         }
         .input-dark::placeholder { color: rgba(255,255,255,0.2); }
         .input-dark:focus {
@@ -157,7 +170,7 @@ export default function HubLoginPage() {
       `}</style>
 
       {/* ── Left panel — dark glass form ──────────────────────────────────── */}
-      <div className="flex-1 relative flex flex-col min-h-screen overflow-hidden"
+      <div className="flex-1 relative flex flex-col min-h-screen min-h-dvh overflow-hidden"
         style={{ background: '#0a0608' }}>
 
         {/* Subtle ambient behind form */}
@@ -168,11 +181,11 @@ export default function HubLoginPage() {
 
         {/* Logo */}
         <div className="relative z-10 p-8 md:p-10 flex items-center gap-2.5 form-in">
-          <div className="w-8 h-8 rounded-xl bg-[#FF6B35] flex items-center justify-center flex-shrink-0"
+          <div className="w-8 h-8 rounded-xl bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"
             style={{ boxShadow: '0 4px 14px rgba(255,107,53,0.4)' }}>
             <img src="/s-logo.png" alt="S" className="w-[18px] h-[18px] object-contain" style={{ filter: 'invert(1)' }} />
           </div>
-          <span className="font-bold tracking-widest text-sm text-white/90">SENTRO <span className="text-[#FF6B35]">OS</span></span>
+          <span className="font-bold tracking-widest text-sm text-white/90">SENTRO <span className="text-[#1c2b3a]">OS</span></span>
         </div>
 
         {/* Form */}
@@ -180,11 +193,11 @@ export default function HubLoginPage() {
           <div className="w-full max-w-[380px] form-in" style={{ animationDelay: '0.1s' }}>
 
             <div className="mb-10">
-              <p className="text-[#FF6B35] text-[11px] font-semibold tracking-[0.25em] uppercase mb-3">Welcome back</p>
+              <p className="text-[#1c2b3a] text-[11px] font-semibold tracking-[0.25em] uppercase mb-3">Welcome back</p>
               <h1 className="text-white font-bold leading-tight" style={{ fontSize: '2.6rem', letterSpacing: '-0.02em' }}>
                 Sign in to<br />your workspace.
               </h1>
-              <p className="text-white/30 text-sm mt-3">FS Architects team only</p>
+              <p className="text-white/30 text-sm mt-3">For FS Architects team members only</p>
             </div>
 
             {justSignedUp && (
@@ -207,7 +220,7 @@ export default function HubLoginPage() {
                 <div className="flex items-center justify-between">
                   <label className="block text-[11px] font-semibold text-white/40 tracking-widest uppercase">Password</label>
                   <button type="button" onClick={() => navigate('/hub/forgot-password')}
-                    className="text-xs text-[#FF6B35] hover:text-[#ff8255] transition-colors cursor-pointer font-medium">
+                    className="text-xs text-[#1c2b3a] hover:text-[#ff8255] transition-colors cursor-pointer font-medium">
                     Forgot password?
                   </button>
                 </div>
@@ -245,7 +258,7 @@ export default function HubLoginPage() {
 
         {/* Footer */}
         <div className="relative z-10 p-8 md:p-10 form-in" style={{ animationDelay: '0.2s' }}>
-          <p className="text-xs text-white/15">© Sentro OS 2026 · by <a href="https://hunacreatives.com" target="_blank" rel="noopener noreferrer" className="hover:text-white/30 transition-colors">Huna Creatives</a></p>
+          <p className="text-xs text-white/15">© Sentro OS {new Date().getFullYear()} · FS Architects</p>
         </div>
       </div>
 
@@ -293,9 +306,9 @@ export default function HubLoginPage() {
               <p className="text-white/40 text-[10px] tracking-[0.35em] uppercase mb-2">Sentro OS</p>
               <p className="text-white/80 text-base font-medium" style={{ minWidth: '240px', minHeight: '28px' }}>
                 Centralize your{' '}
-                <span className="text-[#FF6B35]">
+                <span className="text-[#1c2b3a]">
                   {displayed}
-                  <span className="inline-block w-[2px] h-[1em] bg-[#FF6B35] ml-[1px] align-middle"
+                  <span className="inline-block w-[2px] h-[1em] bg-[#1c2b3a] ml-[1px] align-middle"
                     style={{ animation: 'blink 1s step-end infinite' }} />
                 </span>
               </p>

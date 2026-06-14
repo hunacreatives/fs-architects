@@ -12,7 +12,7 @@ const typeLabels: Record<string, string> = {
 };
 const typeColors: Record<string, string> = {
   pto: 'bg-sky-100 text-sky-700', vacation: 'bg-sky-100 text-sky-700',
-  sick: 'bg-rose-100 text-rose-700', emergency: 'bg-orange-100 text-orange-700',
+  sick: 'bg-rose-100 text-rose-700', emergency: 'bg-slate-100 text-[#1c2b3a]',
   unpaid: 'bg-gray-100 text-gray-600', other: 'bg-purple-100 text-purple-700',
 };
 const statusColors: Record<string, string> = {
@@ -105,7 +105,6 @@ export default function AdminTimeOffPage() {
     setBalancesLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isDemo) {
       const filtered = statusFilter === 'all' ? DEMO_TIME_OFF : DEMO_TIME_OFF.filter(r => r.status === statusFilter);
@@ -211,8 +210,7 @@ export default function AdminTimeOffPage() {
   const toggleSelect = (id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
@@ -317,7 +315,7 @@ export default function AdminTimeOffPage() {
                       <th className="px-4 py-3 w-8">
                         <input type="checkbox" checked={requests.length > 0 && selectedIds.size === requests.length} onChange={toggleSelectAll} className="cursor-pointer" />
                       </th>
-                      {['Contractor', 'Type', 'Dates', 'Days', 'Status', 'Filed', ''].map((h) => (
+                      {['Employee', 'Type', 'Dates', 'Days', 'Status', 'Filed', ''].map((h) => (
                         <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3">{h}</th>
                       ))}
                     </tr>
@@ -326,14 +324,14 @@ export default function AdminTimeOffPage() {
                     {requests.map((r) => {
                       const u = r.hub_users as HubUser;
                       return (
-                        <tr key={r.id} className={`hover:bg-gray-50/50 transition-colors ${selectedIds.has(r.id!) ? 'bg-orange-50/50' : ''}`}>
+                        <tr key={r.id} className={`hover:bg-gray-50/50 transition-colors ${selectedIds.has(r.id!) ? 'bg-slate-50/50' : ''}`}>
                           <td className="px-4 py-3.5 w-8">
                             <input type="checkbox" checked={selectedIds.has(r.id!)} onChange={() => toggleSelect(r.id!)} className="cursor-pointer" />
                           </td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
-                                <span className="text-[#FF6B35] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
+                              <div className="w-7 h-7 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                                <span className="text-[#1c2b3a] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-[#111827]">{u?.full_name}</p>
@@ -365,7 +363,7 @@ export default function AdminTimeOffPage() {
                           </td>
                           <td className="px-4 py-3.5">
                             <button onClick={() => openReview(r)}
-                              className="text-xs text-gray-500 hover:text-[#FF6B35] cursor-pointer transition-colors font-medium whitespace-nowrap">
+                              className="text-xs text-gray-500 hover:text-[#1c2b3a] cursor-pointer transition-colors font-medium whitespace-nowrap">
                               {r.status === 'forwarded' && isOwner ? 'Decide' : 'Review'}
                             </button>
                           </td>
@@ -390,18 +388,18 @@ export default function AdminTimeOffPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Start Date</label>
                   <input type="date" value={bdForm.start_date} onChange={(e) => setBdForm({ ...bdForm, start_date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">End Date</label>
                   <input type="date" value={bdForm.end_date} min={bdForm.start_date} onChange={(e) => setBdForm({ ...bdForm, end_date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="col-span-1 sm:col-span-2 space-y-1">
                   <label className="text-xs font-medium text-gray-700">Reason <span className="text-gray-400 font-normal">(shown to contractors)</span></label>
                   <input value={bdForm.reason} onChange={(e) => setBdForm({ ...bdForm, reason: e.target.value })}
                     placeholder="e.g. Client launch period, Q4 crunch"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               <button onClick={addBlackout} disabled={bdSaving || !bdForm.start_date || !bdForm.end_date}
@@ -458,7 +456,7 @@ export default function AdminTimeOffPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Contractor', 'VL Used', 'VL Left', 'SL Used', 'SL Left', 'Eligibility'].map(h => (
+                      {['Employee', 'VL Used', 'VL Left', 'SL Used', 'SL Left', 'Eligibility'].map(h => (
                         <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3">{h}</th>
                       ))}
                     </tr>
@@ -468,8 +466,8 @@ export default function AdminTimeOffPage() {
                       <tr key={b.id} className="hover:bg-gray-50/50">
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-[#FF6B35]/10 flex items-center justify-center flex-shrink-0">
-                              <span className="text-[#FF6B35] text-xs font-bold">{b.full_name?.charAt(0) || '?'}</span>
+                            <div className="w-7 h-7 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[#1c2b3a] text-xs font-bold">{b.full_name?.charAt(0) || '?'}</span>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-[#111827]">{b.full_name}</p>
@@ -562,11 +560,11 @@ export default function AdminTimeOffPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">
-                  {isOwner ? 'Notes (visible to contractor)' : 'HR Notes (forwarded to owner)'}
+                  {isOwner ? 'Notes (visible to employee)' : 'HR Notes (forwarded to owner)'}
                 </label>
                 <textarea value={hrNotes} onChange={(e) => setHrNotes(e.target.value)} rows={3}
                   placeholder={isOwner ? 'Add notes for the employee...' : 'Add notes before forwarding to owner...'}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
 
               {/* Action buttons based on role + status */}

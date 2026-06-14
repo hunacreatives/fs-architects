@@ -31,7 +31,6 @@ export default function RequestsPage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isDemo) {
       const filtered = statusFilter === 'all' ? DEMO_REQUESTS : DEMO_REQUESTS.filter(r => r.status === statusFilter);
@@ -102,7 +101,7 @@ export default function RequestsPage() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Admin Notes</label>
                 <textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={3} placeholder="Add notes..."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0 flex-wrap">

@@ -31,19 +31,18 @@ const CUSTOM_COPY: Record<string, { headline: string; body: string }> = {
   },
 };
 
+const BIRTHDAY_GIFS = [
+  'https://media.giphy.com/media/g5R9dok94mrIvplmZd/giphy.gif',
+  'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif',
+];
+
 const FALLBACK_COPY = (name: string) => ({
   headline: `Happy Birthday, ${name}! 🎉`,
   body: `Today we celebrate you, ${name}! Thank you for everything you bring to the Huna Creatives team — your hard work, your energy, and your dedication make a real difference. Wishing you an amazing birthday surrounded by people you love. 🧡`,
 });
 
-// Rotate through a few birthday banner GIFs
-const BIRTHDAY_IMAGES = [
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcHVleTFyNm0xNmJyNW5sdGszZHBwbzZybDlkZG1xeXhva2VrenZtbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/g5R9dok94mrIvplmZd/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaTkxdXJ3YzIxZTdlc3QwYjFhMzVqdnl4aGd5bmV4ZGhhcTcxZ3RnZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/artj92V8o75VPL7AeQ/giphy.gif',
-  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnQxcm9mYW9ucGR2ZTJhcm5pbzU3MjRtZTFnZWIydGsxenFucjRqbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26tPghhGGmhsNcAGY/giphy.gif',
-];
 
-async function checkAndPost() {
+async function checkAndPost(): Promise<any> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   // Get today's month/day in PH time (UTC+8)
@@ -69,39 +68,52 @@ async function checkAndPost() {
 
   if (celebrants.length === 0) {
     console.log('No birthdays today.');
-    return;
+    return { skipped: true };
   }
 
   for (const person of celebrants) {
     const copy = CUSTOM_COPY[person.email] ?? FALLBACK_COPY(person.first_name || person.full_name.split(' ')[0]);
-    const image = BIRTHDAY_IMAGES[Math.floor(Math.random() * BIRTHDAY_IMAGES.length)];
+    const gif = BIRTHDAY_GIFS[Math.floor(Math.random() * BIRTHDAY_GIFS.length)];
+    const firstName = person.full_name.split(' ')[0];
 
-    const blocks = [
-      {
-        type: 'image',
-        image_url: image,
-        alt_text: `Happy Birthday ${person.full_name}`,
-      },
+    const blocks: any[] = [
       {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*${copy.headline}*\n\n${copy.body}`,
+          text: `<!channel> Let's greet ${firstName}! 🎂`,
         },
-        ...(person.avatar_url ? {
-          accessory: {
-            type: 'image',
-            image_url: person.avatar_url,
-            alt_text: person.full_name,
-          },
-        } : {}),
       },
+      { type: 'divider' },
+      ...(person.avatar_url ? [{
+        type: 'image',
+        image_url: person.avatar_url,
+        alt_text: person.full_name,
+        title: { type: 'plain_text', text: copy.headline, emoji: true },
+      }] : [{
+        type: 'header',
+        text: { type: 'plain_text', text: copy.headline, emoji: true },
+      }]),
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: copy.body,
+        },
+      },
+      { type: 'image', image_url: gif, alt_text: `Happy Birthday ${firstName}!` },
+      { type: 'divider' },
       {
         type: 'context',
         elements: [
           {
+            type: 'image',
+            image_url: 'https://hunacreatives.com/apple-touch-icon.png',
+            alt_text: 'Huna Creatives',
+          },
+          {
             type: 'mrkdwn',
-            text: '— From the whole Huna Creatives team 🧡',
+            text: '*Huna Creatives* — From the whole team 🧡',
           },
         ],
       },
@@ -117,7 +129,7 @@ async function checkAndPost() {
       },
       body: JSON.stringify({
         channel: SLACK_CHANNEL,
-        text: copy.headline,
+        text: `<!channel> ${copy.headline}`,
         blocks,
       }),
     });
@@ -128,13 +140,44 @@ async function checkAndPost() {
     } else {
       console.log(`Posted for ${person.full_name}:`, result.ts);
     }
+    return result;
   }
+}
+
+async function updateMessage(ts: string, blocks: any[]) {
+  const res = await fetch('https://slack.com/api/chat.update', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel: SLACK_CHANNEL, ts, text: 'Happy Birthday, Abigail! 🎈', blocks }),
+  });
+  return res.json();
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
-  // @ts-ignore
-  EdgeRuntime.waitUntil(checkAndPost());
-  return new Response(JSON.stringify({ ok: true }), { headers: cors });
+  const body = await req.json().catch(() => ({}));
+
+  if (body.update_ts) {
+    const firstName = 'Abigail';
+    const copy = CUSTOM_COPY['duterteabigaile@gmail.com'];
+    const gif = BIRTHDAY_GIFS[Math.floor(Math.random() * BIRTHDAY_GIFS.length)];
+    const avatarUrl = body.avatar_url;
+
+    const blocks: any[] = [
+      { type: 'section', text: { type: 'mrkdwn', text: `<!channel> Let's greet ${firstName}! 🎂` } },
+      { type: 'divider' },
+      ...(avatarUrl ? [{ type: 'image', image_url: avatarUrl, alt_text: firstName, title: { type: 'plain_text', text: copy.headline, emoji: true } }] : [{ type: 'header', text: { type: 'plain_text', text: copy.headline, emoji: true } }]),
+      { type: 'section', text: { type: 'mrkdwn', text: copy.body } },
+      { type: 'image', image_url: gif, alt_text: `Happy Birthday ${firstName}!` },
+      { type: 'divider' },
+      { type: 'context', elements: [{ type: 'image', image_url: 'https://hunacreatives.com/apple-touch-icon.png', alt_text: 'Huna Creatives' }, { type: 'mrkdwn', text: '*Huna Creatives* — From the whole team 🧡' }] },
+    ];
+
+    const result = await updateMessage(body.update_ts, blocks);
+    return new Response(JSON.stringify({ ok: true, result }), { headers: cors });
+  }
+
+  const result = await checkAndPost();
+  return new Response(JSON.stringify({ ok: true, result }), { headers: cors });
 });

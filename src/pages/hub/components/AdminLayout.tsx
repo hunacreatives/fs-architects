@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import AdminSidebar from './AdminSidebar';
 import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface Props {
   children: ReactNode;
@@ -62,7 +61,6 @@ function GlobalSearch() {
     setLoading(false);
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const t = setTimeout(() => search(query), 200);
     return () => clearTimeout(t);
@@ -99,12 +97,22 @@ function GlobalSearch() {
   };
 
   const typeColors: Record<string, string> = {
-    contractor: 'text-[#FF6B35]', project: 'text-teal-600', invoice: 'text-sky-600', request: 'text-violet-600',
+    contractor: 'text-[#1c2b3a]', project: 'text-teal-600', invoice: 'text-sky-600', request: 'text-[#1c2b3a]',
   };
+  const quickActions = [
+    { label: 'Dashboard page', path: '/hub/admin/dashboard', icon: 'ri-home-5-line' },
+    { label: 'Projects page', path: '/hub/admin/projects', icon: 'ri-folder-line' },
+    { label: 'Payroll page', path: '/hub/admin/payroll', icon: 'ri-bank-card-line' },
+    { label: 'Employees page', path: '/hub/admin/contractors', icon: 'ri-team-line' },
+    { label: 'Attendance page', path: '/hub/admin/attendance', icon: 'ri-time-line' },
+    { label: 'Schedule invoice', path: '/hub/admin/invoice-log', icon: 'ri-calendar-schedule-line' },
+  ];
+  const activeFilter = query.length >= 2 ? 'Results' : 'All';
+
   return (
     <div className="relative" ref={containerRef}>
       <div
-        className={`flex items-center gap-2 bg-white/80 border rounded-xl px-3 py-2 cursor-text transition-all ${open ? 'border-indigo-300 ring-2 ring-indigo-100 w-44 sm:w-52' : 'border-[#e5e7eb] w-9 sm:w-44 md:w-52 hover:border-gray-300'}`}
+        className={`flex items-center gap-2 bg-white/80 border rounded-xl px-3 py-2 cursor-text transition-all ${open ? 'border-slate-400 ring-2 ring-slate-100 w-44 sm:w-52' : 'border-[#e5e7eb] w-9 sm:w-44 md:w-52 hover:border-gray-300'}`}
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
       >
         <i className="ri-search-line text-[#9ca3af] text-sm flex-shrink-0"></i>
@@ -140,7 +148,7 @@ function GlobalSearch() {
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold px-4 pt-3 pb-1">Results</p>
                 {results.map((r, i) => (
                   <button key={r.type + r.id} onClick={() => go(r)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer ${i === activeIdx ? 'bg-indigo-50' : ''}`}>
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer ${i === activeIdx ? 'bg-slate-50' : ''}`}>
                     <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
                       <i className={`${r.icon} text-sm ${typeColors[r.type]}`}></i>
                     </div>
@@ -158,7 +166,6 @@ function GlobalSearch() {
               <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold px-4 pt-3 pb-1">Go to</p>
               {[
                 { name: 'Dashboard', icon: 'ri-home-5-line', path: '/hub/admin/dashboard' },
-                { name: 'Projects', icon: 'ri-folder-line', path: '/hub/admin/projects' },
                 { name: 'Payroll', icon: 'ri-bank-card-line', path: '/hub/admin/payroll' },
                 { name: 'Team', icon: 'ri-team-line', path: '/hub/admin/contractors' },
                 { name: 'Attendance', icon: 'ri-time-line', path: '/hub/admin/attendance' },
@@ -191,8 +198,6 @@ export default function AdminLayout({ children, title, actions }: Props) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
-  usePushNotifications();
-
   const toggleCollapsed = () => setCollapsed(prev => {
     const next = !prev;
     localStorage.setItem('sidebar-collapsed', String(next));
@@ -250,7 +255,7 @@ export default function AdminLayout({ children, title, actions }: Props) {
 
       {/* Main content */}
       <div className="relative z-10 flex-1 min-w-0 overflow-hidden lg:px-4 lg:pb-4 lg:pt-5 md:px-5 md:pb-5">
-        <div className="flex h-full flex-col lg:rounded-[34px] overflow-hidden lg:shadow-xl lg:shadow-indigo-100/50"
+        <div className="flex h-full flex-col lg:rounded-[34px] overflow-hidden lg:shadow-xl lg:shadow-slate-200/50"
           style={{ background: 'rgba(255,255,255,0.60)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.75)' }}
         >
         {/* Top bar */}
@@ -273,8 +278,9 @@ export default function AdminLayout({ children, title, actions }: Props) {
           </div>
         </header>
 
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent">
+        <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

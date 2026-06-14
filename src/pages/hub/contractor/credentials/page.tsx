@@ -107,7 +107,6 @@ export default function ContractorCredentialsPage() {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); }, [hubUser]);
 
   const requestMap = Object.fromEntries(myRequests.map((r) => [r.credential_id, r]));
@@ -136,8 +135,7 @@ export default function ContractorCredentialsPage() {
   const toggleClient = (name: string) => {
     setExpandedClients((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      next.has(name) ? next.delete(name) : next.add(name);
       return next;
     });
   };
@@ -145,8 +143,7 @@ export default function ContractorCredentialsPage() {
   const togglePassVis = (id: string) => {
     setShowPassIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
@@ -208,7 +205,7 @@ export default function ContractorCredentialsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by platform or client…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
           />
         </div>
 
@@ -234,8 +231,8 @@ export default function ContractorCredentialsPage() {
                     className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isAssigned ? 'bg-emerald-100' : 'bg-[#FF6B35]/10'}`}>
-                        <i className={`text-sm ${isAssigned ? 'ri-shield-check-line text-emerald-600' : 'ri-building-2-line text-[#FF6B35]'}`}></i>
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isAssigned ? 'bg-emerald-100' : 'bg-[#1c2b3a]/10'}`}>
+                        <i className={`text-sm ${isAssigned ? 'ri-shield-check-line text-emerald-600' : 'ri-building-2-line text-[#1c2b3a]'}`}></i>
                       </div>
                       <span className="text-sm font-semibold text-[#111827]">{clientName}</span>
                       <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">{clientCreds.length}</span>
@@ -328,7 +325,7 @@ export default function ContractorCredentialsPage() {
                                 ) : !isApproved ? (
                                   <button
                                     onClick={() => { setRequestModal(cred); setRequestReason(''); }}
-                                    className="text-xs bg-gray-100 text-gray-700 hover:bg-[#FF6B35]/10 hover:text-[#FF6B35] px-2.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                                    className="text-xs bg-gray-100 text-gray-700 hover:bg-[#1c2b3a]/10 hover:text-[#1c2b3a] px-2.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
                                   >
                                     <i className="ri-key-line"></i> Request Access
                                   </button>
@@ -372,13 +369,13 @@ export default function ContractorCredentialsPage() {
                   rows={3}
                   placeholder="e.g. Need to post content for the May campaign..."
                   maxLength={500}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                 />
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">
               <button onClick={() => setRequestModal(null)} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">Cancel</button>
-              <button onClick={submitRequest} disabled={submitting || !requestReason.trim()} className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a24] disabled:opacity-40 cursor-pointer transition-colors">
+              <button onClick={submitRequest} disabled={submitting || !requestReason.trim()} className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#e55a24] disabled:opacity-40 cursor-pointer transition-colors">
                 {submitting ? 'Submitting...' : 'Submit Request'}
               </button>
             </div>

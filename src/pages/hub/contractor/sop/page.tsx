@@ -19,7 +19,7 @@ function formatContent(text: string) {
   return text.split('\n').map((line, i) => {
     if (!line.trim()) return <div key={i} className="h-3" />;
     // All-caps line ending with : → section heading
-    if (/^[A-Z][A-Z\s/&-]+:/.test(line.trim())) {
+    if (/^[A-Z][A-Z\s\/&\-]+:/.test(line.trim())) {
       return <p key={i} className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-5 mb-1">{line}</p>;
     }
     // Bullet points
@@ -36,7 +36,7 @@ function formatContent(text: string) {
       const [num, ...rest] = line.trim().split(/\.\s/);
       return (
         <div key={i} className="flex gap-3 text-sm text-gray-700 leading-relaxed">
-          <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{num}</span>
+          <span className="w-5 h-5 rounded-full bg-slate-100 text-[#1c2b3a] text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{num}</span>
           <span dangerouslySetInnerHTML={{ __html: rest.join('. ').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
         </div>
       );
@@ -118,7 +118,7 @@ export default function ContractorSopPage() {
             <i className="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
             <input value={search} onChange={e => { setSearch(e.target.value); setActiveCategory('All'); }}
               placeholder="Search SOPs by title or content…"
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 placeholder-gray-400" />
+              className="w-full pl-10 pr-4 py-2.5 text-sm bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-[#1c2b3a]/30 placeholder-gray-400" />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                 <i className="ri-close-line text-sm"></i>
@@ -171,14 +171,14 @@ export default function ContractorSopPage() {
                             <i className={`${cfg.icon} text-sm`}></i>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-semibold text-gray-900 leading-snug group-hover:text-indigo-700 transition-colors">{s.title}</h3>
+                            <h3 className="text-sm font-semibold text-gray-900 leading-snug group-hover:text-[#1c2b3a] transition-colors">{s.title}</h3>
                             {s.content && (
                               <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">
                                 {s.content.replace(/\n/g, ' ').slice(0, 120)}…
                               </p>
                             )}
                           </div>
-                          <i className="ri-arrow-right-s-line text-gray-300 group-hover:text-indigo-400 transition-colors text-base flex-shrink-0 mt-0.5"></i>
+                          <i className="ri-arrow-right-s-line text-gray-300 group-hover:text-[#1c2b3a]/50 transition-colors text-base flex-shrink-0 mt-0.5"></i>
                         </div>
                       </button>
                     ))}

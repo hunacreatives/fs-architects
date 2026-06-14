@@ -26,6 +26,28 @@ interface InvoiceLog {
   settled_at: string | null;
 }
 
+interface InvoiceEditSource {
+  id: number;
+  contact_email: string | null;
+  client_name: string;
+  project_name: string;
+  service: string | null;
+  contract_price: number;
+  start_date: string | null;
+  deadline: string | null;
+  notes: string | null;
+  hub_project_payments: { amount: number; paid_at: string; notes: string | null }[];
+}
+
+interface InvoicePaymentLink {
+  id: string;
+  to_email: string;
+  due_date: string | null;
+  line_items: { description: string; amount: string }[] | null;
+  payment_terms: string | null;
+  reference: string | null;
+}
+
 interface ReceiptLog {
   id: number;
   project_id: number | null;
@@ -91,8 +113,31 @@ export default function InvoiceLogPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [showPaid, setShowPaid] = useState(false);
   const [verifying, setVerifying] = useState<Set<number>>(new Set());
   const [resending, setResending] = useState<Set<number>>(new Set());
+  const [editingInvoice, setEditingInvoice] = useState<InvoiceLog | null>(null);
+  const [editingProject, setEditingProject] = useState<InvoiceEditSource | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editShowPayments, setEditShowPayments] = useState(true);
+  const [editLineItems, setEditLineItems] = useState<{ description: string; amount: string }[]>([]);
+  const [editForm, setEditForm] = useState({
+    email: '',
+    cc: '',
+    subject: '',
+    issue_date: '',
+    due_date: '',
+    currency: 'PHP' as 'PHP' | 'USD',
+    bill_to_name: '',
+    bill_to_address: '',
+    reference: '',
+    payment_terms: '',
+    customer_notes: '',
+    payment_instructions: '',
+    amount_requested: '',
+  });
 
   useEffect(() => {
     if (isDemo) {
@@ -127,6 +172,8 @@ export default function InvoiceLogPage() {
     i.invoice_number.includes(q) ||
     i.sent_to.toLowerCase().includes(q)
   );
+  const activeInvoices = filteredInvoices.filter(i => !i.settled);
+  const paidInvoices = filteredInvoices.filter(i => i.settled);
   const filteredReceipts = receipts.filter(r =>
     r.client_name.toLowerCase().includes(q) ||
     r.project_name.toLowerCase().includes(q) ||
@@ -150,6 +197,167 @@ export default function InvoiceLogPage() {
     new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   const fmtDateTime = (s: string) =>
     new Date(s).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  const closeEditModal = () => {
+    if (editSaving) return;
+    setEditingInvoice(null);
+    setEditingProject(null);
+    setEditLoading(false);
+    setEditSaving(false);
+    setEditError(null);
+    setEditShowPayments(true);
+    setEditLineItems([]);
+    setEditForm({
+      email: '',
+      cc: '',
+      subject: '',
+      issue_date: '',
+      due_date: '',
+      currency: 'PHP',
+      bill_to_name: '',
+      bill_to_address: '',
+      reference: '',
+      payment_terms: '',
+      customer_notes: '',
+      payment_instructions: '',
+      amount_requested: '',
+    });
+  };
+
+  const openEditInvoice = async (inv: InvoiceLog) => {
+    if (inv.settled) return;
+    setEditingInvoice(inv);
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const projectPromise = inv.project_id
+        ? supabase
+            .from('hub_projects')
+            .select('id, contact_email, client_name, project_name, service, contract_price, start_date, deadline, notes, hub_project_payments(amount, paid_at, notes)')
+            .eq('id', inv.project_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null } as any);
+
+      const linkQuery = supabase
+        .from('hub_invoice_payment_links')
+        .select('id, to_email, due_date, line_items, payment_terms, reference')
+        .eq('invoice_number', inv.invoice_number)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const linkPromise = inv.project_id ? linkQuery.eq('project_id', inv.project_id).maybeSingle() : linkQuery.maybeSingle();
+
+      const [{ data: project }, { data: paymentLink }] = await Promise.all([projectPromise, linkPromise]);
+      const projectData = (project as InvoiceEditSource | null) ?? null;
+      const linkData = (paymentLink as InvoicePaymentLink | null) ?? null;
+      setEditingProject(projectData);
+      setEditShowPayments(inv.show_payments);
+      setEditLineItems(
+        (inv.line_items && inv.line_items.length > 0
+          ? inv.line_items
+          : linkData?.line_items && linkData.line_items.length > 0
+            ? linkData.line_items
+            : [{ description: projectData?.service ?? projectData?.project_name ?? inv.project_name, amount: String(inv.contract_price ?? inv.balance ?? 0) }])
+          .map((item) => ({ description: item.description ?? '', amount: String(item.amount ?? '') }))
+      );
+      setEditForm({
+        email: inv.sent_to || projectData?.contact_email || linkData?.to_email || '',
+        cc: inv.sent_cc || '',
+        subject: inv.subject || `Invoice #${inv.invoice_number.padStart(4, '0')} — ${inv.project_name}`,
+        issue_date: new Date().toISOString().slice(0, 10),
+        due_date: linkData?.due_date || projectData?.deadline || '',
+        currency: 'PHP',
+        bill_to_name: projectData?.client_name || inv.client_name,
+        bill_to_address: '',
+        reference: linkData?.reference || '',
+        payment_terms: linkData?.payment_terms || '',
+        customer_notes: '',
+        payment_instructions: projectData?.notes || '',
+        amount_requested: inv.balance != null ? String(Math.max(inv.balance, 0)) : '',
+      });
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'Failed to load invoice details');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const resendEditedInvoice = async () => {
+    if (!editingInvoice) return;
+    if (!editingProject) { setEditError('Project data could not be loaded. Close and try again.'); return; }
+    if (!editForm.email.trim()) {
+      setEditError('Recipient email is required.');
+      return;
+    }
+    const cleanedLineItems = editLineItems.filter((item) => item.description.trim() && item.amount.trim());
+    if (cleanedLineItems.length === 0) {
+      setEditError('Add at least one line item.');
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const payload = {
+        to: editForm.email.trim(),
+        cc: editForm.cc.trim() || undefined,
+        subject: editForm.subject.trim() || undefined,
+        client_name: editForm.bill_to_name.trim() || editingProject.client_name,
+        project_name: editingProject.project_name,
+        service: editingProject.service,
+        contract_price: editingProject.contract_price,
+        start_date: editingProject.start_date,
+        issue_date: editForm.issue_date || undefined,
+        deadline: editForm.due_date || editingProject.deadline,
+        currency: editForm.currency,
+        payments: editingProject.hub_project_payments ?? [],
+        show_payments: editShowPayments,
+        line_items: cleanedLineItems,
+        notes: editForm.payment_instructions.trim() || undefined,
+        bill_to_name: editForm.bill_to_name.trim() || undefined,
+        bill_to_address: editForm.bill_to_address.trim() || undefined,
+        reference: editForm.reference.trim() || undefined,
+        payment_terms: editForm.payment_terms.trim() || undefined,
+        message: editForm.customer_notes.trim() || undefined,
+        invoice_number: editingInvoice.invoice_number,
+        project_id: editingInvoice.project_id,
+        app_base_url: 'https://hunacreatives.com',
+        amount_requested: editForm.amount_requested ? parseFloat(editForm.amount_requested) : undefined,
+        existing_invoice_log_id: editingInvoice.id,
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-invoice', { body: payload });
+      if (error || data?.error) throw new Error(data?.error || error?.message || 'Failed to resend invoice');
+
+      const lineItemsTotal = cleanedLineItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+      const totalPaid = (editingProject.hub_project_payments ?? []).reduce((sum, payment) => sum + payment.amount, 0);
+      const newBalance = payload.amount_requested != null ? payload.amount_requested : Math.max(lineItemsTotal - totalPaid, 0);
+
+      setInvoices((prev) =>
+        prev.map((invoice) =>
+          invoice.id === editingInvoice.id
+            ? {
+                ...invoice,
+                sent_to: payload.to,
+                sent_cc: payload.cc ?? null,
+                subject: payload.subject ?? null,
+                contract_price: lineItemsTotal,
+                total_paid: totalPaid,
+                balance: newBalance,
+                line_items: cleanedLineItems,
+                show_payments: payload.show_payments,
+                sent_at: new Date().toISOString(),
+              }
+            : invoice
+        )
+      );
+      closeEditModal();
+      alert(`Updated invoice #${editingInvoice.invoice_number.padStart(4, '0')} and resent it to ${payload.to}.`);
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'Failed to resend invoice');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const deleteProof = async (id: number) => {
     if (!window.confirm('Delete this payment proof? This cannot be undone.')) return;
@@ -210,18 +418,28 @@ export default function InvoiceLogPage() {
       // 3. Mark as verified
       await supabase.from('hub_payment_proof_submissions').update({ verified: true, verified_at }).eq('id', proof.id);
 
-      // 4. Settle matching invoice log entry
+      // 4. Settle matching invoice log entry — try invoice_number first, fall back to project_id
+      let matchedInvoiceId: number | null = null;
       if (proof.invoice_number) {
-        const { data: matched } = await supabase
-          .from('hub_invoice_log')
-          .select('id')
+        const { data: m } = await supabase
+          .from('hub_invoice_log').select('id')
           .eq('invoice_number', proof.invoice_number)
-          .eq('project_id', proof.project_id)
           .maybeSingle();
-        if (matched) {
-          await supabase.from('hub_invoice_log').update({ settled: true, settled_at: verified_at }).eq('id', matched.id);
-          setInvoices(prev => prev.map(i => i.id === matched.id ? { ...i, settled: true, settled_at: verified_at } : i));
-        }
+        if (m) matchedInvoiceId = m.id;
+      }
+      if (!matchedInvoiceId && proof.project_id) {
+        const { data: m } = await supabase
+          .from('hub_invoice_log').select('id')
+          .eq('project_id', proof.project_id)
+          .eq('settled', false)
+          .order('sent_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (m) matchedInvoiceId = m.id;
+      }
+      if (matchedInvoiceId) {
+        await supabase.from('hub_invoice_log').update({ settled: true, settled_at: verified_at }).eq('id', matchedInvoiceId);
+        setInvoices(prev => prev.map(i => i.id === matchedInvoiceId ? { ...i, settled: true, settled_at: verified_at } : i));
       }
 
       // 5. Slack notification
@@ -263,7 +481,7 @@ export default function InvoiceLogPage() {
           invoice_number: inv.invoice_number,
           project_id: inv.project_id,
           amount_requested: inv.balance,
-          app_base_url: window.location.origin,
+          app_base_url: 'https://hunacreatives.com',
         },
       });
       if (error || data?.error) {
@@ -274,6 +492,13 @@ export default function InvoiceLogPage() {
     } finally {
       setResending(prev => { const s = new Set(prev); s.delete(inv.id); return s; });
     }
+  };
+
+  const settleInvoice = async (inv: InvoiceLog) => {
+    if (!window.confirm(`Mark invoice #${inv.invoice_number.padStart(4, '0')} for ${inv.client_name} as settled?`)) return;
+    const settled_at = new Date().toISOString();
+    await supabase.from('hub_invoice_log').update({ settled: true, settled_at }).eq('id', inv.id);
+    setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, settled: true, settled_at } : i));
   };
 
   const deleteInvoice = async (id: number) => {
@@ -304,7 +529,7 @@ export default function InvoiceLogPage() {
           invoice_number: inv.invoice_number,
           project_id: inv.project_id,
           amount_requested: inv.amount_requested ?? undefined,
-          app_base_url: window.location.origin,
+          app_base_url: 'https://hunacreatives.com',
         },
       });
       if (error || data?.error) {
@@ -364,7 +589,7 @@ export default function InvoiceLogPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search by client, project, email…"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30"
           />
         </div>
 
@@ -375,40 +600,65 @@ export default function InvoiceLogPage() {
             <div className="text-sm text-gray-400 py-12 text-center">No invoices found</div>
           ) : (
             <div className="space-y-2">
-              {filteredInvoices.map(inv => (
+              {activeInvoices.length === 0 && (
+                <div className="text-sm text-gray-400 py-6 text-center">No active invoices</div>
+              )}
+              {activeInvoices.map(inv => (
                 <div key={inv.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                  <button
-                    className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer"
-                    onClick={() => setExpanded(expanded === inv.id ? null : inv.id)}
-                  >
-                    <span className="text-xs font-mono font-bold text-[#FF6B35] bg-orange-50 px-2 py-1 rounded flex-shrink-0">
-                      #{inv.invoice_number.padStart(4, '0')}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{inv.project_name}</p>
-                      <p className="text-xs text-gray-500 truncate">{inv.client_name}</p>
-                      <p className="text-xs text-gray-400 hidden sm:block">{inv.sent_to}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-gray-900">{fmt(inv.contract_price)}</p>
-                      {inv.balance != null && (
-                        <p className={`text-xs font-medium ${inv.balance <= 0 ? 'text-emerald-600' : 'text-orange-500'}`}>
-                          {inv.balance <= 0 ? 'Paid' : `${fmt(inv.balance)} due`}
-                        </p>
+                  <div className="px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                    <button
+                      className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
+                      onClick={() => setExpanded(expanded === inv.id ? null : inv.id)}
+                    >
+                      <span className="text-xs font-mono font-bold text-[#1c2b3a] bg-slate-50 px-2 py-1 rounded flex-shrink-0">
+                        #{inv.invoice_number.padStart(4, '0')}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{inv.project_name}</p>
+                        <p className="text-xs text-gray-500 truncate">{inv.client_name}</p>
+                        <p className="text-xs text-gray-400 hidden sm:block">{inv.sent_to}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-gray-900">{fmt(inv.contract_price)}</p>
+                        {inv.balance != null && (
+                          <p className={`text-xs font-medium ${inv.balance <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]/70'}`}>
+                            {inv.balance <= 0 ? 'Paid' : `${fmt(inv.balance)} due`}
+                          </p>
+                        )}
+                      </div>
+                      {inv.settled ? (
+                        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full flex-shrink-0">
+                          <i className="ri-check-double-line"></i> <span className="hidden sm:inline">Settled</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full flex-shrink-0">
+                          <span className="hidden sm:inline">Outstanding</span><span className="sm:hidden">Due</span>
+                        </span>
                       )}
-                    </div>
-                    {inv.settled ? (
-                      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full flex-shrink-0">
-                        <i className="ri-check-double-line"></i> <span className="hidden sm:inline">Settled</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-full flex-shrink-0">
-                        <span className="hidden sm:inline">Outstanding</span><span className="sm:hidden">Due</span>
-                      </span>
+                      <div className="text-xs text-gray-400 flex-shrink-0 text-right hidden md:block">{fmtDateTime(inv.sent_at)}</div>
+                      <i className={`ri-arrow-${expanded === inv.id ? 'up' : 'down'}-s-line text-gray-400 flex-shrink-0`}></i>
+                    </button>
+                    {!inv.settled && (
+                      <div className="flex items-center gap-1.5 ml-1">
+                        <button
+                          type="button"
+                          onClick={() => void settleInvoice(inv)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer flex-shrink-0"
+                        >
+                          <i className="ri-check-double-line"></i>
+                          <span className="hidden sm:inline">Settle</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void openEditInvoice(inv)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs text-sky-600 border border-sky-200 rounded-lg hover:bg-sky-50 transition-colors cursor-pointer flex-shrink-0"
+                        >
+                          <i className="ri-edit-line"></i>
+                          <span className="hidden sm:inline">Re-edit</span>
+                        </button>
+                      </div>
                     )}
-                    <div className="text-xs text-gray-400 flex-shrink-0 text-right hidden md:block">{fmtDateTime(inv.sent_at)}</div>
-                    <i className={`ri-arrow-${expanded === inv.id ? 'up' : 'down'}-s-line text-gray-400 flex-shrink-0`}></i>
-                  </button>
+                  </div>
                   {expanded === inv.id && (
                     <div className="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-3">
                       {inv.subject && (
@@ -447,7 +697,7 @@ export default function InvoiceLogPage() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Balance</p>
-                          <p className={`font-semibold ${(inv.balance ?? 1) <= 0 ? 'text-emerald-600' : 'text-orange-500'}`}>{inv.balance != null && inv.balance <= 0 ? 'Paid ✓' : fmt(inv.balance)}</p>
+                          <p className={`font-semibold ${(inv.balance ?? 1) <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]/70'}`}>{inv.balance != null && inv.balance <= 0 ? 'Paid ✓' : fmt(inv.balance)}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -456,10 +706,18 @@ export default function InvoiceLogPage() {
                           {inv.settled && inv.settled_at && <> · <span className="text-emerald-600">Settled {fmtDateTime(inv.settled_at)}</span></>}
                         </p>
                         <div className="flex items-center gap-2">
+                          {!inv.settled && (
+                            <button
+                              onClick={() => void openEditInvoice(inv)}
+                              className="flex items-center gap-1 px-3 py-1.5 text-xs text-sky-600 border border-sky-200 rounded-lg hover:bg-sky-50 transition-colors cursor-pointer"
+                            >
+                              <i className="ri-edit-line"></i> Re-edit
+                            </button>
+                          )}
                           <button
                             onClick={() => resendInvoice(inv)}
                             disabled={resending.has(inv.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs text-[#FF6B35] border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs text-[#1c2b3a] border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             {resending.has(inv.id)
                               ? <><i className="ri-loader-4-line animate-spin"></i> Sending…</>
@@ -476,6 +734,60 @@ export default function InvoiceLogPage() {
                   )}
                 </div>
               ))}
+              {paidInvoices.length > 0 && (
+                <div className="mt-4">
+                  <button type="button" onClick={() => setShowPaid(p => !p)}
+                    className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer mb-2">
+                    <i className={`ri-arrow-${showPaid ? 'up' : 'down'}-s-line`}></i>
+                    {showPaid ? 'Hide' : 'Show'} paid invoices ({paidInvoices.length})
+                  </button>
+                  {showPaid && (
+                    <div className="space-y-2 opacity-70">
+                      {paidInvoices.map(inv => (
+                        <div key={inv.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                          <div className="px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                            <button className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
+                              onClick={() => setExpanded(expanded === inv.id ? null : inv.id)}>
+                              <span className="text-xs font-mono font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
+                                #{inv.invoice_number.padStart(4, '0')}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-700 truncate">{inv.project_name}</p>
+                                <p className="text-xs text-gray-400 truncate">{inv.client_name}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-bold text-gray-700">{fmt(inv.contract_price)}</p>
+                                <p className="text-xs font-medium text-emerald-600">Paid</p>
+                              </div>
+                              <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full flex-shrink-0">
+                                <i className="ri-check-double-line"></i> <span className="hidden sm:inline">Settled</span>
+                              </span>
+                              <div className="text-xs text-gray-400 flex-shrink-0 text-right hidden md:block">{fmtDateTime(inv.sent_at)}</div>
+                              <i className={`ri-arrow-${expanded === inv.id ? 'up' : 'down'}-s-line text-gray-400 flex-shrink-0`}></i>
+                            </button>
+                          </div>
+                          {expanded === inv.id && (
+                            <div className="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-2 text-sm text-gray-600">
+                              {inv.settled_at && <p className="text-xs text-gray-400">Settled on {fmtDateTime(inv.settled_at)}</p>}
+                              {inv.payments && inv.payments.length > 0 && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Payments</p>
+                                  {inv.payments.map((p, i) => (
+                                    <div key={i} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-0">
+                                      <span>{fmtDate(p.paid_at)}{p.notes ? ` · ${p.notes}` : ''}</span>
+                                      <span className="font-semibold">{fmt(p.amount)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         ) : tab === 'scheduled' ? (
@@ -497,7 +809,7 @@ export default function InvoiceLogPage() {
                       className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() => setExpanded(expanded === 100000 + inv.id ? null : 100000 + inv.id)}
                     >
-                      <span className="text-xs font-mono font-bold text-[#FF6B35] bg-orange-50 px-2 py-1 rounded flex-shrink-0">
+                      <span className="text-xs font-mono font-bold text-[#1c2b3a] bg-slate-50 px-2 py-1 rounded flex-shrink-0">
                         #{inv.invoice_number.padStart(4, '0')}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -563,7 +875,7 @@ export default function InvoiceLogPage() {
                               <button
                                 onClick={() => resendScheduledInvoice(inv)}
                                 disabled={resending.has(inv.id)}
-                                className="flex items-center gap-1 px-3 py-1.5 text-xs text-[#FF6B35] border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer disabled:opacity-50"
+                                className="flex items-center gap-1 px-3 py-1.5 text-xs text-[#1c2b3a] border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
                               >
                                 {resending.has(inv.id)
                                   ? <><i className="ri-loader-4-line animate-spin"></i> Sending…</>
@@ -599,7 +911,7 @@ export default function InvoiceLogPage() {
                     className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => setExpanded(expanded === 200000 + p.id ? null : 200000 + p.id)}
                   >
-                    <span className="text-xs font-mono font-bold text-[#FF6B35] bg-orange-50 px-2 py-1 rounded flex-shrink-0">
+                    <span className="text-xs font-mono font-bold text-[#1c2b3a] bg-slate-50 px-2 py-1 rounded flex-shrink-0">
                       #{p.invoice_number.padStart(4, '0')}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -736,7 +1048,7 @@ export default function InvoiceLogPage() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Balance After</p>
-                          <p className={`font-semibold ${(r.balance ?? 1) <= 0 ? 'text-emerald-600' : 'text-orange-500'}`}>{r.balance != null && r.balance <= 0 ? 'Paid ✓' : fmt(r.balance)}</p>
+                          <p className={`font-semibold ${(r.balance ?? 1) <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]/70'}`}>{r.balance != null && r.balance <= 0 ? 'Paid ✓' : fmt(r.balance)}</p>
                         </div>
                       </div>
                       {r.receipt_url && (
@@ -756,6 +1068,194 @@ export default function InvoiceLogPage() {
           )
         )}
       </div>
+
+      {editingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-3xl max-h-[92vh] overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-[#111827]">Re-edit Invoice #{editingInvoice.invoice_number.padStart(4, '0')}</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{editingInvoice.client_name} · {editingInvoice.project_name}</p>
+              </div>
+              <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
+                <i className="ri-close-line text-lg"></i>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[calc(92vh-132px)]">
+              {editLoading ? (
+                <div className="py-16 text-center text-sm text-gray-400">Loading invoice details…</div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {editError && (
+                    <div className="px-5 pt-4">
+                      <div className="bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 text-sm text-rose-600">{editError}</div>
+                    </div>
+                  )}
+
+                  {/* Client Details */}
+                  <div className="px-5 py-4 space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Client Details</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Send To</span>
+                        <input type="email" value={editForm.email}
+                          onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                          placeholder="client@email.com"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">CC</span>
+                        <input type="text" value={editForm.cc}
+                          onChange={(e) => setEditForm((p) => ({ ...p, cc: e.target.value }))}
+                          placeholder="finance@client.com"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Client Name</span>
+                        <input type="text" value={editForm.bill_to_name}
+                          onChange={(e) => setEditForm((p) => ({ ...p, bill_to_name: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Reference / PO</span>
+                        <input type="text" value={editForm.reference}
+                          onChange={(e) => setEditForm((p) => ({ ...p, reference: e.target.value }))}
+                          placeholder="PO-1042"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="sm:col-span-2 space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Billing Address</span>
+                        <textarea value={editForm.bill_to_address}
+                          onChange={(e) => setEditForm((p) => ({ ...p, bill_to_address: e.target.value }))}
+                          rows={2} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Invoice Settings */}
+                  <div className="px-5 py-4 space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Invoice Settings</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Issue Date</span>
+                        <input type="date" value={editForm.issue_date}
+                          onChange={(e) => setEditForm((p) => ({ ...p, issue_date: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Due Date</span>
+                        <input type="date" value={editForm.due_date}
+                          onChange={(e) => setEditForm((p) => ({ ...p, due_date: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Currency</span>
+                        <select value={editForm.currency}
+                          onChange={(e) => setEditForm((p) => ({ ...p, currency: e.target.value as 'PHP' | 'USD' }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]">
+                          <option value="PHP">PHP</option>
+                          <option value="USD">USD</option>
+                        </select>
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs font-medium text-gray-500">Payment Terms</span>
+                        <input type="text" value={editForm.payment_terms}
+                          onChange={(e) => setEditForm((p) => ({ ...p, payment_terms: e.target.value }))}
+                          placeholder="Due on receipt"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Line Items */}
+                  <div className="px-5 py-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Line Items</p>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                        <input type="checkbox" checked={editShowPayments}
+                          onChange={(e) => setEditShowPayments(e.target.checked)}
+                          className="h-3.5 w-3.5 accent-[#1c2b3a]" />
+                        Include payment history
+                      </label>
+                    </div>
+                    <div className="space-y-2">
+                      {editLineItems.map((item, index) => (
+                        <div key={index} className="grid grid-cols-[minmax(0,1fr)_160px_44px] gap-2">
+                          <input type="text" value={item.description}
+                            onChange={(e) => setEditLineItems((prev) => prev.map((l, i) => i === index ? { ...l, description: e.target.value } : l))}
+                            placeholder="Description"
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                          <input type="number" value={item.amount}
+                            onChange={(e) => setEditLineItems((prev) => prev.map((l, i) => i === index ? { ...l, amount: e.target.value } : l))}
+                            placeholder="0.00"
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                          <button type="button"
+                            onClick={() => setEditLineItems((prev) => prev.length === 1 ? prev : prev.filter((_, i) => i !== index))}
+                            className="rounded-xl border border-gray-200 text-gray-400 hover:text-rose-500 hover:border-rose-200 cursor-pointer">
+                            <i className="ri-delete-bin-line text-sm"></i>
+                          </button>
+                        </div>
+                      ))}
+                      <button type="button"
+                        onClick={() => setEditLineItems((prev) => [...prev, { description: '', amount: '' }])}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-[#1c2b3a] hover:bg-slate-100 cursor-pointer">
+                        <i className="ri-add-line"></i> Add Item
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="px-5 py-4 space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Notes</p>
+                    <div className="space-y-3">
+                      <label className="space-y-1 block">
+                        <span className="text-xs font-medium text-gray-500">Customer Notes</span>
+                        <textarea value={editForm.customer_notes}
+                          onChange={(e) => setEditForm((p) => ({ ...p, customer_notes: e.target.value }))}
+                          rows={3} placeholder="Thank you for your continued trust…"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1 block">
+                        <span className="text-xs font-medium text-gray-500">Payment Instructions</span>
+                        <textarea value={editForm.payment_instructions}
+                          onChange={(e) => setEditForm((p) => ({ ...p, payment_instructions: e.target.value }))}
+                          rows={3} placeholder="Bank details, transfer instructions…"
+                          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25 focus:border-[#1c2b3a]" />
+                      </label>
+                      <label className="space-y-1 block">
+                        <span className="text-xs font-medium text-gray-500">Amount Due Override</span>
+                        <input type="number" value={editForm.amount_requested}
+                          onChange={(e) => setEditForm((p) => ({ ...p, amount_requested: e.target.value }))}
+                          placeholder="Leave blank to use line items total"
+                          className="w-full px-3 py-2 text-sm border border-[#1c2b3a] rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/25" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 justify-end p-5 border-t border-gray-100">
+              <button
+                onClick={closeEditModal}
+                className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void resendEditedInvoice()}
+                disabled={editLoading || editSaving}
+                className="px-4 py-2 text-sm bg-[#111827] text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 cursor-pointer"
+              >
+                {editSaving ? 'Sending…' : 'Save and resend'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

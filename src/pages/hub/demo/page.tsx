@@ -23,14 +23,14 @@ export default function HubDemoPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-indigo-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50 px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-3xl bg-[#FF6B35] text-white flex items-center justify-center shadow-lg shadow-orange-200 mb-4">
+          <div className="w-14 h-14 rounded-3xl bg-[#1c2b3a] text-white flex items-center justify-center shadow-lg shadow-slate-200/60 mb-4">
             <img src="/s-logo.png" alt="S" className="w-8 h-8 object-contain" style={{ filter: 'invert(1)' }} />
           </div>
-          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-semibold">FS Architects</p>
+          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-semibold">Huna Ops</p>
           <h1 className="text-2xl font-bold text-gray-800">Sentro</h1>
           <p className="text-sm text-gray-400 mt-1">Interactive Demo</p>
         </div>
@@ -56,19 +56,19 @@ export default function HubDemoPage() {
               onChange={e => { setPasscode(e.target.value); setError(false); }}
               placeholder="Passcode"
               autoFocus
-              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all mb-3 ${error ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-200 bg-white/60 text-gray-800 focus:border-[#FF6B35]/50 focus:ring-2 focus:ring-[#FF6B35]/10'}`}
+              className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all mb-3 ${error ? 'border-red-300 bg-red-50 text-red-600' : 'border-gray-200 bg-white/60 text-gray-800 focus:border-[#1c2b3a]/50 focus:ring-2 focus:ring-[#1c2b3a]/10'}`}
             />
             {error && <p className="text-xs text-red-500 mb-3">Incorrect passcode. Try again.</p>}
             <button
               type="submit"
-              className="w-full bg-[#FF6B35] hover:bg-[#e55a27] text-white font-semibold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+              className="w-full bg-[#1c2b3a] hover:bg-[#0f1c28] text-white font-semibold py-3 rounded-xl transition-colors text-sm cursor-pointer"
             >
               View Demo
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">Sentro by FS Architects · Demo Mode</p>
+        <p className="text-center text-xs text-gray-300 mt-6">Sentro by Huna Creatives · Demo Mode</p>
       </div>
     </div>
   );

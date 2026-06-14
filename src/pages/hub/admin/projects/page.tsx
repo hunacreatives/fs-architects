@@ -1,16 +1,45 @@
-import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { GanttTimeline } from '@/pages/hub/components/GanttTimeline';
 import { supabase } from '@/lib/supabase';
+import { createHubNotifications } from '@/lib/hubNotifications';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import { logAudit } from '@/lib/audit';
 import { getSetting } from '@/lib/settings';
-import { localToday } from '@/lib/formatUtils';
+import { localToday, slugify } from '@/lib/formatUtils';
 import { DEMO_PROJECTS, DEMO_CONTRACTORS } from '@/lib/demoData';
 import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
 import { uploadFileToDrive } from '@/lib/driveUpload';
+import { createTaskAttachment } from '@/lib/taskAttachments';
+import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
+import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeTaskAssigneePayload } from '@/lib/taskAssignments';
+
+// ── SVG progress ring ──────────────────────────────────────────────────────
+function ProgressRing({ pct, size = 120 }: { pct: number; size?: number }) {
+  const r = (size / 2) - 10;
+  const circ = 2 * Math.PI * r;
+  const filled = Math.max(0, Math.min(pct, 100)) / 100 * circ;
+  return (
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={size < 60 ? 7 : 9} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke="#3b82f6" strokeWidth={size < 60 ? 7 : 9}
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${circ}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          style={{ transition: 'stroke-dasharray 1s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-bold text-gray-900" style={{ fontSize: size < 60 ? 13 : 22 }}>{pct}%</span>
+        {size >= 100 && <span className="text-[10px] text-gray-400 mt-0.5">complete</span>}
+      </div>
+    </div>
+  );
+}
 
 const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtRate = (rate: number | null, currency?: string | null) =>
@@ -30,6 +59,7 @@ const getServicePalette = (service: string | null | undefined) => {
   if (s.includes('marketing'))           return { from: '#f97316', to: '#f59e0b' };
   return                                        { from: '#94a3b8', to: '#64748b' };
 };
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 const fmtDate = (d: string | null | undefined, fallback = '—') => {
   if (!d) return fallback;
   const s = d.length === 10 ? d + 'T00:00:00' : d;
@@ -38,15 +68,15 @@ const fmtDate = (d: string | null | undefined, fallback = '—') => {
 };
 
 const serviceCfg: Record<string, { border: string; dot: string; badge: string }> = {
-  'Architectural Design':           { border: 'border-l-sky-400',     dot: 'bg-sky-400',     badge: 'bg-sky-50 text-sky-700' },
-  'Construction Documents':      { border: 'border-l-cyan-400',    dot: 'bg-cyan-400',    badge: 'bg-cyan-50 text-cyan-700' },
-  'Interior Design':      { border: 'border-l-violet-400',  dot: 'bg-violet-400',  badge: 'bg-violet-50 text-violet-700' },
-  'Graphic Design':           { border: 'border-l-pink-400',    dot: 'bg-pink-400',    badge: 'bg-pink-50 text-pink-700' },
-  'Site Planning':  { border: 'border-l-orange-400',  dot: 'bg-orange-400',  badge: 'bg-orange-50 text-orange-700' },
-  'Feasibility Study':         { border: 'border-l-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700' },
-  'SEO':                      { border: 'border-l-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700' },
-  'Project Management':              { border: 'border-l-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-50 text-rose-700' },
-  'Renovation':          { border: 'border-l-indigo-400',  dot: 'bg-indigo-400',  badge: 'bg-indigo-50 text-indigo-700' },
+  'Architecture':             { border: 'border-l-sky-400',     dot: 'bg-sky-400',     badge: 'bg-sky-50 text-sky-700' },
+  'Interior Design':          { border: 'border-l-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700' },
+  'Design & Drafting':        { border: 'border-l-cyan-400',    dot: 'bg-cyan-400',    badge: 'bg-cyan-50 text-cyan-700' },
+  'Project Management':       { border: 'border-l-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700' },
+  'Construction Admin':       { border: 'border-l-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-50 text-rose-700' },
+  'Feasibility Study':        { border: 'border-l-pink-400',    dot: 'bg-pink-400',    badge: 'bg-pink-50 text-pink-700' },
+  'Design-Build':             { border: 'border-l-[#1c2b3a]/60', dot: 'bg-[#1c2b3a]/50', badge: 'bg-slate-100 text-[#1c2b3a]' },
+  'Renovation':               { border: 'border-l-teal-400',    dot: 'bg-teal-400',    badge: 'bg-teal-50 text-teal-700' },
+  'Consultation':             { border: 'border-l-slate-400',   dot: 'bg-slate-400',   badge: 'bg-slate-50 text-slate-700' },
   'Other':                    { border: 'border-l-gray-300',    dot: 'bg-gray-300',    badge: 'bg-gray-50 text-gray-500' },
 };
 const getServiceCfg = (service: string | null) => serviceCfg[service ?? ''] ?? serviceCfg['Other'];
@@ -88,28 +118,88 @@ interface ProjectTask {
   status: 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done';
   priority: 'low' | 'medium' | 'high';
   assigned_to: string | null;
+  assignee_ids?: string[] | null;
   due_date: string | null;
   start_date: string | null;
   created_at: string;
   hub_users?: { id: string; full_name: string; avatar_url: string | null } | null;
+  meta?: { custom_fields?: {id: string; label: string; value: string}[] } | null;
+  archived?: boolean | null;
+  archived_at?: string | null;
+  sort_order?: number | null;
 }
 
 interface ProjectActivity {
   id: number;
   project_id: number;
-  actor_name: string;
-  description: string;
+  actor_name?: string;
+  user_id?: string;
+  action?: string;
+  entity_type?: string;
+  entity_id?: number | null;
+  entity_title?: string | null;
+  description?: string;
+  meta?: Record<string, unknown> | null;
   created_at: string;
+  hub_users?: { id: string; full_name: string; avatar_url: string | null } | null;
+}
+
+function normalizeTaskActivityDescription(row: { actor_name: string; type: string; description: string; task_title?: string | null }) {
+  const title = row.task_title ? `"${row.task_title}"` : 'this task';
+  switch (row.type) {
+    case 'created':
+      return `${row.actor_name} created ${title}`;
+    case 'status_change':
+      return `${row.actor_name} ${row.description} on ${title}`;
+    case 'assigned':
+      return `${row.actor_name} ${row.description} on ${title}`;
+    case 'comment_added':
+      return `${row.actor_name} commented on ${title}`;
+    case 'attachment_added':
+      return `${row.actor_name} ${row.description} on ${title}`;
+    default:
+      return `${row.actor_name} ${row.description} on ${title}`;
+  }
+}
+
+function getProjectActivityActorName(activity: ProjectActivity) {
+  return activity.actor_name ?? activity.hub_users?.full_name ?? 'Someone';
+}
+
+function getProjectActivityDescription(activity: ProjectActivity) {
+  if (activity.description) return activity.description;
+  const actor = getProjectActivityActorName(activity);
+  const title = activity.entity_title ? `"${activity.entity_title}"` : 'this item';
+  switch (activity.action) {
+    case 'task_created':
+      return `${actor} created ${title}`;
+    case 'task_status_changed':
+      if (activity.meta?.to) {
+        return `${actor} moved ${title} to ${String(activity.meta.to).replace(/_/g, ' ')}`;
+      }
+      return `${actor} updated ${title}`;
+    case 'task_assigned':
+      return `${actor} assigned ${title}`;
+    case 'comment_added':
+      return `${actor} commented on ${title}`;
+    case 'attachment_added':
+      return `${actor} added an attachment to ${title}`;
+    case 'task_deleted':
+      return `${actor} deleted ${title}`;
+    default:
+      return activity.action ? `${actor} ${activity.action.replace(/_/g, ' ')} ${title}` : `${actor} updated ${title}`;
+  }
 }
 
 function Avatar({ name, url }: { name: string; url?: string | null }) {
   if (url) return <img src={url} alt={name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />;
-  return <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{name[0].toUpperCase()}</span></div>;
+  return <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{name[0].toUpperCase()}</span></div>;
 }
 
 export default function AdminProjectsPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
+  const navigate = useNavigate();
   const isOwner = hubUser?.role === 'owner' || isDemo;
   const [usdRate, setUsdRate] = useState(56);
   useEffect(() => { getSetting('usd_rate', '56').then(v => setUsdRate(parseFloat(v))); }, []);
@@ -125,20 +215,30 @@ export default function AdminProjectsPage() {
   const [editingClient, setEditingClient] = useState<typeof intlClients[0] | null>(null);
   const [clientSaving, setClientSaving] = useState(false);
   const [clientError, setClientError] = useState('');
+  const [assignAddId, setAssignAddId] = useState('');
+  const [assignAddRole, setAssignAddRole] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search] = useState('');
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paused' | 'completed' | 'cancelled'>('ongoing');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [pageView, setPageView] = useState<'projects' | 'tasks'>('projects');
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [allTasksLoading, setAllTasksLoading] = useState(false);
+  const [taskStatusFilter, setTaskStatusFilter] = useState('active');
+  const [taskGroupBy, setTaskGroupBy] = useState<'project' | 'assignee'>('project');
+  const [taskSearch, setTaskSearch] = useState('');
   const [projectTypeFilter, setProjectTypeFilter] = useState<'all' | 'client' | 'internal' | 'retainer'>('all');
   const [activeId, setActiveId] = useState<number | null>(() => {
     const w = searchParams.get('w');
     return w ? parseInt(w) : null;
   });
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Project form
-  const SERVICES = ['Architectural Design', 'Interior Design', 'Structural Design', 'Construction Documents', 'Project Management', 'Feasibility Study', 'Site Planning', 'Renovation', 'Consultation', 'Other'];
-  const emptyForm = { project_type: 'client' as 'client' | 'internal' | 'retainer', client_name: '', project_name: '', service: 'Architectural Design', contract_price: '', monthly_rate: '', monthly_rate_currency: 'PHP' as 'PHP' | 'USD', status: 'ongoing', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
+  const SERVICES = ['Architecture', 'Interior Design', 'Design & Drafting', 'Project Management', 'Construction Admin', 'Feasibility Study', 'Design-Build', 'Renovation', 'Consultation', 'Other'];
+  const emptyForm = { project_type: 'client' as 'client' | 'internal' | 'retainer', client_name: '', project_name: '', service: 'Architecture', contract_price: '', monthly_rate: '', monthly_rate_currency: 'PHP' as 'PHP' | 'USD', status: 'ongoing', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -217,13 +317,24 @@ export default function AdminProjectsPage() {
 
   // Tasks
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
-  const [taskFilter, setTaskFilter] = useState<'all' | 'todo' | 'in_progress' | 'done' | 'overdue'>('all');
+  const [commentCounts, setCommentCounts] = useState<Record<number,number>>({});
+  const [taskFilter, setTaskFilter] = useState<'all' | 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done' | 'overdue'>('all');
+  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  const [taskView, setTaskView] = useState<'list' | 'board'>('list');
+  const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
+  const [boardDragOver, setBoardDragOver] = useState<ProjectTask['status'] | null>(null);
+  const [listDragOverTaskId, setListDragOverTaskId] = useState<number | null>(null);
+  const [listDragOverPos, setListDragOverPos] = useState<'above' | 'below' | null>(null);
+  const listDragFromHandle = useRef(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskAssignee, setNewTaskAssignee] = useState('');
+  const [newTaskAssigneeIds, setNewTaskAssigneeIds] = useState<string[]>([]);
   const [newTaskDue, setNewTaskDue] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskAttachment, setNewTaskAttachment] = useState<File | null>(null);
   const [taskSaving, setTaskSaving] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const newTaskAttachmentRef = useRef<HTMLInputElement>(null);
 
   // Task detail panel
   const [detailTask, setDetailTask] = useState<TaskDetailTask | null>(null);
@@ -272,70 +383,254 @@ export default function AdminProjectsPage() {
       supabase.from('hub_project_tasks')
         .select('*')
         .eq('project_id', projectId)
+        .order('sort_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true }),
       supabase.from('hub_project_activity')
-        .select('*')
+        .select('*, hub_users(full_name, avatar_url)')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false })
         .limit(20),
     ]);
     setTasks((tRes.data as ProjectTask[]) ?? []);
+    const taskRows = (tRes.data as ProjectTask[]) ?? [];
+    // Fetch comment counts for all tasks
+    if (taskRows.length) {
+      const ids = taskRows.map(t => t.id);
+      supabase.from('hub_project_task_comments').select('task_id').in('task_id', ids)
+        .then(({ data }) => {
+          const counts: Record<number,number> = {};
+          for (const r of data ?? []) counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+          setCommentCounts(counts);
+        });
+      const { data: taskActivityRows } = await supabase
+        .from('hub_project_task_activity')
+        .select('id, task_id, actor_name, type, description, created_at')
+        .in('task_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      const taskTitleMap = Object.fromEntries(taskRows.map((task) => [task.id, task.title]));
+      const mergedActivity = [
+        ...((aRes.data as ProjectActivity[]) ?? []),
+        ...((taskActivityRows ?? []).map((row: any) => ({
+          id: Number(`9${row.id}`),
+          project_id: projectId,
+          actor_name: row.actor_name,
+          description: normalizeTaskActivityDescription({
+            actor_name: row.actor_name,
+            type: row.type,
+            description: row.description,
+            task_title: taskTitleMap[row.task_id] ?? null,
+          }),
+          created_at: row.created_at,
+        })) as ProjectActivity[]),
+      ]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 20);
+      setActivity(mergedActivity);
+      return;
+    }
     setActivity((aRes.data as ProjectActivity[]) ?? []);
   };
 
+  const refreshWorkspaceActivity = useCallback(async () => {
+    if (!activeId) {
+      setActivity([]);
+      return;
+    }
+
+    const projectTaskIds = tasks
+      .filter((task) => task.project_id === activeId)
+      .map((task) => task.id);
+
+    const { data: projectActivityRows } = await supabase
+      .from('hub_project_activity')
+      .select('*, hub_users(full_name, avatar_url)')
+      .eq('project_id', activeId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (!projectTaskIds.length) {
+      setActivity((projectActivityRows as ProjectActivity[]) ?? []);
+      return;
+    }
+
+    const taskTitleMap = Object.fromEntries(
+      tasks
+        .filter((task) => task.project_id === activeId)
+        .map((task) => [task.id, task.title])
+    );
+
+    const { data: taskActivityRows } = await supabase
+      .from('hub_project_task_activity')
+      .select('id, task_id, actor_name, type, description, created_at')
+      .in('task_id', projectTaskIds)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    const mergedActivity = [
+      ...((projectActivityRows as ProjectActivity[]) ?? []),
+      ...((taskActivityRows ?? []).map((row: any) => ({
+        id: Number(`9${row.id}`),
+        project_id: activeId,
+        actor_name: row.actor_name,
+        description: normalizeTaskActivityDescription({
+          actor_name: row.actor_name,
+          type: row.type,
+          description: row.description,
+          task_title: taskTitleMap[row.task_id] ?? null,
+        }),
+        created_at: row.created_at,
+      })) as ProjectActivity[]),
+    ]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 20);
+
+    setActivity(mergedActivity);
+  }, [activeId, tasks]);
+
   const logActivity = async (projectId: number, description: string) => {
     if (isDemo) return;
-    await supabase.from('hub_project_activity').insert({
+
+    const newPayload = {
       project_id: projectId,
-      actor_id: hubUser?.id ?? null,
-      actor_name: hubUser?.full_name ?? 'Admin',
-      description,
-    });
+      user_id: hubUser?.id ?? null,
+      action: 'custom',
+      entity_type: 'project',
+      entity_id: null,
+      entity_title: null,
+      meta: { message: description },
+    };
+
+    const { error } = await supabase.from('hub_project_activity').insert(newPayload);
+    if (error) {
+      await supabase.from('hub_project_activity').insert({
+        project_id: projectId,
+        actor_id: hubUser?.id ?? null,
+        actor_name: hubUser?.full_name ?? 'Admin',
+        description,
+      });
+    }
   };
 
   const createTask = async () => {
     if (!activeId || !newTaskTitle.trim()) return;
     setTaskSaving(true);
-    const { data, error } = await supabase.from('hub_project_tasks').insert({
-      project_id: activeId,
-      title: newTaskTitle.trim(),
-      status: 'todo',
-      priority: newTaskPriority,
-      assigned_to: newTaskAssignee || null,
-      due_date: newTaskDue || null,
-    }).select('*').single();
-    setTaskSaving(false);
-    if (error || !data) return;
-    setTasks(prev => [...prev, data as ProjectTask]);
-    const assigneeName = newTaskAssignee
-      ? (activeProject?.hub_project_contractors.find(pc => pc.hub_users?.id === newTaskAssignee)?.hub_users?.full_name ?? '')
-      : '';
-    await logActivity(activeId, `${hubUser?.full_name ?? 'Admin'} created task "${newTaskTitle.trim()}"${assigneeName ? ` — assigned to ${assigneeName}` : ''}`);
-    if (newTaskAssignee && data) {
-      supabase.functions.invoke('notify-task-assigned', {
-        body: {
-          task_id: data.id,
-          task_title: newTaskTitle.trim(),
-          project_id: activeId,
-          project_name: activeProject?.project_name ?? '',
-          assigned_to_id: newTaskAssignee,
-          assigned_by_name: hubUser?.full_name ?? 'Admin',
-        },
-      }).catch(() => {});
+    try {
+      const taskAssigneePayload = normalizeTaskAssigneePayload(newTaskAssigneeIds);
+      const { data, error } = await supabase.from('hub_project_tasks').insert({
+        project_id: activeId,
+        title: newTaskTitle.trim(),
+        status: 'todo',
+        priority: newTaskPriority,
+        ...taskAssigneePayload,
+        due_date: newTaskDue || null,
+      }).select('*').single();
+      if (error || !data) return;
+      if (newTaskAttachment && hubUser?.id) {
+        setUploadingAttachment(true);
+        try {
+          await createTaskAttachment({
+            taskId: data.id,
+            file: newTaskAttachment,
+            uploadedBy: hubUser.id,
+            projectName: activeProject?.project_name ?? 'General',
+          });
+        } finally {
+          setUploadingAttachment(false);
+        }
+      }
+      const assigneeUser = taskAssigneePayload.assigned_to
+        ? activeProject?.hub_project_contractors.find(pc => pc.hub_users?.id === taskAssigneePayload.assigned_to)?.hub_users ?? null
+        : null;
+      setTasks(prev => [...prev, { ...data, hub_users: assigneeUser } as ProjectTask]);
+      const assigneeNames = newTaskAssigneeIds
+        .map((assigneeId) => activeProject?.hub_project_contractors.find((pc) => pc.hub_users?.id === assigneeId)?.hub_users?.full_name ?? '')
+        .filter(Boolean);
+      await logActivity(activeId, `${hubUser?.full_name ?? 'Admin'} created task "${newTaskTitle.trim()}"${assigneeNames.length ? ` — assigned to ${assigneeNames.join(', ')}` : ''}`);
+      if (newTaskAssigneeIds.length > 0 && data) {
+        supabase.functions.invoke('notify-task-assigned', {
+          body: {
+            task_id: data.id,
+            task_title: newTaskTitle.trim(),
+            project_id: activeId,
+            project_name: activeProject?.project_name ?? '',
+            assigned_to_ids: newTaskAssigneeIds,
+            assigned_by_name: hubUser?.full_name ?? 'Admin',
+          },
+        }).catch(() => {});
+      }
+      setNewTaskTitle(''); setNewTaskAssigneeIds([]); setNewTaskDue(''); setNewTaskPriority('medium'); setNewTaskAttachment(null); setShowTaskForm(false);
+      if (newTaskAttachmentRef.current) newTaskAttachmentRef.current.value = '';
+      fetchTasks(activeId);
+    } catch (err) {
+      console.error('Task create error:', err);
+    } finally {
+      setTaskSaving(false);
     }
-    setNewTaskTitle(''); setNewTaskAssignee(''); setNewTaskDue(''); setNewTaskPriority('medium'); setShowTaskForm(false);
-    fetchTasks(activeId);
+  };
+
+  const updateTaskStatus = async (task: ProjectTask, newStatus: ProjectTask['status']) => {
+    if (task.status === newStatus || isDemo) return;
+    await supabase.from('hub_project_tasks').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', task.id);
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+    const statusLabel = newStatus.replace('_', ' ');
+    await logActivity(task.project_id, `${hubUser?.full_name ?? 'Admin'} moved "${task.title}" to ${statusLabel}`);
+    if (newStatus === 'done') fetchTasks(task.project_id);
   };
 
   const toggleTask = async (task: ProjectTask) => {
-    if (isDemo) return;
     const next = task.status === 'done' ? 'todo' : task.status === 'todo' ? 'in_progress' : 'done';
-    await supabase.from('hub_project_tasks').update({ status: next, updated_at: new Date().toISOString() }).eq('id', task.id);
-    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: next } : t));
-    if (next === 'done') {
-      await logActivity(task.project_id, `${hubUser?.full_name ?? 'Admin'} completed "${task.title}"`);
-      fetchTasks(task.project_id);
+    await updateTaskStatus(task, next);
+  };
+
+  const reorderTasks = async (orderedIds: number[]) => {
+    const orderedSet = new Set(orderedIds);
+    // Sort all current tasks by their existing sort_order / created_at
+    const currentSorted = [...tasks].sort((a, b) => {
+      if (a.sort_order != null && b.sort_order != null) return a.sort_order - b.sort_order;
+      if (a.sort_order != null) return -1;
+      if (b.sort_order != null) return 1;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+    // Non-group tasks keep their relative order; find where the group sits
+    const nonGroup = currentSorted.filter(t => !orderedSet.has(t.id));
+    const firstGroupOriginalIdx = currentSorted.findIndex(t => orderedSet.has(t.id));
+    let insertAt = 0;
+    for (const t of currentSorted.slice(0, firstGroupOriginalIdx)) {
+      if (!orderedSet.has(t.id)) insertAt++;
     }
+    const groupTasks = orderedIds.map(id => tasks.find(t => t.id === id)!).filter(Boolean);
+    const fullOrder = [...nonGroup.slice(0, insertAt), ...groupTasks, ...nonGroup.slice(insertAt)];
+    const newTasks = fullOrder.map((t, i) => ({ ...t, sort_order: i + 1 }));
+    setTasks(newTasks);
+    await Promise.all(newTasks.map(t =>
+      supabase.from('hub_project_tasks').update({ sort_order: t.sort_order }).eq('id', t.id)
+    ));
+  };
+
+  const deleteTask = async (task: ProjectTask) => {
+    if (isDemo) return;
+    await supabase.from('hub_project_tasks').delete().eq('id', task.id);
+    setTasks(prev => prev.filter(t => t.id !== task.id));
+  };
+
+  const fetchAllTasks = async () => {
+    setAllTasksLoading(true);
+    const [tasksRes, projectsRes] = await Promise.all([
+      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, due_date').order('due_date', { ascending: true, nullsFirst: false }),
+      supabase.from('hub_projects').select('id, project_name, client_name, project_type'),
+    ]);
+    const projectMap: Record<number, any> = Object.fromEntries((projectsRes.data ?? []).map((p: any) => [p.id, p]));
+    const userIds = [...new Set((tasksRes.data ?? []).flatMap((t: any) => getTaskAssigneeIds(t)).filter(Boolean))];
+    const usersRes = userIds.length ? await supabase.from('hub_users').select('id, full_name, avatar_url').in('id', userIds) : { data: [] };
+    const userMap: Record<string, any> = Object.fromEntries((usersRes.data ?? []).map((u: any) => [u.id, u]));
+    setAllTasks((tasksRes.data ?? []).map((t: any) => ({
+      ...t,
+      project: projectMap[t.project_id] ?? null,
+      assignee: getPrimaryTaskAssigneeId(t) ? userMap[getPrimaryTaskAssigneeId(t)!] ?? null : null,
+      assignees: getTaskAssigneeIds(t).map((id) => userMap[id]).filter(Boolean),
+    })));
+    setAllTasksLoading(false);
   };
 
   const fetchAll = async () => {
@@ -390,6 +685,40 @@ export default function AdminProjectsPage() {
 
   const isInternalProject = (project: Project | null | undefined) => project?.project_type === 'internal';
 
+  const getProjectHealth = (
+    project: Project,
+    teamCount: number,
+    tasksDone: number,
+    tasksTotal: number,
+    today: string,
+  ): string => {
+    if (project.status === 'cancelled' || project.status === 'archived') return 'Archived';
+    if (project.status === 'completed') return 'Completed';
+    if (teamCount === 0) return 'No team assigned';
+    if (tasksTotal === 0) return 'No tasks yet';
+    if (project.deadline && project.deadline < today && project.status !== 'completed') {
+      if (project.project_type === 'client') {
+        const d = derived(project);
+        if (d.balance > 0) return 'Waiting on payment';
+      }
+      return 'Overdue';
+    }
+    if (project.deadline) {
+      const daysLeft = Math.ceil((new Date(project.deadline).getTime() - new Date(today).getTime()) / 86400000);
+      if (daysLeft <= 7) return 'Due this week';
+    }
+    if (project.project_type === 'client') {
+      const d = derived(project);
+      if (d.paidPct >= 100) return 'Fully paid';
+    }
+    if (project.project_type === 'retainer') return 'Active retainer';
+    if (project.project_type === 'internal') {
+      const hasInProgress = tasksTotal > tasksDone && tasksTotal > 0;
+      if (hasInProgress) return 'Internal sprint';
+    }
+    return 'In progress';
+  };
+
   const saveProject = async () => {
     const isInternal = form.project_type === 'internal';
     const isRetainer = form.project_type === 'retainer';
@@ -429,7 +758,7 @@ export default function AdminProjectsPage() {
           payout_type: 'percentage',
           percentage: 0,
           payout_status: 'pending',
-        }).then(() => {});
+        }).then(({ error: e }) => { if (e) console.error('Auto-assign owner failed:', e); });
       }
       if (data) {
         setActiveId(data.id);
@@ -463,6 +792,7 @@ export default function AdminProjectsPage() {
     if (!confirmed) return;
     const { error } = await supabase.from('hub_projects').delete().eq('id', project.id);
     if (error) {
+      console.error('Delete project error:', error);
       window.alert(`Could not delete project: ${error.message}`);
       return;
     }
@@ -501,6 +831,8 @@ export default function AdminProjectsPage() {
     fetchAll();
   };
 
+  const activeClient = intlClients.find(c => c.id === activeClientId) ?? null;
+
   const [openingWorkspace, setOpeningWorkspace] = useState(false);
 
   const openClientWorkspace = async (client: typeof intlClients[0]) => {
@@ -524,7 +856,7 @@ export default function AdminProjectsPage() {
           status: 'ongoing',
           notes: client.notes ?? null,
         }).select('id').single();
-        if (error) { setFormError(`Could not create workspace: ${error.message}`); return; }
+        if (error) { alert(`Could not create workspace: ${error.message}`); return; }
         if (client.assignments.length > 0) {
           await supabase.from('hub_project_contractors').insert(
             client.assignments.map(a => ({ project_id: data.id, contractor_id: a.contractor_id, payout_type: 'percentage', percentage: 0, payout_status: 'pending' }))
@@ -553,6 +885,26 @@ export default function AdminProjectsPage() {
       if (error) { setClientError(error.message); setClientSaving(false); return; }
     }
     setClientSaving(false); setShowClientModal(false); setEditingClient(null);
+    fetchAll();
+  };
+
+  const addClientAssignment = async () => {
+    if (!activeClientId || !assignAddId) return;
+    setAssignSaving(true);
+    await supabase.from('hub_client_assignments').insert({ client_id: activeClientId, contractor_id: assignAddId, role: assignAddRole.trim() || null });
+    setAssignAddId(''); setAssignAddRole('');
+    setAssignSaving(false);
+    fetchAll();
+  };
+
+  const removeClientAssignment = async (assignmentId: number) => {
+    await supabase.from('hub_client_assignments').delete().eq('id', assignmentId);
+    fetchAll();
+  };
+
+  const deleteClient = async (id: number) => {
+    await supabase.from('hub_clients').delete().eq('id', id);
+    if (activeClientId === id) setActiveClientId(null);
     fetchAll();
   };
 
@@ -649,6 +1001,15 @@ export default function AdminProjectsPage() {
       supabase.functions.invoke('notify-project-assigned', {
         body: { project_id: activeId, contractor_id: contractorId },
       }).catch(() => {});
+      const proj = projects.find(p => p.id === activeId);
+      if (proj) {
+        createHubNotifications([{
+          user_id: contractorId, type: 'project_assigned',
+          title: 'New project assigned',
+          body: `You've been added to "${proj.project_name}"`,
+          link: '/hub/contractor/projects', read: false,
+        }]).catch(() => {});
+      }
     }
     fetchAll();
   };
@@ -793,19 +1154,56 @@ export default function AdminProjectsPage() {
       message: invoiceForm.message.trim() || undefined,
       invoice_number: invNum,
       project_id: project.id,
-      app_base_url: typeof window !== 'undefined' ? window.location.origin : undefined,
+      app_base_url: 'https://hunacreatives.com',
       amount_requested: invoiceForm.amount_requested ? parseFloat(invoiceForm.amount_requested) : undefined,
     };
   };
 
+  const parseEmailList = (value: string) =>
+    value
+      .split(/[,\n;]+/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
   const sendInvoice = async (project: Project) => {
+    const toList = parseEmailList(invoiceForm.email);
+    const ccList = parseEmailList(invoiceForm.cc);
+
+    if (toList.length === 0 || toList.some((email) => !isValidEmail(email))) {
+      setInvoiceMsg({ ok: false, text: 'Enter at least one valid recipient email.' });
+      return;
+    }
+    if (ccList.some((email) => !isValidEmail(email))) {
+      setInvoiceMsg({ ok: false, text: 'One or more CC emails are invalid.' });
+      return;
+    }
+
     setInvoiceSending(true);
     setInvoiceMsg(null);
     const payload = buildInvoicePayload(project);
-    const { data, error } = await supabase.functions.invoke('send-invoice', {
-      body: payload,
+    const invokePromise = supabase.functions.invoke('send-invoice', {
+      body: {
+        ...payload,
+        to: toList,
+        cc: ccList,
+      },
     });
-    setInvoiceSending(false);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Invoice sending timed out. Please try again.')), 20000);
+    });
+
+    let data: any;
+    let error: any;
+    try {
+      ({ data, error } = await Promise.race([invokePromise, timeoutPromise]) as any);
+    } catch (err) {
+      error = err;
+    } finally {
+      setInvoiceSending(false);
+    }
+
     if (error || data?.error) {
       setInvoiceMsg({ ok: false, text: data?.error ?? error?.message ?? 'Failed to send' });
     } else {
@@ -836,6 +1234,18 @@ export default function AdminProjectsPage() {
   };
 
   const scheduleInvoice = async (project: Project) => {
+    const toList = parseEmailList(invoiceForm.email);
+    const ccList = parseEmailList(invoiceForm.cc);
+
+    if (toList.length === 0 || toList.some((email) => !isValidEmail(email))) {
+      setInvoiceMsg({ ok: false, text: 'Enter at least one valid recipient email.' });
+      return;
+    }
+    if (ccList.some((email) => !isValidEmail(email))) {
+      setInvoiceMsg({ ok: false, text: 'One or more CC emails are invalid.' });
+      return;
+    }
+
     if (!invoiceForm.scheduled_for) {
       setInvoiceMsg({ ok: false, text: 'Choose when the invoice should be sent.' });
       return;
@@ -853,8 +1263,8 @@ export default function AdminProjectsPage() {
     const { error } = await supabase.from('hub_scheduled_invoices').insert({
       project_id: project.id,
       invoice_number: String(payload.invoice_number),
-      to_email: payload.to,
-      cc_email: payload.cc ?? null,
+      to_email: toList.join(', '),
+      cc_email: ccList.length > 0 ? ccList.join(', ') : null,
       subject: payload.subject ?? null,
       client_name: payload.client_name,
       project_name: payload.project_name,
@@ -889,6 +1299,11 @@ export default function AdminProjectsPage() {
   };
 
   const printInvoice = async (project: Project, overrides?: { due_date?: string; invoice_number?: string; bill_to_name?: string; bill_to_address?: string; reference?: string; payment_terms?: string; message?: string; line_items?: { description: string; amount: string }[]; show_payments?: boolean; amount_requested?: number }) => {
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Preparing invoice…</title><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;color:#111827} .muted{color:#6b7280;font-size:14px}</style></head><body><h2>Preparing invoice preview…</h2><p class="muted">Please wait while we generate the print view.</p></body></html>`);
+    win.document.close();
+
     const { data: latestLink } = await supabase
       .from('hub_invoice_payment_links')
       .select('token')
@@ -897,11 +1312,11 @@ export default function AdminProjectsPage() {
       .limit(1)
       .maybeSingle();
     const payUrl = latestLink?.token
-      ? `${window.location.origin}/pay/${latestLink.token}`
+      ? `https://hunacreatives.com/pay/${latestLink.token}`
       : null;
     const d = derived(project);
     const fmt2 = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const logoUrl = 'https://www.fsarchitects.ph/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
     const invNum = overrides?.invoice_number || String(project.id).padStart(4,'0');
     const billToName = overrides?.bill_to_name || project.client_name;
     const billToAddress = overrides?.bill_to_address?.trim() || '';
@@ -944,11 +1359,16 @@ export default function AdminProjectsPage() {
   td{padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:13px}
   td.amount{text-align:right;font-weight:600}
   td.paid{color:#059669}
-  .totals{margin-left:auto;width:280px}
-  .totals tr td{padding:6px 0;font-size:13px;color:#6b7280;border:none}
+  .summary-wrap{display:flex;justify-content:flex-end;margin-top:10px}
+  .summary-card{width:340px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:14px 18px}
+  .summary-title{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px}
+  .totals{width:100%;margin:0}
+  .totals tr td{padding:7px 0;font-size:13px;color:#6b7280;border:none}
   .totals tr td:last-child{text-align:right}
-  .totals .balance td{font-size:16px;font-weight:800;color:#111827;border-top:2px solid #e5e7eb;padding-top:10px}
-  .totals .balance td:last-child{color:${balanceDue <= 0 ? '#059669' : '#FF6B35'}}
+  .totals .divider td{padding:5px 0 0}
+  .totals .divider-line{border-top:2px solid #e5e7eb}
+  .totals .balance td{font-size:16px;font-weight:800;color:#111827;padding-top:10px}
+  .totals .balance td:last-child{color:${balanceDue <= 0 ? '#059669' : '#1c2b3a'}}
   .footer{margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af}
   .pay-via{margin-top:32px}
   .pay-via h3{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:14px}
@@ -973,9 +1393,9 @@ ${customMsg ? `<div style="background:#fffbf5;border:1px solid #fed7aa;border-ra
 <div class="meta">
   <div class="meta-col">
     <div class="eyebrow">From</div>
-    <div class="title">FS Architects</div>
-    <div class="line">billing@fsarchitects.ph
-www.fsarchitects.ph</div>
+    <div class="title">Huna Creatives</div>
+    <div class="line">billing@hunacreatives.com
+www.hunacreatives.com</div>
   </div>
   <div class="meta-col right">
     <div class="eyebrow">Bill To</div>
@@ -997,11 +1417,17 @@ ${showPayments && project.hub_project_payments.length > 0 ? `
   <thead><tr><th>Date</th><th>Note</th><th style="text-align:right">Payment</th></tr></thead>
   <tbody>${paymentRows}</tbody>
 </table>` : ''}
-<table class="totals">
-  <tr><td>Subtotal</td><td>${fmt2(lineItemsTotal)}</td></tr>
-  ${showPayments ? `<tr><td>Total paid</td><td style="color:#059669">− ${fmt2(d.totalPaid)}</td></tr>` : ''}
-  <tr class="balance"><td>Balance due</td><td>${balanceDue <= 0 ? 'Paid in full' : fmt2(balanceDue)}</td></tr>
-</table>
+<div class="summary-wrap">
+  <div class="summary-card">
+    <div class="summary-title">Invoice Summary</div>
+    <table class="totals">
+      <tr><td>Subtotal</td><td>${fmt2(lineItemsTotal)}</td></tr>
+      ${showPayments ? `<tr><td>Total paid</td><td style="color:#059669">− ${fmt2(d.totalPaid)}</td></tr>` : ''}
+      <tr class="divider"><td colspan="2"><div class="divider-line"></div></td></tr>
+      <tr class="balance"><td>Balance due</td><td>${balanceDue <= 0 ? 'Paid in full' : fmt2(balanceDue)}</td></tr>
+    </table>
+  </div>
+</div>
 ${balanceDue > 0 && payUrl ? `
 <div style="margin-top:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px;text-align:center;">
   <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:6px;">Choose your payment channel online</div>
@@ -1009,22 +1435,15 @@ ${balanceDue > 0 && payUrl ? `
   <a href="${payUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#111827;color:#ffffff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:9px;text-decoration:none;">Pay Now →</a>
 </div>` : ''}
 ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;margin-top:16px">${project.notes}</p>` : ''}
-<div class="footer">This email is not being monitored. Please do not reply directly. If you have questions, contact contact@fsarchitects.ph.</div>
+<div class="footer">This email is not being monitored. Please do not reply directly. If you have questions, contact contact@hunacreatives.com.</div>
 </div>
 </div>
 <script>window.onload=function(){setTimeout(function(){window.print()},400)}</script>
 </body></html>`;
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank', 'noopener,noreferrer,width=900,height=700');
-    if (!win) {
-      URL.revokeObjectURL(url);
-      return;
-    }
-    win.addEventListener('load', () => {
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, { once: true });
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
   };
 
   const projectTypes = Array.from(new Set(projects.map(p => p.service).filter(Boolean) as string[])).sort();
@@ -1101,45 +1520,93 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
     if (activeId && !filtered.some(p => p.id === activeId) && !projects.some(p => p.id === activeId && p.project_type === 'retainer')) {
       setActiveId(filtered[0].id);
     }
-  }, [activeId, filtered, projects]);
+  }, [filtered, activeId]);
 
   useEffect(() => {
     if (activeId && !isDemo) fetchTasks(activeId);
-    else if (!activeId) { setTasks([]); setActivity([]); }
+    else if (!activeId) { setTasks([]); setActivity([]); setCommentCounts({}); }
     if (openWorkspaceOnLoad.current) { setWorkspaceOpen(true); openWorkspaceOnLoad.current = false; }
     else { setWorkspaceOpen(false); }
     setOpenSections({});
     if (activeId) setTimeout(() => detailPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, isDemo]);
 
-  // Open workspace directly if ?w= param is set on initial load only
-  const didInitWorkspace = useRef(false);
+  // Sync URL separately so changing workspaceOpen doesn't re-run the effect above and reset it
   useEffect(() => {
-    if (didInitWorkspace.current || projects.length === 0) return;
+    if (activeId) setSearchParams(workspaceOpen ? { w: String(activeId), ws: '1' } : { w: String(activeId) }, { replace: true });
+    else setSearchParams({}, { replace: true });
+  }, [activeId, workspaceOpen]);
+
+  useEffect(() => {
+    if (!isDemo) refreshWorkspaceActivity();
+  }, [isDemo, refreshWorkspaceActivity]);
+
+  // Realtime: update comment counts when new comments arrive
+  useEffect(() => {
+    if (!activeId || isDemo) return;
+    const channel = supabase.channel(`admin-task-comments-${activeId}`)
+      .on('postgres_changes' as any, {
+        event: 'INSERT', schema: 'public', table: 'hub_project_task_comments',
+      }, (payload: any) => {
+        const taskId = payload.new?.task_id;
+        if (taskId) setCommentCounts(prev => ({ ...prev, [taskId]: (prev[taskId] ?? 0) + 1 }));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeId, isDemo]);
+
+  // Select project on load; only open workspace when explicitly requested with ?ws=1
+  const didInitWorkspace = useRef(false);
+  const lastRouteKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (projects.length === 0) return;
     const w = searchParams.get('w');
+    const ws = searchParams.get('ws');
+    const routeKey = `${w ?? ''}:${ws ?? ''}`;
+    if (didInitWorkspace.current && routeKey === lastRouteKey.current) return;
+    lastRouteKey.current = routeKey;
     if (w) {
       const id = parseInt(w);
       if (projects.some(p => p.id === id)) {
         didInitWorkspace.current = true;
         setActiveId(id);
-        setWorkspaceOpen(true);
+        setWorkspaceOpen(ws === '1');
       }
     } else {
       didInitWorkspace.current = true;
     }
   }, [projects, searchParams]);
 
+  const projectTags = (project: Project) => {
+    const serviceTag = project.service ? [project.service] : ['General'];
+    const roleTags = project.hub_project_contractors
+      .map(pc => pc.project_role)
+      .filter((role): role is string => !!role)
+      .slice(0, 2);
+    const deptTags = contractors
+      .filter(c => project.hub_project_contractors.some(pc => pc.hub_users?.id === c.id))
+      .map(c => c.department)
+      .filter((dept): dept is string => !!dept)
+      .slice(0, 2);
+    return [...new Set([...serviceTag, ...roleTags, ...deptTags])].slice(0, 3);
+  };
+
   const wsToday = localToday();
   const wsIsOverdue = (t: ProjectTask) => t.due_date && t.due_date < wsToday && t.status !== 'done';
-  const wsFilteredTasks = tasks.filter(t => {
+  const wsArchivedTasks = tasks.filter(t => !!t.archived);
+  const wsFilteredTasks = tasks.filter(t => !t.archived).filter(t => {
     if (taskFilter === 'all') return true;
     if (taskFilter === 'overdue') return !!wsIsOverdue(t);
     return t.status === taskFilter;
   });
-  const wsDoneCt = tasks.filter(t => t.status === 'done').length;
-  const wsPct = tasks.length > 0 ? Math.round((wsDoneCt / tasks.length) * 100) : 0;
+  const wsActiveTasks = tasks.filter(t => !t.archived);
+  const wsDoneCt = wsActiveTasks.filter(t => t.status === 'done').length;
+  const wsPct = wsActiveTasks.length > 0 ? Math.round((wsDoneCt / wsActiveTasks.length) * 100) : 0;
   const wsTaskTeam = activeProject ? activeProject.hub_project_contractors.map(pc => pc.hub_users).filter(Boolean) : [];
+  const getWorkspaceTaskAssignees = (task: ProjectTask) =>
+    getTaskAssigneeIds(task)
+      .map((assigneeId) => wsTaskTeam.find((member) => member?.id === assigneeId))
+      .filter(Boolean);
   const wsStatusCycle: Record<string, { icon: string; cls: string }> = {
     todo:        { icon: 'ri-checkbox-blank-circle-line',  cls: 'text-gray-300 hover:text-gray-500' },
     in_progress: { icon: 'ri-loader-2-line',               cls: 'text-sky-400 hover:text-sky-600' },
@@ -1147,6 +1614,13 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
     blocked:     { icon: 'ri-indeterminate-circle-line',   cls: 'text-rose-400 hover:text-rose-600' },
     done:        { icon: 'ri-checkbox-circle-fill',        cls: 'text-emerald-500' },
   };
+  const BOARD_COLUMNS: { key: ProjectTask['status']; label: string; icon: string; chip: string; empty: string }[] = [
+    { key: 'todo', label: 'To Do', icon: 'ri-checkbox-blank-circle-line', chip: 'bg-gray-100 text-gray-600', empty: 'Nothing queued' },
+    { key: 'in_progress', label: 'In Progress', icon: 'ri-loader-2-line', chip: 'bg-sky-100 text-sky-700', empty: 'Nothing in motion' },
+    { key: 'in_review', label: 'In Review', icon: 'ri-eye-line', chip: 'bg-purple-100 text-purple-700', empty: 'Nothing to review' },
+    { key: 'blocked', label: 'Blocked', icon: 'ri-indeterminate-circle-line', chip: 'bg-rose-100 text-rose-700', empty: 'No blocked work' },
+    { key: 'done', label: 'Done', icon: 'ri-checkbox-circle-fill', chip: 'bg-emerald-100 text-emerald-700', empty: 'Nothing completed yet' },
+  ];
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -1187,6 +1661,64 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
       .map(([name, value]) => ({ name, value, pct: Math.round((value / total) * 100) }));
   })();
 
+  const BoardCard = (task: ProjectTask) => {
+    const overdue = !!wsIsOverdue(task);
+    const assignees = getWorkspaceTaskAssignees(task);
+    const commentCount = commentCounts[task.id] ?? 0;
+    const priorityCfg = { high: { label: 'High', cls: 'bg-rose-100 text-rose-600' }, medium: { label: 'Med', cls: 'bg-amber-100 text-amber-600' }, low: { label: 'Low', cls: 'bg-gray-100 text-gray-500' } }[task.priority];
+    const priorityBorder = { high: 'border-l-rose-400', medium: 'border-l-amber-400', low: 'border-l-gray-300' }[task.priority];
+    return (
+      <button
+        key={task.id}
+        type="button"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/task-id', String(task.id));
+          setDraggedTaskId(task.id);
+        }}
+        onDragEnd={() => { setDraggedTaskId(null); setBoardDragOver(null); }}
+        onClick={() => openTaskDetail(task)}
+        className={`w-full text-left rounded-2xl border border-gray-100 border-l-4 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-gray-200 hover:shadow-md cursor-pointer ${(task as any).color ? '' : priorityBorder} ${draggedTaskId === task.id ? 'opacity-60' : ''}`}
+        style={(task as any).color ? { borderLeftColor: (task as any).color } : undefined}
+      >
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-2">
+              <p className={`flex-1 text-sm font-semibold leading-snug ${task.status === 'done' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</p>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${priorityCfg.cls}`}>{priorityCfg.label}</span>
+            </div>
+            {task.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{getTaskDescriptionPreview(task.description)}</p>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-50">
+          {task.due_date && (
+            <span className={`text-[10px] font-medium ${overdue ? 'text-rose-600' : 'text-gray-500'}`}>
+              {overdue ? 'Overdue' : new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            {commentCount > 0 && (
+              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-[#1c2b3a] text-[10px] font-semibold">
+                <i className="ri-chat-3-fill text-[11px]"></i>{commentCount}
+              </span>
+            )}
+            {assignees.length > 0 && (
+              <div className="flex items-center -space-x-1">
+                {assignees.slice(0, 3).map((assignee: any) => (
+                  assignee.avatar_url
+                    ? <img key={assignee.id} src={assignee.avatar_url} alt={assignee.full_name} className="w-5 h-5 rounded-full border border-white object-cover object-top" />
+                    : <div key={assignee.id} className="w-5 h-5 rounded-full border border-white bg-slate-100 flex items-center justify-center text-[9px] font-bold text-[#1c2b3a]/70">{assignee.full_name[0]}</div>
+                ))}
+                {assignees.length > 3 && <span className="ml-1 text-[10px] text-gray-400 font-medium">+{assignees.length - 3}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
+    );
+  };
+
   return (
     <AdminLayout title="Projects">
       {workspaceOpen && activeProject && (() => {
@@ -1213,7 +1745,9 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
           priority: t.priority,
           due_date: t.due_date,
           start_date: t.start_date ?? null,
-          assigned_to: t.assigned_to,
+          assigned_to: getPrimaryTaskAssigneeId(t),
+          assignee_ids: getTaskAssigneeIds(t),
+          color: (t as any).color ?? null,
         }));
 
         return (
@@ -1231,10 +1765,38 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <p className="text-xs text-gray-400 truncate">{internalProject ? 'Internal Project' : p.client_name}{p.service ? ` · ${p.service}` : ''}</p>
                 </div>
                 <button
-                  onClick={() => { const url = `${window.location.origin}/hub/admin/projects?w=${activeId}`; navigator.clipboard.writeText(url); }}
-                  title="Copy workspace link"
-                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-200 cursor-pointer transition-all shadow-sm flex-shrink-0">
-                  <i className="ri-link text-base"></i>
+                  onClick={() => {
+                    const slug = (p as any).slug || slugify(p.client_name);
+                    const url = `https://hunacreatives.com/hub/admin/project/${slug}`;
+                    try {
+                      navigator.clipboard.writeText(url).then(() => {
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      }).catch(() => {
+                        const el = document.createElement('textarea');
+                        el.value = url;
+                        document.body.appendChild(el);
+                        el.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(el);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      });
+                    } catch {
+                      const el = document.createElement('textarea');
+                      el.value = url;
+                      document.body.appendChild(el);
+                      el.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(el);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    }
+                  }}
+                  title={linkCopied ? 'Copied!' : 'Copy project link'}
+                  className={`flex items-center gap-1.5 h-8 px-2.5 rounded-xl border cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium ${linkCopied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-gray-200 text-gray-500 hover:text-[#1c2b3a] hover:border-indigo-200'}`}>
+                  <i className={`text-base ${linkCopied ? 'ri-check-line' : 'ri-link'}`}></i>
+                  {linkCopied ? 'Copied!' : 'Copy link'}
                 </button>
               </div>
 
@@ -1260,7 +1822,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                           {wsTeam.slice(0, 5).map(m => (
                             m.avatar_url
                               ? <img key={m.id} src={m.avatar_url} alt={m.full_name} title={m.full_name} className="w-6 h-6 rounded-full border-2 border-white object-cover object-top shadow-sm" />
-                              : <div key={m.id} title={m.full_name} className="w-6 h-6 rounded-full border-2 border-white bg-indigo-400 flex items-center justify-center text-[9px] font-bold text-white shadow-sm">{m.full_name[0]}</div>
+                              : <div key={m.id} title={m.full_name} className="w-6 h-6 rounded-full border-2 border-white bg-[#1c2b3a]/70 flex items-center justify-center text-[9px] font-bold text-white shadow-sm">{m.full_name[0]}</div>
                           ))}
                         </div>
                         <span className="text-xs text-gray-400">{wsTeam.length} member{wsTeam.length !== 1 ? 's' : ''}</span>
@@ -1359,13 +1921,25 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   projectStart={p.start_date}
                   projectEnd={p.deadline}
                   today={wsToday}
+                  onTaskUpdate={async (taskId, updates) => {
+                    await supabase.from('hub_project_tasks').update({
+                      ...(updates.due_date !== undefined && { due_date: updates.due_date }),
+                      ...(updates.start_date !== undefined && { start_date: updates.start_date }),
+                    }).eq('id', taskId);
+                    fetchTasks(activeId!);
+                  }}
                 />
               </div>
 
               {/* ── Two-column: tasks + sidebar ── */}
               <div className="flex gap-6">
                 {/* Task list */}
-                <div id="ws-tasks" className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div
+                  id="ws-tasks"
+                  className={`min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${
+                    taskView === 'board' ? 'flex-[1_1_100%]' : 'flex-1'
+                  }`}
+                >
                   <div className="px-5 py-4 border-b border-gray-50 space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
@@ -1379,19 +1953,48 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                           </div>
                         )}
                       </div>
-                      <button onClick={openNewTask}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap">
-                        <i className="ri-add-line"></i>
-                        Add Task
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <div className="hidden lg:flex items-center rounded-xl border border-gray-200 bg-white p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setTaskView('list')}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+                              taskView === 'list' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            List
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTaskView('board');
+                              setTaskFilter('all');
+                            }}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+                              taskView === 'board' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Board
+                          </button>
+                        </div>
+                        <button
+                          onClick={openNewTask}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          <i className="ri-add-line"></i>
+                          Add Task
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-1 flex-wrap">
-                      {(['all', 'todo', 'in_progress', 'done', 'overdue'] as const).map(f => {
-                        const labels: Record<string, string> = { all: 'All', todo: 'To Do', in_progress: 'Active', done: 'Done', overdue: 'Overdue' };
+                    <div className={`flex gap-1 flex-wrap ${taskView === 'board' ? 'lg:hidden' : ''}`}>
+                      {(['all', 'todo', 'in_progress', 'in_review', 'blocked', 'done', 'overdue'] as const).map(f => {
+                        const labels: Record<string, string> = { all: 'All', todo: 'To Do', in_progress: 'Active', in_review: 'Review', blocked: 'Blocked', done: 'Done', overdue: 'Overdue' };
                         const counts: Record<string, number> = {
                           all: tasks.length,
                           todo: tasks.filter(t => t.status === 'todo').length,
                           in_progress: tasks.filter(t => t.status === 'in_progress').length,
+                          in_review: tasks.filter(t => t.status === 'in_review').length,
+                          blocked: tasks.filter(t => t.status === 'blocked').length,
                           done: tasks.filter(t => t.status === 'done').length,
                           overdue: tasks.filter(t => !!wsIsOverdue(t)).length,
                         };
@@ -1408,16 +2011,81 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
 
                   {/* Add task form */}
                   {showTaskForm && (
-                    <div className="px-5 py-3 bg-indigo-50/50 border-b border-indigo-100/60 space-y-2">
+                    <div className="px-5 py-3 bg-slate-50/50 border-b border-slate-100/60 space-y-2">
                       <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Task title..."
                         autoFocus onKeyDown={e => e.key === 'Enter' && createTask()}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white" />
-                      <div className="flex gap-2">
-                        <select value={newTaskAssignee} onChange={e => setNewTaskAssignee(e.target.value)}
-                          className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none">
-                          <option value="">Unassigned</option>
-                          {wsTaskTeam.map(u => u && <option key={u.id} value={u.id}>{u.full_name}</option>)}
-                        </select>
+                        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-[#1c2b3a]/50 bg-white" />
+                      <div className="flex items-center gap-2">
+                        {uploadingAttachment ? (
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <i className="ri-upload-cloud-2-line text-[#1c2b3a]/50 text-sm"></i>
+                              <span className="text-xs text-[#1c2b3a] font-medium truncate">{newTaskAttachment?.name}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-[#1c2b3a]/70 rounded-full animate-upload-progress" style={{ width: '40%' }} />
+                            </div>
+                            <p className="text-[10px] text-[#1c2b3a]/50">Uploading to Drive…</p>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => newTaskAttachmentRef.current?.click()}
+                              className="px-3 py-1.5 text-xs border border-dashed border-indigo-200 text-[#1c2b3a] rounded-lg bg-white hover:bg-slate-50 cursor-pointer whitespace-nowrap"
+                            >
+                              <i className="ri-attachment-2 mr-1"></i>
+                              {newTaskAttachment ? 'Change attachment' : 'Add attachment'}
+                            </button>
+                            {newTaskAttachment && (
+                              <div className="min-w-0 flex items-center gap-2 text-xs text-gray-600">
+                                <span className="truncate">{newTaskAttachment.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNewTaskAttachment(null);
+                                    if (newTaskAttachmentRef.current) newTaskAttachmentRef.current.value = '';
+                                  }}
+                                  className="text-gray-400 hover:text-rose-500 cursor-pointer"
+                                >
+                                  <i className="ri-close-line"></i>
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        <input
+                          ref={newTaskAttachmentRef}
+                          type="file"
+                          className="hidden"
+                          onChange={(e) => setNewTaskAttachment(e.target.files?.[0] ?? null)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setNewTaskAssigneeIds([])}
+                            className={`px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer ${newTaskAssigneeIds.length === 0 ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}
+                          >
+                            Unassigned
+                          </button>
+                          {wsTaskTeam.map((member) => member && (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => setNewTaskAssigneeIds((prev) => prev.includes(member.id) ? prev.filter((id) => id !== member.id) : [...prev, member.id])}
+                              className={`flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full border transition-all cursor-pointer ${newTaskAssigneeIds.includes(member.id) ? 'border-[#1c2b3a]/50 bg-slate-50' : 'border-gray-200 hover:border-gray-300'}`}
+                            >
+                              {member.avatar_url
+                                ? <img src={member.avatar_url} alt={member.full_name} className="w-4 h-4 rounded-full object-cover object-top" />
+                                : <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-[#1c2b3a]">{member.full_name[0]}</div>
+                              }
+                              <span className={`text-xs font-medium ${newTaskAssigneeIds.includes(member.id) ? 'text-[#1c2b3a]' : 'text-gray-600'}`}>{member.full_name.split(' ')[0]}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
                         <input type="date" value={newTaskDue} onChange={e => setNewTaskDue(e.target.value)}
                           className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
                         <select value={newTaskPriority} onChange={e => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
@@ -1427,9 +2095,10 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                           <option value="high">High</option>
                         </select>
                         <button onClick={createTask} disabled={!newTaskTitle.trim() || taskSaving}
-                          className="px-4 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 cursor-pointer disabled:opacity-40 whitespace-nowrap">
+                          className="px-4 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40 whitespace-nowrap">
                           {taskSaving ? '...' : 'Add'}
                         </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1439,11 +2108,113 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     <div className="py-14 text-center">
                       <i className="ri-task-line text-3xl text-gray-200 block mb-2"></i>
                       <p className="text-sm text-gray-400 mb-3">No tasks yet</p>
-                      <button onClick={openNewTask} className="text-sm text-[#FF6B35] hover:underline cursor-pointer">Add the first task</button>
+                      <button onClick={openNewTask} className="text-sm text-[#1c2b3a] hover:underline cursor-pointer">Add the first task</button>
                     </div>
                   ) : wsFilteredTasks.length === 0 ? (
                     <div className="py-10 text-center">
                       <p className="text-sm text-gray-400">No tasks in this filter</p>
+                    </div>
+                  ) : taskView === 'board' ? (
+                    <div className="hidden lg:flex p-4 overflow-x-auto overflow-y-hidden min-h-[calc(100vh-19rem)]">
+                      <div className="grid grid-cols-5 gap-4 min-w-[1120px] w-full min-h-full">
+                        {BOARD_COLUMNS.map((column) => {
+                          const columnTasks = tasks.filter((task) => task.status === column.key);
+                          return (
+                            <div
+                              key={column.key}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setBoardDragOver(column.key);
+                              }}
+                              onDragLeave={() => setBoardDragOver((current) => (current === column.key ? null : current))}
+                              onDrop={async (e) => {
+                                e.preventDefault();
+                                const taskId = Number(e.dataTransfer.getData('text/task-id') || draggedTaskId);
+                                const droppedTask = tasks.find((task) => task.id === taskId);
+                                setBoardDragOver(null);
+                                setDraggedTaskId(null);
+                                if (!droppedTask) return;
+                                await updateTaskStatus(droppedTask, column.key);
+                              }}
+                              className={`rounded-3xl border p-3 transition-colors min-h-full flex flex-col ${
+                                boardDragOver === column.key ? 'border-[#1c2b3a] bg-slate-50/40' : 'border-gray-100 bg-gray-50/60'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 px-1 pb-3">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${column.chip}`}>
+                                  <i className={`${column.icon} text-[11px]`}></i>
+                                  {column.label}
+                                </span>
+                                <span className="text-[11px] text-gray-400 font-medium">{columnTasks.length}</span>
+                              </div>
+                              <div className="space-y-3 min-h-[240px] flex-1 overflow-y-auto pr-1">
+                                {columnTasks.length === 0 ? (
+                                  <div className="rounded-2xl border border-dashed border-gray-200 bg-white/70 px-4 py-6 text-center">
+                                    <p className="text-xs text-gray-400">{column.empty}</p>
+                                  </div>
+                                ) : (
+                                  <>
+                                  {/* Top drop zone — allows inserting before the first card */}
+                                  <div className="h-2 -mb-1 relative"
+                                    onDragOver={e => { e.preventDefault(); e.stopPropagation(); setListDragOverTaskId(-column.key.length); setListDragOverPos('above'); setBoardDragOver(null); }}
+                                    onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setListDragOverTaskId(null); setListDragOverPos(null); } }}
+                                    onDrop={async e => {
+                                      e.preventDefault(); e.stopPropagation();
+                                      const fromId = Number(e.dataTransfer.getData('text/task-id') || draggedTaskId);
+                                      setListDragOverTaskId(null); setListDragOverPos(null); setDraggedTaskId(null); setBoardDragOver(null);
+                                      if (!fromId) return;
+                                      const fromTask = tasks.find(t => t.id === fromId);
+                                      if (!fromTask) return;
+                                      if (fromTask.status !== column.key) {
+                                        await updateTaskStatus(fromTask, column.key);
+                                        return;
+                                      }
+                                      const colIds = tasks.filter(t => t.status === column.key && t.id !== fromId).map(t => t.id);
+                                      reorderTasks([fromId, ...colIds]);
+                                    }}
+                                  >
+                                    {listDragOverTaskId === -column.key.length && <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full pointer-events-none" />}
+                                  </div>
+                                  {columnTasks.map((task) => {
+                                    const isBoardOver = listDragOverTaskId === task.id && draggedTaskId !== task.id;
+                                    return (
+                                      <div key={task.id} className="relative"
+                                        onDragOver={e => { e.preventDefault(); e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); setListDragOverTaskId(task.id); setListDragOverPos(e.clientY < r.top + r.height / 2 ? 'above' : 'below'); setBoardDragOver(null); }}
+                                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setListDragOverTaskId(null); setListDragOverPos(null); } }}
+                                        onDrop={async e => {
+                                          e.preventDefault(); e.stopPropagation();
+                                          const fromId = Number(e.dataTransfer.getData('text/task-id') || draggedTaskId);
+                                          const r = e.currentTarget.getBoundingClientRect();
+                                          const pos = e.clientY < r.top + r.height / 2 ? 'above' : 'below';
+                                          setListDragOverTaskId(null); setListDragOverPos(null); setDraggedTaskId(null); setBoardDragOver(null);
+                                          if (!fromId || fromId === task.id) return;
+                                          const fromTask = tasks.find(t => t.id === fromId);
+                                          if (!fromTask) return;
+                                          if (fromTask.status !== column.key) {
+                                            await updateTaskStatus(fromTask, column.key);
+                                            return; // skip reorder — tasks state is stale after async status update
+                                          }
+                                          // Same-column reorder only
+                                          const colIds = tasks.filter(t => t.status === column.key).map(t => t.id);
+                                          const withoutFrom = colIds.filter(id => id !== fromId);
+                                          const insertAt = withoutFrom.indexOf(task.id) + (pos === 'below' ? 1 : 0);
+                                          withoutFrom.splice(insertAt < 0 ? withoutFrom.length : insertAt, 0, fromId);
+                                          reorderTasks(withoutFrom);
+                                        }}
+                                      >
+                                        {isBoardOver && listDragOverPos === 'above' && <div className="absolute -top-1.5 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full z-10 pointer-events-none" />}
+                                        {isBoardOver && listDragOverPos === 'below' && <div className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full z-10 pointer-events-none" />}
+                                        {BoardCard(task)}
+                                      </div>
+                                    );
+                                  })}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : taskFilter !== 'all' ? (
                     /* Flat list for specific filter */
@@ -1452,39 +2223,88 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                         const sc = wsStatusCycle[task.status];
                         const overdue = wsIsOverdue(task);
                         const priorityBorder = { high: 'border-l-rose-400', medium: 'border-l-amber-400', low: 'border-l-gray-300' }[task.priority];
+                        const priorityCfg = { high: { label: 'High', cls: 'bg-rose-100 text-rose-600' }, medium: { label: 'Med', cls: 'bg-amber-100 text-amber-600' }, low: { label: 'Low', cls: 'bg-gray-100 text-gray-500' } }[task.priority];
+                        const assignees = getWorkspaceTaskAssignees(task);
+                        const commentCount = commentCounts[task.id] ?? 0;
                         const daysLeft = task.due_date
                           ? Math.ceil((new Date(task.due_date + 'T00:00:00').getTime() - new Date(wsToday + 'T00:00:00').getTime()) / 86400000)
                           : null;
+                        const isOver = listDragOverTaskId === task.id && draggedTaskId !== task.id;
                         return (
-                          <div key={task.id} onClick={() => openTaskDetail(task)}
-                            className={`bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 border-l-4 ${priorityBorder} group cursor-pointer hover:shadow-md transition-shadow`}>
+                          <div key={task.id} className="relative">
+                            {isOver && listDragOverPos === 'above' && <div className="absolute -top-1 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full z-10 pointer-events-none" />}
+                            {isOver && listDragOverPos === 'below' && <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full z-10 pointer-events-none" />}
+                            <div
+                              draggable
+                              onDragStart={e => { if (!listDragFromHandle.current) { e.preventDefault(); return; } listDragFromHandle.current = false; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/task-id', String(task.id)); setDraggedTaskId(task.id); setListDragOverTaskId(null); setListDragOverPos(null); }}
+                              onDragOver={e => { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); setListDragOverTaskId(task.id); setListDragOverPos(e.clientY < r.top + r.height / 2 ? 'above' : 'below'); }}
+                              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setListDragOverTaskId(null); setListDragOverPos(null); } }}
+                              onDrop={e => {
+                                e.preventDefault();
+                                const fromId = Number(e.dataTransfer.getData('text/task-id') || draggedTaskId);
+                                const r = e.currentTarget.getBoundingClientRect();
+                                const pos = e.clientY < r.top + r.height / 2 ? 'above' : 'below';
+                                setListDragOverTaskId(null); setListDragOverPos(null); setDraggedTaskId(null);
+                                if (!fromId || fromId === task.id) return;
+                                const ids = wsFilteredTasks.map(t => t.id);
+                                if (ids.indexOf(fromId) < 0 || ids.indexOf(task.id) < 0) return;
+                                const reordered = ids.filter(id => id !== fromId);
+                                const insertAt = reordered.indexOf(task.id) + (pos === 'below' ? 1 : 0);
+                                reordered.splice(insertAt, 0, fromId);
+                                reorderTasks(reordered);
+                              }}
+                              onDragEnd={() => { listDragFromHandle.current = false; setDraggedTaskId(null); setListDragOverTaskId(null); setListDragOverPos(null); }}
+                              onClick={() => openTaskDetail(task)}
+                              className={`select-none bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 border-l-4 group cursor-pointer hover:shadow-md hover:border-gray-200 transition-all ${(task as any).color ? '' : priorityBorder} ${draggedTaskId === task.id ? 'opacity-40' : ''}`}
+                              style={(task as any).color ? { borderLeftColor: (task as any).color } : undefined}>
                             <div className="flex items-start gap-2.5">
+                              <i className="ri-draggable text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity -ml-1 text-base" onPointerDown={() => { listDragFromHandle.current = true; }} />
                               <button onClick={e => { e.stopPropagation(); toggleTask(task); }} className={`flex-shrink-0 cursor-pointer mt-0.5 ${sc.cls}`}>
                                 <i className={`${sc.icon} text-lg`}></i>
                               </button>
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm font-semibold leading-snug ${task.status === 'done' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</p>
+                                {task.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{getTaskDescriptionPreview(task.description)}</p>}
                               </div>
-                              <i className="ri-arrow-right-s-line text-gray-300 group-hover:text-gray-500 text-base transition-colors ml-1"></i>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${priorityCfg.cls}`}>{priorityCfg.label}</span>
                             </div>
                             <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-50">
                               {task.due_date && (
                                 <div className="flex items-center gap-1">
                                   <i className="ri-calendar-line text-[10px] text-gray-400"></i>
-                                  <span className={`text-[10px] font-medium ${overdue ? 'text-rose-600' : daysLeft === 0 ? 'text-amber-600' : 'text-gray-500'}`}>
-                                    {overdue ? `Overdue ${Math.abs(daysLeft!)}d` : daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Tomorrow' : new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                  </span>
+                                  {task.start_date && task.start_date !== task.due_date ? (
+                                    <span className="text-[10px] text-gray-500">
+                                      {new Date(task.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[10px] font-medium ${overdue ? 'text-rose-600' : daysLeft === 0 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                      {overdue ? `Overdue ${Math.abs(daysLeft!)}d` : daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Tomorrow' : new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                  )}
                                 </div>
                               )}
-                              {(() => { const u = wsTaskTeam.find(m => m?.id === task.assigned_to); return u ? (
-                                <div className="flex items-center gap-1 ml-auto">
-                                  {u.avatar_url
-                                    ? <img src={u.avatar_url} alt={u.full_name} className="w-5 h-5 rounded-full object-cover object-top" />
-                                    : <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center text-[9px] font-bold text-white">{u.full_name[0]}</div>
-                                  }
-                                  <span className="text-[10px] text-gray-500 font-medium">{u.full_name.split(' ')[0]}</span>
-                                </div>
-                              ) : null; })()}
+                              <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+                                {commentCount > 0 && (
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-[#1c2b3a] text-[10px] font-semibold">
+                                    <i className="ri-chat-3-fill text-[11px]"></i>{commentCount}
+                                  </span>
+                                )}
+                                {assignees.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    <div className="flex -space-x-1">
+                                      {assignees.slice(0, 3).map((assignee: any) => (
+                                        assignee.avatar_url
+                                          ? <img key={assignee.id} src={assignee.avatar_url} alt={assignee.full_name} className="w-5 h-5 rounded-full border border-white object-cover object-top" />
+                                          : <div key={assignee.id} className="w-5 h-5 rounded-full border border-white bg-slate-100 flex items-center justify-center text-[9px] font-bold text-[#1c2b3a]/70">{assignee.full_name[0]}</div>
+                                      ))}
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 font-medium">
+                                      {assignees.length === 1 ? assignees[0].full_name.split(' ')[0] : `${assignees.length} assignees`}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                             </div>
                           </div>
                         );
@@ -1496,13 +2316,17 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       {(() => {
                         const overdueGroup  = wsFilteredTasks.filter(t => !!wsIsOverdue(t));
                         const inProgGroup   = wsFilteredTasks.filter(t => t.status === 'in_progress' && !wsIsOverdue(t));
+                        const reviewGroup   = wsFilteredTasks.filter(t => t.status === 'in_review' && !wsIsOverdue(t));
+                        const blockedGroup  = wsFilteredTasks.filter(t => t.status === 'blocked' && !wsIsOverdue(t));
                         const todoGroup     = wsFilteredTasks.filter(t => t.status === 'todo' && !wsIsOverdue(t));
                         const doneGroup     = wsFilteredTasks.filter(t => t.status === 'done');
 
-                        type GroupKey = 'overdue' | 'in_progress' | 'todo' | 'done';
+                        type GroupKey = 'overdue' | 'in_progress' | 'in_review' | 'blocked' | 'todo' | 'done';
                         const groups = [
                           { key: 'overdue' as GroupKey,     label: 'Overdue',     icon: 'ri-alarm-warning-line',         headerCls: 'bg-rose-50/60',    iconCls: 'text-rose-500',    labelCls: 'text-rose-700',    badgeCls: 'bg-rose-100 text-rose-600',    chevronCls: 'text-rose-300',    items: overdueGroup },
                           { key: 'in_progress' as GroupKey, label: 'In Progress', icon: 'ri-loader-2-line',               headerCls: 'bg-sky-50/50',     iconCls: 'text-sky-500',     labelCls: 'text-sky-700',     badgeCls: 'bg-sky-100 text-sky-600',      chevronCls: 'text-sky-400',     items: inProgGroup },
+                          { key: 'in_review' as GroupKey,   label: 'In Review',   icon: 'ri-eye-line',                    headerCls: 'bg-purple-50/50',  iconCls: 'text-purple-500',  labelCls: 'text-purple-700',  badgeCls: 'bg-purple-100 text-purple-600', chevronCls: 'text-purple-400', items: reviewGroup },
+                          { key: 'blocked' as GroupKey,     label: 'Blocked',     icon: 'ri-indeterminate-circle-line',   headerCls: 'bg-rose-50/50',    iconCls: 'text-rose-500',    labelCls: 'text-rose-700',    badgeCls: 'bg-rose-100 text-rose-600',    chevronCls: 'text-rose-300',    items: blockedGroup },
                           { key: 'todo' as GroupKey,        label: 'To Do',       icon: 'ri-checkbox-blank-circle-line',  headerCls: 'bg-gray-50/60',   iconCls: 'text-gray-400',    labelCls: 'text-gray-600',    badgeCls: 'bg-gray-100 text-gray-500',    chevronCls: 'text-gray-300',    items: todoGroup },
                           { key: 'done' as GroupKey,        label: 'Done',        icon: 'ri-checkbox-circle-fill',        headerCls: 'bg-emerald-50/40', iconCls: 'text-emerald-500', labelCls: 'text-emerald-700', badgeCls: 'bg-emerald-100 text-emerald-600', chevronCls: 'text-emerald-300', items: doneGroup },
                         ];
@@ -1526,39 +2350,88 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                                     const sc = wsStatusCycle[task.status];
                                     const overdue = wsIsOverdue(task);
                                     const priorityBorder = { high: 'border-l-rose-400', medium: 'border-l-amber-400', low: 'border-l-gray-300' }[task.priority];
+                                    const priorityCfg = { high: { label: 'High', cls: 'bg-rose-100 text-rose-600' }, medium: { label: 'Med', cls: 'bg-amber-100 text-amber-600' }, low: { label: 'Low', cls: 'bg-gray-100 text-gray-500' } }[task.priority];
+                                    const assignees = getWorkspaceTaskAssignees(task);
+                                    const commentCount = commentCounts[task.id] ?? 0;
                                     const tDaysLeft = task.due_date
                                       ? Math.ceil((new Date(task.due_date + 'T00:00:00').getTime() - new Date(wsToday + 'T00:00:00').getTime()) / 86400000)
                                       : null;
+                                    const isOver2 = listDragOverTaskId === task.id && draggedTaskId !== task.id;
                                     return (
-                                      <div key={task.id} onClick={() => openTaskDetail(task)}
-                                        className={`bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 border-l-4 ${priorityBorder} group cursor-pointer hover:shadow-md transition-shadow`}>
+                                      <div key={task.id} className="relative">
+                                        {isOver2 && listDragOverPos === 'above' && <div className="absolute -top-1 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full z-10 pointer-events-none" />}
+                                        {isOver2 && listDragOverPos === 'below' && <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#1c2b3a] rounded-full z-10 pointer-events-none" />}
+                                        <div
+                                        draggable
+                                        onDragStart={e => { if (!listDragFromHandle.current) { e.preventDefault(); return; } listDragFromHandle.current = false; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/task-id', String(task.id)); setDraggedTaskId(task.id); setListDragOverTaskId(null); setListDragOverPos(null); }}
+                                        onDragOver={e => { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); setListDragOverTaskId(task.id); setListDragOverPos(e.clientY < r.top + r.height / 2 ? 'above' : 'below'); }}
+                                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) { setListDragOverTaskId(null); setListDragOverPos(null); } }}
+                                        onDrop={e => {
+                                          e.preventDefault();
+                                          const fromId = Number(e.dataTransfer.getData('text/task-id') || draggedTaskId);
+                                          const r = e.currentTarget.getBoundingClientRect();
+                                          const pos = e.clientY < r.top + r.height / 2 ? 'above' : 'below';
+                                          setListDragOverTaskId(null); setListDragOverPos(null); setDraggedTaskId(null);
+                                          if (!fromId || fromId === task.id) return;
+                                          const ids = g.items.map(t => t.id);
+                                          if (ids.indexOf(fromId) < 0) return;
+                                          const reordered = ids.filter(id => id !== fromId);
+                                          const insertAt = reordered.indexOf(task.id) + (pos === 'below' ? 1 : 0);
+                                          reordered.splice(insertAt, 0, fromId);
+                                          reorderTasks(reordered);
+                                        }}
+                                        onDragEnd={() => { listDragFromHandle.current = false; setDraggedTaskId(null); setListDragOverTaskId(null); setListDragOverPos(null); }}
+                                        onClick={() => openTaskDetail(task)}
+                                        className={`select-none bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 border-l-4 group cursor-pointer hover:shadow-md hover:border-gray-200 transition-all ${(task as any).color ? '' : priorityBorder} ${draggedTaskId === task.id ? 'opacity-40' : ''}`}
+                                        style={(task as any).color ? { borderLeftColor: (task as any).color } : undefined}>
                                         <div className="flex items-start gap-2.5">
+                                          <i className="ri-draggable text-gray-300 cursor-grab active:cursor-grabbing flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity -ml-1 text-base" onPointerDown={() => { listDragFromHandle.current = true; }} />
                                           <button onClick={e => { e.stopPropagation(); toggleTask(task); }} className={`flex-shrink-0 cursor-pointer mt-0.5 ${sc.cls}`}>
                                             <i className={`${sc.icon} text-lg`}></i>
                                           </button>
                                           <div className="flex-1 min-w-0">
                                             <p className={`text-sm font-semibold leading-snug ${task.status === 'done' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</p>
+                                            {task.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{getTaskDescriptionPreview(task.description)}</p>}
                                           </div>
-                                          <i className="ri-arrow-right-s-line text-gray-300 group-hover:text-gray-500 text-base transition-colors ml-1"></i>
+                                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${priorityCfg.cls}`}>{priorityCfg.label}</span>
                                         </div>
                                         <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-50">
                                           {task.due_date && (
                                             <div className="flex items-center gap-1">
                                               <i className="ri-calendar-line text-[10px] text-gray-400"></i>
-                                              <span className={`text-[10px] font-medium ${overdue ? 'text-rose-600' : tDaysLeft === 0 ? 'text-amber-600' : 'text-gray-500'}`}>
-                                                {overdue ? `Overdue ${Math.abs(tDaysLeft!)}d` : tDaysLeft === 0 ? 'Due today' : tDaysLeft === 1 ? 'Tomorrow' : new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                              </span>
+                                              {task.start_date && task.start_date !== task.due_date ? (
+                                                <span className="text-[10px] text-gray-500">
+                                                  {new Date(task.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </span>
+                                              ) : (
+                                                <span className={`text-[10px] font-medium ${overdue ? 'text-rose-600' : tDaysLeft === 0 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                                  {overdue ? `Overdue ${Math.abs(tDaysLeft!)}d` : tDaysLeft === 0 ? 'Due today' : tDaysLeft === 1 ? 'Tomorrow' : new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </span>
+                                              )}
                                             </div>
                                           )}
-                                          {(() => { const u = wsTaskTeam.find(m => m?.id === task.assigned_to); return u ? (
-                                            <div className="flex items-center gap-1 ml-auto">
-                                              {u.avatar_url
-                                                ? <img src={u.avatar_url} alt={u.full_name} className="w-5 h-5 rounded-full object-cover object-top" />
-                                                : <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center text-[9px] font-bold text-white">{u.full_name[0]}</div>
-                                              }
-                                              <span className="text-[10px] text-gray-500 font-medium">{u.full_name.split(' ')[0]}</span>
-                                            </div>
-                                          ) : null; })()}
+                                          <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+                                            {commentCount > 0 && (
+                                              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-50 border border-slate-100 text-[#1c2b3a] text-[10px] font-semibold">
+                                                <i className="ri-chat-3-fill text-[11px]"></i>{commentCount}
+                                              </span>
+                                            )}
+                                            {assignees.length > 0 && (
+                                              <div className="flex items-center gap-1">
+                                                <div className="flex -space-x-1">
+                                                  {assignees.slice(0, 3).map((assignee: any) => (
+                                                    assignee.avatar_url
+                                                      ? <img key={assignee.id} src={assignee.avatar_url} alt={assignee.full_name} className="w-5 h-5 rounded-full border border-white object-cover object-top" />
+                                                      : <div key={assignee.id} className="w-5 h-5 rounded-full border border-white bg-slate-100 flex items-center justify-center text-[9px] font-bold text-[#1c2b3a]/70">{assignee.full_name[0]}</div>
+                                                  ))}
+                                                </div>
+                                                <span className="text-[10px] text-gray-500 font-medium">
+                                                  {assignees.length === 1 ? assignees[0].full_name.split(' ')[0] : `${assignees.length} assignees`}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
                                         </div>
                                       </div>
                                     );
@@ -1571,10 +2444,37 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       })()}
                     </div>
                   )}
+
+                  {/* Archived tasks toggle */}
+                  {wsArchivedTasks.length > 0 && (
+                    <div className="border-t border-gray-100">
+                      <button
+                        onClick={() => setShowArchivedTasks(v => !v)}
+                        className="w-full flex items-center gap-2 px-5 py-2.5 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <i className="ri-archive-line text-sm"></i>
+                        <span>{showArchivedTasks ? 'Hide' : 'Show'} archived ({wsArchivedTasks.length})</span>
+                        <i className={`${showArchivedTasks ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'} ml-auto`}></i>
+                      </button>
+                      {showArchivedTasks && (
+                        <div className="p-3 space-y-2">
+                          {wsArchivedTasks.map(task => (
+                            <div key={task.id} onClick={() => openTaskDetail(task)}
+                              className="opacity-50 bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 cursor-pointer hover:opacity-70 transition-opacity">
+                              <div className="flex items-center gap-2">
+                                <i className="ri-archive-line text-gray-400 text-sm flex-shrink-0"></i>
+                                <p className="text-sm text-gray-500 line-clamp-1">{task.title}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right sidebar */}
-                <div id="ws-sidebar" className="hidden lg:flex flex-col gap-4 w-64 flex-shrink-0">
+                <div id="ws-sidebar" className={`${taskView === 'board' ? 'hidden' : 'hidden lg:flex'} flex-col gap-4 w-64 flex-shrink-0`}>
                   {/* Dates & Notes card */}
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
                     {(p.start_date || p.deadline) && (
@@ -1600,9 +2500,6 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                         <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1.5">Notes</p>
                         <p className="text-xs text-gray-500 leading-relaxed">{p.notes}</p>
                       </div>
-                    )}
-                    {!p.start_date && !p.deadline && !p.notes && (
-                      <p className="text-xs text-gray-300 text-center py-2">No dates set</p>
                     )}
                   </div>
 
@@ -1632,13 +2529,14 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                         {activity.slice(0, 5).map(a => {
                           const diff = Math.floor((Date.now() - new Date(a.created_at).getTime()) / 1000);
                           const time = diff < 60 ? 'just now' : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : diff < 86400 ? `${Math.floor(diff / 3600)}h ago` : new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          const actorName = getProjectActivityActorName(a);
                           return (
                             <div key={a.id} className="flex items-start gap-2.5">
-                              <div className="w-6 h-6 rounded-full bg-indigo-50 border border-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <span className="text-indigo-500 font-bold text-[9px]">{(a.actor_name?.[0] ?? '?').toUpperCase()}</span>
+                              <div className="w-6 h-6 rounded-full bg-slate-50 border border-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-[#1c2b3a]/70 font-bold text-[9px]">{(actorName[0] ?? '?').toUpperCase()}</span>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs text-gray-600 leading-snug truncate">{a.description}</p>
+                                <p className="text-xs text-gray-600 leading-snug truncate">{getProjectActivityDescription(a)}</p>
                                 <p className="text-[10px] text-gray-400 mt-0.5">{time}</p>
                               </div>
                             </div>
@@ -1656,7 +2554,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                         {isRetainerProject(p) ? (<>
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-gray-400">Monthly Rate</span>
-                            <span className="font-semibold text-indigo-600">{isOwner ? fmtRate(p.monthly_rate, (p as any).monthly_rate_currency) : 'Retainer'}</span>
+                            <span className="font-semibold text-[#1c2b3a]">{isOwner ? fmtRate(p.monthly_rate, (p as any).monthly_rate_currency) : 'Retainer'}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-gray-400">Total Collected</span>
@@ -1746,7 +2644,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)' }}>
                   <p className="text-[11px] text-violet-200 uppercase tracking-widest font-semibold">Monthly Retainer</p>
                   <p className="text-[22px] font-bold text-white mt-1.5 leading-none">{fmt(summaryTotals.mrr)}</p>
-                  <p className="text-xs text-violet-200 mt-1.5">{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length} active contract{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-violet-200 mt-1.5">{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length} active client{projects.filter(p => p.project_type === 'retainer' && p.status === 'ongoing').length !== 1 ? 's' : ''}</p>
                 </div>
               )}
               <div className="rounded-2xl p-5 bg-white border border-gray-100">
@@ -1822,7 +2720,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             <select value={projectTypeFilter} onChange={e => setProjectTypeFilter(e.target.value as any)}
               className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">All Types</option>
-              <option value="client">One-time</option>
+              <option value="client">Fixed Contract</option>
               <option value="internal">Internal</option>
             </select>
             {/* Service dropdown */}
@@ -1835,8 +2733,12 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             <button onClick={() => { setEditingProject(null); setForm({ ...emptyForm, project_type: 'retainer' }); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
               <i className="ri-add-line text-sm"></i>
-              <span className="hidden sm:inline">Add Contract</span>
+              <span className="hidden sm:inline">Add Client</span>
             </button>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button onClick={() => setPageView('projects')} className={`px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${pageView === 'projects' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:bg-gray-50'}`}><i className="ri-folder-line text-sm"></i><span className="hidden sm:inline">Projects</span></button>
+              <button onClick={() => { setPageView('tasks'); fetchAllTasks(); }} className={`px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${pageView === 'tasks' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:bg-gray-50'}`}><i className="ri-task-line text-sm"></i><span className="hidden sm:inline">All Tasks</span></button>
+            </div>
             <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-[#111827] text-white text-sm rounded-lg hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap">
               <i className="ri-add-line text-sm"></i>
@@ -1844,7 +2746,96 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             </button>
           </div>
 
-          <div className="pt-1 pb-3">
+          {pageView === 'tasks' && (
+            <div className="space-y-4 pt-1 pb-3">
+              {/* ── Filters ── */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="relative flex-1 min-w-[160px]">
+                  <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                  <input value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search tasks..."
+                    className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                </div>
+                <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none cursor-pointer">
+                  <option value="active">Active</option><option value="all">All</option><option value="overdue">Overdue</option>
+                  <option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="done">Done</option>
+                </select>
+                <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} className="px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none cursor-pointer">
+                  <option value="project">By Project</option><option value="assignee">By Assignee</option>
+                </select>
+              </div>
+              {allTasksLoading ? (
+                <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
+              ) : (() => {
+                const tod = localToday();
+                const isOver = (t: any) => t.due_date && t.due_date < tod && t.status !== 'done';
+                const filt = allTasks.filter(t => {
+                  if (taskSearch && !t.title.toLowerCase().includes(taskSearch.toLowerCase()) && !t.project?.project_name?.toLowerCase().includes(taskSearch.toLowerCase())) return false;
+                  if (taskStatusFilter === 'active') return t.status !== 'done';
+                  if (taskStatusFilter === 'overdue') return isOver(t);
+                  if (taskStatusFilter !== 'all') return t.status === taskStatusFilter;
+                  return true;
+                });
+                const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+                  todo: { label: 'To Do', cls: 'bg-gray-100 text-gray-600' },
+                  in_progress: { label: 'In Progress', cls: 'bg-sky-100 text-sky-700' },
+                  in_review: { label: 'In Review', cls: 'bg-violet-100 text-violet-700' },
+                  blocked: { label: 'Blocked', cls: 'bg-rose-100 text-rose-700' },
+                  done: { label: 'Done', cls: 'bg-emerald-100 text-emerald-700' },
+                };
+                const groups: Record<string, any[]> = {};
+                for (const t of filt) {
+                  const key = taskGroupBy === 'project' ? (t.project?.project_name ?? 'Unknown') : (t.assignee?.full_name ?? 'Unassigned');
+                  (groups[key] ??= []).push(t);
+                }
+                return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([grp, gtasks]) => {
+                  const done = gtasks.filter(t => t.status === 'done').length;
+                  const pct = Math.round((done / gtasks.length) * 100);
+                  const overdue = gtasks.filter(t => isOver(t)).length;
+                  return (
+                    <div key={grp} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                      <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2 h-2 rounded-full bg-[#1c2b3a] flex-shrink-0"></span>
+                          <h3 className="font-semibold text-sm text-gray-800 truncate">{grp}</h3>
+                          <span className="text-xs text-gray-400 flex-shrink-0">{gtasks.length}</span>
+                          {overdue > 0 && <span className="text-[10px] text-rose-500 font-medium flex-shrink-0">{overdue} overdue</span>}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} /></div>
+                          <span className="text-xs text-gray-400">{done}/{gtasks.length}</span>
+                        </div>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {gtasks.map(t => {
+                          const over = isOver(t);
+                          const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
+                          return (
+                            <div key={t.id} className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 ${over ? 'bg-rose-50/30' : ''}`}>
+                              <button onClick={async () => { const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
+                                <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
+                                {taskGroupBy === 'assignee' && t.project && <p className="text-[11px] text-gray-400 truncate">{t.project.project_name}</p>}
+                              </div>
+                              <span className={`hidden sm:block text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
+                              {t.due_date && <span className={`text-[11px] font-medium flex-shrink-0 ${over ? 'text-rose-500' : 'text-gray-400'}`}>{new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+                              {t.assignee && taskGroupBy === 'project' && (
+                                t.assignee.avatar_url
+                                  ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                  : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0 text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
+          <div className="pt-1 pb-3" style={{ display: pageView === 'tasks' ? 'none' : undefined }}>
             {loading ? (
               <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-gray-300 text-2xl"></i></div>
             ) : filtered.length === 0 ? (
@@ -1855,23 +2846,38 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               <div className="space-y-3">
                 {!activeId && (
                   <div className="flex items-center gap-2">
-                    <i className="ri-folder-line text-[#FF6B35] text-sm"></i>
+                    <i className="ri-folder-line text-[#1c2b3a] text-sm"></i>
                     <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Projects <span className="text-gray-400 font-normal">({filtered.length})</span></p>
                   </div>
                 )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {(activeId ? filtered.filter(p => p.id === activeId) : filtered).map(p => {
+                  const d = derived(p);
                   const cfg = statusCfg[p.status] ?? statusCfg.ongoing;
                   const dl = deadlineStatus(p.deadline, p.status);
+                  const todayStr = localToday();
                   const pTasks = tasks.filter(t => t.project_id === p.id);
                   const pTasksDone = pTasks.filter(t => t.status === 'done').length;
+                  const healthLabel = getProjectHealth(p, p.hub_project_contractors.length, pTasksDone, pTasks.length, todayStr);
+                  const healthCls: Record<string, string> = {
+                    'Archived': 'bg-gray-100 text-gray-400',
+                    'Completed': 'bg-emerald-100 text-emerald-600',
+                    'No team assigned': 'bg-amber-100 text-amber-600',
+                    'No tasks yet': 'bg-gray-100 text-gray-400',
+                    'Overdue': 'bg-rose-100 text-rose-600',
+                    'Due this week': 'bg-amber-100 text-amber-700',
+                    'Waiting on payment': 'bg-slate-100 text-[#1c2b3a]',
+                    'Fully paid': 'bg-emerald-100 text-emerald-600',
+                    'Internal sprint': 'bg-slate-100 text-[#1c2b3a]',
+                    'In progress': 'bg-sky-100 text-sky-600',
+                  };
                   const pal = getServicePalette(p.service);
                   const team = p.hub_project_contractors.map((pc: any) => pc.hub_users).filter(Boolean);
                   return (
                     <button key={p.id}
                       onClick={() => { setActiveClientId(null); setActiveId(prev => prev === p.id ? null : p.id); }}
                       className={`rounded-xl bg-white text-left transition-all flex flex-col overflow-hidden hover:-translate-y-0.5 ${
-                        activeId === p.id ? 'border-2 border-[#FF6B35] shadow-[0_6px_18px_rgba(255,107,53,0.10)]' : 'border border-gray-100 hover:shadow-[0_4px_14px_rgba(15,23,42,0.06)]'
+                        activeId === p.id ? 'border-2 border-[#1c2b3a] shadow-[0_6px_18px_rgba(255,107,53,0.10)]' : 'border border-gray-100 hover:shadow-[0_4px_14px_rgba(15,23,42,0.06)]'
                       }`}>
                       {/* Service color stripe */}
                       <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${pal.from}, ${pal.to})` }} />
@@ -1913,7 +2919,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               </div>
               </div>
             )}
-          {/* ── Ongoing Contracts section ── */}
+          {/* ── Retainer Clients section ── */}
           {!activeClientId && !(activeId && projects.find(p => p.id === activeId && p.project_type !== 'retainer')) && (() => {
             // Merge retainer projects + hub_clients, dedup by client_name
             const retainerNames = new Set([
@@ -1931,8 +2937,8 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               <div className="-mx-4 md:-mx-6 px-4 md:px-6 pt-5 pb-6 mt-2 space-y-3"
                 style={{ background: 'rgba(30,40,70,0.06)', borderTop: '1px solid rgba(30,40,70,0.10)' }}>
                 <div className="flex items-center gap-2">
-                  <i className="ri-building-line text-[#FF6B35] text-sm"></i>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Ongoing Contracts <span className="text-gray-400 font-normal">({totalCount})</span></p>
+                  <i className="ri-building-line text-[#1c2b3a] text-sm"></i>
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Retainer Clients <span className="text-gray-400 font-normal">({totalCount})</span></p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {/* Retainer projects — clickable */}
@@ -2012,21 +3018,108 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
 
 
         {/* ── Client detail panel (hidden — workspace used instead) ── */}
+        {false && activeClient && (
+          <section className="mt-4 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${getServicePalette(activeClient.platform).from}, ${getServicePalette(activeClient.platform).to})` }}>
+                  <i className="ri-building-line text-white text-base"></i>
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900">{activeClient.client_name}</p>
+                  <p className="text-xs text-gray-400">{activeClient.platform ?? 'Client'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => openClientWorkspace(activeClient)} disabled={openingWorkspace}
+                  className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-[#0f1c28] cursor-pointer flex items-center gap-1 disabled:opacity-50">
+                  <i className="ri-layout-grid-line text-xs"></i> {openingWorkspace ? 'Opening…' : 'Workspace'}
+                </button>
+                <button onClick={() => { setEditingClient(activeClient); setClientForm({ client_name: activeClient.client_name, platform: activeClient.platform ?? '', status: activeClient.status, notes: activeClient.notes ?? '', contract_value: activeClient.contract_value != null ? String(activeClient.contract_value) : '', contract_currency: activeClient.contract_currency ?? 'PHP' }); setShowClientModal(true); }}
+                  className="px-3 py-1.5 text-xs border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer flex items-center gap-1">
+                  <i className="ri-edit-line text-xs"></i> Edit
+                </button>
+                <button onClick={() => { if (confirm(`Delete ${activeClient.client_name}?`)) deleteClient(activeClient.id); }}
+                  className="px-3 py-1.5 text-xs border border-rose-200 text-rose-500 rounded-lg hover:bg-rose-50 cursor-pointer flex items-center gap-1">
+                  <i className="ri-delete-bin-line text-xs"></i>
+                </button>
+                <button onClick={() => setActiveClientId(null)} className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 cursor-pointer"><i className="ri-close-line"></i></button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-5">
+              {/* Client info */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wide">Status</p>
+                    <p className="text-sm font-semibold text-gray-800 mt-0.5 capitalize">{activeClient.status}</p>
+                  </div>
+                  {activeClient.platform && (
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Platform</p>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">{activeClient.platform}</p>
+                    </div>
+                  )}
+                  {activeClient.contract_value && (
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Contract Value</p>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">{activeClient.contract_currency ?? 'PHP'} {activeClient.contract_value.toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+                {activeClient.notes && <p className="text-sm text-gray-500 italic">{activeClient.notes}</p>}
+              </div>
+              {/* Team assignments */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</p>
+                {activeClient.assignments.map(a => (
+                  <div key={a.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+                    {a.hub_users?.avatar_url
+                      ? <img src={a.hub_users.avatar_url} alt={a.hub_users.full_name} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" />
+                      : <div className="w-8 h-8 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-sm font-bold">{a.hub_users?.full_name?.[0]}</span></div>
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{a.hub_users?.full_name}</p>
+                      {a.role && <p className="text-xs text-gray-400 truncate">{a.role}</p>}
+                    </div>
+                    <button onClick={() => removeClientAssignment(a.id)} className="text-gray-300 hover:text-rose-500 cursor-pointer transition-colors"><i className="ri-close-line text-sm"></i></button>
+                  </div>
+                ))}
+                {/* Add assignment */}
+                <div className="flex gap-2">
+                  <select value={assignAddId} onChange={e => setAssignAddId(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none bg-white">
+                    <option value="">Add team member…</option>
+                    {contractors.filter(c => !activeClient.assignments.some(a => a.contractor_id === c.id)).map(c => (
+                      <option key={c.id} value={c.id}>{c.full_name}</option>
+                    ))}
+                  </select>
+                  <input value={assignAddRole} onChange={e => setAssignAddRole(e.target.value)} placeholder="Role (optional)"
+                    className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
+                  <button onClick={addClientAssignment} disabled={!assignAddId || assignSaving}
+                    className="px-3 py-1.5 bg-[#111827] text-white text-xs rounded-lg hover:bg-gray-800 cursor-pointer disabled:opacity-40 whitespace-nowrap">
+                    {assignSaving ? '...' : 'Add'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ── Client modal (add/edit) ── */}
         {showClientModal && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
               <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#111827]">{editingClient ? 'Edit Contract' : 'New Contract'}</h2>
+                <h2 className="font-semibold text-[#111827]">{editingClient ? 'Edit Client' : 'New Client'}</h2>
                 <button onClick={() => { setShowClientModal(false); setEditingClient(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer"><i className="ri-close-line text-lg"></i></button>
               </div>
               <div className="p-5 space-y-3">
-                {[['Client Name', 'client_name', 'text', 'e.g. Ayala Land, SM Prime'], ['Platform', 'platform', 'text', 'e.g. Meta, Google, TikTok'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, ph]) => (
+                {[['Client Name', 'client_name', 'text', 'e.g. Blue Collar Nutrition'], ['Platform', 'platform', 'text', 'e.g. Meta, Google, TikTok'], ['Notes', 'notes', 'text', 'Optional notes']].map(([label, field, type, ph]) => (
                   <div key={field} className="space-y-1">
                     <label className="text-xs font-medium text-gray-700">{label}</label>
                     <input type={type} value={(clientForm as any)[field]} onChange={e => setClientForm(f => ({ ...f, [field]: e.target.value }))} placeholder={ph}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200" />
                   </div>
                 ))}
                 <div className="grid grid-cols-2 gap-3">
@@ -2050,8 +3143,8 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               <div className="flex gap-2 p-5 pt-0">
                 <button onClick={() => { setShowClientModal(false); setEditingClient(null); }} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer">Cancel</button>
                 <button onClick={saveClient} disabled={clientSaving || !clientForm.client_name.trim()}
-                  className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-40 cursor-pointer">
-                  {clientSaving ? 'Saving...' : editingClient ? 'Save Changes' : 'Add Contract'}
+                  className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer">
+                  {clientSaving ? 'Saving...' : editingClient ? 'Save Changes' : 'Add Client'}
                 </button>
               </div>
             </div>
@@ -2084,18 +3177,18 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <div className="grid grid-cols-2 gap-2">
                     {(internalProject ? [
                       { label: 'Team', value: String(activeProject.hub_project_contractors.length), cls: 'text-gray-800' },
-                      { label: 'Tasks', value: String(tasks.length), cls: 'text-indigo-600' },
+                      { label: 'Tasks', value: String(tasks.length), cls: 'text-[#1c2b3a]' },
                       { label: 'Done', value: String(tasks.filter(t => t.status === 'done').length), cls: 'text-emerald-600' },
                       { label: 'Status', value: cfg.label, cls: 'text-gray-500' },
                     ] : isRetainerProject(activeProject) ? [
                       ...(isOwner ? [
-                        { label: 'Monthly', value: fmtRate(activeProject.monthly_rate, (activeProject as any).monthly_rate_currency), cls: 'text-indigo-600' },
+                        { label: 'Monthly', value: fmtRate(activeProject.monthly_rate, (activeProject as any).monthly_rate_currency), cls: 'text-[#1c2b3a]' },
                         { label: 'Collected', value: fmt(d.totalPaid), cls: 'text-emerald-600' },
                         { label: 'Months Paid', value: String(d.monthsCollected ?? '—'), cls: 'text-gray-700' },
-                        { label: 'Costs', value: fmt(d.totalCosts), cls: 'text-orange-600' },
+                        { label: 'Costs', value: fmt(d.totalCosts), cls: 'text-[#1c2b3a]' },
                       ] : [
                         { label: 'Team', value: String(activeProject.hub_project_contractors.length), cls: 'text-gray-800' },
-                        { label: 'Tasks', value: String(tasks.length), cls: 'text-indigo-600' },
+                        { label: 'Tasks', value: String(tasks.length), cls: 'text-[#1c2b3a]' },
                         { label: 'Done', value: String(tasks.filter(t => t.status === 'done').length), cls: 'text-emerald-600' },
                         { label: 'Status', value: cfg.label, cls: 'text-gray-500' },
                       ]),
@@ -2103,7 +3196,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       { label: 'Contract', value: fmt(activeProject.contract_price), cls: 'text-gray-800' },
                       { label: 'Paid', value: fmt(d.totalPaid), cls: 'text-emerald-600' },
                       { label: 'Balance', value: fmt(d.balance), cls: d.balance > 0 ? 'text-rose-600' : 'text-gray-400' },
-                      { label: 'Costs', value: fmt(d.totalCosts), cls: 'text-orange-600' },
+                      { label: 'Costs', value: fmt(d.totalCosts), cls: 'text-[#1c2b3a]' },
                     ]).map(s => (
                       <div key={s.label} className="bg-gray-50 rounded-xl p-3">
                         <p className="text-[10px] text-gray-400 uppercase tracking-wide">{s.label}</p>
@@ -2113,7 +3206,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   </div>
                   {/* Actions */}
                   <div className="flex gap-2">
-                    {!internalProject && <button onClick={async () => { const nextNum = await fetchNextInvoiceNumber(); setInvoiceModal(activeProject); const _balance = activeProject.contract_price - activeProject.hub_project_payments.reduce((s,p)=>s+p.amount,0); setInvoiceForm({ email: activeProject.contact_email ?? '', cc: '', subject: `Invoice #${nextNum} — ${activeProject.project_name}`, due_date: activeProject.deadline ?? '', invoice_number: nextNum, bill_to_name: activeProject.client_name, bill_to_address: '', reference: '', payment_terms: activeProject.deadline ? 'Due by stated date' : 'Due on receipt', send_mode: 'now', scheduled_for: '', message: '', amount_requested: String(Math.max(_balance, 0)) }); setInvoiceLineItems([{ description: activeProject.service ?? activeProject.project_name, amount: String(activeProject.contract_price) }]); setInvoiceShowPayments(true); setInvoiceMsg(null); }}
+                    {!internalProject && <button onClick={() => navigate(`/hub/admin/invoices/${activeProject.id}`)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#111827] text-white text-sm rounded-xl cursor-pointer">
                       <i className="ri-mail-send-line"></i> Send Invoice
                     </button>}
@@ -2214,12 +3307,12 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     <div className="w-px h-5 bg-gray-200" />
 
                     {/* Primary actions */}
-                    {!internalProject && <button onClick={async () => { const nextNum = await fetchNextInvoiceNumber(); setInvoiceModal(activeProject); const _balance = activeProject.contract_price - activeProject.hub_project_payments.reduce((s,p)=>s+p.amount,0); setInvoiceForm({ email: activeProject.contact_email ?? '', cc: '', subject: `Invoice #${nextNum} — ${activeProject.project_name}`, due_date: activeProject.deadline ?? '', invoice_number: nextNum, bill_to_name: activeProject.client_name, bill_to_address: '', reference: '', payment_terms: activeProject.deadline ? 'Due by stated date' : 'Due on receipt', send_mode: 'now', scheduled_for: '', message: '', amount_requested: String(Math.max(_balance, 0)) }); setInvoiceLineItems([{ description: activeProject.service ?? activeProject.project_name, amount: String(activeProject.contract_price) }]); setInvoiceShowPayments(true); setInvoiceMsg(null); }}
+                    {!internalProject && <button onClick={() => navigate(`/hub/admin/invoices/${activeProject.id}`)}
                       className="text-xs px-3 py-2 bg-[#111827] hover:bg-gray-800 text-white rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors font-medium">
                       <i className="ri-mail-send-line text-sm"></i> Send Invoice
                     </button>}
                     <button onClick={() => setWorkspaceOpen(true)}
-                      className="text-xs px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors font-medium">
+                      className="text-xs px-3 py-2 bg-indigo-600 hover:bg-[#0f1c28] text-white rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors font-medium">
                       <i className="ri-layout-grid-line text-sm"></i> Workspace
                     </button>
                   </div>
@@ -2240,7 +3333,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <>
                     {/* Retainer finance strip — owner only */}
                     {isOwner && <><div className="mt-4 flex items-center gap-3 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 flex-wrap">
-                      <span>Monthly: <strong className="text-indigo-600">{fmtRate(activeProject.monthly_rate, (activeProject as any).monthly_rate_currency)}</strong></span>
+                      <span>Monthly: <strong className="text-[#1c2b3a]">{fmtRate(activeProject.monthly_rate, (activeProject as any).monthly_rate_currency)}</strong></span>
                       <span className="text-gray-200">|</span>
                       <span>Collected: <strong className="text-emerald-600">{fmt(d.totalPaid)}</strong></span>
                       <span className="text-gray-200">|</span>
@@ -2251,7 +3344,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     {/* Retainer payment history bar */}
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>Project payments</span>
+                        <span>Client payments</span>
                         <span>{d.monthsCollected ?? 0} month{(d.monthsCollected ?? 0) !== 1 ? 's' : ''} · {fmt(d.totalPaid)} collected</span>
                       </div>
                       <div className="h-2 bg-white/60 rounded-full overflow-hidden border border-white/55">
@@ -2274,7 +3367,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     {/* Collection progress */}
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>Project payments</span>
+                        <span>Client payments</span>
                         <span>{fmt(d.totalPaid)} of {fmt(activeProject.contract_price)}</span>
                       </div>
                       <div className="h-2 bg-white/60 rounded-full overflow-hidden border border-white/55">
@@ -2311,7 +3404,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                                 <div className="p-2.5 space-y-2">
                                   <div className="flex gap-2">
                                     <input type="number" value={editPayForm.amount} onChange={e => setEditPayForm(f => ({ ...f, amount: e.target.value }))} placeholder="Amount"
-                                      className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                                      className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                                     <input type="date" value={editPayForm.date} onChange={e => setEditPayForm(f => ({ ...f, date: e.target.value }))}
                                       className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
                                   </div>
@@ -2385,9 +3478,10 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                             <select value={payCurrency} onChange={e => setPayCurrency(e.target.value as 'PHP' | 'USD')}
                               className="px-2 py-1.5 text-xs border border-gray-200 rounded-l-lg focus:outline-none bg-gray-50 border-r-0">
                               <option value="PHP">₱</option>
+                              <option value="USD">$</option>
                             </select>
                             <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="Amount"
-                              className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                              className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                           </div>
                           <input type="date" value={payDate} onChange={e => setPayDate(e.target.value)}
                             className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
@@ -2450,7 +3544,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                                     <span className="text-xs font-medium text-gray-700">
                                       {new Date(r.send_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </span>
-                                    {r.amount_due && <span className="text-xs font-semibold text-[#FF6B35]">{fmt(r.amount_due)}</span>}
+                                    {r.amount_due && <span className="text-xs font-semibold text-[#1c2b3a]">{fmt(r.amount_due)}</span>}
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${statusCls}`}>{statusLabel}</span>
                                   </div>
                                   {r.notes && <p className="text-[11px] text-gray-400 mt-0.5">{r.notes}</p>}
@@ -2468,7 +3562,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <div className="border-t border-gray-100 pt-3 space-y-2">
                         <div className="flex gap-2">
                           <input type="date" value={reminderDate} onChange={e => setReminderDate(e.target.value)}
-                            className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                            className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                           <input type="number" value={reminderAmount} onChange={e => setReminderAmount(e.target.value)} placeholder="Amount (optional)"
                             className="w-32 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
                         </div>
@@ -2518,7 +3612,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <div className="border-t border-gray-100 pt-3 space-y-2">
                         <div className="flex gap-2">
                           <input value={costLabel} onChange={e => setCostLabel(e.target.value)} placeholder="e.g. Hosting, Domain"
-                            className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                            className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                           <input type="number" value={costAmount} onChange={e => setCostAmount(e.target.value)} placeholder="Amount"
                             className="w-24 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
                         </div>
@@ -2549,7 +3643,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <div key={pc.hub_users.id} title={pc.hub_users.full_name}>
                         {pc.hub_users.avatar_url
                           ? <img src={pc.hub_users.avatar_url} alt={pc.hub_users.full_name} className="w-7 h-7 rounded-full object-cover object-top border-2 border-white -ml-1 first:ml-0" />
-                          : <div className="w-7 h-7 rounded-full bg-[#FF6B35] border-2 border-white flex items-center justify-center -ml-1 first:ml-0"><span className="text-white text-[10px] font-bold">{pc.hub_users.full_name[0]}</span></div>
+                          : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] border-2 border-white flex items-center justify-center -ml-1 first:ml-0"><span className="text-white text-[10px] font-bold">{pc.hub_users.full_name[0]}</span></div>
                         }
                       </div>
                     ))}
@@ -2642,14 +3736,14 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                               {configForm.payoutType === 'percentage' ? (
                                 <div className="relative w-24">
                                   <input type="number" value={configForm.percentage} onChange={e => setConfigForm({ percentage: e.target.value })} placeholder="%" min="1" max="100"
-                                    className="w-full px-2.5 py-1.5 pr-6 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                                    className="w-full px-2.5 py-1.5 pr-6 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
                                 </div>
                               ) : (
                                 <div className="relative w-40">
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">₱</span>
                                   <input type="number" value={configForm.fixedAmount} onChange={e => setConfigForm({ fixedAmount: e.target.value })} placeholder="Fixed fee amount"
-                                    className="w-full pl-6 pr-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                                    className="w-full pl-6 pr-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                                 </div>
                               )}
                               <button onClick={() => saveContractorPayoutConfig(pc.id)} disabled={ctxConfigSaving[pc.id]}
@@ -2688,7 +3782,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                               <div className="flex gap-2">
                                 <div className="flex-1 flex gap-1">
                                   <input type="number" value={pf.amount} onChange={e => setPf({ amount: e.target.value })} placeholder={`Amount (of ${fmt(cut)})`}
-                                    className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                                    className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                                   <button
                                     type="button"
                                     onClick={() => setPf({ amount: String((cut - totalPaidOut).toFixed(2)) })}
@@ -2722,7 +3816,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                               </div>
                               <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
                                 <input type="checkbox" checked={pf.notify} onChange={e => setPf({ notify: e.target.checked })}
-                                  className="w-3.5 h-3.5 accent-[#FF6B35]" />
+                                  className="w-3.5 h-3.5 accent-[#1c2b3a]" />
                                 <span className="text-xs text-gray-400">
                                   Notify {u.email ? u.full_name.split(' ')[0] : 'contractor'} via email
                                   {!u.email && <span className="text-amber-500 ml-1">(no email on file)</span>}
@@ -2749,7 +3843,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       </div>
                       <div className="flex gap-2">
                         <input value={addCtxRole} onChange={e => setAddCtxRole(e.target.value)} placeholder="Project role (optional)"
-                          className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                          className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                         <button onClick={addContractor} disabled={!addCtxId || ctxSaving}
                           className="px-3 py-1.5 bg-[#111827] text-white text-xs rounded-lg hover:bg-gray-800 cursor-pointer disabled:opacity-40 whitespace-nowrap">
                           {ctxSaving ? '...' : 'Add Team Member'}
@@ -2781,18 +3875,65 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
       {/* Project form modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h2 className="font-semibold text-[#111827]">{editingProject ? 'Edit Project' : 'New Project'}</h2>
-              <button onClick={() => { setShowForm(false); setEditingProject(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center"><i className="ri-close-line text-lg"></i></button>
+              <div className="flex items-center gap-2">
+                {!editingProject && (
+                  <>
+                    <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors ${importing ? 'opacity-60 pointer-events-none' : ''}`}>
+                      <i className={`${importing ? 'ri-loader-4-line animate-spin' : 'ri-sparkling-2-line'} text-sm text-[#1c2b3a]/70`}></i>
+                      {importing ? 'Reading…' : 'Import from file'}
+                      <input type="file" className="hidden" accept=".pdf,.csv,.txt,.png,.jpg,.jpeg"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setImporting(true);
+                          try {
+                            const buffer = await file.arrayBuffer();
+                            const bytes = new Uint8Array(buffer);
+                            let binary = '';
+                            bytes.forEach(b => binary += String.fromCharCode(b));
+                            const file_base64 = btoa(binary);
+                            const { data, error } = await supabase.functions.invoke('parse-project-doc', {
+                              body: { file_base64, mime_type: file.type, file_name: file.name },
+                            });
+                            if (error || !data) throw new Error(error?.message ?? 'No data returned');
+                            setForm(f => ({
+                              ...f,
+                              project_name: data.project_name ?? f.project_name,
+                              client_name: data.client_name ?? f.client_name,
+                              project_type: data.project_type ?? f.project_type,
+                              service: data.service ?? f.service,
+                              contract_price: data.contract_price != null ? String(data.contract_price) : f.contract_price,
+                              monthly_rate: data.monthly_rate != null ? String(data.monthly_rate) : (f as any).monthly_rate,
+                              start_date: data.start_date ?? f.start_date,
+                              deadline: data.deadline ?? f.deadline,
+                              notes: data.notes ?? f.notes,
+                            } as any));
+                            if (data.tasks?.length) setImportedTasks(data.tasks);
+                          } catch (err) {
+                            setFormError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                          } finally {
+                            setImporting(false);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+                <button onClick={() => { setShowForm(false); setEditingProject(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center"><i className="ri-close-line text-lg"></i></button>
+              </div>
             </div>
             <div className="p-5 space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Project Type</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'client',   label: 'Fixed Contract', sub: 'Fixed fee project' },
-                    { value: 'internal', label: 'Internal',       sub: 'Tasks & team only' },
+                    { value: 'client',   label: 'One-time',   sub: 'Fixed contract billing' },
+                    { value: 'retainer', label: 'Retainer', sub: 'Monthly recurring' },
+                    { value: 'internal', label: 'Internal', sub: 'Tasks & team only' },
                   ].map(option => (
                     <button
                       key={option.value}
@@ -2808,14 +3949,14 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">{form.project_type === 'internal' ? 'Owner / Label' : 'Client / Developer'}{form.project_type !== 'internal' ? ' *' : ''}</label>
-                  <input value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} placeholder={form.project_type === 'internal' ? 'e.g. Internal, R&D' : 'e.g. Ayala Land, SM Prime'}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  <label className="text-xs font-medium text-gray-700">{form.project_type === 'internal' ? 'Owner / Label' : 'Client Name'}{form.project_type !== 'internal' ? ' *' : ''}</label>
+                  <input value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} placeholder={form.project_type === 'internal' ? 'e.g. Internal, Marketing, Ops' : 'e.g. Blue Collar Nutrition'}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Project Name *</label>
-                  <input value={form.project_name} onChange={e => setForm({ ...form, project_name: e.target.value })} placeholder="e.g. Eastwood Mall Renovation"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  <input value={form.project_name} onChange={e => setForm({ ...form, project_name: e.target.value })} placeholder="e.g. bluecollarmealplan.com"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2829,14 +3970,14 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   {!SERVICES.slice(0, -1).includes(form.service) && (
                     <input value={form.service} onChange={e => setForm({ ...form, service: e.target.value })}
                       placeholder="Describe the service..."
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] mt-1.5" />
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] mt-1.5" />
                   )}
                 </div>
                 {form.project_type === 'client' && (
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-700">Contract Price (PHP) *</label>
                     <input type="number" value={form.contract_price} onChange={e => setForm({ ...form, contract_price: e.target.value })} placeholder="0.00"
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                   </div>
                 )}
                 {form.project_type === 'retainer' && (
@@ -2846,9 +3987,10 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <select value={(form as any).monthly_rate_currency} onChange={e => setForm({ ...form, monthly_rate_currency: e.target.value } as any)}
                         className="px-2.5 py-2 text-sm border border-gray-200 rounded-l-lg focus:outline-none bg-gray-50 border-r-0 text-gray-600">
                         <option value="PHP">₱ PHP</option>
+                        <option value="USD">$ USD</option>
                       </select>
                       <input type="number" value={(form as any).monthly_rate} onChange={e => setForm({ ...form, monthly_rate: e.target.value } as any)} placeholder="0.00"
-                        className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
                     {(form as any).monthly_rate_currency === 'USD' && (form as any).monthly_rate && (
                       <p className="text-xs text-gray-400 mt-1">≈ ₱{((parseFloat((form as any).monthly_rate) || 0) * usdRate).toLocaleString()}/mo at current rate (₱{usdRate}/USD)</p>
@@ -2892,21 +4034,21 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               </div>
               {(form.project_type === 'client' || form.project_type === 'retainer') && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Client Contact Email <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <label className="text-xs font-medium text-gray-700">Client Contact Email <span className="text-gray-400 font-normal">(for invoices)</span></label>
                   <input type="email" value={form.contact_email} onChange={e => setForm({ ...form, contact_email: e.target.value })} placeholder="client@email.com"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               )}
               {importedTasks.length > 0 && (
-                <div className="mt-2 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
-                  <p className="text-xs font-semibold text-indigo-700 mb-1.5"><i className="ri-sparkling-2-line mr-1"></i>{importedTasks.length} task{importedTasks.length !== 1 ? 's' : ''} will be added</p>
+                <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-xs font-semibold text-[#1c2b3a] mb-1.5"><i className="ri-sparkling-2-line mr-1"></i>{importedTasks.length} task{importedTasks.length !== 1 ? 's' : ''} will be added</p>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
                     {importedTasks.map((t, i) => (
                       <div key={i} className="flex items-center justify-between gap-2">
                         <span className="text-xs text-indigo-800 truncate">{t.title}</span>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${t.priority === 'high' ? 'bg-rose-100 text-rose-600' : t.priority === 'medium' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>{t.priority}</span>
-                          <button onClick={() => setImportedTasks(prev => prev.filter((_, j) => j !== i))} className="text-indigo-400 hover:text-indigo-600 cursor-pointer"><i className="ri-close-line text-xs"></i></button>
+                          <button onClick={() => setImportedTasks(prev => prev.filter((_, j) => j !== i))} className="text-[#1c2b3a]/50 hover:text-[#1c2b3a] cursor-pointer"><i className="ri-close-line text-xs"></i></button>
                         </div>
                       </div>
                     ))}
@@ -2918,7 +4060,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             <div className="flex gap-2 p-5 pt-0">
               <button onClick={() => { setShowForm(false); setEditingProject(null); setImportedTasks([]); }} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer">Cancel</button>
               <button onClick={saveProject} disabled={formSaving}
-                className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-40 cursor-pointer">
+                className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer">
                 {formSaving ? 'Saving...' : editingProject ? 'Save Changes' : 'Create Project'}
               </button>
             </div>
@@ -2956,19 +4098,19 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Send to <span className="text-red-400">*</span></label>
                   <input type="email" value={invoiceForm.email} onChange={e => setIf({ email: e.target.value })} placeholder="client@email.com"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" autoFocus />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" autoFocus />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">CC <span className="text-gray-400 font-normal">(optional)</span></label>
                   <input type="email" value={invoiceForm.cc} onChange={e => setIf({ cc: e.target.value })} placeholder="cc@email.com"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               {/* Subject */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-600">Subject</label>
                 <input type="text" value={invoiceForm.subject} onChange={e => setIf({ subject: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium text-gray-600">Delivery</label>
@@ -2976,14 +4118,14 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <button
                     type="button"
                     onClick={() => setIf({ send_mode: 'now', scheduled_for: '' })}
-                    className={`px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors ${invoiceForm.send_mode === 'now' ? 'border-[#FF6B35] bg-orange-50 text-[#FF6B35]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                    className={`px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors ${invoiceForm.send_mode === 'now' ? 'border-[#1c2b3a] bg-slate-50 text-[#1c2b3a]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
                   >
                     Send now
                   </button>
                   <button
                     type="button"
                     onClick={() => setIf({ send_mode: 'schedule' })}
-                    className={`px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors ${invoiceForm.send_mode === 'schedule' ? 'border-[#FF6B35] bg-orange-50 text-[#FF6B35]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                    className={`px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors ${invoiceForm.send_mode === 'schedule' ? 'border-[#1c2b3a] bg-slate-50 text-[#1c2b3a]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}
                   >
                     Schedule
                   </button>
@@ -2992,7 +4134,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-600">Send on</label>
                     <input type="datetime-local" value={invoiceForm.scheduled_for} onChange={e => setIf({ scheduled_for: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     <p className="text-[11px] text-gray-400">This invoice will be saved as a snapshot and sent automatically at the selected time.</p>
                   </div>
                 )}
@@ -3002,40 +4144,40 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Invoice #</label>
                   <input type="text" value={invoiceForm.invoice_number} onChange={e => setIf({ invoice_number: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Due date</label>
                   <input type="date" value={invoiceForm.due_date} onChange={e => setIf({ due_date: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Bill to name</label>
                   <input type="text" value={invoiceForm.bill_to_name} onChange={e => setIf({ bill_to_name: e.target.value })}
-                    placeholder="e.g. FS Architects"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    placeholder="e.g. Blue Collar Nutrition"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Reference / PO <span className="text-gray-400">(optional)</span></label>
                   <input type="text" value={invoiceForm.reference} onChange={e => setIf({ reference: e.target.value })}
                     placeholder="e.g. PO-1042"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-600">Billing address <span className="text-gray-400">(optional)</span></label>
                 <textarea value={invoiceForm.bill_to_address} onChange={e => setIf({ bill_to_address: e.target.value })} rows={2}
                   placeholder="Company address, attention line, or billing contact"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Payment terms <span className="text-gray-400">(optional)</span></label>
                   <input type="text" value={invoiceForm.payment_terms} onChange={e => setIf({ payment_terms: e.target.value })}
                     placeholder="e.g. Net 15 or Due on receipt"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-600">Currency</label>
@@ -3048,7 +4190,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-gray-600">Invoice Line Items</label>
                   <button type="button" onClick={() => setInvoiceLineItems(p => [...p, { description: '', amount: '' }])}
-                    className="text-xs text-[#FF6B35] hover:text-[#e55a27] cursor-pointer flex items-center gap-1">
+                    className="text-xs text-[#1c2b3a] hover:text-[#0f1c28] cursor-pointer flex items-center gap-1">
                     <i className="ri-add-line"></i> Add line
                   </button>
                 </div>
@@ -3057,7 +4199,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     <div key={idx} className="flex gap-2 items-center">
                       <input value={item.description} onChange={e => setInvoiceLineItems(p => p.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))}
                         placeholder="e.g. Website Design — Phase 1"
-                        className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                        className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                       <input type="number" value={item.amount} onChange={e => setInvoiceLineItems(p => p.map((x, i) => i === idx ? { ...x, amount: e.target.value } : x))}
                         placeholder="Amount"
                         className="w-28 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none" />
@@ -3075,7 +4217,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               {/* Show payments toggle */}
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input type="checkbox" checked={invoiceShowPayments} onChange={e => setInvoiceShowPayments(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-[#FF6B35]" />
+                  className="w-3.5 h-3.5 accent-[#1c2b3a]" />
                 <span className="text-xs text-gray-600">Include payment history on invoice</span>
               </label>
 
@@ -3083,8 +4225,8 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-600">Message <span className="text-gray-400 font-normal">(optional note to client)</span></label>
                 <textarea value={invoiceForm.message} onChange={e => setIf({ message: e.target.value })} rows={3}
-                  placeholder="e.g. Thank you for your continued trust in FS Architects. Please find your invoice below."
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] resize-none" />
+                  placeholder="e.g. Thank you for your continued trust in Huna Creatives. Please find your invoice below."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
               {/* Balance summary */}
               <div className="bg-gray-50 rounded-xl p-3 space-y-1 text-xs text-gray-500">
@@ -3092,7 +4234,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="flex justify-between"><span>Paid</span><span className="font-medium text-emerald-600">{fmt(invoiceModal.hub_project_payments.reduce((s,p)=>s+p.amount,0))}</span></div>
                 <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
                   <span className="font-semibold text-gray-700">Balance</span>
-                  <span className="font-bold text-[#FF6B35]">{fmt(invoiceModal.contract_price - invoiceModal.hub_project_payments.reduce((s,p)=>s+p.amount,0))}</span>
+                  <span className="font-bold text-[#1c2b3a]">{fmt(invoiceModal.contract_price - invoiceModal.hub_project_payments.reduce((s,p)=>s+p.amount,0))}</span>
                 </div>
               </div>
 
@@ -3103,7 +4245,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">₱</span>
                   <input type="number" value={invoiceForm.amount_requested} onChange={e => setIf({ amount_requested: e.target.value })}
                     placeholder="e.g. 15000"
-                    className="w-full pl-7 pr-3 py-2 text-sm border border-[#FF6B35] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 font-semibold text-[#111827]" />
+                    className="w-full pl-7 pr-3 py-2 text-sm border border-[#1c2b3a] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 font-semibold text-[#111827]" />
                 </div>
                 <p className="text-[10px] text-gray-400">This is the "Balance Due" shown on the invoice and on the payment page.</p>
               </div>
@@ -3132,7 +4274,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     <button
                       onClick={() => invoiceForm.send_mode === 'schedule' ? scheduleInvoice(invoiceModal) : sendInvoice(invoiceModal)}
                       disabled={invoiceSending || !invoiceForm.email.trim() || (invoiceForm.send_mode === 'schedule' && !invoiceForm.scheduled_for)}
-                      className="flex-1 py-2 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       {invoiceSending
                         ? <><i className="ri-loader-4-line animate-spin"></i> {invoiceForm.send_mode === 'schedule' ? 'Scheduling…' : 'Sending…'}</>
@@ -3162,13 +4304,13 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <label className="text-xs font-medium text-gray-600">Send to <span className="text-red-400">*</span></label>
                 <input type="email" value={sendReceiptEmail} onChange={e => setSendReceiptEmail(e.target.value)}
                   placeholder="client@email.com" autoFocus
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-600">CC <span className="text-gray-400">(optional)</span></label>
                 <input type="email" value={sendReceiptCc} onChange={e => setSendReceiptCc(e.target.value)}
-                  placeholder="e.g. team@fsarchitects.ph"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35]" />
+                  placeholder="e.g. team@hunacreatives.com"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
 
               {/* Payment summary */}
@@ -3176,7 +4318,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <div className="flex justify-between"><span>Payment</span><span className="font-semibold text-emerald-600">{fmt(sendReceiptModal.payment.amount)}</span></div>
                 <div className="flex justify-between"><span>Date</span><span className="font-medium text-gray-700">{fmtDate(sendReceiptModal.payment.paid_at)}</span></div>
                 {sendReceiptModal.payment.notes && <div className="flex justify-between"><span>Note</span><span className="text-gray-600">{sendReceiptModal.payment.notes}</span></div>}
-                <div className="flex justify-between pt-1 border-t border-gray-200"><span>Remaining balance</span><span className={`font-bold ${sendReceiptModal.project.contract_price - sendReceiptModal.project.hub_project_payments.reduce((s,p)=>s+p.amount,0) <= 0 ? 'text-emerald-600' : 'text-[#FF6B35]'}`}>{sendReceiptModal.project.contract_price - sendReceiptModal.project.hub_project_payments.reduce((s,p)=>s+p.amount,0) <= 0 ? 'Paid in full' : fmt(sendReceiptModal.project.contract_price - sendReceiptModal.project.hub_project_payments.reduce((s,p)=>s+p.amount,0))}</span></div>
+                <div className="flex justify-between pt-1 border-t border-gray-200"><span>Remaining balance</span><span className={`font-bold ${sendReceiptModal.project.contract_price - sendReceiptModal.project.hub_project_payments.reduce((s,p)=>s+p.amount,0) <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]'}`}>{sendReceiptModal.project.contract_price - sendReceiptModal.project.hub_project_payments.reduce((s,p)=>s+p.amount,0) <= 0 ? 'Paid in full' : fmt(sendReceiptModal.project.contract_price - sendReceiptModal.project.hub_project_payments.reduce((s,p)=>s+p.amount,0))}</span></div>
               </div>
 
               {sendReceiptModal.payment.receipt_url && (
@@ -3195,7 +4337,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             <div className="px-5 pb-5 flex gap-2">
               <button onClick={() => setSendReceiptModal(null)} className="flex-1 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">Cancel</button>
               <button onClick={sendReceipt} disabled={sendReceiptSending || !sendReceiptEmail.trim()}
-                className="flex-1 py-2.5 text-sm bg-[#FF6B35] text-white rounded-lg hover:bg-[#e55a27] disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5">
+                className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5">
                 {sendReceiptSending ? <><i className="ri-loader-4-line animate-spin"></i> Sending…</> : <><i className="ri-mail-send-line"></i> Send Receipt</>}
               </button>
             </div>
@@ -3227,14 +4369,30 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
             ? prev.map(t => t.id === saved.id ? { ...t, ...saved } : t)
             : [...prev, saved as ProjectTask]);
           setDetailTask(saved);
+          // Refresh comment count for this task
+          if (saved.id) supabase.from('hub_project_task_comments').select('task_id').eq('task_id', saved.id)
+            .then(({ data }) => setCommentCounts(prev => ({ ...prev, [saved.id]: data?.length ?? prev[saved.id] ?? 0 })));
+          refreshWorkspaceActivity();
         }}
-        onDeleted={(id) => { setTasks(prev => prev.filter(t => t.id !== id)); setDetailOpen(false); setDetailTask(null); }}
+        onDeleted={(id) => {
+          setTasks(prev => prev.filter(t => t.id !== id));
+          setDetailOpen(false);
+          setDetailTask(null);
+          refreshWorkspaceActivity();
+        }}
+        onArchived={(id) => {
+          setTasks(prev => prev.map(t => t.id === id ? { ...t, archived: true, archived_at: new Date().toISOString() } : t));
+          setDetailOpen(false);
+          setDetailTask(null);
+        }}
+        onActivityChange={refreshWorkspaceActivity}
         projectId={activeId ?? 0}
         projectName={activeProject?.project_name ?? 'General'}
         teamMembers={wsTaskTeam.map(u => ({ id: u!.id, full_name: u!.full_name, avatar_url: u!.avatar_url }))}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}
         currentUserName={hubUser?.full_name ?? 'Admin'}
+        currentUserAvatarUrl={hubUser?.avatar_url ?? null}
       />
     </AdminLayout>
   );

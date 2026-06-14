@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface FloorPlan {
   label: string;
@@ -34,13 +35,6 @@ function useReveal(threshold = 0.08) {
   return ref;
 }
 
-const EXTRA_PARAGRAPHS = [
-  'The materiality of the project responds to its surroundings through a careful selection of local elements — raw concrete, natural stone, and warm timber — establishing a dialogue between the built structure and the landscape that frames it.',
-  'Natural light becomes the primary architectural material. Strategically placed openings filter the changing quality of light throughout the day, transforming the interior atmosphere from the cool clarity of morning to the warm, raking light of late afternoon.',
-  'The spatial sequence from threshold to interior unfolds gradually, each transition revealing a new relationship between shelter and openness — between the private world within and the broader landscape it inhabits.',
-  'Every surface, joint, and edge has been considered with the same rigour as the overall form. The architecture does not impose itself on the site; instead, it settles quietly, as though it had always been there.',
-];
-
 export default function ProjectInfo({
   name,
   description,
@@ -49,6 +43,7 @@ export default function ProjectInfo({
   plans = [],
   quote,
 }: ProjectInfoProps) {
+  const { t } = useTranslation();
   const openerRef = useReveal(0.04);
   const imagesRef = useReveal(0.03);
   const plansRef  = useReveal(0.05);
@@ -109,6 +104,12 @@ export default function ProjectInfo({
 
   const g = (i: number) => imgs[i % imgs.length];
 
+  const extraParagraphs = [
+    t('extra_para_1'),
+    t('extra_para_2'),
+    t('extra_para_3'),
+    t('extra_para_4'),
+  ];
   const sentences = description.split(/(?<=[.!?])\s+/).filter(Boolean);
   const paragraphs: string[] = [];
   for (let i = 0; i < sentences.length; i += 2) {
@@ -116,7 +117,7 @@ export default function ProjectInfo({
   }
   const allParagraphs = [
     ...paragraphs,
-    ...EXTRA_PARAGRAPHS.slice(0, Math.max(0, 5 - paragraphs.length)),
+    ...extraParagraphs.slice(0, Math.max(0, 5 - paragraphs.length)),
   ];
 
   return (
@@ -140,7 +141,7 @@ export default function ProjectInfo({
           object-fit: cover;
           object-position: center;
           display: block;
-          transition: transform 3s ease-in-out, opacity 0.5s ease;
+          transition: transform 1.8s ease-out, opacity 0.5s ease;
         }
         .mag-img:hover img { transform: scale(1.05); }
       `}</style>
@@ -222,21 +223,15 @@ export default function ProjectInfo({
           const FadeImg = ({ item, className }: { item: { src: string; idx: number }; className?: string }) => {
             const isSwapping = fadingIdx === item.idx;
             return (
-              <div
-                className={`mag-reveal mag-img${className ? ' ' + className : ''}`}
-                style={{
-                  transform: isSwapping ? 'scale(0.96)' : 'scale(1)',
-                  transition: isSwapping
-                    ? 'transform 0.42s cubic-bezier(0.4,0,1,1)'
-                    : 'transform 0.55s cubic-bezier(0.22,1,0.36,1)',
-                }}
-              >
+              <div className={`mag-reveal mag-img${className ? ' ' + className : ''}`}>
                 <img
                   src={item.src}
                   alt={name}
                   style={{
                     opacity: isSwapping ? 0 : 1,
-                    transition: isSwapping ? 'opacity 0.3s ease' : 'opacity 0.4s ease 0.1s',
+                    transition: isSwapping
+                      ? 'opacity 0.4s ease'
+                      : 'opacity 0.4s ease 0.1s, transform 1.8s ease-out',
                   }}
                 />
               </div>

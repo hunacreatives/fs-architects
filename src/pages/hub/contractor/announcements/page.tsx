@@ -17,7 +17,7 @@ const categoryColors: Record<string, string> = {
   payroll: 'bg-emerald-100 text-emerald-700',
   meeting: 'bg-sky-100 text-sky-700',
   holiday: 'bg-purple-100 text-purple-700',
-  policy: 'bg-orange-100 text-orange-700',
+  policy: 'bg-slate-100 text-[#1c2b3a]',
   general: 'bg-gray-100 text-gray-600',
 };
 
@@ -97,7 +97,7 @@ export default function ContractorAnnouncementsPage() {
                           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-50">
                             {poster.avatar_url
                               ? <img src={poster.avatar_url} alt={poster.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-                              : <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{poster.full_name?.charAt(0)}</span></div>
+                              : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{poster.full_name?.charAt(0)}</span></div>
                             }
                             <div>
                               <p className="text-xs font-semibold text-[#111827]">{poster.full_name}</p>

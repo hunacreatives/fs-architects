@@ -13,12 +13,10 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-function emailHtml(firstName: string, linkUrl: string, isReset: boolean) {
-  const headline = isReset ? 'Reset your password' : 'Your invite link';
-  const greeting = isReset
-    ? `Hey ${firstName}, someone requested a password reset for your Sentro Hub account. Click below to set a new password.`
-    : `Here's a fresh invite link to access your Sentro Hub account. Click below to set your password and get started.`;
-  const buttonText = isReset ? 'Reset My Password →' : 'Set My Password →';
+function emailHtml(firstName: string, linkUrl: string, _isReset: boolean) {
+  const headline = 'Your access link';
+  const greeting = `Here's your link to access Sentro Hub, ${firstName}. Click below to set your password and get started.`;
+  const buttonText = 'Set My Password →';
 
   return `<!DOCTYPE html>
 <html>
@@ -140,9 +138,7 @@ Deno.serve(async (req) => {
       : `${HUB_BASE_URL}/hub/signup?invite=1&token_hash=${hashed_token}&type=${type}`;
 
     const html = emailHtml(firstName, destination, isReset);
-    const subject = isReset
-      ? `${firstName}, reset your Sentro Hub password`
-      : `${firstName}, here's your Sentro Hub invite link`;
+    const subject = `${firstName}, here's your Sentro Hub access link`;
 
     await fetch('https://api.resend.com/emails', {
       method: 'POST',

@@ -251,7 +251,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
 </head>
 <body>
   <div class="header">
-    <img src="${logoUrl}" alt="Huna Creatives" onerror="this.style.display='none'" />
+    <img src="${logoUrl}" alt="FS Architects" onerror="this.style.display='none'" />
     <div class="header-right">
       <h1>Attendance Report</h1>
       <p>${label}: <strong>${rangeLabelFmt(start, end)}</strong></p>
@@ -287,7 +287,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
     </thead>
     <tbody>${tableRows || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#9ca3af;">No data for this range</td></tr>'}</tbody>
   </table>
-  <div class="footer">Huna Creatives · Attendance Report · ${label}</div>
+  <div class="footer">FS Architects · Attendance Report · ${label}</div>
   <script>window.onload = function() { setTimeout(function() { window.print(); }, 400); };<\/script>
 </body>
 </html>`);

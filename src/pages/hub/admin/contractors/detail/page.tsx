@@ -898,7 +898,7 @@ export default function ContractorDetailPage() {
                   <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                       <div>
-                        <p className="text-white font-bold text-base">Huna Creatives</p>
+                        <p className="text-white font-bold text-base">FS Architects</p>
                         <p className="text-white/40 text-xs mt-0.5">Employee Payment Summary</p>
                       </div>
                       <div className="text-right">

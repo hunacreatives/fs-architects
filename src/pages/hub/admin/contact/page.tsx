@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 
-const CALENDLY = 'https://calendly.com/hunacreatives/30min';
+const CONTACT_EMAIL = 'contact@fsarchitects.ph';
 
 type SubmissionStatus = 'new' | 'read' | 'replied' | 'archived';
 
@@ -42,14 +42,12 @@ function buildTemplate(name: string, service: string | null) {
 
 Thank you for reaching out${serviceRef} — we're excited to learn more about what you have in mind.
 
-We'd love to set up a quick call to discuss your goals and see how Huna Creatives can help.
-
-${CALENDLY}
+We'd love to set up a quick call to discuss your goals and see how FS Architects can help.
 
 Looking forward to connecting!
 
 Warm regards,
-The Huna Creatives Team`;
+The FS Architects Team`;
 }
 
 export default function ContactSubmissionsPage() {

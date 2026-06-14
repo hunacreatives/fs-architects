@@ -199,9 +199,9 @@ export default function SettingsPage() {
               <h3 className="font-semibold text-[#111827]">System Info</h3>
               <div className="space-y-3">
                 {[
-                  { label: 'Platform', value: 'Huna Hub' },
+                  { label: 'Platform', value: 'Sentro Hub' },
                   { label: 'Version', value: '1.0.0' },
-                  { label: 'Agency', value: 'Huna Creatives' },
+                  { label: 'Agency', value: 'FS Architects' },
                   { label: 'Timezone', value: 'Asia/Manila (PHT)' },
                   { label: 'Cutoff Period', value: '1st–15th / 16th–EOM' },
                   { label: 'Default Currency', value: 'PHP' },

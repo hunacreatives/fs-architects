@@ -712,9 +712,9 @@ export default function AdminPayrollPage() {
       <div style="width:1080px;background:#ffffff;color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px 44px;">
         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1c2b3a;padding-bottom:20px;margin-bottom:28px;">
           <div style="display:flex;align-items:center;gap:14px;">
-            <img src="${logoUrl}" alt="Huna Creatives" style="height:46px;object-fit:contain;" />
+            <img src="${logoUrl}" alt="FS Architects" style="height:46px;object-fit:contain;" />
             <div>
-              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">Huna Creatives</div>
+              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">FS Architects</div>
               <div style="font-size:24px;font-weight:800;color:#111827;margin-top:2px;">Payroll Report</div>
             </div>
           </div>
@@ -1248,7 +1248,7 @@ export default function AdminPayrollPage() {
 </head>
 <body>
   <div class="header">
-    <img src="${logoUrl}" alt="Huna Creatives" onerror="this.style.display='none'" />
+    <img src="${logoUrl}" alt="FS Architects" onerror="this.style.display='none'" />
     <div class="header-right">
       <h1>Payroll Report</h1>
       <p>Period: <strong>${selectedPeriod.label}</strong></p>
@@ -1297,7 +1297,7 @@ export default function AdminPayrollPage() {
       </tr>
     </tfoot>
   </table>
-  <div class="footer">Huna Creatives · Payroll · ${selectedPeriod.label}</div>
+  <div class="footer">FS Architects · Payroll · ${selectedPeriod.label}</div>
   <script>window.onload = function() { setTimeout(function() { window.print(); }, 400); };<\/script>
 </body>
 </html>`);

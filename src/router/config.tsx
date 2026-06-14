@@ -33,7 +33,7 @@ const HubAdminPayouts = lazy(() => import('../pages/hub/admin/payouts/page'));
 const HubAdminDocRequests = lazy(() => import('../pages/hub/admin/docrequests/page'));
 const HubAdminCredentials = lazy(() => import('../pages/hub/admin/credentials/page'));
 const HubAdminPerformance = lazy(() => import('../pages/hub/admin/performance/page'));
-const HubAdminProjects = lazy(() => import('../pages/hub/admin/projects/page'));
+// const HubAdminProjects = lazy(() => import('../pages/hub/admin/projects/page'));
 const HubAdminDocuments = lazy(() => import('../pages/hub/admin/documents/page'));
 const HubAdminOvertime = lazy(() => import('../pages/hub/admin/overtime/page'));
 const HubContractorDashboard = lazy(() => import('../pages/hub/employee/dashboard/page'));
@@ -49,14 +49,14 @@ const HubContractorCredentials = lazy(() => import('../pages/hub/employee/creden
 const HubContractorOvertime = lazy(() => import('../pages/hub/employee/overtime/page'));
 const HubContractorOnboarding = lazy(() => import('../pages/hub/employee/onboarding/page'));
 const HubContractorClients = lazy(() => import('../pages/hub/employee/clients/page'));
-const HubContractorProjects = lazy(() => import('../pages/hub/employee/projects/page'));
+// const HubContractorProjects = lazy(() => import('../pages/hub/employee/projects/page'));
 const HubContractorProjectRedirect = lazy(() => import('../pages/hub/employee/project-redirect/page'));
 const HubAdminTasks = lazy(() => import('../pages/hub/admin/tasks/page'));
 const HubAdminInvoiceBuilder = lazy(() => import('../pages/hub/admin/invoice-builder/page'));
 const HubAdminApplications = lazy(() => import('../pages/hub/admin/applications/page'));
 const HubAdminContact = lazy(() => import('../pages/hub/admin/contact/page'));
 const HubAdminProjectRedirect = lazy(() => import('../pages/hub/admin/project-redirect/page'));
-const HubDemoPage = lazy(() => import('../pages/hub/demo/page'));
+// const HubDemoPage = lazy(() => import('../pages/hub/demo/page'));
 const PublicPaymentPage = lazy(() => import('../pages/pay/page'));
 
 const withAdminGate = (element: ReactNode) => (
@@ -107,14 +107,14 @@ const routes: RouteObject[] = [
   { path: '/hub/admin/payouts', element: <S>{withAdminGate(<HubAdminPayouts />)}</S> },
   { path: '/hub/admin/docrequests', element: <S>{withAdminGate(<HubAdminDocRequests />)}</S> },
   { path: '/hub/admin/credentials', element: <S>{withAdminGate(<HubAdminCredentials />)}</S> },
-  { path: '/hub/admin/projects', element: <S>{withAdminGate(<HubAdminProjects />)}</S> },
+  // { path: '/hub/admin/projects', element: <S>{withAdminGate(<HubAdminProjects />)}</S> },
   { path: '/hub/admin/documents', element: <S>{withAdminGate(<HubAdminDocuments />)}</S> },
   { path: '/hub/admin/invoices/:projectId', element: <S>{withAdminGate(<HubAdminInvoiceBuilder />)}</S> },
   { path: '/hub/admin/tasks', element: <S>{withAdminGate(<HubAdminTasks />)}</S> },
   { path: '/hub/admin/applications', element: <S>{withAdminGate(<HubAdminApplications />)}</S> },
   { path: '/hub/admin/contact', element: <S>{withAdminGate(<HubAdminContact />)}</S> },
   { path: '/hub/admin/project/:slug', element: <S>{withAdminGate(<HubAdminProjectRedirect />)}</S> },
-  { path: '/hub/demo', element: <S><HubDemoPage /></S> },
+  // { path: '/hub/demo', element: <S><HubDemoPage /></S> },
   { path: '/pay/:token', element: <S><PublicPaymentPage /></S> },
 
   // Hub — employee (contractor)
@@ -131,7 +131,7 @@ const routes: RouteObject[] = [
   { path: '/hub/employee/documents', element: <S>{withContractorGate(<HubContractorDocuments />)}</S> },
   { path: '/hub/employee/credentials', element: <S>{withContractorGate(<HubContractorCredentials />)}</S> },
   { path: '/hub/employee/clients', element: <S>{withContractorGate(<HubContractorClients />)}</S> },
-  { path: '/hub/employee/projects', element: <S>{withContractorGate(<HubContractorProjects />)}</S> },
+  // { path: '/hub/employee/projects', element: <S>{withContractorGate(<HubContractorProjects />)}</S> },
   { path: '/hub/employee/project/:slug', element: <S>{withContractorGate(<HubContractorProjectRedirect />)}</S> },
   { path: '/hub/employee/onboarding', element: <S><HubContractorOnboarding /></S> },
 

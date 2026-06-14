@@ -234,7 +234,7 @@ export default function ContractorsPage() {
         ) : filtered.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-10 text-center">
             <i className="ri-user-search-line text-3xl text-gray-200 block mb-2"></i>
-            <p className="text-sm text-gray-400">No contractors found</p>
+            <p className="text-sm text-gray-400">No employees found</p>
           </div>
         ) : (
           <div className="bg-white border border-gray-100 rounded-xl divide-y divide-gray-50">
@@ -376,7 +376,7 @@ export default function ContractorsPage() {
           </div>
         )}
 
-        <p className="text-xs text-gray-400 pb-1">{filtered.length} contractor{filtered.length !== 1 ? 's' : ''} shown</p>
+        <p className="text-xs text-gray-400 pb-1">{filtered.length} employee{filtered.length !== 1 ? 's' : ''} shown</p>
       </div>
 
       {showAdd && (
@@ -408,7 +408,7 @@ export default function ContractorsPage() {
             </div>
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-[#111827]">
-                {confirm.type === 'delete' ? 'Remove contractor?' : confirm.type === 'resend-invite' ? 'Resend invite?' : confirm.type === 'reset-password' ? 'Send password reset?' : 'Deactivate contractor?'}
+                {confirm.type === 'delete' ? 'Remove employee?' : confirm.type === 'resend-invite' ? 'Resend invite?' : confirm.type === 'reset-password' ? 'Send password reset?' : 'Deactivate employee?'}
               </h3>
               <p className="text-sm text-gray-500">
                 {confirm.type === 'delete'

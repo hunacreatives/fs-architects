@@ -67,7 +67,7 @@ export default function ContractorOnboardingPage() {
 
         {/* Logo */}
         <div className="flex items-center justify-center">
-          <img src="/images/fc04818c74ad69bdfb22b93a6a0c6a72.png" alt="Huna Creatives" className="h-9 w-auto" />
+          <img src="/images/fs-architects-logo-horizontal.jpg" alt="FS Architects" className="h-9 w-auto" />
         </div>
 
         {/* Progress */}
@@ -88,7 +88,7 @@ export default function ContractorOnboardingPage() {
                 <i className="ri-hand-heart-line text-3xl text-[#1c2b3a]"></i>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-[#111827]">Welcome to the Huna Hub, {firstName}!</h1>
+                <h1 className="text-xl font-bold text-[#111827]">Welcome to Sentro Hub, {firstName}!</h1>
                 <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                   Let's get your profile set up. This takes about 2 minutes. You can update any of these details later from your profile.
                 </p>
@@ -255,7 +255,7 @@ export default function ContractorOnboardingPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Private portal — Huna Creatives team only
+          Private portal — FS Architects team only
         </p>
       </div>
     </div>

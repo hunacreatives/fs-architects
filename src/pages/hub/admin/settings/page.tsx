@@ -36,6 +36,26 @@ export default function SettingsPage() {
   const [profileForm, setProfileForm] = useState({ full_name: user?.full_name || '', email: user?.email || '', phone: user?.phone || '', slack_username: user?.slack_username || '' });
   const [passwordForm, setPasswordForm] = useState({ current: '', newPass: '', confirm: '' });
   const [profileSaving, setProfileSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!user) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/avatar.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      const { error: dbErr } = await supabase.from('hub_users').update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', user.id);
+      if (dbErr) throw dbErr;
+      showMessage('success', 'Photo updated!');
+    } catch (e: any) {
+      showMessage('error', e.message || 'Photo upload failed');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -99,10 +119,23 @@ export default function SettingsPage() {
           <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-5">
             <h3 className="font-semibold text-[#111827]">Profile Information</h3>
             <div className="flex items-center gap-4">
-              <img src={user?.avatar_url || ''} alt="" className="w-16 h-16 rounded-full object-cover object-top" />
+              <label className="relative cursor-pointer group">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover object-top" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                    <span className="text-xl font-bold text-gray-400">{user?.full_name?.charAt(0)}</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadingPhoto ? <i className="ri-loader-4-line animate-spin text-white text-sm" /> : <i className="ri-camera-line text-white text-sm" />}
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} disabled={uploadingPhoto} />
+              </label>
               <div>
                 <p className="text-sm font-medium text-[#111827]">{user?.full_name}</p>
                 <p className="text-xs text-gray-400 capitalize">{user?.role} · {user?.department}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Click photo to change</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

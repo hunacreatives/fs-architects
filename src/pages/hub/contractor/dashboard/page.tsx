@@ -855,24 +855,6 @@ export default function ContractorDashboard() {
           {/* ── RIGHT COLUMN (1/3) ── */}
           <div className="space-y-4">
 
-            {/* World Clock */}
-            <div className="bg-white border border-gray-100 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 bg-[#111827] rounded-md flex items-center justify-center flex-shrink-0">
-                  <i className="ri-earth-line text-white text-xs"></i>
-                </div>
-                <h3 className="text-sm font-semibold text-[#111827]">World Clock</h3>
-              </div>
-              <div>
-                {CLOCKS.map((c, i) => (
-                  <ClockFace key={c.tz} {...c} isHome={i === 0} />
-                ))}
-              </div>
-              <p className="text-xs text-gray-300 mt-3 text-center">
-                <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span> Business hours (9am–6pm local)</span>
-              </p>
-            </div>
-
             {/* Team Status */}
             <div className="bg-white border border-gray-100 rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">

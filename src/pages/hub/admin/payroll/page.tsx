@@ -1409,8 +1409,8 @@ export default function AdminPayrollPage() {
                 {[
                   { label: 'Total Payroll', value: fmt(displayTotalPay, 'PHP'), accent: true },
                   { label: 'Total Hours', value: `${totalHours.toFixed(1)}h` },
-                  { label: 'Hourly', value: `${hourlyCount} contractor${hourlyCount !== 1 ? 's' : ''}` },
-                  { label: 'Fixed Rate', value: `${fixedCount} contractor${fixedCount !== 1 ? 's' : ''}` },
+                  { label: 'Employees', value: `${rows.length} employee${rows.length !== 1 ? 's' : ''}` },
+                  { label: 'Approved', value: `${Object.values(payoutsMap).filter((p: any) => p?.status === 'hr_approved' || p?.status === 'owner_approved' || p?.status === 'paid').length}` },
                 ].map((k) => (
                   <div key={k.label}>
                     <p className="text-white/40 text-[11px] uppercase tracking-wide mb-1">{k.label}</p>
@@ -1517,7 +1517,7 @@ export default function AdminPayrollPage() {
           <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
             <i className="ri-information-line text-white/30 text-sm flex-shrink-0"></i>
             <p className="text-white/30 text-[11px]">
-              Hours from Slack · 8h daily cap · Fixed-rate contractors earn <strong className="text-white/40 font-medium">day equivalents from capped hours</strong>
+              Hours from Slack · 8h daily cap · Fixed-rate employees earn <strong className="text-white/40 font-medium">day equivalents from capped hours</strong>
             </p>
           </div>
         </div>
@@ -1532,7 +1532,7 @@ export default function AdminPayrollPage() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
             {rows.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">No contractor data found</div>
+              <div className="bg-white rounded-xl border border-gray-100 p-8 text-center text-sm text-gray-400">No employee data found</div>
             ) : rows.map((r) => {
               const c = r.contractor;
               const isFixed = c.payment_type === 'fixed' || c.payment_type === 'fixed_flexible';
@@ -1699,7 +1699,7 @@ export default function AdminPayrollPage() {
                   {rows.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-12 text-gray-400 text-sm">
-                        No contractor data found
+                        No employee data found
                       </td>
                     </tr>
                   ) : rows.map((r) => {
@@ -1942,13 +1942,13 @@ export default function AdminPayrollPage() {
                     className="flex items-center gap-1.5 px-3 py-2 bg-[#1c2b3a] text-white text-xs font-medium rounded-lg hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40 whitespace-nowrap"
                   >
                     <i className="ri-send-plane-line text-sm"></i>
-                    Request Fund Transfer ({approvedCount} contractors)
+                    Request Fund Transfer ({approvedCount} employees)
                   </button>
                 )}
               </div>
 
               {!batch && approvedCount === 0 && (
-                <p className="text-xs text-gray-400">Approve at least one contractor to request a fund transfer.</p>
+                <p className="text-xs text-gray-400">Approve at least one employee to request a fund transfer.</p>
               )}
 
               {batch && (() => {
@@ -2003,7 +2003,7 @@ export default function AdminPayrollPage() {
                       <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
                         <div className="flex items-center gap-2">
                           <i className="ri-check-double-line text-emerald-500 text-sm"></i>
-                          <p className="text-xs font-medium text-emerald-700">All {paidCount} contractors paid</p>
+                          <p className="text-xs font-medium text-emerald-700">All {paidCount} employees paid</p>
                         </div>
                         <button onClick={closePeriod} disabled={workflowLoading}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg cursor-pointer disabled:opacity-40 transition-colors flex-shrink-0">
@@ -2128,7 +2128,7 @@ export default function AdminPayrollPage() {
                       <div className="flex items-start gap-3">
                         <i className="ri-flag-fill text-rose-500 text-sm mt-0.5 flex-shrink-0"></i>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-rose-700">Flagged by contractor</p>
+                          <p className="text-xs font-semibold text-rose-700">Flagged by employee</p>
                           <p className="text-xs text-rose-600 mt-0.5">{dispute.reason}</p>
                           {dispute.admin_notes && (
                             <p className="text-xs text-gray-500 mt-1 italic">Note: {dispute.admin_notes}</p>

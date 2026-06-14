@@ -739,14 +739,14 @@ export default function AdminPayrollPage() {
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Employee</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Department</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Rate</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Days</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Billed Hours</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Overtime</th>
-              <th style="background:#111827;color:#ffffff;padding:11px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Pay</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Employee</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Department</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Rate</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Days</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Billed Hours</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Overtime</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Pay</th>
             </tr>
           </thead>
           <tbody>
@@ -1237,7 +1237,7 @@ export default function AdminPayrollPage() {
     .summary-item .label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
     .summary-item .value { font-size: 18px; font-weight: 700; color: #111827; margin-top: 2px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #111827; color: #fff; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    th { background: #1c2b3a; color: #fff; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; }
     tr:nth-child(even) td { background: #fafafa; }
     tfoot td { background: #f3f4f6 !important; font-weight: 700; border-top: 2px solid #e5e7eb; }
@@ -1350,7 +1350,7 @@ export default function AdminPayrollPage() {
         })()}
 
         {/* Header card */}
-        <div className="bg-[#111827] rounded-2xl p-5 text-white">
+        <div className="bg-[#1c2b3a] rounded-2xl p-5 text-white">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             {/* Left: period selector + KPIs */}
             <div className="flex-1 min-w-0">

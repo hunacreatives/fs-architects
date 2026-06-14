@@ -3,8 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || Deno.env.get('SITE_URL') || 'https://hunacreatives.com';
-const PROJECTS_URL = `${SITE_URL.replace(/\/$/, '')}/hub/contractor/projects`;
+const SITE_URL = Deno.env.get('PUBLIC_SITE_URL') || Deno.env.get('SITE_URL') || 'https://fsarchitects.ph';
+const PROJECTS_URL = `${SITE_URL.replace(/\/$/, '')}/hub/employee/projects`;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

@@ -24,7 +24,7 @@ const categoryEmoji: Record<string, string> = {
 async function postToSlack(channel: string, title: string, body: string, priority: string, category: string, posterName?: string) {
   const pEmoji = priorityEmoji[priority] ?? '📢';
   const cEmoji = categoryEmoji[category] ?? '📌';
-  const postedBy = posterName ? `Posted by *${posterName}*` : 'Posted via Huna Hub';
+  const postedBy = posterName ? `Posted by *${posterName}*` : 'Posted via Sentro Hub';
 
   const blocks = [
     {

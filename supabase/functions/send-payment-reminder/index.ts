@@ -1,5 +1,7 @@
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const FROM_EMAIL = 'Huna Creatives Billing <billing@hunacreatives.com>';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'billing@fsarchitects.ph';
+const SUPABASE_URL_VAR = Deno.env.get('SUPABASE_URL')!;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_VAR}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -29,7 +31,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 200, headers: cors });
     }
 
-    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const logoUrl = LOGO_URL;
     const dueDateStr = due_date
       ? new Date(due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       : null;
@@ -50,7 +52,7 @@ Deno.serve(async (req) => {
             <td style="background:#111827;padding:28px 40px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td><img src="${logoUrl}" alt="Huna Creatives" height="26" style="display:block;" /></td>
+                  <td><img src="${logoUrl}" alt="FS Architects" height="26" style="display:block;" /></td>
                   <td style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Payment Reminder</p>
                   </td>
@@ -119,23 +121,9 @@ Deno.serve(async (req) => {
               <p style="margin:0 0 14px;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;">Pay via</p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="text-align:center;padding:0 8px;">
-                    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 10px;">
-                      <img src="https://www.hunacreatives.com/images/qr-gcash.jpg" alt="GCash QR" width="110" height="110" style="display:block;margin:0 auto;border-radius:6px;" />
-                      <p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#111827;">GCash</p>
-                    </div>
-                  </td>
-                  <td style="text-align:center;padding:0 8px;">
-                    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 10px;">
-                      <img src="https://www.hunacreatives.com/images/qr-bdo.jpg" alt="BDO QR" width="110" height="110" style="display:block;margin:0 auto;border-radius:6px;" />
-                      <p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#111827;">BDO InstaPay</p>
-                    </div>
-                  </td>
-                  <td style="text-align:center;padding:0 8px;">
-                    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 10px;">
-                      <img src="https://www.hunacreatives.com/images/qr-gotyme.jpg" alt="GoTyme QR" width="110" height="110" style="display:block;margin:0 auto;border-radius:6px;" />
-                      <p style="margin:8px 0 0;font-size:12px;font-weight:700;color:#111827;">GoTyme</p>
-                    </div>
+                  <td colspan="3" style="text-align:center;padding:12px 0;">
+                    <!-- FS Architects payment QR codes go here -->
+                    <p style="margin:0;font-size:13px;color:#6b7280;">Please contact us for payment details.</p>
                   </td>
                 </tr>
               </table>
@@ -145,8 +133,8 @@ Deno.serve(async (req) => {
           <!-- Footer -->
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:24px 40px;text-align:center;margin-top:24px;">
-              <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a></p>
-              <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} Huna Creatives · billing@hunacreatives.com</p>
+              <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
+              <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} FS Architects · billing@fsarchitects.ph</p>
             </td>
           </tr>
 

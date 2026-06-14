@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const ADMIN_SLACK_IDS = ['U091BL9PQ77', 'U0838LWSY4E'];
-const FROM = 'Sentro OS <noreply@hunacreatives.com>';
+const FROM = `Sentro OS <${Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph'}>`;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -78,7 +78,7 @@ function baseTemplate(title: string, body: string) {
     ${body}
   </div>
   <div style="padding:16px 24px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af">
-    Sentro OS · Huna Creatives · <a href="https://hunacreatives.com/hub" style="color:#FF6B35;text-decoration:none">Open Hub</a>
+    Sentro OS · FS Architects · <a href="https://fsarchitects.ph/hub" style="color:#FF6B35;text-decoration:none">Open Hub</a>
   </div>
 </div></body></html>`;
 }
@@ -102,18 +102,18 @@ serve(async (req) => {
             <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:#6b7280;font-size:13px">Dates</span><span style="font-size:13px;font-weight:600;color:#111827">${start_date}${start_date !== end_date ? ` – ${end_date}` : ''}</span></div>
             <div style="display:flex;justify-content:space-between"><span style="color:#6b7280;font-size:13px">Duration</span><span style="font-size:13px;font-weight:600;color:#111827">${days} day${days !== 1 ? 's' : ''}</span></div>
           </div>
-          <a href="https://hunacreatives.com/hub/admin/timeoff" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/timeoff" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
         )
       );
       const daysText = days ? ` (${days} day${days !== 1 ? 's' : ''})` : '';
-      await slackDmAdmins(`📅 *Leave request*\n*${contractor_name}* is requesting ${leave_type} from ${start_date} to ${end_date}${daysText}.\n<https://www.hunacreatives.com/hub/admin/timeoff|Review request →>`);
-      await pushToAdmins('Leave request', `${contractor_name} is requesting ${leave_type} from ${start_date} to ${end_date}.`, 'https://hunacreatives.com/hub/admin/timeoff');
+      await slackDmAdmins(`📅 *Leave request*\n*${contractor_name}* is requesting ${leave_type} from ${start_date} to ${end_date}${daysText}.\n<https://fsarchitects.ph/hub/admin/timeoff|Review request →>`);
+      await pushToAdmins('Leave request', `${contractor_name} is requesting ${leave_type} from ${start_date} to ${end_date}.`, 'https://fsarchitects.ph/hub/admin/timeoff');
     }
 
     if (type === 'overtime') {
       const { contractor_name, hours, date } = data;
-      await slackDmAdmins(`⏱ *Overtime logged*\n*${contractor_name}* logged ${hours}h overtime on ${date}.\n<https://www.hunacreatives.com/hub/admin/attendance|Review →>`);
-      await pushToAdmins('Overtime logged', `${contractor_name} logged ${hours}h overtime on ${date}.`, 'https://hunacreatives.com/hub/admin/attendance');
+      await slackDmAdmins(`⏱ *Overtime logged*\n*${contractor_name}* logged ${hours}h overtime on ${date}.\n<https://fsarchitects.ph/hub/admin/attendance|Review →>`);
+      await pushToAdmins('Overtime logged', `${contractor_name} logged ${hours}h overtime on ${date}.`, 'https://fsarchitects.ph/hub/admin/attendance');
     }
 
     if (type === 'request_submitted') {
@@ -127,10 +127,10 @@ serve(async (req) => {
           <div style="background:#f9fafb;border-radius:8px;padding:14px;margin-bottom:16px">
             <p style="margin:0;font-size:13px;color:#111827;font-weight:600">${title}</p>
           </div>
-          <a href="https://hunacreatives.com/hub/admin/requests" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/requests" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
         )
       );
-      await pushToAdmins('New request submitted', `${contractor_name} submitted a new ${request_type} request: ${title}`, 'https://hunacreatives.com/hub/admin/requests');
+      await pushToAdmins('New request submitted', `${contractor_name} submitted a new ${request_type} request: ${title}`, 'https://fsarchitects.ph/hub/admin/requests');
     }
 
     if (type === 'invoice_overdue') {
@@ -145,14 +145,14 @@ serve(async (req) => {
         baseTemplate(
           `${invoices.length} Overdue Invoice${invoices.length > 1 ? 's' : ''}`,
           `<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Invoice</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Client</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Overdue</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Balance</th></tr></thead><tbody>${rows}</tbody></table>
-          <a href="https://hunacreatives.com/hub/admin/invoice-log" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Invoice Log →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/invoice-log" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Invoice Log →</a>`
         )
       );
       for (const inv of invoices) {
         const balanceFmt = '₱' + (inv.balance as number).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        await slackDmAdmins(`⚠️ *Invoice past due*\nInvoice #${inv.invoice_number} for *${inv.client_name}* (${balanceFmt}) is ${inv.days_overdue} days past due.\n<https://www.hunacreatives.com/hub/admin/invoice-log|View invoice →>`);
+        await slackDmAdmins(`⚠️ *Invoice past due*\nInvoice #${inv.invoice_number} for *${inv.client_name}* (${balanceFmt}) is ${inv.days_overdue} days past due.\n<https://fsarchitects.ph/hub/admin/invoice-log|View invoice →>`);
       }
-      await pushToAdmins('Overdue invoices', `${invoices.length} invoice${invoices.length > 1 ? 's are' : ' is'} past due. Review needed.`, 'https://hunacreatives.com/hub/admin/invoice-log');
+      await pushToAdmins('Overdue invoices', `${invoices.length} invoice${invoices.length > 1 ? 's are' : ' is'} past due. Review needed.`, 'https://fsarchitects.ph/hub/admin/invoice-log');
     }
 
     if (type === 'contract_expiring') {
@@ -167,13 +167,13 @@ serve(async (req) => {
         baseTemplate(
           'Contracts Expiring Soon',
           `<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Contractor</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Expiry</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Status</th></tr></thead><tbody>${rows}</tbody></table>
-          <a href="https://hunacreatives.com/hub/admin/contractors" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Contractors →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/employees" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Employees →</a>`
         )
       );
       for (const c of contractors) {
-        await slackDmAdmins(`📋 *Contract expiring soon*\n*${c.full_name}*'s contract expires in ${c.days_until} days.\n<https://www.hunacreatives.com/hub/admin/contractors|Review →>`);
+        await slackDmAdmins(`📋 *Contract expiring soon*\n*${c.full_name}*'s contract expires in ${c.days_until} days.\n<https://fsarchitects.ph/hub/admin/employees|Review →>`);
       }
-      await pushToAdmins('Contracts expiring soon', `${contractors.length} contract${contractors.length > 1 ? 's are' : ' is'} expiring soon. Review needed.`, 'https://hunacreatives.com/hub/admin/contractors');
+      await pushToAdmins('Contracts expiring soon', `${contractors.length} contract${contractors.length > 1 ? 's are' : ' is'} expiring soon. Review needed.`, 'https://fsarchitects.ph/hub/admin/employees');
     }
 
     return new Response(JSON.stringify({ sent: true }), { headers: { ...CORS, 'Content-Type': 'application/json' } });

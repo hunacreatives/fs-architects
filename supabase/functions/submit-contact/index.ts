@@ -1,8 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const NOTIFY_EMAIL = 'contact@hunacreatives.com';
-const FROM_EMAIL = 'Huna Creatives <noreply@hunacreatives.com>';
+const NOTIFY_EMAIL = 'contact@fsarchitects.ph';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
           ${subject ? `<tr><td style="padding:8px 0;color:#666">Subject</td><td style="padding:8px 0">${subject}</td></tr>` : ''}
         </table>
         <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</div>
-        <p style="margin-top:32px;font-size:11px;color:#bbb">Submitted via hunacreatives.com — view all in the Hub</p>
+        <p style="margin-top:32px;font-size:11px;color:#bbb">Submitted via fsarchitects.ph — view all in the Hub</p>
       </div>
     `;
 

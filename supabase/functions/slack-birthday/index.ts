@@ -19,7 +19,7 @@ const CUSTOM_COPY: Record<string, { headline: string; body: string }> = {
   },
   'claudettemaytahil@gmail.com': {
     headline: 'Happy Birthday, Claudette! 🎂',
-    body: "Claudette, you're the reason our clients feel so well taken care of. Your patience, professionalism, and warmth are what make Huna Creatives special behind the scenes. Today is all about you — relax, celebrate, and know that the whole team is rooting for you. 🎉",
+    body: "Claudette, you're the reason our clients feel so well taken care of. Your patience, professionalism, and warmth are what make FS Architects special behind the scenes. Today is all about you — relax, celebrate, and know that the whole team is rooting for you. 🎉",
   },
   'janreesepj@gmail.com': {
     headline: 'Happy Birthday, Reese! 🎊',
@@ -38,7 +38,7 @@ const BIRTHDAY_GIFS = [
 
 const FALLBACK_COPY = (name: string) => ({
   headline: `Happy Birthday, ${name}! 🎉`,
-  body: `Today we celebrate you, ${name}! Thank you for everything you bring to the Huna Creatives team — your hard work, your energy, and your dedication make a real difference. Wishing you an amazing birthday surrounded by people you love. 🧡`,
+  body: `Today we celebrate you, ${name}! Thank you for everything you bring to the FS Architects team — your hard work, your energy, and your dedication make a real difference. Wishing you an amazing birthday surrounded by people you love. 🧡`,
 });
 
 
@@ -108,12 +108,12 @@ async function checkAndPost(): Promise<any> {
         elements: [
           {
             type: 'image',
-            image_url: 'https://hunacreatives.com/apple-touch-icon.png',
-            alt_text: 'Huna Creatives',
+            image_url: 'https://fsarchitects.ph/apple-touch-icon.png',
+            alt_text: 'FS Architects',
           },
           {
             type: 'mrkdwn',
-            text: '*Huna Creatives* — From the whole team 🧡',
+            text: '*FS Architects* — From the whole team 🧡',
           },
         ],
       },
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
       { type: 'section', text: { type: 'mrkdwn', text: copy.body } },
       { type: 'image', image_url: gif, alt_text: `Happy Birthday ${firstName}!` },
       { type: 'divider' },
-      { type: 'context', elements: [{ type: 'image', image_url: 'https://hunacreatives.com/apple-touch-icon.png', alt_text: 'Huna Creatives' }, { type: 'mrkdwn', text: '*Huna Creatives* — From the whole team 🧡' }] },
+      { type: 'context', elements: [{ type: 'image', image_url: 'https://fsarchitects.ph/apple-touch-icon.png', alt_text: 'FS Architects' }, { type: 'mrkdwn', text: '*FS Architects* — From the whole team 🧡' }] },
     ];
 
     const result = await updateMessage(body.update_ts, blocks);

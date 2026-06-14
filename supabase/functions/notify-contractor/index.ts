@@ -4,8 +4,9 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const FROM_EMAIL = 'payroll@hunacreatives.com';
-const HUB_URL = 'https://www.hunacreatives.com/hub/login';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'payroll@fsarchitects.ph';
+const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
+const HUB_URL = `${HUB_BASE_URL}/hub/login`;
 
 async function sendPush(user_id: string, title: string, body: string, url?: string) {
   try {
@@ -79,7 +80,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <div style="background:#111827;padding:24px 32px;">
-      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">Huna Creatives</p>
+      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
       <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Payslip Approved</h1>
       <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">Payment is on its way</p>
     </div>
@@ -100,7 +101,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
       </div>
     </div>
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #f3f4f6;">
-      <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">© ${new Date().getFullYear()} Huna Creatives · payroll@hunacreatives.com</p>
+      <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">© ${new Date().getFullYear()} FS Architects · payroll@fsarchitects.ph</p>
     </div>
   </div>
 </body>
@@ -110,7 +111,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `Huna Creatives Payroll <${FROM_EMAIL}>`,
+        from: `FS Architects <${FROM_EMAIL}>`,
         to: contractor.email,
         subject: `Your payslip is approved — ${periodLabel} | Payment incoming`,
         html,
@@ -138,7 +139,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <div style="background:#111827;padding:24px 32px;">
-      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">Huna Creatives</p>
+      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
       <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Dispute Resolved</h1>
       <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">HR has reviewed your flag</p>
     </div>
@@ -159,7 +160,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
       </div>
     </div>
     <div style="padding:16px 32px;background:#f9fafb;border-top:1px solid #f3f4f6;">
-      <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">© ${new Date().getFullYear()} Huna Creatives · payroll@hunacreatives.com</p>
+      <p style="font-size:11px;color:#d1d5db;margin:0;text-align:center;">© ${new Date().getFullYear()} FS Architects · payroll@fsarchitects.ph</p>
     </div>
   </div>
 </body>
@@ -169,7 +170,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `Huna Creatives Payroll <${FROM_EMAIL}>`,
+        from: `FS Architects <${FROM_EMAIL}>`,
         to: contractor.email,
         subject: `Your payslip dispute has been resolved — ${periodLabel}`,
         html,

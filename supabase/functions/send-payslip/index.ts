@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const FROM_EMAIL = 'payroll@hunacreatives.com';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'payroll@fsarchitects.ph';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -118,7 +118,7 @@ async function sendPayslip(payout_id: string) {
       <table style="width:100%;border-collapse:collapse;">
         <tr>
           <td style="vertical-align:top;">
-            <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">Huna Creatives</p>
+            <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
             <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0;letter-spacing:-0.5px;">Payment Receipt</h1>
             <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">Pay Period: <span style="color:#d1d5db;font-weight:600;">${periodLabel}</span></p>
           </td>
@@ -142,7 +142,7 @@ async function sendPayslip(payout_id: string) {
     <div style="padding:28px 36px;border-bottom:1px solid #f3f4f6;">
       <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">Issued To</p>
       <p style="font-size:20px;font-weight:700;color:#111827;margin:0 0 4px;">${contractor.full_name}</p>
-      <p style="font-size:13px;color:#6b7280;margin:0 0 2px;">${contractor.department || 'Huna Creatives'}</p>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 2px;">${contractor.department || 'FS Architects'}</p>
       <p style="font-size:13px;color:#6b7280;margin:0;">${contractType} · ${rateLabel}</p>
     </div>
 
@@ -202,8 +202,8 @@ async function sendPayslip(payout_id: string) {
         This is an automatically generated payslip for the pay period <strong style="color:#6b7280;">${periodLabel}</strong>.
         Please keep this for your records. If you notice any discrepancies, reach out to HR on Slack immediately.
       </p>
-      <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a></p>
-      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} Huna Creatives · payroll@hunacreatives.com</p>
+      <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
+      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} FS Architects · payroll@fsarchitects.ph</p>
     </div>
 
   </div>
@@ -218,9 +218,9 @@ async function sendPayslip(payout_id: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `Huna Creatives Payroll <${FROM_EMAIL}>`,
+      from: `FS Architects <${FROM_EMAIL}>`,
       to: contractor.email,
-      subject: `Payment Receipt — ${periodLabel} | ${fmt(payout.final_payout)} | Huna Creatives`,
+      subject: `Payment Receipt — ${periodLabel} | ${fmt(payout.final_payout)} | FS Architects`,
       html,
     }),
   });

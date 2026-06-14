@@ -4,8 +4,9 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const FROM_EMAIL = 'Huna Creatives <billing@hunacreatives.com>';
-const HUB_URL = 'https://www.hunacreatives.com/hub/contractor/payouts';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'billing@fsarchitects.ph';
+const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
+const HUB_URL = `${HUB_BASE_URL}/hub/employee/payouts`;
 
 async function slackDm(userId: string, text: string) {
   const opened = await fetch('https://slack.com/api/conversations.open', {
@@ -55,7 +56,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: cors });
     }
 
-    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const SUPABASE_URL_LOCAL = Deno.env.get('SUPABASE_URL')!;
+    const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_LOCAL}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
+    const logoUrl = LOGO_URL;
     const dateStr = new Date(paid_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const paidPct = total_cut > 0 ? Math.min(Math.round((total_paid / total_cut) * 100), 100) : 0;
     const remaining = Math.max(total_cut - total_paid, 0);
@@ -75,7 +78,7 @@ Deno.serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background:#111827;padding:24px 36px;">
-              <img src="${logoUrl}" alt="Huna Creatives" height="24" style="display:block;" />
+              <img src="${logoUrl}" alt="FS Architects" height="24" style="display:block;" />
             </td>
           </tr>
 
@@ -86,7 +89,7 @@ Deno.serve(async (req) => {
                 <span style="font-size:24px;">💸</span>
               </div>
               <h1 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#111827;">Payment received</h1>
-              <p style="margin:0;font-size:14px;color:#6b7280;">Hi ${contractor_name}, you've got a new payout from Huna Creatives.</p>
+              <p style="margin:0;font-size:14px;color:#6b7280;">Hi ${contractor_name}, you've got a new payout from FS Architects.</p>
             </td>
           </tr>
 
@@ -153,8 +156,8 @@ Deno.serve(async (req) => {
           <!-- Footer -->
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;text-align:center;">
-              <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a></p>
-              <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} Huna Creatives · billing@hunacreatives.com</p>
+              <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
+              <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} FS Architects · billing@fsarchitects.ph</p>
             </td>
           </tr>
 

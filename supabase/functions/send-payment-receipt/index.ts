@@ -1,9 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const FROM_EMAIL = 'Huna Creatives Billing <billing@hunacreatives.com>';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'billing@fsarchitects.ph';
+const SUPABASE_URL_VAR = Deno.env.get('SUPABASE_URL')!;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_VAR}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
+  SUPABASE_URL_VAR,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
@@ -41,7 +43,7 @@ Deno.serve(async (req) => {
 
     const balance = contract_price - total_paid;
     const isPaid = balance <= 0;
-    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const logoUrl = LOGO_URL;
     const dateStr = new Date(paid_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const invNum = String(invoice_number ?? '').padStart(4, '0');
 
@@ -59,7 +61,7 @@ Deno.serve(async (req) => {
             <td style="background:#111827;padding:28px 40px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td><img src="${logoUrl}" alt="Huna Creatives" height="26" style="display:block;" /></td>
+                  <td><img src="${logoUrl}" alt="FS Architects" height="26" style="display:block;" /></td>
                   <td style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Payment Received</p>
                     ${invNum ? `<p style="margin:4px 0 0;color:#6b7280;font-size:12px;">Ref #${invNum}</p>` : ''}
@@ -138,8 +140,8 @@ Deno.serve(async (req) => {
           <tr>
             <td style="padding:28px 40px;text-align:center;border-top:1px solid #f3f4f6;margin-top:24px;">
               <p style="margin:0 0 4px;font-size:12px;color:#6b7280;">Thank you for your payment.</p>
-              <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a></p>
-              <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} Huna Creatives · billing@hunacreatives.com</p>
+              <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
+              <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} FS Architects · billing@fsarchitects.ph</p>
             </td>
           </tr>
 

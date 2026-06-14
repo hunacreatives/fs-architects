@@ -20,7 +20,7 @@ const ORDINAL = (n: number) => {
 const CUSTOM_COPY: Record<string, (years: number) => { headline: string; body: string }> = {
   'angelalouiseando@gmail.com': (y) => ({
     headline: `${ORDINAL(y)} Work Anniversary, Angela! 🎉`,
-    body: `${y} year${y > 1 ? 's' : ''} of creativity, dedication, and making every project better. Angela, Huna Creatives wouldn't be the same without you. Here's to many more! 🧡`,
+    body: `${y} year${y > 1 ? 's' : ''} of creativity, dedication, and making every project better. Angela, FS Architects wouldn't be the same without you. Here's to many more! 🧡`,
   }),
   'claudettemaytahil@gmail.com': (y) => ({
     headline: `${ORDINAL(y)} Work Anniversary, Claudette! 🎊`,
@@ -42,7 +42,7 @@ const CUSTOM_COPY: Record<string, (years: number) => { headline: string; body: s
 
 const FALLBACK_COPY = (name: string, years: number) => ({
   headline: `${ORDINAL(years)} Work Anniversary, ${name}! 🎉`,
-  body: `${years} year${years > 1 ? 's' : ''} at Huna Creatives — thank you for your hard work, dedication, and everything you bring to the team. Here's to many more! 🧡`,
+  body: `${years} year${years > 1 ? 's' : ''} at FS Architects — thank you for your hard work, dedication, and everything you bring to the team. Here's to many more! 🧡`,
 });
 
 async function checkAndPost() {
@@ -99,7 +99,7 @@ async function checkAndPost() {
       },
       {
         type: 'context',
-        elements: [{ type: 'mrkdwn', text: `— From the whole Huna Creatives team 🧡` }],
+        elements: [{ type: 'mrkdwn', text: `— From the whole FS Architects team 🧡` }],
       },
     ];
 

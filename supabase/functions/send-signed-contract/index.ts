@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const FROM_EMAIL = 'hr@hunacreatives.com';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'hr@fsarchitects.ph';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -81,7 +81,7 @@ async function run(assignment_id: string) {
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
     <div style="background:#111827;padding:28px 36px;">
-      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">Huna Creatives</p>
+      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
       <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0;">Contract Signed ✓</h1>
       <p style="color:#9ca3af;font-size:13px;margin:6px 0 0;">Your signed copy is attached to this email.</p>
     </div>
@@ -109,8 +109,8 @@ async function run(assignment_id: string) {
       <p style="font-size:12px;color:#9ca3af;margin:0 0 4px;line-height:1.6;">
         If you have any questions about this agreement, please reach out to HR on Slack or reply to this email.
       </p>
-      <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a></p>
-      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} Huna Creatives · hr@hunacreatives.com</p>
+      <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
+      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} FS Architects · hr@fsarchitects.ph</p>
     </div>
 
   </div>
@@ -118,7 +118,7 @@ async function run(assignment_id: string) {
 </html>`;
 
   const payload: any = {
-    from: `Huna Creatives HR <${FROM_EMAIL}>`,
+    from: `FS Architects <${FROM_EMAIL}>`,
     to: contractor.email,
     subject: `Your signed copy — ${doc?.title}`,
     html: emailHtml,

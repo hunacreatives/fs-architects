@@ -32,7 +32,7 @@ async function notifySlack(clientName: string, projectName: string, channel: str
           elements: [{
             type: 'button',
             text: { type: 'plain_text', text: 'Review Proof →', emoji: true },
-            url: 'https://hunacreatives.com/hub/admin/invoice-log',
+            url: 'https://fsarchitects.ph/hub/admin/invoice-log',
             style: 'primary',
           }],
         },

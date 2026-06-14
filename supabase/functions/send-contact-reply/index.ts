@@ -1,8 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const FROM_EMAIL = 'Huna Creatives <contact@hunacreatives.com>';
-const REPLY_TO = 'contact@hunacreatives.com';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'contact@fsarchitects.ph';
+const REPLY_TO = 'contact@fsarchitects.ph';
+const SUPABASE_URL_VAR = Deno.env.get('SUPABASE_URL')!;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_VAR}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -63,8 +65,8 @@ Deno.serve(async (req) => {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background:#111111;padding:28px 40px;border-bottom:3px solid #FF6B35">
-              <img src="https://hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png"
-                   alt="Huna Creatives"
+              <img src="${LOGO_URL}"
+                   alt="FS Architects"
                    class="logo-img"
                    width="auto"
                    height="32"
@@ -81,7 +83,7 @@ Deno.serve(async (req) => {
                 <tr><td height="12"></td></tr>
                 <tr>
                   <td style="padding:8px 0 4px">
-                    <a href="https://calendly.com/hunacreatives/30min"
+                    <a href="https://calendly.com/fsarchitects/30min"
                        style="display:inline-block;background:#111111;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:14px 32px;border-radius:3px;text-decoration:none">
                       Book a Call &rarr;
                     </a>
@@ -97,10 +99,10 @@ Deno.serve(async (req) => {
               <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                 <tr>
                   <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;color:#888888;letter-spacing:0.08em;text-transform:uppercase">
-                    Huna Creatives
+                    FS Architects
                   </td>
                   <td align="right" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px">
-                    <a href="mailto:contact@hunacreatives.com" style="color:#FF6B35;text-decoration:none">contact@hunacreatives.com</a>
+                    <a href="mailto:contact@fsarchitects.ph" style="color:#FF6B35;text-decoration:none">contact@fsarchitects.ph</a>
                   </td>
                 </tr>
                 <tr>

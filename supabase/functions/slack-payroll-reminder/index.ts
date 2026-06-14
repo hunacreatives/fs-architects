@@ -4,7 +4,8 @@ const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SLACK_CHANNEL = 'C0830PCGQK1';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const HUB_URL = 'https://www.hunacreatives.com/hub/login';
+const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
+const HUB_URL = `${HUB_BASE_URL}/hub/login`;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

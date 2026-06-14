@@ -1,12 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const FROM_EMAIL = 'Huna Creatives Billing <billing@hunacreatives.com>';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'billing@fsarchitects.ph';
 const DEFAULT_BASE_URL = (
   Deno.env.get('PUBLIC_SITE_URL') ||
   Deno.env.get('SITE_URL') ||
-  'https://www.hunacreatives.com'
+  'https://www.fsarchitects.ph'
 ).replace(/\/$/, '');
+const SUPABASE_URL_VAR = Deno.env.get('SUPABASE_URL')!;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_VAR}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -79,7 +81,7 @@ Deno.serve(async (req) => {
     const requestedAmount = amount_requested != null && String(amount_requested).trim() !== '' ? Number(amount_requested) : NaN;
     const amountDue: number = Number.isFinite(requestedAmount) ? requestedAmount : lineItemsTotal;
     const isPaid = amountDue <= 0;
-    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const logoUrl = LOGO_URL;
     const fmtDate = (d: string | null | undefined) => d
       ? new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : '—';
@@ -158,7 +160,7 @@ Deno.serve(async (req) => {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td valign="middle">
-                    <img src="${logoUrl}" alt="Huna Creatives" height="34" style="display:block;" />
+                    <img src="${logoUrl}" alt="FS Architects" height="34" style="display:block;" />
                   </td>
                   <td align="right" valign="middle" style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Invoice</p>
@@ -175,8 +177,8 @@ Deno.serve(async (req) => {
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;padding-bottom:12px;border-bottom:1px solid #f3f4f6;">
                 <div>
                   <p style="margin:0 0 6px;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">From</p>
-                  <p style="margin:0;font-size:15px;font-weight:700;color:#111827;">Huna Creatives</p>
-                  <div style="margin-top:6px;font-size:12px;color:#6b7280;line-height:1.7;">billing@hunacreatives.com<br/>www.hunacreatives.com</div>
+                  <p style="margin:0;font-size:15px;font-weight:700;color:#111827;">FS Architects</p>
+                  <div style="margin-top:6px;font-size:12px;color:#6b7280;line-height:1.7;">billing@fsarchitects.ph<br/>www.fsarchitects.ph</div>
                 </div>
                 <div style="text-align:right;">
                   <p style="margin:0 0 6px;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">Bill To</p>
@@ -308,7 +310,7 @@ Deno.serve(async (req) => {
           <!-- Footer -->
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:18px 40px;text-align:center;">
-              <p style="margin:0;font-size:11px;color:#9ca3af;">Questions? Email us at <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a> · © ${new Date().getFullYear()} Huna Creatives</p>
+              <p style="margin:0;font-size:11px;color:#9ca3af;">Questions? Email us at <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a> · © ${new Date().getFullYear()} FS Architects</p>
             </td>
           </tr>
 
@@ -329,7 +331,7 @@ Deno.serve(async (req) => {
         from: FROM_EMAIL,
         to: toList,
         ...(ccList.length > 0 ? { cc: ccList } : {}),
-        bcc: ['contact@hunacreatives.com'],
+        bcc: ['contact@fsarchitects.ph'],
         subject: subject ?? `Invoice #${String(invoice_number).padStart(4, '0')} — ${project_name}`,
         html,
       }),

@@ -148,7 +148,7 @@ async function notifyAdmins(
           user_id: admin.id,
           title: 'New job application',
           body: `${applicantName} applied for ${role}.`,
-          url: 'https://www.hunacreatives.com/hub/admin/applications',
+          url: 'https://fsarchitects.ph/hub/admin/applications',
         }),
       })
     )

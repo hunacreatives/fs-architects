@@ -38,7 +38,7 @@ async function dm(userId: string, client_name: string, service_type: string) {
         {
           type: 'button',
           text: { type: 'plain_text', text: 'View responses →', emoji: true },
-          url: 'https://hunacreatives.com/hub/admin/questionnaires',
+          url: 'https://fsarchitects.ph/hub/admin/questionnaires',
           style: 'primary',
         },
       ],
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: a.id, title: 'New questionnaire submitted', body: `${client_name} filled out their ${service_type} questionnaire.`, url: 'https://hunacreatives.com/hub/admin/questionnaires' }),
+        body: JSON.stringify({ user_id: a.id, title: 'New questionnaire submitted', body: `${client_name} filled out their ${service_type} questionnaire.`, url: 'https://fsarchitects.ph/hub/admin/questionnaires' }),
       }).catch(() => {})
     ));
 

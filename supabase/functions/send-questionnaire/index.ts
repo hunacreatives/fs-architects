@@ -1,6 +1,8 @@
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const FROM_EMAIL = 'Huna Creatives <hello@hunacreatives.com>';
-const BASE_URL = 'https://www.hunacreatives.com';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@fsarchitects.ph';
+const BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://www.fsarchitects.ph';
+const SUPABASE_URL_VAR = Deno.env.get('SUPABASE_URL')!;
+const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_VAR}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +21,7 @@ Deno.serve(async (req) => {
     }
 
     const formUrl = `${BASE_URL}/q/${token}`;
-    const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
+    const logoUrl = LOGO_URL;
 
     const html = `<!DOCTYPE html>
 <html>
@@ -30,13 +32,13 @@ Deno.serve(async (req) => {
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
 
         <tr><td style="background:#111827;padding:24px 36px;">
-          <img src="${logoUrl}" alt="Huna Creatives" height="24" style="display:block;" />
+          <img src="${logoUrl}" alt="FS Architects" height="24" style="display:block;" />
         </td></tr>
 
         <tr><td style="padding:32px 36px 24px;">
           <h1 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#111827;">Hi ${client_name} 👋</h1>
           <p style="margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.6;">
-            ${intro_message ? intro_message : `Thank you for reaching out to Huna Creatives! To help us give you the best proposal for your <strong>${service_type}</strong> project, we'd love to learn more about your needs.`}
+            ${intro_message ? intro_message : `Thank you for reaching out to FS Architects! To help us give you the best proposal for your <strong>${service_type}</strong> project, we'd love to learn more about your needs.`}
           </p>
           <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
             We've put together a short questionnaire (${question_count || 'a few'} questions) — it takes about 5 minutes to fill out.
@@ -54,8 +56,8 @@ Deno.serve(async (req) => {
         </td></tr>
 
         <tr><td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 36px;text-align:center;">
-          <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af;">contact@hunacreatives.com</a></p>
-          <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} Huna Creatives · hello@hunacreatives.com</p>
+          <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
+          <p style="margin:0;font-size:11px;color:#d1d5db;">© ${new Date().getFullYear()} FS Architects · contact@fsarchitects.ph</p>
         </td></tr>
 
       </table>
@@ -70,7 +72,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [to],
-        subject: `Your ${service_type} questionnaire from Huna Creatives`,
+        subject: `Your ${service_type} questionnaire from FS Architects`,
         html,
       }),
     });

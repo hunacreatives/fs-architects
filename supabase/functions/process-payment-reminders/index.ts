@@ -45,7 +45,7 @@ async function notifySlack(client_name: string, project_name: string, amount_due
             {
               type: 'button',
               text: { type: 'plain_text', text: 'View Projects →', emoji: true },
-              url: 'https://hunacreatives.com/hub/admin/projects',
+              url: 'https://fsarchitects.ph/hub/admin/projects',
             },
           ],
         },

@@ -13,10 +13,12 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-function emailHtml(firstName: string, linkUrl: string, _isReset: boolean) {
-  const headline = 'Your access link';
-  const greeting = `Here's your link to access Sentro Hub, ${firstName}. Click below to set your password and get started.`;
-  const buttonText = 'Set My Password →';
+function emailHtml(firstName: string, linkUrl: string, isReset: boolean) {
+  const headline = isReset ? 'Password Reset' : 'Your invite link';
+  const greeting = isReset
+    ? `Hey ${firstName}, here's your password reset link for Sentro Hub. Click below to set a new password.`
+    : `Here's a fresh invite link to access Sentro Hub, ${firstName}. Click below to set your password and get started.`;
+  const buttonText = isReset ? 'Reset My Password →' : 'Set My Password →';
 
   return `<!DOCTYPE html>
 <html>
@@ -100,7 +102,7 @@ Deno.serve(async (req) => {
 
     const { data: contractor, error: fetchErr } = await supabase
       .from('hub_users')
-      .select('email, full_name')
+      .select('email, full_name, onboarding_completed')
       .eq('id', contractor_id)
       .maybeSingle();
 
@@ -108,18 +110,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Employee not found' }), { status: 200, headers: cors });
     }
 
-    const { email, full_name } = contractor;
+    const { email, full_name, onboarding_completed } = contractor;
     const firstName = full_name.split(' ')[0];
 
-    // Try invite first (new user); fall back to recovery if auth user already exists
     let linkData, linkErr, isReset = false;
 
-    ({ data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
-      type: 'invite',
-      email: email.toLowerCase(),
-    }));
+    if (!onboarding_completed) {
+      // Employee never finished setup — delete stale auth user and send a fresh invite
+      const { data: { users } } = await supabase.auth.admin.listUsers();
+      const stale = users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      if (stale) await supabase.auth.admin.deleteUser(stale.id);
 
-    if (linkErr || !linkData?.properties?.hashed_token) {
+      ({ data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+        type: 'invite',
+        email: email.toLowerCase(),
+        options: { redirectTo: `${HUB_BASE_URL}/hub/signup?invite=1` },
+      }));
+    } else {
+      // Employee already has an account — send a password reset
       isReset = true;
       ({ data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
         type: 'recovery',
@@ -138,7 +146,9 @@ Deno.serve(async (req) => {
       : `${HUB_BASE_URL}/hub/signup?invite=1&token_hash=${hashed_token}&type=${type}`;
 
     const html = emailHtml(firstName, destination, isReset);
-    const subject = `${firstName}, here's your Sentro Hub access link`;
+    const subject = isReset
+      ? `${firstName}, reset your Sentro Hub password`
+      : `${firstName}, here's your Sentro Hub invite link`;
 
     await fetch('https://api.resend.com/emails', {
       method: 'POST',

@@ -36,7 +36,7 @@ function getDatesInRange(start: string, end: string): string[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   while (cur <= endDate && cur <= today) {
-    dates.push(cur.toISOString().slice(0, 10));
+    dates.push(cur.toLocaleDateString('en-CA'));
     cur.setDate(cur.getDate() + 1);
   }
   return dates;

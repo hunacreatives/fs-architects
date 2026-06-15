@@ -363,8 +363,8 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
       .insert({
         title,
         description: `Effective ${new Date(fields.effectiveDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
-        file_url: null,
-        file_name: null,
+        file_url: '',
+        file_name: '',
         content: html,
         is_generated: true,
         amendment_type: fields.amendmentType,

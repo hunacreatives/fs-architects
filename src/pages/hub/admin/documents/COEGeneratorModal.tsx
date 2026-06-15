@@ -56,7 +56,7 @@ function generateCOEHtml(
   body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; background: #fff; line-height: 1.6; }
   .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 22mm 22mm 22mm; display: flex; flex-direction: column; }
   .header { display: flex; align-items: center; justify-content: space-between; background: #334049; margin: -18mm -22mm 0 -22mm; padding: 14pt 22pt; margin-bottom: 20pt; }
-  .logo-block img { height: 54pt; width: auto; display: block; }
+  .logo-block img { height: 54pt; width: auto; display: block; filter: invert(1) brightness(2); }
   .header-contact { text-align: right; font-size: 8.5pt; color: #a8b9c9; line-height: 1.8; }
   .header-rule { display: none; }
   .doc-label { font-size: 8.5pt; letter-spacing: 0.15em; text-transform: uppercase; color: #666; font-family: Arial, sans-serif; margin-bottom: 4pt; }
@@ -182,8 +182,8 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
       .insert({
         title,
         description,
-        file_url: null,
-        file_name: null,
+        file_url: '',
+        file_name: '',
         content: previewHtml,
         is_generated: true,
         amendment_type: 'coe',
@@ -194,7 +194,8 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
       .single();
 
     if (error || !doc) {
-      setToast('Failed to save COE.');
+      console.error('[COE save error]', error);
+      setToast(`Failed to save COE: ${error?.message ?? 'unknown error'}`);
       setSaving(false);
       return;
     }

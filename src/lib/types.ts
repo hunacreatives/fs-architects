@@ -215,6 +215,8 @@ export interface HubSignAssignment {
   signed_at?: string;
   signed_name?: string;
   drive_file_id?: string;
+  pickup_ready?: boolean;
+  pickup_notified_at?: string;
   created_at?: string;
   hub_users?: HubUser;
   hub_sign_documents?: HubSignDocument;

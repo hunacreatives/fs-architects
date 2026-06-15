@@ -15,8 +15,15 @@ const DR_STATUS_COLORS: Record<string, string> = {
 };
 
 const DOC_TYPES = [
-  'Certificate of Engagement', 'Agreement Copy', 'NDA Copy', 'Payment Summary',
-  'Work Completion Certificate', 'Client Assignment Letter', 'Clearance Certificate', 'Other',
+  'Certificate of Employment',
+  'Employment Contract Copy',
+  'Certificate of Compensation',
+  'Payroll Summary',
+  'Work Clearance Certificate',
+  'Project Assignment Letter',
+  'Service Record',
+  'NDA Copy',
+  'Other',
 ];
 
 function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: () => void; onSaved: () => void }) {
@@ -145,7 +152,7 @@ export default function AdminDocumentsPage() {
     setDrLoading(true);
     const { data } = await supabase
       .from('hub_doc_requests')
-      .select('*, hub_users(full_name, avatar_url, department)')
+      .select('*, hub_users!contractor_id(full_name, avatar_url, department)')
       .order('created_at', { ascending: false });
     setDocRequests((data as HubDocRequest[]) ?? []);
     setDrLoading(false);
@@ -258,10 +265,36 @@ export default function AdminDocumentsPage() {
     setSelectedDoc(doc);
     const { data } = await supabase
       .from('hub_sign_assignments')
-      .select('*, hub_users(full_name, avatar_url), drive_file_id')
+      .select('*, hub_users(full_name, avatar_url, email), drive_file_id, pickup_ready, pickup_notified_at')
       .eq('document_id', doc.id)
       .order('created_at');
     setAssignments((data as HubSignAssignment[]) ?? []);
+  };
+
+  const [togglingPickup, setTogglingPickup] = useState<string | null>(null);
+
+  const markPickupReady = async (assignmentId: string, currentReady: boolean) => {
+    setTogglingPickup(assignmentId);
+    const newReady = !currentReady;
+    await supabase
+      .from('hub_sign_assignments')
+      .update({
+        pickup_ready: newReady,
+        pickup_notified_at: newReady ? new Date().toISOString() : null,
+      })
+      .eq('id', assignmentId);
+
+    if (newReady) {
+      await supabase.functions.invoke('notify-pickup-ready', { body: { assignment_id: assignmentId } });
+    }
+
+    setAssignments(prev => prev.map(a =>
+      a.id === assignmentId
+        ? { ...a, pickup_ready: newReady, pickup_notified_at: newReady ? new Date().toISOString() : null }
+        : a
+    ));
+    setTogglingPickup(null);
+    showToast(newReady ? 'Employee notified — document ready for pickup.' : 'Pickup status cleared.');
   };
 
   const toggleContractor = (id: string) => {
@@ -689,48 +722,73 @@ export default function AdminDocumentsPage() {
               </a>
 
               <div>
-                <p className="text-xs font-medium text-gray-600 mb-2">Signature Status</p>
-                <div className="space-y-2">
-                  {assignments.map(a => (
-                    <div key={a.id} className="flex items-center gap-3">
-                      <img src={(a as any).hub_users?.avatar_url || ''} alt="" className="w-7 h-7 rounded-full object-cover object-top bg-gray-100 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-800">{(a as any).hub_users?.full_name}</p>
-                        {a.status === 'signed' && a.signed_at && (
-                          <p className="text-xs text-gray-400">
-                            Signed as "{a.signed_name}" · {new Date(a.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </p>
-                        )}
+                <p className="text-xs font-medium text-gray-600 mb-2">Assigned To</p>
+                <div className="space-y-3">
+                  {assignments.map(a => {
+                    const pr = (a as any).pickup_ready as boolean;
+                    const pn = (a as any).pickup_notified_at as string | null;
+                    return (
+                      <div key={a.id} className="border border-gray-100 rounded-xl p-3 space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          <img src={(a as any).hub_users?.avatar_url || ''} alt="" className="w-7 h-7 rounded-full object-cover object-top bg-gray-100 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800">{(a as any).hub_users?.full_name}</p>
+                            {a.status === 'signed' && a.signed_at && (
+                              <p className="text-xs text-gray-400">Signed as "{a.signed_name}" · {new Date(a.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {a.status === 'signed' && (
+                              a.drive_file_id ? (
+                                <span title="Saved in Google Drive" className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                  <i className="ri-google-fill text-xs"></i> In Drive
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => uploadAssignmentToDrive(a.id)}
+                                  disabled={uploadingToDrive === a.id}
+                                  title="Upload to Google Drive"
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-sky-600 hover:bg-sky-50 transition-colors cursor-pointer disabled:opacity-40"
+                                >
+                                  {uploadingToDrive === a.id
+                                    ? <i className="ri-loader-4-line animate-spin text-sm"></i>
+                                    : <i className="ri-google-fill text-sm"></i>}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Pickup toggle */}
+                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${pr ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-100'}`}>
+                          <div className="flex items-center gap-2">
+                            <i className={`text-sm ${pr ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-store-2-line text-gray-400'}`}></i>
+                            <div>
+                              <p className={`text-xs font-semibold ${pr ? 'text-emerald-700' : 'text-gray-600'}`}>
+                                {pr ? 'Ready for Pickup' : 'Not yet ready'}
+                              </p>
+                              {pr && pn && (
+                                <p className="text-[10px] text-emerald-500">Notified {new Date(pn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => markPickupReady(a.id, pr)}
+                            disabled={togglingPickup === a.id}
+                            className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 whitespace-nowrap ${
+                              pr
+                                ? 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                                : 'bg-[#1c2b3a] text-white hover:bg-[#0f1c28]'
+                            }`}
+                          >
+                            {togglingPickup === a.id
+                              ? <i className="ri-loader-4-line animate-spin"></i>
+                              : pr ? 'Undo' : 'Mark Ready & Notify'}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {a.status === 'signed' && (
-                          a.drive_file_id ? (
-                            <span title="Saved in Google Drive" className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                              <i className="ri-google-fill text-xs"></i> In Drive
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => uploadAssignmentToDrive(a.id)}
-                              disabled={uploadingToDrive === a.id}
-                              title="Upload to Google Drive"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-sky-600 hover:bg-sky-50 transition-colors cursor-pointer disabled:opacity-40"
-                            >
-                              {uploadingToDrive === a.id
-                                ? <i className="ri-loader-4-line animate-spin text-sm"></i>
-                                : <i className="ri-google-fill text-sm"></i>}
-                            </button>
-                          )
-                        )}
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${a.status === 'signed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {a.status === 'signed' ? (
-                            <><i className="ri-checkbox-circle-line mr-1"></i>Signed</>
-                          ) : (
-                            <><i className="ri-time-line mr-1"></i>Pending</>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

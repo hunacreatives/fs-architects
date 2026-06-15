@@ -147,7 +147,7 @@ export default function AdminDocRequestsPage() {
     setLoading(true);
     const { data } = await supabase
       .from('hub_doc_requests')
-      .select('*, hub_users(full_name, avatar_url, department)')
+      .select('*, hub_users!contractor_id(full_name, avatar_url, department)')
       .order('created_at', { ascending: false });
     setRequests((data as HubDocRequest[]) ?? []);
     setLoading(false);

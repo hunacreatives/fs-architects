@@ -385,9 +385,8 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
       contractor_id: fields.contractorId,
     }).select('id').single();
 
-    if (assignment?.id) {
-      await supabase.functions.invoke('notify-contract-assigned', { body: { assignment_id: assignment.id } });
-    }
+    const blob = new Blob([html], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
 
     setSaving(false);
     onDone();
@@ -681,7 +680,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
           <div className="flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-3 px-5 py-3 bg-amber-50 border-b border-amber-100 flex-shrink-0">
               <i className="ri-information-line text-amber-500"></i>
-              <p className="text-xs text-amber-700">Review the contract below. Your signature is already on it. Once sent, the employee will be notified to sign.</p>
+              <p className="text-xs text-amber-700">Print the document, have Fretz and the employee sign physically, then mark it "Ready for Pickup" in the Documents list.</p>
               <button onClick={openPreviewInTab} className="ml-auto text-xs text-[#1c2b3a] cursor-pointer whitespace-nowrap hover:underline flex-shrink-0">
                 Open in new tab <i className="ri-external-link-line"></i>
               </button>
@@ -716,7 +715,7 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
               disabled={saving}
               className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-40"
             >
-              {saving ? 'Sending…' : 'Send for Signature'}
+              {saving ? 'Saving…' : 'Save & Print'}
             </button>
           )}
         </div>

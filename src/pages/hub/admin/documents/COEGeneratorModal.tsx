@@ -22,7 +22,8 @@ function generateCOEHtml(
   logoData: string,
 ): string {
   const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const fmtYear = (d: string) => new Date(d + 'T12:00:00').getFullYear();
+  const issued = new Date(issuedDate + 'T12:00:00');
+  const docRef = `FSA/COE/${issued.getFullYear()}/${String(issued.getMonth() + 1).padStart(2, '0')}${String(issued.getDate()).padStart(2, '0')}-${employeeName.split(/\s+/).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 4)}`;
   const yearsOfService = startDate
     ? (() => {
         const ms = new Date(issuedDate + 'T12:00:00').getTime() - new Date(startDate + 'T12:00:00').getTime();
@@ -70,7 +71,9 @@ function generateCOEHtml(
   .sig-name { font-size: 10.5pt; font-weight: bold; font-family: Arial, sans-serif; }
   .sig-title { font-size: 9pt; color: #555; font-family: Arial, sans-serif; }
   .sig-date { font-size: 9pt; color: #777; font-family: Arial, sans-serif; margin-top: 2pt; }
-  .footer-note { font-size: 8.5pt; color: #888; font-style: italic; margin-top: 36pt; text-align: center; border-top: 0.5pt solid #ddd; padding-top: 10pt; }
+  .footer-band { background: #334049; margin: 32pt -22mm -22mm -22mm; padding: 14pt 22pt; }
+  .footer-band-ref { font-size: 8pt; color: #a8b9c9; font-family: Arial, sans-serif; letter-spacing: 0.08em; margin-bottom: 5pt; }
+  .footer-band-text { font-size: 7.5pt; color: #7a99af; font-family: Arial, sans-serif; line-height: 1.65; }
   @media print { body { background: #fff; } .page { margin: 0; padding: 15mm 18mm 18mm 18mm; } @page { size: A4; margin: 0; } }
 </style>
 </head>
@@ -110,8 +113,14 @@ function generateCOEHtml(
     <div class="sig-date">${fmt(issuedDate)}</div>
   </div>
 
-  <div class="footer-note">
-    Document Reference: COE-${fmtYear(issuedDate)}-${employeeName.replace(/\s+/g, '').toUpperCase().slice(0, 6)} &nbsp;|&nbsp; This document is valid only with an original signature. &nbsp;|&nbsp; For verification: info@fsarchitects.ph
+  <div class="footer-band">
+    <div class="footer-band-ref">Document Reference: ${docRef} &nbsp;·&nbsp; Issued: ${fmt(issuedDate)}</div>
+    <div class="footer-band-text">
+      This Certificate of Employment is issued in accordance with the Labor Code of the Philippines and DOLE Department Order No. 174-17.
+      It is valid only with the original wet signature of the authorized signatory. Any erasure, alteration, or unauthorized reproduction renders this document void.
+      Falsification of this document is punishable under Article 172 of the Revised Penal Code of the Philippines.
+      For verification, contact: <strong style="color:#c8d9e4;">info@fsarchitects.ph</strong>
+    </div>
   </div>
 </div>
 </body>
@@ -161,7 +170,7 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
     setStep('preview');
   };
 
-  const handleSend = async () => {
+  const handleSave = async () => {
     if (!contractorId) return;
     setSaving(true);
 
@@ -190,15 +199,12 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
       return;
     }
 
-    const { data: assignment } = await supabase
+    await supabase
       .from('hub_sign_assignments')
-      .insert({ document_id: doc.id, contractor_id: contractorId })
-      .select('id')
-      .single();
+      .insert({ document_id: doc.id, contractor_id: contractorId });
 
-    if (assignment?.id) {
-      await supabase.functions.invoke('notify-contract-assigned', { body: { assignment_id: assignment.id } });
-    }
+    const blob = new Blob([previewHtml], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
 
     setSaving(false);
     onDone();
@@ -320,7 +326,7 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
           <div className="flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-3 px-5 py-3 bg-amber-50 border-b border-amber-100 flex-shrink-0">
               <i className="ri-information-line text-amber-500" />
-              <p className="text-xs text-amber-700">Fretz signs the printed copy. Once sent, the employee receives this via the hub.</p>
+              <p className="text-xs text-amber-700">Print the document, have Fretz sign physically, then mark it "Ready for Pickup" in the Documents list.</p>
               <button onClick={openInTab} className="ml-auto text-xs text-[#1c2b3a] cursor-pointer whitespace-nowrap hover:underline flex-shrink-0">
                 Open in new tab <i className="ri-external-link-line" />
               </button>
@@ -339,9 +345,9 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
               Preview COE →
             </button>
           ) : (
-            <button onClick={handleSend} disabled={saving}
+            <button onClick={handleSave} disabled={saving}
               className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40">
-              {saving ? 'Sending…' : 'Send to Employee'}
+              {saving ? 'Saving…' : 'Save & Print'}
             </button>
           )}
         </div>

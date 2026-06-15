@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
-import { HubUser, HubAttendance, HubTimeOff, HubRequest, HubClient, HubAsset } from '@/lib/types';
+import { HubUser, HubTimeOff, HubRequest, HubClient, HubAsset } from '@/lib/types';
 import EditContractorModal from './EditContractorModal';
 import { getPeriods, fmtTime, fmtDate, localToday } from '@/lib/formatUtils';
 import { logAudit } from '@/lib/audit';
@@ -23,7 +23,7 @@ export default function ContractorDetailPage() {
   const navigate = useNavigate();
   const { hubUser: actor } = useAuth();
   const [contractor, setContractor] = useState<HubUser | null>(null);
-  const [attendance, setAttendance] = useState<HubAttendance[]>([]);
+
   const [timeOff, setTimeOff] = useState<HubTimeOff[]>([]);
   const [requests, setRequests] = useState<HubRequest[]>([]);
   const [clients, setClients] = useState<HubClient[]>([]);
@@ -100,9 +100,8 @@ export default function ContractorDetailPage() {
     setLoadError('');
     setLoading(true);
     try {
-      const [u, att, to, req, assignmentsRes, ast] = await Promise.all([
+      const [u, to, req, assignmentsRes, ast] = await Promise.all([
         supabase.from('hub_users').select('*').eq('id', id).maybeSingle(),
-        supabase.from('hub_attendance').select('*').eq('contractor_id', id).order('date', { ascending: false }).limit(10),
         supabase.from('hub_time_off').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
         supabase.from('hub_requests').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
         supabase.from('hub_client_assignments')
@@ -129,13 +128,12 @@ export default function ContractorDetailPage() {
         })
         .filter(Boolean) as HubClient[];
 
-      setAttendance((att.data as HubAttendance[]) ?? []);
       setTimeOff((to.data as HubTimeOff[]) ?? []);
       setRequests((req.data as HubRequest[]) ?? []);
       setClients(mappedClients);
       setAssets((ast.data as HubAsset[]) ?? []);
 
-      const firstError = u.error || att.error || to.error || req.error || assignmentsRes.error || ast.error;
+      const firstError = u.error || to.error || req.error || assignmentsRes.error || ast.error;
       if (firstError) {
         setLoadError(firstError.message);
       }

@@ -412,7 +412,7 @@ export default function AdminPayrollPage() {
         link: '/hub/employee/payouts', read: false,
       }).catch(() => {});
     }
-    await fetchWorkflow();
+    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
   };
 
@@ -465,7 +465,7 @@ export default function AdminPayrollPage() {
       }
     }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payout', entity_id: selectedPeriod.start, description: `Bulk approved ${toApprove.length} payouts for ${selectedPeriod.label}` });
-    await fetchWorkflow();
+    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
   };
 
@@ -505,7 +505,7 @@ export default function AdminPayrollPage() {
       await supabase.from('hub_payouts').update({ batch_id: newBatch.id }).in('id', approvedIds);
       supabase.functions.invoke('notify-owner', { body: { batch_id: newBatch.id } }).catch(() => {});
     }
-    await fetchWorkflow();
+    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
   };
 
@@ -519,7 +519,7 @@ export default function AdminPayrollPage() {
     }).eq('id', batch.id);
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} contractors)` });
     supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(() => {});
-    await fetchWorkflow();
+    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
   };
 
@@ -549,7 +549,7 @@ export default function AdminPayrollPage() {
       }
     }
     setConfirmCancelId(null);
-    await fetchWorkflow();
+    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
   };
 
@@ -570,7 +570,7 @@ export default function AdminPayrollPage() {
       ...prev,
       [contractorId]: { ...existing, status: 'paid', payment_date: new Date().toISOString().slice(0, 10) },
     }));
-    await fetchWorkflow();
+    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
   };
 

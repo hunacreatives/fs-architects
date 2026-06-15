@@ -67,8 +67,9 @@ export default function ContractorProfilePage() {
         .upload(path, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      const bustUrl = `${publicUrl}?t=${Date.now()}`;
       const { error: dbErr } = await supabase.from('hub_users')
-        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .update({ avatar_url: bustUrl, updated_at: new Date().toISOString() })
         .eq('id', user.id);
       if (dbErr) throw dbErr;
       await refreshHubUser();

@@ -517,7 +517,7 @@ export default function AdminPayrollPage() {
       approved_by: hubUser?.id,
       approved_at: new Date().toISOString(),
     }).eq('id', batch.id);
-    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} contractors)` });
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} employees)` });
     supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(() => {});
     await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
@@ -909,7 +909,14 @@ export default function AdminPayrollPage() {
           filter: `cutoff_start=eq.${selectedPeriod.start}`,
         }, () => { fetchWorkflow(); })
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
+
+      const onVisibility = () => { if (document.visibilityState === 'visible') fetchWorkflow().catch(() => {}); };
+      document.addEventListener('visibilitychange', onVisibility);
+
+      return () => {
+        supabase.removeChannel(channel);
+        document.removeEventListener('visibilitychange', onVisibility);
+      };
     }
   }, [isDemo, selectedPeriod, usdRate]);
 
@@ -1204,8 +1211,6 @@ export default function AdminPayrollPage() {
 
   const downloadPDF = () => {
     const logoUrl = `${window.location.origin}/images/547b59870e776a20eb28e4f20931787c.png`;
-    const win = window.open('', '_blank', 'width=1000,height=800');
-    if (!win) return;
 
     const tableRows = rows.map(r => {
       const c = r.contractor;
@@ -1231,7 +1236,7 @@ export default function AdminPayrollPage() {
         </tr>`;
     }).join('');
 
-    win.document.write(`<!DOCTYPE html>
+    const printHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -1310,10 +1315,22 @@ export default function AdminPayrollPage() {
     </tfoot>
   </table>
   <div class="footer">FS Architects · Payroll · ${selectedPeriod.label}</div>
-  <script>window.onload = function() { setTimeout(function() { window.print(); }, 400); };<\/script>
 </body>
-</html>`);
-    win.document.close();
+</html>`;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:-9999px;';
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument || (iframe.contentWindow as any)?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(printHtml);
+      iframeDoc.close();
+      setTimeout(() => {
+        (iframe.contentWindow as any)?.focus();
+        (iframe.contentWindow as any)?.print();
+        setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} }, 2000);
+      }, 400);
+    }
 
     const year = String(new Date().getFullYear());
     const pdfSummary = [
@@ -1456,8 +1473,10 @@ export default function AdminPayrollPage() {
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = `payroll-${selectedPeriod.label.replace(/[^a-z0-9]/gi, '-')}.csv`;
+                    document.body.appendChild(a);
                     a.click();
-                    URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
                     const year = String(new Date().getFullYear());
                     supabase.functions.invoke('upload-to-drive', {
                       body: {
@@ -1984,7 +2003,7 @@ export default function AdminPayrollPage() {
                           {isBatchClosed ? 'Period archived' : isApproved ? 'Transfer approved — send payments' : 'Awaiting owner approval'}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-xs text-gray-500">{batch.contractor_count} contractor{batch.contractor_count !== 1 ? 's' : ''}</span>
+                          <span className="text-xs text-gray-500">{batch.contractor_count} employee{batch.contractor_count !== 1 ? 's' : ''}</span>
                           <span className="text-gray-300">·</span>
                           <span className="text-xs font-semibold text-gray-700">{fmt(batch.total_amount, 'PHP')}</span>
                           {batch.approved_at && <><span className="text-gray-300">·</span><span className="text-xs text-gray-400">Approved {new Date(batch.approved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></>}

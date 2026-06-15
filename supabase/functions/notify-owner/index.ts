@@ -4,7 +4,7 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const OWNER_EMAIL = 'francisfielroble@gmail.com';
+const OWNER_EMAIL = 'suraltafretz@gmail.com';
 const ADMIN_EMAIL = 'duterteabigaile@gmail.com';
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'payroll@fsarchitects.ph';
 const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
@@ -115,8 +115,8 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
         </tr>
         <tr>
           <td style="padding:14px 16px;border-bottom:1px solid #f3f4f6;">
-            <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">Contractors</p>
-            <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#111827;">${batch.contractor_count} contractor${batch.contractor_count !== 1 ? 's' : ''}</p>
+            <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">Employees</p>
+            <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#111827;">${batch.contractor_count} employee${batch.contractor_count !== 1 ? 's' : ''}</p>
           </td>
         </tr>
         <tr>
@@ -163,7 +163,7 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
         const contractorCount = batch.contractor_count;
         await slackDm(
           owner.slack_id,
-          `💰 *Fund transfer needed*\nHR has approved payroll for *${contractorCount} contractor${contractorCount !== 1 ? 's' : ''} · ${totalFmt}* (${batch.period_label}).\nReview and confirm the transfer when ready.\n<${PAYROLL_URL}|Open Payroll →>`,
+          `💰 *Fund transfer request — ${batch.period_label}*\nHR has approved payroll for *${contractorCount} employee${contractorCount !== 1 ? 's' : ''}* totalling *${totalFmt}*. Please review and process the transfer.`,
         );
       }
       if (owner?.id) {

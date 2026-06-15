@@ -259,6 +259,32 @@ async function sendPayslip(payout_id: string) {
       console.error('Slack DM failed (payslip already sent):', slackErr);
     }
   }
+
+  // Hub in-app notification
+  try {
+    await supabase.from('hub_notifications').insert({
+      user_id: contractor.id,
+      type: 'payment_received',
+      title: 'Payment sent',
+      body: `Your payslip for ${periodLabel} has been processed — ${fmt(payout.final_payout)} is on its way. Check your email for the full receipt.`,
+      link: '/hub/employee/payouts',
+      read: false,
+    });
+  } catch (_) { /* non-fatal */ }
+
+  // Push notification
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: contractor.id,
+        title: 'Payment sent',
+        body: `${fmt(payout.final_payout)} for ${periodLabel} is on its way. Check your email for the payslip.`,
+        url: '/hub/employee/payouts',
+      }),
+    });
+  } catch (_) { /* non-fatal */ }
 }
 
 Deno.serve(async (req) => {

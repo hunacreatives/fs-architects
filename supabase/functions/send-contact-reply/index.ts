@@ -127,10 +127,9 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: FROM_EMAIL,
+        from: `FS Architects <${FROM_EMAIL}>`,
         to: [to_email],
-        bcc: [REPLY_TO],
-        reply_to: REPLY_TO,
+        reply_to: FROM_EMAIL,
         subject,
         html,
       }),

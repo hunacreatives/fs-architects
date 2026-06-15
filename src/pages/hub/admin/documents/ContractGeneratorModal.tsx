@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
-import { FRANCIS_SIG } from './contractAssets';
 
 interface Props {
   contractors: HubUser[];
@@ -12,7 +11,7 @@ interface Props {
 
 const DEFAULT_TOOLS = ['AutoCAD', 'Revit / SketchUp (if applicable)', 'Adobe Acrobat'];
 
-function generateCustomContractHTML(contractorName: string, effectiveDate: string, body: string, sigData: string, logoData: string): string {
+function generateCustomContractHTML(contractorName: string, effectiveDate: string, body: string, logoData: string): string {
   const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const bodyHtml = body
     .split(/\n\n+/)
@@ -57,11 +56,10 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
   <div class="sig-grid">
     <div>
       <p><strong>FS Architects</strong><br />("Employer")</p>
-      <div style="height:44pt;display:flex;align-items:flex-end;padding-bottom:0;margin-top:16pt;">
-        <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
-      </div>
-      <div style="border-top:1pt solid #111;margin-bottom:4pt;"></div>
-      <p class="sig-label">Fretz I. Suralta, Owner/Principal Architect &nbsp;|&nbsp; ${fmt(effectiveDate)}</p>
+      <div style="height:44pt;margin-top:16pt;border-bottom:1pt solid #111;"></div>
+      <p class="sig-label" style="margin-top:4pt;">Signature</p>
+      <div style="border-top:1pt solid #111;margin-top:20pt;margin-bottom:4pt;"></div>
+      <p class="sig-label">Fretz I. Suralta, Owner/Principal Architect &nbsp;|&nbsp; Date</p>
     </div>
     <div>
       <p><strong>${contractorName}</strong><br />("Employee")</p>
@@ -76,7 +74,7 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
 </html>`;
 }
 
-function generateContractHTML(fields: ContractFields, sigData: string, logoData: string): string {
+function generateContractHTML(fields: ContractFields, logoData: string): string {
   const {
     contractorName, effectiveDate, role, department, responsibilities,
     hoursPerDay, workDays, shiftTime, monthlyRate,
@@ -237,11 +235,10 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
   <div class="sig-grid">
     <div>
       <p><strong>FS Architects</strong><br />("Employer")</p>
-      <div style="height:44pt;display:flex;align-items:flex-end;padding-bottom:0;margin-top:16pt;">
-        <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
-      </div>
-      <div style="border-top:1pt solid #111;margin-bottom:4pt;"></div>
-      <p class="sig-label">Fretz I. Suralta, Owner/Principal Architect &nbsp;|&nbsp; ${fmt(effectiveDate)}</p>
+      <div style="height:44pt;margin-top:16pt;border-bottom:1pt solid #111;"></div>
+      <p class="sig-label" style="margin-top:4pt;">Signature</p>
+      <div style="border-top:1pt solid #111;margin-top:20pt;margin-bottom:4pt;"></div>
+      <p class="sig-label">Fretz I. Suralta, Owner/Principal Architect &nbsp;|&nbsp; Date</p>
     </div>
     <div>
       <p><strong>${contractorName}</strong><br />("Employee")</p>
@@ -346,8 +343,8 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
     };
     const logoDataUrl = await toDataUrl(`${window.location.origin}/images/fs-architects-logo-horizontal.png`);
     const html = contractMode === 'custom'
-      ? generateCustomContractHTML(fields.contractorName, fields.effectiveDate, customBody, FRANCIS_SIG, logoDataUrl)
-      : generateContractHTML(fields, FRANCIS_SIG, logoDataUrl);
+      ? generateCustomContractHTML(fields.contractorName, fields.effectiveDate, customBody, logoDataUrl)
+      : generateContractHTML(fields, logoDataUrl);
     setPreviewHtml(html);
     setStep('preview');
   };

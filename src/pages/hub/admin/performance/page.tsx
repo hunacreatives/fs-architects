@@ -211,7 +211,7 @@ export default function AdminPerformancePage() {
               onChange={e => setFilterContractor(e.target.value)}
               className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white"
             >
-              <option value="">All contractors</option>
+              <option value="">All employees</option>
               {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
             <span className="text-xs text-gray-400">{filtered.length} review{filtered.length !== 1 ? 's' : ''}</span>
@@ -316,7 +316,7 @@ export default function AdminPerformancePage() {
                   <label className="text-xs font-medium text-gray-700">Employee *</label>
                   <select required value={form.contractor_id} onChange={e => setF({ contractor_id: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
-                    <option value="">Select contractor...</option>
+                    <option value="">Select employee...</option>
                     {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                   </select>
                 </div>
@@ -372,7 +372,7 @@ export default function AdminPerformancePage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Internal Notes <span className="text-gray-400 font-normal">(not shown to contractor)</span></label>
+                <label className="text-xs font-medium text-gray-700">Internal Notes <span className="text-gray-400 font-normal">(not shown to employee)</span></label>
                 <textarea value={form.notes} onChange={e => setF({ notes: e.target.value })} rows={2}
                   placeholder="Private notes for admin..."
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />

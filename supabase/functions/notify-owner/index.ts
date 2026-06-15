@@ -174,9 +174,15 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
 
   if (type === 'fund_approved') {
     try {
-      const { data: admin } = await supabase.from('hub_users').select('id').eq('role', 'admin').eq('status', 'active').single();
-      if (admin?.id) {
-        await sendPush(admin.id, 'Funds Approved', `The fund transfer for ${batch.period_label} (${total}) has been approved. Proceed with contractor payments.`, PAYROLL_URL);
+      const { data: admins } = await supabase.from('hub_users').select('id, slack_id').in('role', ['admin', 'hr']).eq('status', 'active');
+      const totalFmt = '₱' + (batch.total_amount as number).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      for (const admin of admins || []) {
+        if (admin.slack_id) {
+          await slackDm(admin.slack_id, `✅ *Fund transfer approved — ${batch.period_label}*\nThe owner has approved the ${totalFmt} transfer. Proceed with marking employees as paid.`).catch(() => {});
+        }
+        if (admin.id) {
+          await sendPush(admin.id, 'Funds Approved', `The owner approved the transfer for ${batch.period_label} (${totalFmt}). Proceed with payments.`, PAYROLL_URL);
+        }
       }
     } catch (_) { /* non-fatal */ }
   }

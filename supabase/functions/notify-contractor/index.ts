@@ -192,14 +192,63 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
   }
 }
 
+async function sendOvertimeDecision(contractor_id: string, date: string, hours: number, status: 'approved' | 'rejected', admin_notes?: string) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { data: employee } = await supabase
+    .from('hub_users')
+    .select('full_name, slack_id')
+    .eq('id', contractor_id)
+    .single();
+  if (!employee?.slack_id) return;
+
+  const slackPost = async (path: string, body: unknown) => {
+    const res = await fetch(`https://slack.com/api/${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return res.json();
+  };
+
+  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const notesLine = admin_notes ? `\n_Note: ${admin_notes}_` : '';
+
+  const text = status === 'approved'
+    ? `✅ *Overtime approved* — Your ${hours}h OT request for *${dateLabel}* has been approved. Make sure your Slack clock-in that day reaches 9+ hours for it to count.${notesLine}`
+    : `❌ *Overtime not approved* — Your ${hours}h OT request for *${dateLabel}* was not approved.${notesLine}`;
+
+  try {
+    const dm = await slackPost('conversations.open', { users: employee.slack_id });
+    const channel = dm.ok ? dm.channel?.id : employee.slack_id;
+    await slackPost('chat.postMessage', { channel, text });
+  } catch (_) { /* non-fatal */ }
+
+  await sendPush(contractor_id, status === 'approved' ? 'Overtime Approved' : 'Overtime Not Approved', `Your ${hours}h OT request for ${dateLabel} was ${status}.`, HUB_URL);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const { payout_id, type } = await req.json();
+    const body = await req.json();
+    const { type } = body;
+
+    if (type === 'overtime_decision') {
+      const { contractor_id, date, hours, status, admin_notes } = body;
+      if (!contractor_id || !date || !hours || !status) {
+        return new Response(JSON.stringify({ error: 'contractor_id, date, hours, status required' }), { status: 400, headers: cors });
+      }
+      // @ts-ignore
+      EdgeRuntime.waitUntil((async () => {
+        try { await sendOvertimeDecision(contractor_id, date, hours, status, admin_notes); } catch (_) {}
+      })());
+      return new Response(JSON.stringify({ ok: true, queued: true }), { headers: cors });
+    }
+
+    const { payout_id } = body;
     if (!payout_id || !type) return new Response(JSON.stringify({ error: 'payout_id and type required' }), { status: 400, headers: cors });
     if (type !== 'hr_approved' && type !== 'dispute_resolved') {
-      return new Response(JSON.stringify({ error: 'type must be hr_approved or dispute_resolved' }), { status: 400, headers: cors });
+      return new Response(JSON.stringify({ error: 'type must be hr_approved, dispute_resolved, or overtime_decision' }), { status: 400, headers: cors });
     }
 
     const payout_id_str = String(payout_id);

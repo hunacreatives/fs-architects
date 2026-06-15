@@ -1,5 +1,6 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const NOTIFY_USERS = ['U091BL9PQ77', 'U0838LWSY4E']; // Abigail, Francis
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -9,25 +10,26 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-async function slackPost(path: string, body: object) {
-  const res = await fetch(`https://slack.com/api/${path}`, {
+async function slackDm(userId: string, text: string) {
+  const opened = await fetch('https://slack.com/api/conversations.open', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ users: userId }),
   });
-  return res.json();
+  const openedJson = await opened.json();
+  const channel = openedJson.ok ? openedJson.channel?.id : userId;
+  await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, text }),
+  });
 }
 
 async function pushToHubAdmins(title: string, body: string, url: string) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
-
   const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/hub_users?select=id&status=eq.active&role=in.(owner,admin,hr)`, {
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
   }).catch(() => null);
-
   const users = usersRes?.ok ? await usersRes.json().catch(() => []) : [];
   await Promise.all(
     (users ?? []).map((user: { id: string }) =>
@@ -45,51 +47,41 @@ Deno.serve(async (req) => {
 
   try {
     const { type, contractor_name, detail, notes } = await req.json();
-    // type: 'doc_request' | 'credential_request'
 
     if (!type || !contractor_name) {
       return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 200, headers: cors });
     }
 
-    const typeMap: Record<string, { emoji: string; label: string; url: string; btnLabel: string }> = {
-      doc_request:      { emoji: '📄', label: 'Document Request',         url: 'https://fsarchitects.ph/hub/admin/docrequests',  btnLabel: 'View Doc Requests →' },
-      credential_request: { emoji: '🔑', label: 'Credential Access Request', url: 'https://fsarchitects.ph/hub/admin/credentials', btnLabel: 'View Credential Requests →' },
-      contract_signed:  { emoji: '✍️',  label: 'Contract Signed',          url: 'https://fsarchitects.ph/hub/admin/documents',        btnLabel: 'View Documents →' },
-      time_off:         { emoji: '🌴', label: 'Time Off Request',          url: 'https://fsarchitects.ph/hub/admin/timeoff',          btnLabel: 'View Time Off →' },
-      overtime:         { emoji: '⏰', label: 'Overtime Request',          url: 'https://fsarchitects.ph/hub/admin/overtime',         btnLabel: 'View Overtime →' },
-      payment_verified: { emoji: '✅', label: 'Payment Verified',          url: 'https://fsarchitects.ph/hub/admin/invoice-log',      btnLabel: 'View Invoice Log →' },
+    const typeMap: Record<string, { emoji: string; label: string; url: string }> = {
+      doc_request:        { emoji: '📄', label: 'Document Request',          url: 'https://fsarchitects.ph/hub/admin/docrequests' },
+      credential_request: { emoji: '🔑', label: 'Credential Access Request', url: 'https://fsarchitects.ph/hub/admin/credentials' },
+      contract_signed:    { emoji: '✍️', label: 'Contract Signed',           url: 'https://fsarchitects.ph/hub/admin/documents' },
+      time_off:           { emoji: '🌴', label: 'Time Off Request',          url: 'https://fsarchitects.ph/hub/admin/timeoff' },
+      overtime:           { emoji: '⏰', label: 'Overtime Request',          url: 'https://fsarchitects.ph/hub/admin/overtime' },
+      payment_verified:   { emoji: '✅', label: 'Payment Verified',          url: 'https://fsarchitects.ph/hub/admin/invoice-log' },
     };
-    const { emoji, label, url, btnLabel } = typeMap[type] ?? { emoji: '📋', label: type, url: 'https://fsarchitects.ph/hub/admin', btnLabel: 'View Hub →' };
+    const { emoji, label, url } = typeMap[type] ?? { emoji: '📋', label: type, url: 'https://fsarchitects.ph/hub/admin' };
 
-    const text = `${emoji} *${label}* from *${contractor_name}*${detail ? `\n> ${detail}` : ''}${notes ? `\n> _${notes}_` : ''}`;
-    const pushTitle = `${label}`;
-    const pushBody = detail
-      ? `${contractor_name}: ${detail}`
-      : `${contractor_name} sent a ${label.toLowerCase()}.`;
+    const text = `${emoji} *${label}* from *${contractor_name}*${detail ? `\n${detail}` : ''}${notes ? `\n_${notes}_` : ''}`;
+    const pushBody = detail ? `${contractor_name}: ${detail}` : `${contractor_name} sent a ${label.toLowerCase()}.`;
 
-    await Promise.all(NOTIFY_USERS.map(async (userId) => {
-      const opened = await slackPost('conversations.open', { users: userId });
-      const channel = opened.ok ? opened.channel?.id : userId;
-      await slackPost('chat.postMessage', {
-        channel,
-        blocks: [
-          { type: 'section', text: { type: 'mrkdwn', text } },
-          {
-            type: 'actions',
-            elements: [
-              {
-                type: 'button',
-                text: { type: 'plain_text', text: btnLabel, emoji: true },
-                url,
-                style: 'primary',
-              },
-            ],
-          },
-        ],
-      });
-    }));
+    // Lookup active owners, admins, and HR for Slack DMs
+    if (SLACK_BOT_TOKEN) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const { data: adminUsers } = await supabase
+        .from('hub_users')
+        .select('slack_id')
+        .in('role', ['owner', 'admin', 'hr'])
+        .eq('status', 'active');
 
-    await pushToHubAdmins(pushTitle, pushBody, url);
+      await Promise.all(
+        (adminUsers ?? [])
+          .filter((u: any) => u.slack_id)
+          .map((u: any) => slackDm(u.slack_id, text).catch(() => {}))
+      );
+    }
+
+    await pushToHubAdmins(label, pushBody, url);
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

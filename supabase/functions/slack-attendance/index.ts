@@ -123,6 +123,17 @@ Deno.serve(async (req) => {
       .select('id, full_name, avatar_url, department, email, status, slack_username, slack_id, payment_type, shift_start')
       .eq('status', 'active');
 
+    // Fetch approved OT requests for the target date — used to compute actual OT from Slack hours
+    const { data: approvedOTRows } = await supabase
+      .from('hub_overtime_requests')
+      .select('contractor_id, hours')
+      .eq('date', todayDate)
+      .eq('status', 'approved');
+    const approvedOTMap: Record<string, number> = {};
+    for (const r of approvedOTRows || []) {
+      approvedOTMap[r.contractor_id] = (approvedOTMap[r.contractor_id] || 0) + (r.hours || 0);
+    }
+
     const emailMap: Record<string, any> = {};
     const slackUsernameMap: Record<string, any> = {};
     const slackIdMap: Record<string, any> = {};
@@ -217,7 +228,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      // overtime_hours is NOT set here — it is written when admin approves hub_overtime_requests
+      // Compute actual OT from Slack hours vs approved OT request for this date.
+      // Requires 9+ raw hours (full shift + lunch), capped at admin-approved hours.
+      const approvedOT = hubUser ? (approvedOTMap[hubUser.id] || 0) : 0;
+      const actualOT = approvedOT > 0
+        ? parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2))
+        : 0;
+
       if (hubUser && firstOn) {
         const validLastOff = (lastOff && lastOff.ts > firstOn.ts) ? new Date(lastOff.ts * 1000).toISOString() : null;
         const row = {
@@ -225,6 +242,7 @@ Deno.serve(async (req) => {
           date: shiftDate,
           hours_raw: parseFloat(hoursRaw.toFixed(2)),
           hours_capped: parseFloat(hoursCapped.toFixed(2)),
+          overtime_hours: actualOT,
           first_on: new Date(firstOn.ts * 1000).toISOString(),
           last_off: validLastOff,
           updated_at: new Date().toISOString(),

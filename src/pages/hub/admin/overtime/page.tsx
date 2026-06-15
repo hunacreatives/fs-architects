@@ -62,25 +62,38 @@ export default function AdminOvertimePage() {
       updated_at: new Date().toISOString(),
     }).eq('id', selected.id);
 
-    // On approval, sum all approved OT for this contractor on this date and write to hub_daily_hours
+    // On approval, compute actual OT earned from stored Slack hours_raw.
+    // Requires 9+ raw hours (full shift + lunch). Only applies to past/today dates —
+    // future dates will be handled automatically when slack-attendance runs that day.
     if (status === 'approved') {
-      const { data: approvedForDate } = await supabase
-        .from('hub_overtime_requests')
-        .select('hours')
-        .eq('contractor_id', selected.contractor_id)
-        .eq('date', selected.date)
-        .eq('status', 'approved');
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+      if (selected.date <= today) {
+        const { data: approvedForDate } = await supabase
+          .from('hub_overtime_requests')
+          .select('hours')
+          .eq('contractor_id', selected.contractor_id)
+          .eq('date', selected.date)
+          .eq('status', 'approved');
 
-      // Include the current request (just approved above) in the total
-      const previousHours = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0);
-      const totalOT = previousHours + (selected.hours || 0);
+        const totalApproved = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0) + (selected.hours || 0);
 
-      await supabase.from('hub_daily_hours').upsert({
-        user_id: selected.contractor_id,
-        date: selected.date,
-        overtime_hours: totalOT,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,date' });
+        const { data: dayRow } = await supabase
+          .from('hub_daily_hours')
+          .select('hours_raw')
+          .eq('user_id', selected.contractor_id)
+          .eq('date', selected.date)
+          .maybeSingle();
+
+        const rawHours = dayRow?.hours_raw ?? 0;
+        const actualOT = Math.min(Math.max(0, rawHours - 9), totalApproved);
+
+        await supabase.from('hub_daily_hours').upsert({
+          user_id: selected.contractor_id,
+          date: selected.date,
+          overtime_hours: actualOT,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,date' });
+      }
     }
 
     setUpdating(false);

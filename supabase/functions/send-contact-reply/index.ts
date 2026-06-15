@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       .email-body{padding:32px 20px!important}
       .email-header{padding:24px 20px!important}
       .email-footer{padding:20px!important}
-      .logo-img{height:28px!important}
+      .logo-img{height:36px!important}
     }
   </style>
 </head>
@@ -69,8 +69,8 @@ Deno.serve(async (req) => {
                    alt="FS Architects"
                    class="logo-img"
                    width="auto"
-                   height="32"
-                   style="display:block;height:32px;width:auto;border:0;outline:0;text-decoration:none">
+                   height="48"
+                   style="display:block;height:48px;width:auto;border:0;outline:0;text-decoration:none">
             </td>
           </tr>
 

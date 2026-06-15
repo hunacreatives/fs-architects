@@ -385,7 +385,8 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
       contractor_id: fields.contractorId,
     }).select('id').single();
 
-    const blob = new Blob([html], { type: 'text/html' });
+    const printHtml = html.replace('</body>', '<script>window.onload=function(){window.print();}</script></body>');
+    const blob = new Blob([printHtml], { type: 'text/html' });
     window.open(URL.createObjectURL(blob), '_blank');
 
     setSaving(false);

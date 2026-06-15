@@ -216,7 +216,8 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
         .insert({ document_id: doc.id, contractor_id: contractorId });
     }
 
-    const blob = new Blob([previewHtml], { type: 'text/html' });
+    const printHtml = previewHtml.replace('</body>', '<script>window.onload=function(){window.print();}</script></body>');
+    const blob = new Blob([printHtml], { type: 'text/html' });
     window.open(URL.createObjectURL(blob), '_blank');
 
     setSaving(false);

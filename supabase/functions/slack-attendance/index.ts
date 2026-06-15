@@ -120,14 +120,16 @@ Deno.serve(async (req) => {
     // Get all active contractors
     const { data: contractors } = await supabase
       .from('hub_users')
-      .select('id, full_name, avatar_url, department, email, status, slack_username, payment_type, shift_start')
+      .select('id, full_name, avatar_url, department, email, status, slack_username, slack_id, payment_type, shift_start')
       .eq('status', 'active');
 
     const emailMap: Record<string, any> = {};
     const slackUsernameMap: Record<string, any> = {};
+    const slackIdMap: Record<string, any> = {};
     for (const c of contractors || []) {
       emailMap[c.email?.toLowerCase()] = c;
       if (c.slack_username) slackUsernameMap[c.slack_username.toLowerCase().replace(/^@/, '')] = c;
+      if (c.slack_id) slackIdMap[c.slack_id.trim()] = c;
     }
 
     const slackIds = [...new Set(Object.keys(userPunches))];
@@ -155,7 +157,7 @@ Deno.serve(async (req) => {
       const punches = userPunches[slackId] || [];
       const email = slackEmailMap[slackId];
       const displayName = slackDisplayNameMap[slackId];
-      const hubUser = (email ? emailMap[email] : null) ?? (displayName ? slackUsernameMap[displayName] : null);
+      const hubUser = slackIdMap[slackId] ?? (email ? emailMap[email] : null) ?? (displayName ? slackUsernameMap[displayName] : null);
       if (hubUser?.email) punchedEmails.add(hubUser.email);
       else if (email) punchedEmails.add(email);
 

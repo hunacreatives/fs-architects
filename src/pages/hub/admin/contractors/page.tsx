@@ -39,6 +39,7 @@ export default function ContractorsPage() {
       .from('hub_users')
       .select('*')
       .in('role', ['contractor', 'admin'])
+      .neq('is_developer', true)
       .order('full_name');
     setContractors((data as HubUser[]) ?? []);
     setLoading(false);

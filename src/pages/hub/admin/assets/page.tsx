@@ -57,7 +57,7 @@ export default function AssetsPage() {
     setLoading(true);
     const [{ data: a }, { data: u }] = await Promise.all([
       supabase.from('hub_assets').select('*, hub_users(full_name, avatar_url)').order('platform').order('account_name'),
-      supabase.from('hub_users').select('id, full_name, avatar_url').eq('status', 'active').order('full_name'),
+      supabase.from('hub_users').select('id, full_name, avatar_url').eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
     setAssets((a as HubAsset[]) ?? []);
     setContractors((u as HubUser[]) ?? []);

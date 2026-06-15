@@ -73,7 +73,7 @@ export default function ClientsPage() {
         .from('hub_clients')
         .select('*, hub_client_assignments(id, contractor_id, role, hub_users(id, full_name, avatar_url, department))')
         .order('client_name'),
-      supabase.from('hub_users').select('id, full_name, avatar_url, department, role').eq('status', 'active').order('full_name'),
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, role').eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
 
     if (clientsRes.error?.message?.includes('hub_client_assignments')) {

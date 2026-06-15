@@ -582,7 +582,8 @@ export default function AdminPayrollPage() {
         .select('id, full_name, avatar_url, hourly_rate, currency, department')
         .eq('payment_type', 'hourly')
         .eq('status', 'active')
-        .eq('role', 'contractor'); // exclude admins/owners from contractor fund transfer
+        .eq('role', 'contractor')
+        .neq('is_developer', true); // exclude admins/owners from contractor fund transfer
       if (!hourlyCs?.length) { setHourlyRequests([]); setHourlyBatch(null); return; }
       const ids = hourlyCs.map((c: any) => c.id);
       const { data: payouts } = await supabase
@@ -933,7 +934,8 @@ export default function AdminPayrollPage() {
         .from('hub_users')
         .select('id, full_name, role, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days')
         .eq('status', 'active')
-        .in('role', ['contractor', 'admin']),
+        .in('role', ['contractor', 'admin'])
+        .neq('is_developer', true),
       supabase
         .from('hub_daily_hours')
         .select('user_id, hours_capped, hours_raw, overtime_hours, date, is_manual')

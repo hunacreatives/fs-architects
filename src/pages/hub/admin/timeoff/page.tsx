@@ -88,7 +88,7 @@ export default function AdminTimeOffPage() {
     const yearEnd = `${year}-12-31`;
 
     const [usersRes, leavesRes] = await Promise.all([
-      supabase.from('hub_users').select('id, full_name, avatar_url, department, start_date, annual_pto_days, annual_sick_days').eq('status', 'active').eq('role', 'contractor'),
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, start_date, annual_pto_days, annual_sick_days').eq('status', 'active').eq('role', 'contractor').neq('is_developer', true),
       supabase.from('hub_time_off').select('contractor_id, type, status, start_date, end_date, half_day').gte('start_date', yearStart).lte('start_date', yearEnd).eq('status', 'approved'),
     ]);
 

@@ -94,7 +94,7 @@ export default function AnnouncementsPage() {
             body: { title: form.title, body: form.body, priority: form.priority, category: form.category, poster_name: hubUser?.full_name, poster_avatar: hubUser?.avatar_url },
           }).catch(() => {});
           // In-app notifications for all active contractors
-          supabase.from('hub_users').select('id').eq('status', 'active').eq('role', 'contractor').then(({ data }) => {
+          supabase.from('hub_users').select('id').eq('status', 'active').eq('role', 'contractor').neq('is_developer', true).then(({ data }) => {
             if (!data?.length) return;
             createHubNotifications(
               data.map(u => ({

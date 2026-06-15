@@ -94,7 +94,7 @@ export default function AdminPerformancePage() {
   const fetchAll = async () => {
     setLoading(true);
     const [cRes, rRes] = await Promise.all([
-      supabase.from('hub_users').select('id, full_name, avatar_url, department').eq('status', 'active').in('role', ['contractor', 'admin']).order('full_name'),
+      supabase.from('hub_users').select('id, full_name, avatar_url, department').eq('status', 'active').in('role', ['contractor', 'admin']).neq('is_developer', true).order('full_name'),
       supabase.from('hub_performance_reviews').select('*, hub_users!contractor_id(full_name, avatar_url), reviewer:hub_users!reviewer_id(full_name)').order('created_at', { ascending: false }),
     ]);
     setContractors((cRes.data as Contractor[]) ?? []);

@@ -5,13 +5,14 @@ import { HubDocRequest, HubSignAssignment } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 const DOC_TYPES = [
-  'Certificate of Engagement',
-  'Agreement Copy',
+  'Certificate of Employment',
+  'Employment Contract Copy',
+  'Certificate of Compensation',
+  'Payroll Summary',
+  'Work Clearance Certificate',
+  'Project Assignment Letter',
+  'Service Record',
   'NDA Copy',
-  'Payment Summary',
-  'Work Completion Certificate',
-  'Client Assignment Letter',
-  'Clearance Certificate',
   'Other',
 ];
 

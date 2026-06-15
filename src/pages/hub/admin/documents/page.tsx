@@ -36,7 +36,7 @@ function ReviewModal({ req, onClose, onSaved }: { req: HubDocRequest; onClose: (
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from('hub_doc_requests').update({ status, admin_notes: adminNotes || null, file_name: fileName || null, file_url: fileUrl || null }).eq('id', req.id);
+    const { error } = await supabase.from('hub_doc_requests').update({ status }).eq('id', req.id);
     if (error) {
       console.error('[doc request update error]', error);
       alert(`Save failed: ${error.message}`);

@@ -121,7 +121,8 @@ Deno.serve(async (req) => {
     const { data: contractors } = await supabase
       .from('hub_users')
       .select('id, full_name, avatar_url, department, email, status, slack_username, slack_id, payment_type, shift_start')
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .neq('is_developer', true);
 
     // Fetch approved OT for today + yesterday — past-midnight shifts start on the previous date
     // so shiftDate may be yesterday even when the function runs today.

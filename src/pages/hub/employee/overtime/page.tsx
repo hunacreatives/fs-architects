@@ -14,7 +14,12 @@ const statusLabels: Record<string, string> = {
   rejected: 'Rejected',
 };
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+const gracePeriodMin = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 3);
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+};
 
 export default function ContractorOvertimePage() {
   const { user } = useAuth();
@@ -83,7 +88,7 @@ export default function ContractorOvertimePage() {
             <i className="ri-timer-flash-line"></i>Overtime Pre-Approval Required
           </p>
           <p className="text-xs text-amber-600">
-            All overtime must be pre-approved before it's worked. Submit your request with the date and estimated hours, then wait for HR approval before clocking OT hours.
+            Submit overtime requests in advance or up to 3 days after the fact. Include the date, hours, and a reason — all requests require HR approval before they're counted in payroll.
           </p>
         </div>
 
@@ -161,7 +166,7 @@ export default function ContractorOvertimePage() {
                   <input
                     type="date"
                     value={date}
-                    min={today()}
+                    min={gracePeriodMin()}
                     onChange={(e) => { setDate(e.target.value); setFormError(''); }}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />

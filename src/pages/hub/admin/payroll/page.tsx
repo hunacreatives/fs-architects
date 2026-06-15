@@ -8,7 +8,7 @@ import { FULL_MONTHS, getPeriods, fmtCurrency as fmt, getNextPayrollCutoff, loca
 import { logAudit } from '@/lib/audit';
 import { getSetting, setSetting } from '@/lib/settings';
 import { DEMO_PAYOUTS, DEMO_CONTRACTORS } from '@/lib/demoData';
-import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
+import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeSplitOTPayFromDates } from '@/lib/payrollUtils';
 
 interface Contractor {
   id: string;
@@ -1062,7 +1062,7 @@ export default function AdminPayrollPage() {
             else otAtNew += ot;
           }
           derivedHourlyRate = newHourlyForOT;
-          overtimePay = otAtOld * oldHourlyForOT + otAtNew * newHourlyForOT;
+          overtimePay = computeSplitOTPayFromDates(otDates, changeInPeriod.effective_date, oldHourlyForOT, newHourlyForOT);
           pay = splitAccrual.accruedPay;
           accrualTotalOriginalCurrency = splitAccrual.oldPortion + splitAccrual.newPortion;
           proratedNote = `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
@@ -1076,7 +1076,7 @@ export default function AdminPayrollPage() {
             else hrsAtNew += h;
           }
           derivedHourlyRate = newHourly;
-          overtimePay = hrs.overtime * newHourly;
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly);
           pay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
           proratedNote = `${hrsAtOld.toFixed(1)}h @ ₱${oldHourly}/hr · ${hrsAtNew.toFixed(1)}h @ ₱${newHourly}/hr`;
         }
@@ -1090,10 +1090,10 @@ export default function AdminPayrollPage() {
         derivedHourlyRate = payType === 'fixed' ? (hourly || monthly / 176) : hourly;
 
         if (payType === 'hourly') {
-          overtimePay = hrs.overtime * derivedHourlyRate;
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate);
           pay = hrs.capped * derivedHourlyRate;
         } else {
-          overtimePay = hrs.overtime * derivedHourlyRate;
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate);
           const today = localToday();
           const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
           const autoPayroll = isAutoPayrollContractor(c as Contractor);

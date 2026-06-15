@@ -161,7 +161,7 @@ export default function ContractorOvertimePage() {
                   <input
                     type="date"
                     value={date}
-                    max={today()}
+                    min={today()}
                     onChange={(e) => { setDate(e.target.value); setFormError(''); }}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />

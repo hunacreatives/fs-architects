@@ -162,6 +162,35 @@ export function dateBefore(dateStr: string, days = 1) {
   return d.toISOString().slice(0, 10);
 }
 
+// DOLE overtime multipliers: 1.25× for regular weekdays, 1.30× for rest days (Sat/Sun)
+export function getOTMultiplier(date: string): number {
+  const day = new Date(date + 'T12:00:00').getDay(); // 0=Sun, 6=Sat
+  return (day === 0 || day === 6) ? 1.30 : 1.25;
+}
+
+// Compute OT pay from a date→hours map, applying per-date DOLE multipliers
+export function computeOTPayFromDates(
+  otDates: Record<string, number>,
+  rate: number
+): number {
+  return Object.entries(otDates).reduce((sum, [date, hours]) => {
+    return sum + hours * rate * getOTMultiplier(date);
+  }, 0);
+}
+
+// Prorated OT pay: split by a rate-change date (pre vs post raise)
+export function computeSplitOTPayFromDates(
+  otDates: Record<string, number>,
+  splitDate: string,
+  oldRate: number,
+  newRate: number
+): number {
+  return Object.entries(otDates).reduce((sum, [date, hours]) => {
+    const rate = date < splitDate ? oldRate : newRate;
+    return sum + hours * rate * getOTMultiplier(date);
+  }, 0);
+}
+
 function clampDayUnits(hours: number, scheduledDays: number) {
   if (scheduledDays <= 0) return 0;
   return Math.min(hours / 8, scheduledDays);

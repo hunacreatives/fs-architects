@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const NOTIFY_EMAIL = 'contact@fsarchitects.ph';
+const NOTIFY_EMAIL = 'info@fsarchitects.ph';
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph';
 
 const supabase = createClient(

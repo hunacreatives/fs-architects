@@ -1,8 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'contact@fsarchitects.ph';
-const REPLY_TO = 'contact@fsarchitects.ph';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'info@fsarchitects.ph';
+const REPLY_TO = 'info@fsarchitects.ph';
 const SUPABASE_URL_VAR = Deno.env.get('SUPABASE_URL')!;
 const LOGO_URL = Deno.env.get('LOGO_URL') ?? `${SUPABASE_URL_VAR}/storage/v1/object/public/brand/fs-architects-logo.jpg`;
 
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
           <!-- Header -->
           <tr>
-            <td class="email-header" style="background:#111111;padding:28px 40px;border-bottom:3px solid #FF6B35">
+            <td class="email-header" style="background:#334049;padding:28px 40px">
               <img src="${LOGO_URL}"
                    alt="FS Architects"
                    class="logo-img"
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
                 <tr>
                   <td style="padding:8px 0 4px">
                     <a href="https://calendly.com/fsarchitects/30min"
-                       style="display:inline-block;background:#111111;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:14px 32px;border-radius:3px;text-decoration:none">
+                       style="display:inline-block;background:#334049;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:14px 32px;border-radius:3px;text-decoration:none">
                       Book a Call &rarr;
                     </a>
                   </td>
@@ -95,18 +95,18 @@ Deno.serve(async (req) => {
 
           <!-- Footer -->
           <tr>
-            <td class="email-footer" style="background:#111111;padding:24px 40px">
+            <td class="email-footer" style="background:#334049;padding:24px 40px">
               <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                 <tr>
-                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;color:#888888;letter-spacing:0.08em;text-transform:uppercase">
+                  <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;color:#ffffff;letter-spacing:0.08em;text-transform:uppercase">
                     FS Architects
                   </td>
                   <td align="right" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px">
-                    <a href="mailto:contact@fsarchitects.ph" style="color:#FF6B35;text-decoration:none">contact@fsarchitects.ph</a>
+                    <a href="mailto:info@fsarchitects.ph" style="color:#a8b9c9;text-decoration:none">info@fsarchitects.ph</a>
                   </td>
                 </tr>
                 <tr>
-                  <td colspan="2" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;color:#555555;padding-top:4px">
+                  <td colspan="2" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;color:#a8b9c9;padding-top:4px">
                     Cebu City, Philippines
                   </td>
                 </tr>

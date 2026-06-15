@@ -67,7 +67,7 @@ export default function ContractorOnboardingPage() {
 
         {/* Logo */}
         <div className="flex items-center justify-center">
-          <img src="/images/fs-architects-logo-horizontal.jpg" alt="FS Architects" className="h-9 w-auto" />
+          <img src="/images/logo-wordmark.png" alt="FS Architects" className="h-8 w-auto" />
         </div>
 
         {/* Progress */}

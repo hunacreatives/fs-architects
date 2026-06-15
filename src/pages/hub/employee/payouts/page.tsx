@@ -87,15 +87,7 @@ function generatePayslipHTML(opts: {
   <table style="width:100%;border-collapse:collapse;padding-bottom:20px;border-bottom:3px solid #1c2b3a;margin-bottom:28px;">
     <tr>
       <td style="vertical-align:middle;">
-        <table style="border-collapse:collapse;"><tr>
-          <td style="vertical-align:middle;padding-right:14px;">
-            <img src="${logoUrl}" alt="FS Architects" style="height:44px;width:auto;object-fit:contain;display:block;" onerror="this.style.display='none'" />
-          </td>
-          <td style="vertical-align:middle;">
-            <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">FS Architects</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · fsarchitects.ph</div>
-          </td>
-        </tr></table>
+        <img src="${logoUrl}" alt="FS Architects" style="height:60px;width:auto;object-fit:contain;display:block;" onerror="this.style.display='none'" />
       </td>
       <td style="vertical-align:top;text-align:right;">
         <div style="font-size:22px;font-weight:800;color:#1c2b3a;letter-spacing:3px;">PAYSLIP</div>

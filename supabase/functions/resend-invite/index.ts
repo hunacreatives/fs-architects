@@ -155,8 +155,8 @@ Deno.serve(async (req) => {
     const { hashed_token } = linkData.properties;
     const type = isReset ? 'recovery' : 'invite';
     const destination = isReset
-      ? `${HUB_BASE_URL}/hub/reset-password?token_hash=${hashed_token}&type=${type}`
-      : `${HUB_BASE_URL}/hub/signup?invite=1&token_hash=${hashed_token}&type=${type}`;
+      ? `${HUB_BASE_URL}/hub/reset-password?token_hash=${encodeURIComponent(hashed_token)}&type=${type}`
+      : `${HUB_BASE_URL}/hub/signup?invite=1&token_hash=${encodeURIComponent(hashed_token)}&type=${type}`;
 
     const html = emailHtml(firstName, destination, isReset);
     const subject = isReset

@@ -53,28 +53,29 @@ function generateCOEHtml(
 <meta charset="UTF-8" />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; background: #fff; line-height: 1.6; }
-  .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 22mm 22mm 22mm; display: flex; flex-direction: column; }
-  .header { display: flex; align-items: center; justify-content: space-between; background: #334049; margin: -18mm -22mm 0 -22mm; padding: 14pt 22pt; margin-bottom: 20pt; }
-  .logo-block img { height: 54pt; width: auto; display: block; filter: invert(1) brightness(2); }
-  .header-contact { text-align: right; font-size: 8.5pt; color: #a8b9c9; line-height: 1.8; }
+  html, body { width: 210mm; height: 297mm; background: #fff; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; line-height: 1.6; }
+  .page { width: 210mm; height: 297mm; padding: 0 22mm 0 22mm; display: flex; flex-direction: column; overflow: hidden; }
+  .header { display: flex; align-items: center; justify-content: space-between; background: #334049; margin: 0 -22mm; padding: 12pt 22pt; flex-shrink: 0; }
+  .logo-block img { height: 48pt; width: auto; display: block; filter: invert(1) brightness(2); }
+  .header-contact { text-align: right; font-size: 8pt; color: #a8b9c9; line-height: 1.8; }
   .header-rule { display: none; }
-  .doc-label { font-size: 8.5pt; letter-spacing: 0.15em; text-transform: uppercase; color: #666; font-family: Arial, sans-serif; margin-bottom: 4pt; }
-  .doc-title { font-size: 17pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 6pt; font-family: Arial, sans-serif; }
-  .doc-subtitle { font-size: 9.5pt; color: #555; font-family: Arial, sans-serif; margin-bottom: 28pt; }
-  .ref-line { font-size: 9pt; color: #555; margin-bottom: 28pt; font-family: Arial, sans-serif; }
-  p { text-align: justify; margin-bottom: 12pt; font-size: 11pt; }
+  .body-wrap { flex: 1; display: flex; flex-direction: column; padding: 18pt 0 0 0; overflow: hidden; }
+  .doc-label { font-size: 8pt; letter-spacing: 0.15em; text-transform: uppercase; color: #666; font-family: Arial, sans-serif; margin-bottom: 3pt; }
+  .doc-title { font-size: 16pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 4pt; font-family: Arial, sans-serif; }
+  .doc-subtitle { font-size: 9pt; color: #555; font-family: Arial, sans-serif; margin-bottom: 20pt; }
+  p { text-align: justify; margin-bottom: 10pt; font-size: 10.5pt; }
   .body-content { flex: 1; }
-  .divider { border: none; border-top: 0.75pt solid #ccc; margin: 20pt 0; }
-  .sig-block { margin-top: 36pt; }
-  .sig-line { border-top: 1pt solid #111; width: 220pt; margin-bottom: 3pt; }
-  .sig-name { font-size: 10.5pt; font-weight: bold; font-family: Arial, sans-serif; }
-  .sig-title { font-size: 9pt; color: #555; font-family: Arial, sans-serif; }
-  .sig-date { font-size: 9pt; color: #777; font-family: Arial, sans-serif; margin-top: 2pt; }
-  .footer-band { background: #334049; margin: 32pt -22mm -22mm -22mm; padding: 14pt 22pt; }
-  .footer-band-ref { font-size: 8pt; color: #a8b9c9; font-family: Arial, sans-serif; letter-spacing: 0.08em; margin-bottom: 5pt; }
-  .footer-band-text { font-size: 7.5pt; color: #7a99af; font-family: Arial, sans-serif; line-height: 1.65; }
-  @media print { body { background: #fff; } .page { margin: 0; padding: 15mm 18mm 18mm 18mm; } @page { size: A4; margin: 0; } }
+  .sig-block { margin-top: 24pt; flex-shrink: 0; }
+  .sig-line { border-top: 1pt solid #111; width: 200pt; margin-bottom: 3pt; }
+  .sig-name { font-size: 10pt; font-weight: bold; font-family: Arial, sans-serif; }
+  .sig-title { font-size: 8.5pt; color: #555; font-family: Arial, sans-serif; }
+  .sig-date { font-size: 8.5pt; color: #777; font-family: Arial, sans-serif; margin-top: 2pt; }
+  .footer-band { background: #334049; margin: 16pt -22mm 0 -22mm; padding: 12pt 22pt; flex-shrink: 0; }
+  .footer-band-ref { font-size: 7.5pt; color: #a8b9c9; font-family: Arial, sans-serif; letter-spacing: 0.08em; margin-bottom: 4pt; }
+  .footer-band-text { font-size: 7pt; color: #7a99af; font-family: Arial, sans-serif; line-height: 1.6; }
+  @page { size: A4 portrait; margin: 0; }
+  @media print { html, body { width: 210mm; height: 297mm; } .page { width: 210mm; height: 297mm; } }
 </style>
 </head>
 <body>
@@ -90,27 +91,29 @@ function generateCOEHtml(
   </div>
   <hr class="header-rule" />
 
-  <div class="body-content">
-    <div class="doc-label">Official Document</div>
-    <div class="doc-title">Certificate of Employment</div>
-    <div class="doc-subtitle">FS Architects · Cebu City, Philippines</div>
+  <div class="body-wrap">
+    <div class="body-content">
+      <div class="doc-label">Official Document</div>
+      <div class="doc-title">Certificate of Employment</div>
+      <div class="doc-subtitle">FS Architects · Cebu City, Philippines</div>
 
-    <p>TO WHOM IT MAY CONCERN:</p>
+      <p>TO WHOM IT MAY CONCERN:</p>
 
-    <p>This is to certify that <strong>${employeeName}</strong> is a <strong>${employmentStatus}</strong> employee of <strong>FS Architects</strong>${deptLine}, holding the position of <strong>${role}</strong>${serviceLine ? ', ' + serviceLine : ''}, ${rateLine}as of the date of this certification.</p>
+      <p>This is to certify that <strong>${employeeName}</strong> is a <strong>${employmentStatus}</strong> employee of <strong>FS Architects</strong>${deptLine}, holding the position of <strong>${role}</strong>${serviceLine ? ', ' + serviceLine : ''}, ${rateLine}as of the date of this certification.</p>
 
-    <p>${purposeLine}</p>
+      <p>${purposeLine}</p>
 
-    <p>This certification is issued in good faith to attest to the truthfulness of the aforementioned facts.</p>
-  </div>
+      <p>This certification is issued in good faith to attest to the truthfulness of the aforementioned facts.</p>
+    </div>
 
-  <div class="sig-block">
-    <p style="margin-bottom:28pt;">Issued on <strong>${fmt(issuedDate)}</strong> at Cebu City, Philippines.</p>
-    <div class="sig-line"></div>
-    <div class="sig-name">Fretz I. Suralta</div>
-    <div class="sig-title">Owner / Principal Architect</div>
-    <div class="sig-title">FS Architects</div>
-    <div class="sig-date">${fmt(issuedDate)}</div>
+    <div class="sig-block">
+      <p style="margin-bottom:22pt;">Issued on <strong>${fmt(issuedDate)}</strong> at Cebu City, Philippines.</p>
+      <div class="sig-line"></div>
+      <div class="sig-name">Fretz I. Suralta</div>
+      <div class="sig-title">Owner / Principal Architect</div>
+      <div class="sig-title">FS Architects</div>
+      <div class="sig-date">${fmt(issuedDate)}</div>
+    </div>
   </div>
 
   <div class="footer-band">

@@ -161,12 +161,14 @@ Deno.serve(async (req) => {
   try {
     const {
       name, email, role, job_id, expected_rate,
-      portfolio_link, resume_link,
+      portfolio_link,
+      portfolio_base64, portfolio_filename, portfolio_mime,
+      resume_link,
       resume_filename, resume_base64, resume_mime,
       message,
     } = await req.json();
 
-    if (!name || !email || !role || !expected_rate || !message) {
+    if (!name || !email || !role || !message) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: cors });
     }
 
@@ -175,14 +177,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'A resume is required to apply.' }), { status: 400, headers: cors });
     }
 
-    const isGraphicDesigner = (job_id || '').toLowerCase().includes('graphic') || role.toLowerCase().includes('graphic');
-    if (isGraphicDesigner && !portfolio_link?.trim()) {
-      return new Response(JSON.stringify({ error: 'A portfolio link is required for graphic design roles.' }), { status: 400, headers: cors });
-    }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Insert immediately — Drive upload happens in the background after response
+    // Insert immediately — Drive uploads happen in the background after response
     const { data: inserted, error: insertError } = await supabase
       .from('hub_job_applications')
       .insert({
@@ -190,7 +187,7 @@ Deno.serve(async (req) => {
         role: role.trim(),
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        expected_rate: expected_rate.trim(),
+        expected_rate: expected_rate?.trim() || '',
         portfolio_link: portfolio_link?.trim() || null,
         resume_link: resume_link || null,
         resume_filename: resume_filename || null,
@@ -205,7 +202,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: insertError.message }), { status: 500, headers: cors });
     }
 
-    // Background: Drive upload + update record + notify — does not block the response
+    // Background: Drive uploads + update record + notify — does not block the response
     (async () => {
       try {
         if (resume_base64 && resume_filename && inserted?.id) {
@@ -216,6 +213,15 @@ Deno.serve(async (req) => {
             .eq('id', inserted.id);
         }
       } catch (_) { /* Drive upload failure is non-fatal */ }
+      try {
+        if (portfolio_base64 && portfolio_filename && inserted?.id) {
+          const portfolioDrive = await uploadResumeToDrive(portfolio_filename, portfolio_mime, portfolio_base64);
+          await supabase
+            .from('hub_job_applications')
+            .update({ portfolio_link: portfolioDrive.url })
+            .eq('id', inserted.id);
+        }
+      } catch (_) { /* Portfolio upload failure is non-fatal */ }
       await notifyAdmins(supabase, name.trim(), role.trim()).catch(() => {});
     })();
 

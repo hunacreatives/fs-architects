@@ -1,5 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '@/lib/supabase';
 
 interface ApplicationFormProps {
   dark?: boolean;
@@ -56,6 +57,17 @@ export default function ApplicationForm({ dark = false, positions = [], selected
     return errs;
   };
 
+  const toBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const errs = validate();
@@ -67,31 +79,44 @@ export default function ApplicationForm({ dark = false, positions = [], selected
     setIsSubmitting(true);
     setSubmitStatus('idle');
     try {
-      const params = new URLSearchParams();
-      params.append('cc', 'contact@hunacreatives.com');
-      params.append('position', formData.position);
-      params.append('firstName', formData.firstName);
-      params.append('lastName', formData.lastName);
-      params.append('email', formData.email);
-      params.append('message', formData.message);
-      params.append('resume', resumeFile ? resumeFile.name : 'Uncollectable');
-      if (portfolioType === 'link') {
-        params.append('portfolioLink', formData.portfolioLink);
-      } else {
-        params.append('portfolioFile', portfolioFile ? portfolioFile.name : 'Uncollectable');
+      const name = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
+
+      const resume_base64 = resumeFile ? await toBase64(resumeFile) : undefined;
+      const resume_filename = resumeFile?.name;
+      const resume_mime = resumeFile?.type;
+
+      let portfolio_base64: string | undefined;
+      let portfolio_filename: string | undefined;
+      let portfolio_mime: string | undefined;
+      if (portfolioType === 'upload' && portfolioFile) {
+        portfolio_base64 = await toBase64(portfolioFile);
+        portfolio_filename = portfolioFile.name;
+        portfolio_mime = portfolioFile.type;
       }
-      const response = await fetch('https://readdy.ai/api/form/d6jmlluc9mmd5omn5pag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
+
+      const { error } = await supabase.functions.invoke('submit-careers', {
+        body: {
+          name,
+          email: formData.email.trim(),
+          role: formData.position || 'Open Application',
+          message: formData.message.trim(),
+          resume_base64,
+          resume_filename,
+          resume_mime,
+          portfolio_link: portfolioType === 'link' ? formData.portfolioLink.trim() || undefined : undefined,
+          portfolio_base64,
+          portfolio_filename,
+          portfolio_mime,
+        },
       });
-      if (response.ok) {
+
+      if (error) {
+        setSubmitStatus('error');
+      } else {
         setSubmitStatus('success');
         setFormData({ position: '', firstName: '', lastName: '', email: '', message: '', portfolioLink: '' });
         setResumeFile(null);
         setPortfolioFile(null);
-      } else {
-        setSubmitStatus('error');
       }
     } catch {
       setSubmitStatus('error');
@@ -151,10 +176,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
       </div>
 
       {/* Form — open layout, no box */}
-      <form id="careers-application-form" data-readdy-form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        {/* Hidden CC field — always submitted with every application */}
-        <input type="hidden" name="cc" value="contact@hunacreatives.com" />
-
+      <form id="careers-application-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
         {/* Position */}
         {positions.length > 0 && (
           <div>

@@ -134,6 +134,7 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
 
+  const [manualMode, setManualMode] = useState(false);
   const [contractorId, setContractorId] = useState('');
   const [employeeName, setEmployeeName] = useState('');
   const [role, setRole] = useState('');
@@ -149,6 +150,12 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
     const c = contractors.find(x => x.id === id);
     setContractorId(id);
     setEmployeeName(c?.full_name ?? '');
+  };
+
+  const switchMode = (manual: boolean) => {
+    setManualMode(manual);
+    setContractorId('');
+    setEmployeeName('');
   };
 
   const handlePreview = async () => {
@@ -171,7 +178,7 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
   };
 
   const handleSave = async () => {
-    if (!contractorId) return;
+    if (!employeeName.trim()) return;
     setSaving(true);
 
     const title = `Certificate of Employment – ${employeeName}`;
@@ -200,9 +207,11 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
       return;
     }
 
-    await supabase
-      .from('hub_sign_assignments')
-      .insert({ document_id: doc.id, contractor_id: contractorId });
+    if (contractorId) {
+      await supabase
+        .from('hub_sign_assignments')
+        .insert({ document_id: doc.id, contractor_id: contractorId });
+    }
 
     const blob = new Blob([previewHtml], { type: 'text/html' });
     window.open(URL.createObjectURL(blob), '_blank');
@@ -216,7 +225,7 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
     window.open(URL.createObjectURL(blob), '_blank');
   };
 
-  const canPreview = !!contractorId && !!role.trim() && !!issuedDate;
+  const canPreview = !!(manualMode ? employeeName.trim() : contractorId) && !!role.trim() && !!issuedDate;
 
   const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]';
   const labelCls = 'block text-xs font-medium text-gray-600 mb-1';
@@ -253,12 +262,29 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
           <div className="overflow-y-auto flex-1 p-5 space-y-4">
 
             <div>
-              <label className={labelCls}>Employee *</label>
-              <select value={contractorId} onChange={e => handleContractorChange(e.target.value)}
-                className={`${inputCls} bg-white cursor-pointer`}>
-                <option value="">Select employee…</option>
-                {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelCls}>Employee *</label>
+                <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+                  <button type="button" onClick={() => switchMode(false)}
+                    className={`text-xs px-2.5 py-1 rounded-md transition-all cursor-pointer ${!manualMode ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-400 hover:text-gray-600'}`}>
+                    From hub
+                  </button>
+                  <button type="button" onClick={() => switchMode(true)}
+                    className={`text-xs px-2.5 py-1 rounded-md transition-all cursor-pointer ${manualMode ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-400 hover:text-gray-600'}`}>
+                    Manual
+                  </button>
+                </div>
+              </div>
+              {manualMode ? (
+                <input type="text" value={employeeName} onChange={e => setEmployeeName(e.target.value)}
+                  placeholder="Full name of employee" className={inputCls} />
+              ) : (
+                <select value={contractorId} onChange={e => handleContractorChange(e.target.value)}
+                  className={`${inputCls} bg-white cursor-pointer`}>
+                  <option value="">Select employee…</option>
+                  {contractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                </select>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

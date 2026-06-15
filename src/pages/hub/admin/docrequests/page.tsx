@@ -35,10 +35,18 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
   const [fileName, setFileName] = useState(req.file_name || '');
   const [fileUrl, setFileUrl] = useState(req.file_url || '');
   const [saving, setSaving] = useState(false);
+  const [notifying, setNotifying] = useState(false);
+  const [notified, setNotified] = useState(!!(req as any).pickup_notified_at);
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from('hub_doc_requests').update({ status }).eq('id', req.id);
+    const { error } = await supabase.from('hub_doc_requests').update({
+      status,
+      admin_notes: adminNotes || null,
+      file_name: fileName || null,
+      file_url: fileUrl || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', req.id);
     if (error) {
       console.error('[doc request update error]', error);
       alert(`Save failed: ${error.message}`);
@@ -47,6 +55,14 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
     }
     setSaving(false);
     onSaved();
+  };
+
+  const handleNotifyPickup = async () => {
+    setNotifying(true);
+    await supabase.from('hub_doc_requests').update({ pickup_notified_at: new Date().toISOString() }).eq('id', req.id);
+    await supabase.functions.invoke('notify-doc-request-ready', { body: { doc_request_id: req.id } });
+    setNotified(true);
+    setNotifying(false);
   };
 
   const inputCls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]';
@@ -81,6 +97,31 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
             </select>
           </div>
 
+          {status === 'completed' && (
+            <div className={`rounded-xl border p-3.5 flex items-center justify-between gap-3 ${notified ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+              <div className="flex items-center gap-2.5">
+                <i className={`text-base ${notified ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-store-2-line text-amber-500'}`}></i>
+                <div>
+                  <p className={`text-xs font-semibold ${notified ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {notified ? 'Employee notified' : 'Notify employee'}
+                  </p>
+                  <p className={`text-[10px] ${notified ? 'text-emerald-500' : 'text-amber-500'}`}>
+                    {notified ? 'Email & Slack sent — document available for pickup' : 'Send email & Slack: document is available for pickup'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleNotifyPickup}
+                disabled={notifying || notified}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap cursor-pointer disabled:opacity-50 transition-colors ${
+                  notified ? 'bg-emerald-100 text-emerald-700' : 'bg-[#1c2b3a] text-white hover:bg-[#0f1c28]'
+                }`}
+              >
+                {notifying ? <><i className="ri-loader-4-line animate-spin mr-1"></i>Sending…</> : notified ? '✓ Sent' : 'Notify Pickup'}
+              </button>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes</label>
             <textarea
@@ -103,7 +144,7 @@ function ReviewModal({ req, onClose, onSaved }: ReviewModalProps) {
 
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50">
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>

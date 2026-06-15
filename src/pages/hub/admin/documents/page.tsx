@@ -721,7 +721,7 @@ export default function AdminDocumentsPage() {
                                   ? <i className="ri-loader-4-line animate-spin text-sm"></i>
                                   : <i className="ri-google-fill text-sm"></i>}
                               </button>
-                            )
+                            )}
                           </div>
                         </div>
 

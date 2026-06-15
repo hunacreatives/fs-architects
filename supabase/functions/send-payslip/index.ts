@@ -130,7 +130,7 @@ async function sendPayslip(payout_id: string) {
       <table style="width:100%;border-collapse:collapse;">
         <tr>
           <td style="vertical-align:top;">
-            <img src="https://fsarchitects.ph/images/fs-architects-logo-horizontal.png" alt="FS Architects" height="36" style="display:block;margin-bottom:14px;" />
+            <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
             <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0;letter-spacing:-0.5px;">Payment Receipt</h1>
             <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">Pay Period: <span style="color:#d1d5db;font-weight:600;">${periodLabel}</span></p>
           </td>

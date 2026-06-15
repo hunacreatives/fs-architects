@@ -74,7 +74,13 @@ export default function ContractorsPage() {
 
   const handleDelete = async (c: HubUser) => {
     setActionLoading(true);
-    await supabase.from('hub_users').delete().eq('id', c.id);
+    const { data, error } = await supabase.functions.invoke('delete-employee', {
+      body: { user_id: c.id },
+    });
+    if (error || data?.error) {
+      // Fallback: delete from hub_users directly
+      await supabase.from('hub_users').delete().eq('id', c.id);
+    }
     setActionLoading(false);
     setConfirm(null);
     fetchContractors();

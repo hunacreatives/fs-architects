@@ -703,7 +703,7 @@ export default function ContractorPayoutsPage() {
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                 <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
+                    <img src="/images/fs-architects-icon-white.png" alt="FS Architects" className="w-8 h-8 object-contain flex-shrink-0" />
                     <div>
                       <p className="text-white font-bold text-base">FS Architects</p>
                       <p className="text-white/40 text-xs mt-0.5">Fund Transfer Request</p>
@@ -866,7 +866,7 @@ export default function ContractorPayoutsPage() {
               {/* Payslip header */}
               <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
+                  <img src="/images/fs-architects-icon-white.png" alt="FS Architects" className="w-8 h-8 object-contain flex-shrink-0" />
                   <div>
                     <p className="text-white font-bold text-base">FS Architects</p>
                     <p className="text-white/40 text-xs mt-0.5">Employee Payment Summary</p>

@@ -126,19 +126,17 @@ async function sendPayslip(payout_id: string) {
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
-    <div style="background:#111827;padding:28px 36px;">
+    <div style="background:#111827;padding:24px 36px;">
       <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td style="vertical-align:top;">
-            <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
-            <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0;letter-spacing:-0.5px;">Payment Receipt</h1>
-            <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">Pay Period: <span style="color:#d1d5db;font-weight:600;">${periodLabel}</span></p>
+          <td style="vertical-align:middle;">
+            <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="28" style="display:block;" />
           </td>
-          <td style="vertical-align:top;text-align:right;white-space:nowrap;padding-left:16px;">
-            <p style="color:#6b7280;font-size:11px;margin:0 0 4px;text-transform:uppercase;letter-spacing:0.05em;">Invoice No.</p>
-            <p style="color:#fff;font-size:13px;font-weight:700;margin:0;">${invoiceNo}</p>
-            <p style="color:#6b7280;font-size:11px;margin:8px 0 2px;">Issued</p>
-            <p style="color:#d1d5db;font-size:12px;margin:0;">${issuedLabel}</p>
+          <td style="vertical-align:middle;text-align:right;padding-left:16px;white-space:nowrap;">
+            <p style="color:#fff;font-size:18px;font-weight:800;margin:0;letter-spacing:-0.3px;">Payment Receipt</p>
+            <p style="color:#6b7280;font-size:12px;margin:4px 0 0;">
+              ${periodLabel} &nbsp;·&nbsp; <span style="color:#9ca3af;">${invoiceNo}</span> &nbsp;·&nbsp; <span style="color:#9ca3af;">Issued ${issuedLabel}</span>
+            </p>
           </td>
         </tr>
       </table>

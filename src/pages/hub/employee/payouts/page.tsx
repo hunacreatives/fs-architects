@@ -3,7 +3,7 @@ import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPeriods, fmtTime, fmtDate, fmtPHP, localToday } from '@/lib/formatUtils';
-import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
+import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates } from '@/lib/payrollUtils';
 
 interface DayRow {
   date: string;
@@ -405,6 +405,10 @@ export default function ContractorPayoutsPage() {
   const totalHoursRaw = days.reduce((s, d) => s + d.hours_raw, 0);
   const totalHoursBillable = days.reduce((s, d) => s + d.hours_capped, 0);
   const totalOvertime = days.reduce((s, d) => s + (d.overtime_hours || 0), 0);
+  const otByDate: Record<string, number> = {};
+  for (const d of days) {
+    if (d.overtime_hours) otByDate[d.date] = (otByDate[d.date] || 0) + d.overtime_hours;
+  }
 
   // Prorated pay calculation using rate history (same logic as admin payroll page)
   const activePeriod = selectedPeriod ?? periods[periods.length - 1] ?? null;
@@ -455,12 +459,13 @@ export default function ContractorPayoutsPage() {
       basePay = splitAccrual.accruedPay;
       const oldOT = oldHourly || oldMonthly / 176;
       const newOT = newHourly || newMonthly / 176;
-      let otAtOld = 0, otAtNew = 0;
-      for (const d of days) {
-        if (d.date < changeInPeriod.effective_date) otAtOld += d.overtime_hours || 0;
-        else otAtNew += d.overtime_hours || 0;
-      }
-      overtimePay = otAtOld * oldOT + otAtNew * newOT;
+      overtimePay = computeOTPayFromDates(
+        Object.fromEntries(Object.entries(otByDate).filter(([d]) => d < changeInPeriod.effective_date)),
+        oldOT
+      ) + computeOTPayFromDates(
+        Object.fromEntries(Object.entries(otByDate).filter(([d]) => d >= changeInPeriod.effective_date)),
+        newOT
+      );
       otRate = newOT;
       proratedLabel = `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
     } else {
@@ -471,7 +476,7 @@ export default function ContractorPayoutsPage() {
       }
       basePay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
       otRate = newHourly;
-      overtimePay = totalOvertime * newHourly;
+      overtimePay = computeOTPayFromDates(otByDate, newHourly);
     }
   } else {
     const eff = rateAtStart;
@@ -500,7 +505,7 @@ export default function ContractorPayoutsPage() {
       basePay = totalHoursBillable * hourly;
       otRate = hourly;
     }
-    overtimePay = totalOvertime * otRate;
+    overtimePay = computeOTPayFromDates(otByDate, otRate);
   }
   const totalPay = basePay + overtimePay;
   const payoutAdjustments = (() => {
@@ -560,10 +565,11 @@ export default function ContractorPayoutsPage() {
   const handleHourlyRequest = async () => {
     if (!hubUser || !hourlyPeriod || submitting) return;
     const totalHoursBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
-    const totalOvertime = hourlyDays.reduce((s, d) => s + (d.overtime_hours || 0), 0);
     const rate = Number((hubUser as any).hourly_rate || 0);
     const basePay = totalHoursBillable * rate;
-    const overtimePay = totalOvertime * rate;
+    const hourlyOtByDate: Record<string, number> = {};
+    for (const d of hourlyDays) { if (d.overtime_hours) hourlyOtByDate[d.date] = (hourlyOtByDate[d.date] || 0) + d.overtime_hours; }
+    const overtimePay = computeOTPayFromDates(hourlyOtByDate, rate);
     const totalPay = basePay + overtimePay;
     setSubmitting(true);
     const { data, error } = await supabase.from('hub_payouts').upsert({

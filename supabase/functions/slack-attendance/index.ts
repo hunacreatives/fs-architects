@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
           last_punch: new Date(latestPunch.ts * 1000).toISOString(),
           punches: punchList,
           hours_today: parseFloat(hoursCapped.toFixed(2)),
-          overtime_today: 0,
+          overtime_today: actualOT,
         });
       }
     }

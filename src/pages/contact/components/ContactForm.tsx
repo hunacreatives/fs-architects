@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '@/lib/supabase';
 
 export default function ContactForm() {
   const { t } = useTranslation();
@@ -29,28 +30,27 @@ export default function ContactForm() {
     setStatus('sending');
 
     const form = e.currentTarget;
-    const data = new URLSearchParams();
     const elements = form.elements as HTMLFormControlsCollection;
-
+    const fields: Record<string, string> = {};
     Array.from(elements).forEach((el) => {
       const input = el as HTMLInputElement | HTMLTextAreaElement;
-      if (input.name) {
-        data.append(input.name, input.value);
-      }
+      if (input.name) fields[input.name] = input.value;
     });
 
     try {
-      const res = await fetch('https://readdy.ai/api/form/d6jlpnnrgrhbthj8n1eg', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: data.toString(),
+      const { error } = await supabase.functions.invoke('submit-contact', {
+        body: {
+          name: fields.name,
+          email: fields.email,
+          message: fields.message,
+        },
       });
-      if (res.ok) {
+      if (error) {
+        setStatus('error');
+      } else {
         setStatus('success');
         form.reset();
         setCharCount(0);
-      } else {
-        setStatus('error');
       }
     } catch {
       setStatus('error');
@@ -153,7 +153,6 @@ export default function ContactForm() {
             </div>
           ) : (
             <form
-              data-readdy-form
               id="contact-main-form"
               onSubmit={handleSubmit}
               className="flex flex-col gap-4 md:gap-5"

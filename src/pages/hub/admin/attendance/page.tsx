@@ -434,7 +434,7 @@ export default function AdminAttendancePage() {
     }
     if (isToday) {
       fetchLive();
-      const interval = setInterval(() => fetchLive(true), 60000);
+      const interval = setInterval(() => fetchLive(true), 15000);
       return () => clearInterval(interval);
     } else {
       fetchHistorical(selectedDate);

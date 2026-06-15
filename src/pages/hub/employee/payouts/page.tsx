@@ -39,10 +39,11 @@ function generatePayslipHTML(opts: {
   totalPay: number;
   generatedDate: string;
   logoUrl: string;
+  iconUrl: string;
 }) {
   const { name, department, period, days, paymentType, hourlyRate, monthlyRate, currency,
     totalDaysWorked, totalHoursRaw, totalHoursBillable, totalOvertime,
-    basePay, overtimePay, totalPay, generatedDate, logoUrl } = opts;
+    basePay, overtimePay, totalPay, generatedDate, logoUrl, iconUrl } = opts;
 
   const isUSD = currency === 'USD';
   const fmt = (val: number) => isUSD
@@ -54,7 +55,6 @@ function generatePayslipHTML(opts: {
     : `${isUSD ? 'USD' : 'PHP'} ${hourlyRate}.00 per hour`;
 
   const docNo = `FSA-${Date.now().toString().slice(-8)}`;
-  const iconUrl = logoUrl.replace('fs-architects-logo-horizontal.png', 'fs-architects-icon.png');
 
   const dayRows = days.map((d, i) => `
     <tr style="background:${i % 2 === 1 ? '#fafafa' : '#fff'};">
@@ -101,6 +101,14 @@ function generatePayslipHTML(opts: {
       </tr>
     </table>
     <div style="margin-top:18px;height:1px;background:#e5e7eb;"></div>
+  </div>
+
+  <!-- Certification statement -->
+  <div style="background:#f9fafb;border-left:3px solid #1c2b3a;padding:14px 16px;border-radius:0 6px 6px 0;margin-bottom:28px;">
+    <p style="font-size:12px;color:#374151;line-height:1.7;">
+      <strong>To Whom It May Concern:</strong><br>
+      This is to certify that <strong>${name}</strong>${department ? `, assigned to the <strong>${department}</strong> department,` : ''} is an active employee of <strong>FS Architects</strong>, an architecture firm based in Cebu, Philippines. This document serves as an official record of compensation rendered for the pay period indicated below, and may be used for financial, banking, or institutional purposes.
+    </p>
   </div>
 
   <!-- Employee · Period · Basis row -->
@@ -198,13 +206,6 @@ function generatePayslipHTML(opts: {
     </table>
   </div>
 
-  <!-- Certification note -->
-  <div style="border-left:2px solid #d1d5db;padding:10px 14px;margin-bottom:32px;">
-    <p style="font-size:11px;color:#6b7280;line-height:1.7;">
-      This is to certify that <strong style="color:#374151;">${name}</strong>${department ? `, assigned to the <strong style="color:#374151;">${department}</strong> department,` : ''} is an active employee of <strong style="color:#374151;">FS Architects</strong>, Cebu, Philippines. This document serves as an official record of compensation for the period indicated and may be used for financial, banking, or institutional purposes.
-    </p>
-  </div>
-
   <!-- Signature block -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:36px;">
     <tr>
@@ -229,21 +230,19 @@ function generatePayslipHTML(opts: {
   </table>
 
   <!-- Footer -->
-  <div style="border-top:1px solid #e5e7eb;padding-top:14px;display:flex;align-items:center;justify-content:space-between;">
-    <table style="width:100%;border-collapse:collapse;">
-      <tr>
-        <td style="vertical-align:middle;">
-          <div style="font-size:10px;color:#9ca3af;line-height:1.6;">
-            FS Architects · Cebu, Philippines · fsarchitects.ph<br>
-            Attendance recorded via internal time-tracking system. Present to banks or agencies as proof of income.
-          </div>
-        </td>
-        <td style="vertical-align:middle;text-align:right;padding-left:16px;width:48px;">
-          <img src="${iconUrl}" alt="FS Architects" style="height:28px;width:auto;opacity:0.15;display:block;margin-left:auto;" onerror="this.style.display='none'" />
-        </td>
-      </tr>
-    </table>
-  </div>
+  <table style="width:100%;border-collapse:collapse;border-top:1px solid #e5e7eb;padding-top:16px;">
+    <tr>
+      <td style="vertical-align:top;padding-top:16px;">
+        <div style="font-size:10px;color:#9ca3af;max-width:420px;line-height:1.7;">
+          This document is an officially issued payslip by FS Architects. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
+          <br>For verification, contact us at <strong>fsarchitects.ph</strong>.
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;padding-top:16px;">
+        <img src="${iconUrl}" alt="FS Architects" style="height:32px;width:auto;opacity:0.2;display:block;margin-left:auto;" onerror="this.style.display='none'" />
+      </td>
+    </tr>
+  </table>
 
 </body>
 </html>`;
@@ -625,8 +624,24 @@ export default function ContractorPayoutsPage() {
     await fetchDays();
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!activePeriod) return;
+    const toDataUrl = async (url: string) => {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch { return url; }
+    };
+    const [logoDataUrl, iconDataUrl] = await Promise.all([
+      toDataUrl(`${window.location.origin}/images/fs-architects-logo-horizontal.png`),
+      toDataUrl(`${window.location.origin}/images/fs-architects-icon.png`),
+    ]);
     const html = generatePayslipHTML({
       name: hubUser?.full_name || '',
       department: (hubUser as any)?.department || null,
@@ -644,7 +659,8 @@ export default function ContractorPayoutsPage() {
       overtimePay: displayOvertimePay,
       totalPay: displayTotalPay,
       generatedDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-      logoUrl: `${window.location.origin}/images/fs-architects-logo-horizontal.png`,
+      logoUrl: logoDataUrl,
+      iconUrl: iconDataUrl,
     });
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:-9999px;';

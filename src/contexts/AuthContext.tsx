@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import { clearSupabaseAuthStorage, supabase } from '@/lib/supabase';
+import { clearSupabaseAuthStorage, supabase, supabaseUrl_, supabaseAnonKey_ } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
 
 interface AuthContextValue {
@@ -28,16 +28,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const profileRequestIdRef = useRef(0);
 
-  const loadHubUser = async (userId: string): Promise<HubUser | null> => {
+  const loadHubUser = async (userId: string, accessToken?: string): Promise<HubUser | null> => {
     try {
       const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000));
-      const query = supabase
-        .from('hub_users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-        .then(({ data }) => data ?? null);
-      return await Promise.race([query, timeout]);
+      const queryFn = async () => {
+        // If an access token is provided (right after sign-in), use it directly via fetch
+        // to avoid race conditions with the async IDB storage adapter not having flushed yet.
+        if (accessToken) {
+          const res = await fetch(
+            `${supabaseUrl_}/rest/v1/hub_users?id=eq.${userId}&select=*&limit=1`,
+            { headers: { apikey: supabaseAnonKey_, Authorization: `Bearer ${accessToken}` } }
+          );
+          const rows = await res.json();
+          return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+        }
+        const { data } = await supabase.from('hub_users').select('*').eq('id', userId).maybeSingle();
+        return data ?? null;
+      };
+      return await Promise.race([queryFn(), timeout]);
     } catch {
       return null;
     }
@@ -133,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('Sign-in succeeded but no user was returned.'), hubUser: null };
     }
 
-    const profile = await loadHubUser(signedInUser.id);
+    const profile = await loadHubUser(signedInUser.id, data.session?.access_token);
     if (!profile) {
       if (mountedRef.current) setLoading(false);
       return {

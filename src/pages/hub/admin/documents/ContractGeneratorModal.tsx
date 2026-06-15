@@ -61,7 +61,7 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
         <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
       </div>
       <div style="border-top:1pt solid #111;margin-bottom:4pt;"></div>
-      <p class="sig-label">Francis Fiel Roble &nbsp;|&nbsp; ${fmt(effectiveDate)}</p>
+      <p class="sig-label">Fretz I. Suralta, Owner/Principal Architect &nbsp;|&nbsp; ${fmt(effectiveDate)}</p>
     </div>
     <div>
       <p><strong>${contractorName}</strong><br />("Employee")</p>
@@ -128,7 +128,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
 
   <div class="doc-title">Employment Agreement</div>
   <p>This Employment Agreement ("Agreement") is entered into effective <strong>${fmt(effectiveDate)}</strong>, by and between:</p>
-  <p><strong>FS Architects</strong>, represented by <strong>Francis Fiel Roble</strong> ("Employer"),</p>
+  <p><strong>FS Architects</strong>, represented by <strong>Fretz I. Suralta</strong>, Owner/Principal Architect ("Employer"),</p>
   <p>and <strong>${contractorName}</strong> ("Employee").</p>
   <hr class="divider" />
 
@@ -220,7 +220,7 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
         <img src="${sigData}" style="height:70pt;width:auto;max-width:240pt;object-fit:contain;" />
       </div>
       <div style="border-top:1pt solid #111;margin-bottom:4pt;"></div>
-      <p class="sig-label">Francis Fiel Roble &nbsp;|&nbsp; ${fmt(effectiveDate)}</p>
+      <p class="sig-label">Fretz I. Suralta, Owner/Principal Architect &nbsp;|&nbsp; ${fmt(effectiveDate)}</p>
     </div>
     <div>
       <p><strong>${contractorName}</strong><br />("Employee")</p>

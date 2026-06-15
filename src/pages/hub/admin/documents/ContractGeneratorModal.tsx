@@ -128,87 +128,108 @@ function generateContractHTML(fields: ContractFields, sigData: string, logoData:
 
   <div class="doc-title">Employment Agreement</div>
   <p>This Employment Agreement ("Agreement") is entered into effective <strong>${fmt(effectiveDate)}</strong>, by and between:</p>
-  <p><strong>FS Architects</strong>, represented by <strong>Fretz I. Suralta</strong>, Owner/Principal Architect ("Employer"),</p>
+  <p><strong>FS Architects</strong>, a sole proprietorship/partnership duly registered under Philippine law, represented by <strong>Fretz I. Suralta</strong>, Owner/Principal Architect ("Employer"), with principal office at Cebu City, Philippines;</p>
   <p>and <strong>${contractorName}</strong> ("Employee").</p>
   <hr class="divider" />
 
-  <div class="section-title">1. Position &amp; Department</div>
-  <p>1.1 The Employee is engaged in the role of <strong>${role}</strong>, assigned to the <strong>${deptDisplay}</strong> department.</p>
-  <p>1.2 The Employee shall report directly to management or a designated supervisor, as determined by FS Architects.</p>
+  <div class="section-title">1. Nature of Employment &amp; Probationary Period</div>
+  <p>1.1 The Employee is engaged on a <strong>probationary basis</strong> for an initial period of <strong>six (6) months</strong> commencing on <strong>${fmt(termDate || effectiveDate)}</strong>, in accordance with Article 296 of the Labor Code of the Philippines.</p>
+  <p>1.2 During the probationary period, the Employee shall be evaluated against the following standards for regularization: (a) consistent attendance and punctuality; (b) quality and accuracy of work output; (c) professional conduct and teamwork; (d) adherence to FS Architects' policies and procedures; and (e) satisfactory performance of assigned responsibilities.</p>
+  <p>1.3 Upon successful completion of the probationary period and satisfactory performance of the above standards, the Employee shall acquire <strong>regular employment status</strong>.</p>
+  <p>1.4 FS Architects reserves the right to terminate the probationary employment prior to the six-month period if the Employee fails to meet the standards for regularization, subject to due process.</p>
   <hr class="divider" />
 
-  <div class="section-title">2. Scope of Work</div>
-  <p>2.1 The Employee's responsibilities shall include, but are not limited to:</p>
+  <div class="section-title">2. Position &amp; Department</div>
+  <p>2.1 The Employee is engaged in the role of <strong>${role}</strong>, assigned to the <strong>${deptDisplay}</strong> department.</p>
+  <p>2.2 The Employee shall report directly to management or a designated supervisor, as determined by FS Architects.</p>
+  <hr class="divider" />
+
+  <div class="section-title">3. Scope of Work</div>
+  <p>3.1 The Employee's responsibilities shall include, but are not limited to:</p>
   <ul>${respItems}</ul>
-  <p>2.2 The Employee may be assigned additional duties reasonably related to the above scope, as directed by FS Architects.</p>
+  <p>3.2 The Employee may be assigned additional duties reasonably related to the above scope, consistent with the Employee's role and qualifications, as directed by FS Architects.</p>
   <hr class="divider" />
 
-  <div class="section-title">3. Work Schedule</div>
-  <p>3.1 The Employee shall be available to render services for up to <strong>${hoursPerDay} hours per day</strong>, <strong>${workDays.length} days per week</strong> (${workDays.join(', ')}).</p>
-  <p>3.2 Standard working hours shall follow the <strong>${shiftTime}</strong>, unless otherwise agreed in writing.</p>
-  <p>3.3 The Employee is expected to remain responsive and available during scheduled working hours.</p>
+  <div class="section-title">4. Working Hours</div>
+  <p>4.1 In accordance with <strong>Article 83 of the Labor Code</strong>, the normal working hours shall not exceed <strong>${hoursPerDay} hours per day</strong>, <strong>${workDays.length} days per week</strong> (${workDays.join(', ')}).</p>
+  <p>4.2 Standard hours shall follow <strong>${shiftTime}</strong>, unless otherwise agreed in writing.</p>
+  <p>4.3 A one (1) hour unpaid meal break shall be observed daily, not counted as working time per Article 85 of the Labor Code.</p>
+  <p>4.4 <strong>Overtime work</strong> shall be compensated at the Employee's regular hourly rate plus an additional <strong>twenty-five percent (25%)</strong> thereof, in accordance with Article 87 of the Labor Code. Work performed on a scheduled rest day or regular holiday shall be compensated at an additional <strong>thirty percent (30%)</strong> of the regular rate.</p>
+  <p>4.5 Work performed between <strong>10:00 PM and 6:00 AM</strong> shall be entitled to a <strong>night differential</strong> of at least ten percent (10%) of the Employee's regular wage, per Article 86 of the Labor Code.</p>
   <hr class="divider" />
 
-  <div class="section-title">4. Compensation</div>
-  <div class="sub-title">4.1 Monthly Salary</div>
-  <p>Effective <strong>${fmt(effectiveDate)}</strong>, the Employee shall receive a monthly salary of <strong>₱${rate} PHP</strong>, paid on a <strong>${paymentSchedule}</strong>.</p>
-  <div class="sub-title">4.2 Deductions</div>
-  <p>In the event of approved absences or non-rendered workdays, a proportional deduction shall be applied based on the following formula: ₱${rate} ÷ Total Working Days in the Month = Daily Rate.</p>
-  <div class="sub-title">4.3 Adjustments</div>
-  <p>Any changes to the salary, scope of work, or terms of employment must be confirmed in writing by both parties.</p>
+  <div class="section-title">5. Compensation &amp; Mandatory Benefits</div>
+  <div class="sub-title">5.1 Monthly Salary</div>
+  <p>Effective <strong>${fmt(effectiveDate)}</strong>, the Employee shall receive a monthly salary of <strong>₱${rate} PHP</strong>, paid on a <strong>${paymentSchedule}</strong>. The agreed salary meets or exceeds the applicable minimum wage prescribed by the Regional Tripartite Wages and Productivity Board for Region VII.</p>
+  <div class="sub-title">5.2 Salary Deductions</div>
+  <p>In the event of approved absences or non-rendered workdays, a proportional deduction shall be applied based on the following formula: ₱${rate} ÷ Total Working Days in the Month = Daily Rate. Mandatory government deductions (SSS, PhilHealth, Pag-IBIG) shall also be applied as prescribed by law.</p>
+  <div class="sub-title">5.3 13th Month Pay</div>
+  <p>The Employee shall be entitled to <strong>13th Month Pay</strong> as mandated under <strong>Presidential Decree No. 851</strong>, computed as one-twelfth (1/12) of the Employee's total basic salary earned within a calendar year. Payment shall be made on or before <strong>December 24</strong> of each year.</p>
+  <div class="sub-title">5.4 Government-Mandated Contributions</div>
+  <p>FS Architects shall enroll the Employee in and remit the employer's share of contributions to the following mandatory programs:</p>
+  <ul>
+    <li><strong>Social Security System (SSS)</strong> — per Republic Act No. 11199</li>
+    <li><strong>Philippine Health Insurance Corporation (PhilHealth)</strong> — per Republic Act No. 11223</li>
+    <li><strong>Home Development Mutual Fund / Pag-IBIG</strong> — per Republic Act No. 9679</li>
+  </ul>
+  <p>The Employee's share of contributions shall be deducted from the monthly salary as prescribed by the respective government agencies.</p>
+  <div class="sub-title">5.5 Holiday Pay</div>
+  <p>The Employee shall be entitled to holiday pay in accordance with <strong>Article 94 of the Labor Code</strong> and applicable Presidential Proclamations. Employees not required to work on a regular holiday shall receive their regular daily wage. Employees required to work on a regular holiday shall receive double (200%) their regular daily wage for the first eight hours.</p>
+  <div class="sub-title">5.6 Salary Adjustments</div>
+  <p>Any changes to the salary, scope of work, or terms of employment must be confirmed in a written amendment signed by both parties.</p>
   <hr class="divider" />
 
-  <div class="section-title">5. Tools &amp; Resources</div>
+  <div class="section-title">6. Tools &amp; Resources</div>
   <p>FS Architects shall provide the Employee with access to necessary tools and resources required for work, which may include but are not limited to:</p>
   <ul>${toolItems}</ul>
-  <p>All tools and resources remain the property of FS Architects and are to be used solely for authorized work purposes.</p>
+  <p>All tools and resources remain the property of FS Architects and are to be used solely for authorized work purposes. The Employee shall return all company property upon separation.</p>
   <hr class="divider" />
 
-  <div class="section-title">6. Service Incentive Leave (SIL)</div>
-  <p>6.1 The Employee shall be entitled to <strong>${ptaDays} days of paid Service Incentive Leave per calendar year</strong>, effective after <strong>six (6) months</strong> of continuous employment.</p>
-  <p>6.2 SIL requests must be submitted in advance and remain subject to approval based on operational needs.</p>
-  <p>6.3 SIL may not be taken in more than three (3) consecutive days unless expressly approved in writing by FS Architects.</p>
-  <p>6.4 Unused SIL credits do not carry over and automatically expire at the end of each calendar year.</p>
-  <hr class="divider" />
-
-  <div class="section-title">7. Sick Leave</div>
-  <p>7.1 The Employee is entitled to <strong>${sickDays} days of paid sick leave per calendar year</strong>, effective upon the start of employment.</p>
-  <p>7.2 The Employee must notify the designated supervisor as early as possible on the day of absence, or in advance when foreseeable.</p>
-  <p>7.3 FS Architects may request reasonable documentation (e.g., a medical certificate) for sick leave absences exceeding two (2) consecutive days.</p>
-  <p>7.4 Unused sick leave credits do not carry over and automatically expire at the end of each calendar year.</p>
-  <p>7.5 Sick leave taken beyond the allotted days will be treated as unpaid leave or deducted proportionally from the Employee's monthly salary.</p>
+  <div class="section-title">7. Leave Benefits</div>
+  <div class="sub-title">7.1 Service Incentive Leave (SIL)</div>
+  <p>In accordance with <strong>Article 95 of the Labor Code</strong>, the Employee shall be entitled to a minimum of five (5) days of paid Service Incentive Leave per year after one (1) year of service. FS Architects grants <strong>${ptaDays} days of paid leave per calendar year</strong>, effective after six (6) months of continuous employment, which exceeds the statutory minimum. SIL requests must be submitted in advance and are subject to approval based on operational requirements. Unused SIL shall not be carried over beyond the calendar year unless otherwise agreed in writing.</p>
+  <div class="sub-title">7.2 Sick Leave</div>
+  <p>The Employee is entitled to <strong>${sickDays} days of paid sick leave per calendar year</strong>, effective upon the start of employment. The Employee must notify the designated supervisor as early as possible on the day of absence. FS Architects may require a medical certificate for absences exceeding two (2) consecutive days. Sick leave taken beyond the allotted days shall be treated as unpaid leave.</p>
+  <div class="sub-title">7.3 Maternity &amp; Paternity Leave</div>
+  <p>Female employees shall be entitled to <strong>105 days of paid maternity leave</strong> (extendable by 30 days unpaid) per <strong>Republic Act No. 11210</strong>. Male employees whose spouse gives birth shall be entitled to <strong>seven (7) days of paid paternity leave</strong> per <strong>Republic Act No. 8187</strong>, applicable to the first four deliveries.</p>
+  <div class="sub-title">7.4 Other Statutory Leaves</div>
+  <p>The Employee shall be entitled to all other leaves mandated by applicable Philippine laws, including but not limited to Solo Parent Leave (RA 8972) and leave for victims of violence against women and children (RA 9262), subject to eligibility requirements and proper documentation.</p>
   <hr class="divider" />
 
   <div class="section-title">8. Confidentiality</div>
-  <p>The Employee agrees to maintain strict confidentiality over all proprietary, client, and project information obtained during employment. No materials, designs, plans, strategies, files, or information may be shared or disclosed without prior written consent from FS Architects.</p>
+  <p>The Employee agrees to maintain strict confidentiality over all proprietary, client, and project information obtained during employment. No materials, designs, plans, drawings, strategies, files, or client information may be shared, reproduced, or disclosed without prior written consent from FS Architects. This obligation survives termination of employment.</p>
   <hr class="divider" />
 
   <div class="section-title">9. Non-Compete &amp; Conflict of Interest</div>
-  <p>The Employee agrees not to engage in work for <strong>direct competitors of FS Architects</strong> or participate in activities that create a conflict of interest during the term of this Agreement, without prior written approval from FS Architects.</p>
+  <p>During the term of employment, the Employee shall not engage in work for direct competitors of FS Architects or participate in activities that create a conflict of interest, without prior written approval. The Employee shall promptly disclose to management any potential conflict of interest that may arise.</p>
   <hr class="divider" />
 
   <div class="section-title">10. Intellectual Property</div>
-  <p>10.1 All work product, designs, drawings, plans, and documents produced by the Employee during the course of employment shall be the <strong>exclusive property of FS Architects</strong>.</p>
-  <p>10.2 The Employee may not use, repurpose, or redistribute such materials without prior written consent from FS Architects.</p>
+  <p>10.1 All work product, designs, drawings, plans, specifications, and documents produced by the Employee in the course of employment shall be the <strong>exclusive property of FS Architects</strong>, consistent with Article 172 and related provisions of the Intellectual Property Code of the Philippines (RA 8293).</p>
+  <p>10.2 The Employee may not use, repurpose, publish, or redistribute such materials without prior written consent from FS Architects.</p>
   <hr class="divider" />
 
   <div class="section-title">11. Professional Standards</div>
-  <p>11.1 The Employee agrees to maintain the professional standards expected in the architecture industry and to uphold the reputation of FS Architects in all client and project interactions.</p>
-  <p>11.2 If the Employee holds a professional license issued by the Professional Regulation Commission (PRC), the Employee agrees to comply with all applicable PRC regulations and continuing professional development requirements.</p>
+  <p>11.1 The Employee agrees to maintain the professional and ethical standards expected in the architecture industry and to uphold the reputation of FS Architects in all client and project interactions.</p>
+  <p>11.2 If the Employee holds a professional license issued by the <strong>Professional Regulation Commission (PRC)</strong> under the Board of Architecture (RA 9266), the Employee agrees to keep the license current, comply with all applicable PRC regulations, and fulfill Continuing Professional Development (CPD) requirements.</p>
   <hr class="divider" />
 
-  <div class="section-title">12. Communication &amp; Availability</div>
-  <p>The Employee shall remain active and responsive during scheduled working hours via designated communication channels and must promptly notify the Employer if unavailable or unable to render services.</p>
+  <div class="section-title">12. Discipline &amp; Termination</div>
+  <div class="sub-title">12.1 Just Causes</div>
+  <p>The Employer may terminate employment for just causes as enumerated under <strong>Article 297 of the Labor Code</strong> (e.g., serious misconduct, willful disobedience, gross neglect of duty, fraud, or commission of a crime). Termination for just cause shall follow the <strong>twin-notice rule</strong>: (a) a written Notice to Explain stating the grounds for termination, with at least five (5) calendar days to respond; and (b) a written Notice of Decision after evaluation of the Employee's explanation.</p>
+  <div class="sub-title">12.2 Authorized Causes</div>
+  <p>Termination for authorized causes under <strong>Article 298 of the Labor Code</strong> (e.g., installation of labor-saving devices, redundancy, retrenchment, or closure) shall require a written notice served to both the Employee and the <strong>Department of Labor and Employment (DOLE)</strong> at least <strong>thirty (30) days</strong> prior to the intended termination date. Applicable separation pay shall be provided in accordance with law.</p>
+  <div class="sub-title">12.3 Resignation</div>
+  <p>The Employee may resign by serving a written notice to the Employer at least <strong>thirty (30) days</strong> in advance, in accordance with Article 300 of the Labor Code. The Employer may waive the notice period at its discretion.</p>
+  <div class="sub-title">12.4 Clearance &amp; Final Pay</div>
+  <p>Upon separation, the Employee shall undergo standard clearance procedures. Final pay, including any unpaid wages, pro-rated 13th month pay, and cash conversion of unused leave credits (if applicable), shall be released within <strong>thirty (30) days</strong> from the date of separation, per DOLE Labor Advisory No. 06, Series of 2020.</p>
   <hr class="divider" />
 
-  <div class="section-title">13. Term &amp; Termination</div>
-  <p>13.1 This Agreement shall commence on <strong>${fmt(termDate || effectiveDate)}</strong>, and continue on a <strong>month-to-month basis</strong>.</p>
-  <p>13.2 Either party may terminate this Agreement with <strong>thirty (30) days' written notice</strong>.</p>
-  <p>13.3 Immediate termination may occur in cases of misconduct, breach of this Agreement, or failure to perform agreed duties.</p>
+  <div class="section-title">13. Governing Law</div>
+  <p>This Agreement shall be governed by the <strong>Labor Code of the Philippines</strong> and all applicable labor laws, rules, and regulations. Any disputes arising from this Agreement shall first be resolved through good-faith negotiation between the parties. If unresolved, either party may bring the matter before the <strong>National Labor Relations Commission (NLRC)</strong> or other competent authority.</p>
   <hr class="divider" />
 
-  <div class="section-title">14. Governing Law</div>
-  <p>This Agreement shall be governed by the laws of the Republic of the Philippines. Any disputes arising from this Agreement shall first be resolved through good-faith negotiation between the parties.</p>
+  <p style="font-size:9pt;color:#555;font-style:italic;">Note: This Agreement is intended to comply with applicable Philippine labor laws as of its effective date. FS Architects reserves the right to update company policies in conformity with any future changes in law, and the Employee shall be notified of any such changes.</p>
   <hr class="divider" />
 
   <div class="section-title">Signatures</div>

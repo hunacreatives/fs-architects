@@ -393,13 +393,14 @@ export default function AdminPayrollPage() {
         approved_at: new Date().toISOString(),
       });
     }
-    // Optimistic update so UI reflects approval immediately without waiting for fetchWorkflow round-trip
+    // Optimistic update + unlock UI immediately — background sync confirms with DB
     setPayoutsMap(prev => ({
       ...prev,
       [contractorId]: { ...(prev[contractorId] || {}), contractor_id: contractorId, status: 'hr_approved', final_payout: finalPay, approved_at: new Date().toISOString() },
     }));
+    setWorkflowLoading(false);
+    // Background: audit, notifications, DB sync (fire-and-forget)
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payout', entity_id: contractorId, description: `Approved payout of ${fmt(finalPay)} for ${contractorName} — ${selectedPeriod.label}` });
-    // Notify contractor of approval (fire-and-forget)
     const approvedPayout = existing
       ? { id: existing.id }
       : (await supabase.from('hub_payouts').select('id').eq('contractor_id', contractorId).eq('cutoff_start', selectedPeriod.start).single()).data;
@@ -412,8 +413,7 @@ export default function AdminPayrollPage() {
         link: '/hub/employee/payouts', read: false,
       }).catch(() => {});
     }
-    await fetchWorkflow().catch(() => {});
-    setWorkflowLoading(false);
+    fetchWorkflow().catch(() => {});
   };
 
   const approveAll = async () => {
@@ -570,8 +570,8 @@ export default function AdminPayrollPage() {
       ...prev,
       [contractorId]: { ...existing, status: 'paid', payment_date: new Date().toISOString().slice(0, 10) },
     }));
-    await fetchWorkflow().catch(() => {});
     setWorkflowLoading(false);
+    fetchWorkflow().catch(() => {});
   };
 
   // ── Hourly fund transfer requests ─────────────────────────────────────────

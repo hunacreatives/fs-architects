@@ -2,10 +2,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')!;
-const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
-const GOOGLE_REFRESH_TOKEN = Deno.env.get('GOOGLE_REFRESH_TOKEN')!;
-const DRIVE_ROOT = '1XQzc0U_pQrhCtivjR4SsgE_WTG9DpvYd';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -13,104 +9,25 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-async function getAccessToken(): Promise<string> {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: GOOGLE_REFRESH_TOKEN,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error(`Failed to get Google access token: ${JSON.stringify(data)}`);
-  return data.access_token;
-}
-
-async function createOrGetFolder(name: string, parentId: string, accessToken: string): Promise<string> {
-  const safeName = name.replace(/['"\\]/g, '');
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${safeName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  const searchData = await searchRes.json();
-  if (searchData.files?.length > 0) return searchData.files[0].id;
-
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: safeName,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [parentId],
-    }),
-  });
-  const createData = await createRes.json();
-  if (!createData.id) throw new Error(`Failed to create folder "${safeName}": ${JSON.stringify(createData)}`);
-  return createData.id;
-}
-
-async function ensureReadablePreview(fileId: string, accessToken: string) {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      role: 'reader',
-      type: 'anyone',
-    }),
-  });
-
-  if (!res.ok) {
-    const data = await res.text();
-    throw new Error(`Failed to set Drive permissions: ${data}`);
-  }
-}
-
-async function uploadResumeToDrive(
+async function uploadToStorage(
+  supabase: ReturnType<typeof createClient>,
+  folder: string,
   filename: string,
-  mimeType: string | undefined,
+  mimeType: string,
   base64Content: string,
-): Promise<{ url: string; fileId?: string }> {
-  const accessToken = await getAccessToken();
-  const careersFolder = await createOrGetFolder('Careers', DRIVE_ROOT, accessToken);
-  const yearFolder = await createOrGetFolder(String(new Date().getFullYear()), careersFolder, accessToken);
+): Promise<string> {
+  const bytes = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
+  const ext = filename.split('.').pop() ?? 'bin';
+  const path = `${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
-  const metadata = JSON.stringify({
-    name: filename,
-    parents: [yearFolder],
-  });
-  const fileBytes = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
-  const boundary = 'careers_upload_boundary';
-  const part1 = new TextEncoder().encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`);
-  const part2 = new TextEncoder().encode(`--${boundary}\r\nContent-Type: ${mimeType || 'application/pdf'}\r\n\r\n`);
-  const part3 = new TextEncoder().encode(`\r\n--${boundary}--`);
-  const body = new Uint8Array(part1.length + part2.length + fileBytes.length + part3.length);
-  body.set(part1, 0);
-  body.set(part2, part1.length);
-  body.set(fileBytes, part1.length + part2.length);
-  body.set(part3, part1.length + part2.length + fileBytes.length);
+  const { error } = await supabase.storage
+    .from('careers')
+    .upload(path, bytes, { contentType: mimeType || 'application/octet-stream', upsert: false });
 
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': `multipart/related; boundary=${boundary}`,
-    },
-    body,
-  });
+  if (error) throw new Error(`Storage upload failed: ${error.message}`);
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data?.id) throw new Error(`Resume upload failed (${res.status}): ${JSON.stringify(data)}`);
-  await ensureReadablePreview(data.id, accessToken);
-  return { url: `https://drive.google.com/file/d/${data.id}/view`, fileId: data.id };
+  const { data } = supabase.storage.from('careers').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 async function notifyAdmins(
@@ -179,8 +96,23 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Insert immediately — Drive uploads happen in the background after response
-    const { data: inserted, error: insertError } = await supabase
+    // Upload resume to Supabase Storage
+    let finalResumeLink = resume_link || null;
+    if (resume_base64 && resume_filename) {
+      try {
+        finalResumeLink = await uploadToStorage(supabase, 'resumes', resume_filename, resume_mime || 'application/pdf', resume_base64);
+      } catch (_) { /* upload failure is non-fatal — link stays null */ }
+    }
+
+    // Upload portfolio file if provided
+    let finalPortfolioLink = portfolio_link?.trim() || null;
+    if (portfolio_base64 && portfolio_filename) {
+      try {
+        finalPortfolioLink = await uploadToStorage(supabase, 'portfolios', portfolio_filename, portfolio_mime || 'application/pdf', portfolio_base64);
+      } catch (_) { /* upload failure is non-fatal */ }
+    }
+
+    const { error: insertError } = await supabase
       .from('hub_job_applications')
       .insert({
         job_id: job_id || null,
@@ -188,42 +120,19 @@ Deno.serve(async (req) => {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         expected_rate: expected_rate?.trim() || '',
-        portfolio_link: portfolio_link?.trim() || null,
-        resume_link: resume_link || null,
+        portfolio_link: finalPortfolioLink,
+        resume_link: finalResumeLink,
         resume_filename: resume_filename || null,
         resume_drive_file_id: null,
         message: message.trim(),
         source: 'careers_site',
-      })
-      .select('id')
-      .single();
+      });
 
     if (insertError) {
       return new Response(JSON.stringify({ error: insertError.message }), { status: 500, headers: cors });
     }
 
-    // Background: Drive uploads + update record + notify — does not block the response
-    (async () => {
-      try {
-        if (resume_base64 && resume_filename && inserted?.id) {
-          const driveUpload = await uploadResumeToDrive(resume_filename, resume_mime, resume_base64);
-          await supabase
-            .from('hub_job_applications')
-            .update({ resume_link: driveUpload.url, resume_drive_file_id: driveUpload.fileId ?? null })
-            .eq('id', inserted.id);
-        }
-      } catch (_) { /* Drive upload failure is non-fatal */ }
-      try {
-        if (portfolio_base64 && portfolio_filename && inserted?.id) {
-          const portfolioDrive = await uploadResumeToDrive(portfolio_filename, portfolio_mime, portfolio_base64);
-          await supabase
-            .from('hub_job_applications')
-            .update({ portfolio_link: portfolioDrive.url })
-            .eq('id', inserted.id);
-        }
-      } catch (_) { /* Portfolio upload failure is non-fatal */ }
-      await notifyAdmins(supabase, name.trim(), role.trim()).catch(() => {});
-    })();
+    await notifyAdmins(supabase, name.trim(), role.trim()).catch(() => {});
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

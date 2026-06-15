@@ -54,10 +54,10 @@ function generateCOEHtml(
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; background: #fff; line-height: 1.6; }
   .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 22mm 22mm 22mm; display: flex; flex-direction: column; }
-  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4pt; }
-  .logo-block img { height: 44pt; width: auto; display: block; }
-  .header-contact { text-align: right; font-size: 8.5pt; color: #333; line-height: 1.7; }
-  .header-rule { border: none; border-top: 2.5pt solid #334049; margin: 6pt 0 20pt 0; width: 100%; }
+  .header { display: flex; align-items: center; justify-content: space-between; background: #334049; margin: -18mm -22mm 0 -22mm; padding: 14pt 22pt; margin-bottom: 20pt; }
+  .logo-block img { height: 54pt; width: auto; display: block; }
+  .header-contact { text-align: right; font-size: 8.5pt; color: #a8b9c9; line-height: 1.8; }
+  .header-rule { display: none; }
   .doc-label { font-size: 8.5pt; letter-spacing: 0.15em; text-transform: uppercase; color: #666; font-family: Arial, sans-serif; margin-bottom: 4pt; }
   .doc-title { font-size: 17pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 6pt; font-family: Arial, sans-serif; }
   .doc-subtitle { font-size: 9.5pt; color: #555; font-family: Arial, sans-serif; margin-bottom: 28pt; }

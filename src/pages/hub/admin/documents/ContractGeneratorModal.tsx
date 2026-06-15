@@ -26,10 +26,10 @@ function generateCustomContractHTML(contractorName: string, effectiveDate: strin
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; background: #fff; line-height: 1.6; }
   .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 20mm 20mm 20mm; }
-  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4pt; }
-  .logo-block img { height: 44pt; width: auto; display: block; }
-  .header-contact { text-align: right; font-size: 8.5pt; color: #333; line-height: 1.7; }
-  .header-rule { border: none; border-top: 2.5pt solid #334049; margin: 6pt 0 14pt 0; width: 100%; }
+  .header { display: flex; align-items: center; justify-content: space-between; background: #334049; margin: -18mm -20mm 0 -20mm; padding: 14pt 20pt; margin-bottom: 20pt; }
+  .logo-block img { height: 54pt; width: auto; display: block; }
+  .header-contact { text-align: right; font-size: 8.5pt; color: #a8b9c9; line-height: 1.8; }
+  .header-rule { display: none; }
   p { text-align: justify; margin-bottom: 7pt; font-size: 11pt; }
   .divider { border: none; border-top: 0.75pt solid #ccc; margin: 14pt 0; }
   .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20pt; margin-top: 28pt; }
@@ -95,10 +95,10 @@ function generateContractHTML(fields: ContractFields, logoData: string): string 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; background: #fff; line-height: 1.6; }
   .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 20mm 20mm 20mm; }
-  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4pt; }
-  .logo-block img { height: 44pt; width: auto; display: block; }
-  .header-contact { text-align: right; font-size: 8.5pt; color: #333; line-height: 1.7; }
-  .header-rule { border: none; border-top: 2.5pt solid #334049; margin: 6pt 0 14pt 0; width: 100%; }
+  .header { display: flex; align-items: center; justify-content: space-between; background: #334049; margin: -18mm -20mm 0 -20mm; padding: 14pt 20pt; margin-bottom: 20pt; }
+  .logo-block img { height: 54pt; width: auto; display: block; }
+  .header-contact { text-align: right; font-size: 8.5pt; color: #a8b9c9; line-height: 1.8; }
+  .header-rule { display: none; }
   .doc-title { font-size: 15pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 14pt; font-family: Arial, sans-serif; }
   p { text-align: justify; margin-bottom: 7pt; font-size: 11pt; }
   ul { margin: 4pt 0 8pt 24pt; }

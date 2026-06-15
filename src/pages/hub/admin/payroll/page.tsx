@@ -393,6 +393,11 @@ export default function AdminPayrollPage() {
         approved_at: new Date().toISOString(),
       });
     }
+    // Optimistic update so UI reflects approval immediately without waiting for fetchWorkflow round-trip
+    setPayoutsMap(prev => ({
+      ...prev,
+      [contractorId]: { ...(prev[contractorId] || {}), contractor_id: contractorId, status: 'hr_approved', final_payout: finalPay, approved_at: new Date().toISOString() },
+    }));
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payout', entity_id: contractorId, description: `Approved payout of ${fmt(finalPay)} for ${contractorName} — ${selectedPeriod.label}` });
     // Notify contractor of approval (fire-and-forget)
     const approvedPayout = existing
@@ -561,6 +566,10 @@ export default function AdminPayrollPage() {
     }).eq('id', existing.id);
     // Fire payslip email (non-blocking — ignore failures)
     supabase.functions.invoke('send-payslip', { body: { payout_id: existing.id } }).catch(() => {});
+    setPayoutsMap(prev => ({
+      ...prev,
+      [contractorId]: { ...existing, status: 'paid', payment_date: new Date().toISOString().slice(0, 10) },
+    }));
     await fetchWorkflow();
     setWorkflowLoading(false);
   };

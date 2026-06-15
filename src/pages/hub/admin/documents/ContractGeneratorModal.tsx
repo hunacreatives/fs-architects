@@ -3,6 +3,23 @@ import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 
+async function downloadAsPdf(html: string, filename: string) {
+  // @ts-ignore
+  const html2pdf = (await import('html2pdf.js')).default;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  document.body.appendChild(container);
+  await html2pdf().set({
+    margin: 0,
+    filename: `${filename}.pdf`,
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  }).from(container).save();
+  document.body.removeChild(container);
+}
+
 interface Props {
   contractors: HubUser[];
   onClose: () => void;
@@ -385,9 +402,8 @@ export default function ContractGeneratorModal({ contractors, onClose, onDone }:
       contractor_id: fields.contractorId,
     }).select('id').single();
 
-    const printHtml = html.replace('</body>', '<script>window.onload=function(){window.print();}</script></body>');
-    const blob = new Blob([printHtml], { type: 'text/html' });
-    window.open(URL.createObjectURL(blob), '_blank');
+    const contractorName = fields.contractorName || 'Contract';
+    await downloadAsPdf(html, `Employment_Agreement_${contractorName.replace(/\s+/g, '_')}`);
 
     setSaving(false);
     onDone();

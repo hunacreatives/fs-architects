@@ -5,6 +5,7 @@ import { HubSignDocument, HubSignAssignment, HubUser, HubDocRequest } from '@/li
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import ContractGeneratorModal from './ContractGeneratorModal';
+import COEGeneratorModal from './COEGeneratorModal';
 
 const DR_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
@@ -95,6 +96,7 @@ export default function AdminDocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
+  const [showCOE, setShowCOE] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<HubSignDocument | null>(null);
   const [assignments, setAssignments] = useState<HubSignAssignment[]>([]);
   const [toast, setToast] = useState('');
@@ -330,8 +332,15 @@ export default function AdminDocumentsPage() {
               Upload PDF
             </button>
             <button
+              onClick={() => setShowCOE(true)}
+              className="flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <i className="ri-award-line"></i>
+              Generate COE
+            </button>
+            <button
               onClick={() => setShowGenerator(true)}
-              className="flex items-center gap-2 bg-[#1c2b3a] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e55a24] transition-colors cursor-pointer"
+              className="flex items-center gap-2 bg-[#1c2b3a] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0f1c28] transition-colors cursor-pointer"
             >
               <i className="ri-file-text-line"></i>
               Generate Contract
@@ -733,6 +742,13 @@ export default function AdminDocumentsPage() {
           contractors={contractors}
           onClose={() => setShowGenerator(false)}
           onDone={() => { setShowGenerator(false); fetchDocs(); showToast('Contract sent for signature!'); }}
+        />
+      )}
+      {showCOE && (
+        <COEGeneratorModal
+          contractors={contractors}
+          onClose={() => setShowCOE(false)}
+          onDone={() => { setShowCOE(false); fetchDocs(); showToast('COE sent to employee!'); }}
         />
       )}
 

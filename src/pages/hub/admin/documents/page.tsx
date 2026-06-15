@@ -198,7 +198,7 @@ export default function AdminDocumentsPage() {
     setLoading(true);
     const { data } = await supabase
       .from('hub_sign_documents')
-      .select('*, hub_sign_assignments(id, contractor_id, status, signed_at, signed_name, hub_users(full_name, avatar_url))')
+      .select('*, hub_sign_assignments(id, contractor_id, status, signed_at, signed_name, pickup_ready, pickup_notified_at, hub_users(full_name, avatar_url))')
       .order('created_at', { ascending: false });
     setDocs((data as HubSignDocument[]) ?? []);
     setLoading(false);
@@ -480,15 +480,30 @@ export default function AdminDocumentsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 bg-gray-100 rounded-full h-1.5">
-                                <div className={`h-1.5 rounded-full ${allSigned ? 'bg-emerald-500' : 'bg-[#1c2b3a]'}`}
-                                  style={{ width: total > 0 ? `${(signed / total) * 100}%` : '0%' }} />
+                            {doc.is_generated ? (() => {
+                              const anyReady = doc.hub_sign_assignments?.some(a => (a as any).pickup_ready);
+                              const noAssignment = !doc.hub_sign_assignments?.length;
+                              return (
+                                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                                  noAssignment ? 'bg-gray-100 text-gray-400'
+                                  : anyReady ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-amber-50 text-amber-600'
+                                }`}>
+                                  <i className={`text-xs ${noAssignment ? 'ri-file-text-line' : anyReady ? 'ri-checkbox-circle-fill' : 'ri-time-line'}`}></i>
+                                  {noAssignment ? 'Manual' : anyReady ? 'Ready for pickup' : 'Pending pickup'}
+                                </span>
+                              );
+                            })() : (
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 bg-gray-100 rounded-full h-1.5">
+                                  <div className={`h-1.5 rounded-full ${allSigned ? 'bg-emerald-500' : 'bg-[#1c2b3a]'}`}
+                                    style={{ width: total > 0 ? `${(signed / total) * 100}%` : '0%' }} />
+                                </div>
+                                <span className={`text-xs font-medium ${allSigned ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                  {signed}/{total}
+                                </span>
                               </div>
-                              <span className={`text-xs font-medium ${allSigned ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                {signed}/{total}
-                              </span>
-                            </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                             {new Date(doc.created_at!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

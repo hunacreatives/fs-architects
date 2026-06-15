@@ -212,8 +212,8 @@ function generatePayslipHTML(opts: {
     <tr>
       <td style="width:50%;padding-right:48px;vertical-align:bottom;">
         <div style="margin-top:48px;border-top:1.5px solid #374151;padding-top:8px;">
-          <div style="font-size:12px;font-weight:700;color:#111827;">Fretz Suralta</div>
-          <div style="font-size:11px;color:#6b7280;">Owner · FS Architects</div>
+          <div style="font-size:12px;font-weight:700;color:#111827;">Fretz I. Suralta</div>
+          <div style="font-size:11px;color:#6b7280;">Owner / Principal Architect · FS Architects</div>
           <div style="font-size:11px;color:#6b7280;">Date: ${generatedDate}</div>
         </div>
       </td>

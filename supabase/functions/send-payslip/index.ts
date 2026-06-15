@@ -86,6 +86,18 @@ async function sendPayslip(payout_id: string) {
     ? `Semi-monthly fixed rate (${periodLabel})`
     : `${totalHours.toFixed(2)} hours × ${rateLabel}`;
 
+  const dailyRows = (dailyHours || []).map((d: any) => {
+    const date = new Date(d.date + 'T12:00:00');
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const dateFmt = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const h = (d.hours_capped || 0).toFixed(2);
+    const ot = (d.overtime_hours || 0) > 0 ? ` <span style="color:#7c3aed;font-size:11px;">+${Number(d.overtime_hours).toFixed(2)}h OT</span>` : '';
+    return `<tr>
+      <td style="padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;">${dayName}, ${dateFmt}</td>
+      <td style="padding:7px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-size:12px;color:#374151;font-weight:500;">${h}h${ot}</td>
+    </tr>`;
+  }).join('');
+
   const adjRows = adjustments.map((a: any) => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
@@ -118,7 +130,7 @@ async function sendPayslip(payout_id: string) {
       <table style="width:100%;border-collapse:collapse;">
         <tr>
           <td style="vertical-align:top;">
-            <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
+            <img src="https://fsarchitects.ph/images/fs-architects-logo-horizontal.jpg" alt="FS Architects" height="36" style="display:block;margin-bottom:14px;border-radius:4px;" />
             <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0;letter-spacing:-0.5px;">Payment Receipt</h1>
             <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">Pay Period: <span style="color:#d1d5db;font-weight:600;">${periodLabel}</span></p>
           </td>
@@ -148,7 +160,7 @@ async function sendPayslip(payout_id: string) {
 
     <div style="padding:24px 36px;background:#fafafa;border-bottom:1px solid #f3f4f6;">
       <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 16px;">Attendance Summary</p>
-      <table style="border-collapse:collapse;"><tr>
+      <table style="border-collapse:collapse;margin-bottom:${dailyRows ? '16px' : '0'};"><tr>
         <td style="vertical-align:top;padding-right:32px;">
           <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">Days Worked</p>
           <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">${daysWorked}</p>
@@ -165,6 +177,13 @@ async function sendPayslip(payout_id: string) {
           <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">hours</p>
         </td>` : ''}
       </tr></table>
+      ${dailyRows ? `<table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding-bottom:6px;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">Date</td>
+          <td style="padding-bottom:6px;text-align:right;font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">Hours</td>
+        </tr>
+        ${dailyRows}
+      </table>` : ''}
     </div>
 
     <div style="padding:28px 36px;border-bottom:1px solid #f3f4f6;">
@@ -197,13 +216,12 @@ async function sendPayslip(payout_id: string) {
       </table>
     </div>
 
-    <div style="padding:24px 36px;">
-      <p style="font-size:12px;color:#9ca3af;margin:0 0 8px;line-height:1.6;">
-        This is an automatically generated payslip for the pay period <strong style="color:#6b7280;">${periodLabel}</strong>.
-        Please keep this for your records. If you notice any discrepancies, reach out to HR on Slack immediately.
+    <div style="padding:20px 36px;background:#f9fafb;border-top:1px solid #f3f4f6;">
+      <p style="font-size:12px;color:#9ca3af;margin:0 0 6px;line-height:1.6;">
+        This is your official payslip for <strong style="color:#6b7280;">${periodLabel}</strong>. Please keep this for your records.
+        If you notice any discrepancies, reach out to HR directly on Slack.
       </p>
-      <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">This email is not monitored. Do not reply directly — for concerns, email <a href="mailto:contact@fsarchitects.ph" style="color:#9ca3af;">contact@fsarchitects.ph</a></p>
-      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} FS Architects · payroll@fsarchitects.ph</p>
+      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} FS Architects · <a href="mailto:payroll@fsarchitects.ph" style="color:#d1d5db;text-decoration:none;">payroll@fsarchitects.ph</a></p>
     </div>
 
   </div>

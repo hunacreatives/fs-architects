@@ -952,6 +952,7 @@ export default function AdminPayrollPage() {
 
     // Per-user per-date hours map (for hourly proration)
     const hoursByDate: Record<string, Record<string, number>> = {};
+    const rawHoursByDate: Record<string, Record<string, number>> = {};
     const overtimeByDate: Record<string, Record<string, number>> = {};
     const hoursMap: Record<string, { capped: number; raw: number; overtime: number; days: number }> = {};
     for (const h of mergedHoursRows) {
@@ -966,6 +967,8 @@ export default function AdminPayrollPage() {
       hoursMap[h.user_id].days += 1;
       if (!hoursByDate[h.user_id]) hoursByDate[h.user_id] = {};
       hoursByDate[h.user_id][h.date] = (hoursByDate[h.user_id][h.date] || 0) + (h.hours_capped || 0);
+      if (!rawHoursByDate[h.user_id]) rawHoursByDate[h.user_id] = {};
+      rawHoursByDate[h.user_id][h.date] = (rawHoursByDate[h.user_id][h.date] || 0) + (h.hours_raw || 0);
       if (h.overtime_hours) {
         if (!overtimeByDate[h.user_id]) overtimeByDate[h.user_id] = {};
         overtimeByDate[h.user_id][h.date] = (overtimeByDate[h.user_id][h.date] || 0) + h.overtime_hours;
@@ -1062,7 +1065,7 @@ export default function AdminPayrollPage() {
             else otAtNew += ot;
           }
           derivedHourlyRate = newHourlyForOT;
-          overtimePay = computeSplitOTPayFromDates(otDates, changeInPeriod.effective_date, oldHourlyForOT, newHourlyForOT);
+          overtimePay = computeSplitOTPayFromDates(otDates, changeInPeriod.effective_date, oldHourlyForOT, newHourlyForOT, rawHoursByDate[c.id]);
           pay = splitAccrual.accruedPay;
           accrualTotalOriginalCurrency = splitAccrual.oldPortion + splitAccrual.newPortion;
           proratedNote = `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
@@ -1076,7 +1079,7 @@ export default function AdminPayrollPage() {
             else hrsAtNew += h;
           }
           derivedHourlyRate = newHourly;
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly);
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly, rawHoursByDate[c.id]);
           pay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
           proratedNote = `${hrsAtOld.toFixed(1)}h @ ₱${oldHourly}/hr · ${hrsAtNew.toFixed(1)}h @ ₱${newHourly}/hr`;
         }
@@ -1090,10 +1093,10 @@ export default function AdminPayrollPage() {
         derivedHourlyRate = payType === 'fixed' ? (hourly || monthly / 176) : hourly;
 
         if (payType === 'hourly') {
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate);
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id]);
           pay = hrs.capped * derivedHourlyRate;
         } else {
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate);
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id]);
           const today = localToday();
           const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
           const autoPayroll = isAutoPayrollContractor(c as Contractor);

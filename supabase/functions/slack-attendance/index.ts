@@ -200,7 +200,9 @@ Deno.serve(async (req) => {
         effectiveStatus = 'off';
       } else if (firstOn && lastOff && lastOff.ts > firstOn.ts) {
         hoursRaw = (lastOff.ts - firstOn.ts) / 3600;
-        hoursCapped = Math.min(hoursRaw, MAX_HOURS_FIXED);
+        // Deduct 1h unpaid lunch if shift is 5+ raw hours (lunch at 4h mark per handbook)
+        const lunchDeduction = hoursRaw >= 5 ? 1 : 0;
+        hoursCapped = Math.min(hoursRaw - lunchDeduction, MAX_HOURS_FIXED);
       } else if (!isHourly && threadHours != null && firstOn) {
         hoursRaw = threadHours;
         hoursCapped = Math.min(threadHours, MAX_HOURS_FIXED);

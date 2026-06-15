@@ -168,12 +168,19 @@ export function getOTMultiplier(date: string): number {
   return (day === 0 || day === 6) ? 1.30 : 1.25;
 }
 
-// Compute OT pay from a date→hours map, applying per-date DOLE multipliers
+// Minimum raw hours to qualify for OT pay (9h = 8h paid + 1h unpaid lunch per handbook)
+const OT_QUALIFYING_RAW_HOURS = 9;
+
+// Compute OT pay from a date→hours map, applying per-date DOLE multipliers.
+// rawHoursByDate: if provided, OT is skipped for dates where actual raw hours < 9
+// (employee didn't complete their full shift, so pre-approved OT doesn't vest).
 export function computeOTPayFromDates(
   otDates: Record<string, number>,
-  rate: number
+  rate: number,
+  rawHoursByDate?: Record<string, number>
 ): number {
   return Object.entries(otDates).reduce((sum, [date, hours]) => {
+    if (rawHoursByDate && (rawHoursByDate[date] ?? 0) < OT_QUALIFYING_RAW_HOURS) return sum;
     return sum + hours * rate * getOTMultiplier(date);
   }, 0);
 }
@@ -183,9 +190,11 @@ export function computeSplitOTPayFromDates(
   otDates: Record<string, number>,
   splitDate: string,
   oldRate: number,
-  newRate: number
+  newRate: number,
+  rawHoursByDate?: Record<string, number>
 ): number {
   return Object.entries(otDates).reduce((sum, [date, hours]) => {
+    if (rawHoursByDate && (rawHoursByDate[date] ?? 0) < OT_QUALIFYING_RAW_HOURS) return sum;
     const rate = date < splitDate ? oldRate : newRate;
     return sum + hours * rate * getOTMultiplier(date);
   }, 0);

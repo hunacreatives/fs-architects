@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const CHANNEL_ID = Deno.env.get('SLACK_ATTENDANCE_CHANNEL_ID') ?? 'C0830PCGQK1';
+const CHANNEL_ID = Deno.env.get('SLACK_ATTENDANCE_CHANNEL_ID') ?? 'C0BBA4Q18Q0';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const MAX_HOURS_FIXED = 8; // billable cap for fixed-rate contractors

@@ -73,7 +73,7 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
             onClick={collapsed ? onToggle : undefined}
             className={`w-10 h-10 rounded-2xl overflow-hidden flex-shrink-0 ${collapsed ? 'cursor-pointer' : ''}`}
           >
-            <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-full h-full object-cover" />
+            <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
             <>

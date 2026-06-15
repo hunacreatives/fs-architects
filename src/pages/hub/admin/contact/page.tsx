@@ -87,6 +87,7 @@ export default function ContactSubmissionsPage() {
   useEffect(() => { if (tab === 'sent') fetchReplies(); }, [tab]);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmDeleteReplyId, setConfirmDeleteReplyId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const updateStatus = async (id: number, status: SubmissionStatus) => {
@@ -105,6 +106,15 @@ export default function ContactSubmissionsPage() {
     setSelected(null);
     setComposing(false);
     setSubmissions((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const deleteReply = async (id: number) => {
+    setDeleting(true);
+    await supabase.from('contact_replies').delete().eq('id', id);
+    setDeleting(false);
+    setConfirmDeleteReplyId(null);
+    setSelectedReply(null);
+    setReplies((prev) => prev.filter((r) => r.id !== id));
   };
 
   const openCompose = (s: ContactSubmission) => {
@@ -218,7 +228,35 @@ export default function ContactSubmissionsPage() {
                 <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
                   {selectedReply.body}
                 </div>
-                <p className="text-[11px] text-gray-400">Sent {fmt(selectedReply.sent_at)}</p>
+                <p className="text-[11px] text-gray-400 mb-4">Sent {fmt(selectedReply.sent_at)}</p>
+                <div className="pt-3 border-t border-gray-100">
+                  {confirmDeleteReplyId === selectedReply.id ? (
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500 flex-1">Delete this sent email?</p>
+                      <button
+                        onClick={() => deleteReply(selectedReply.id)}
+                        disabled={deleting}
+                        className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {deleting ? 'Deleting…' : 'Delete'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteReplyId(null)}
+                        className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteReplyId(selectedReply.id)}
+                      className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                    >
+                      <i className="ri-delete-bin-line" />
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

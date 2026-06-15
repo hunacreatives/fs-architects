@@ -126,20 +126,13 @@ async function sendPayslip(payout_id: string) {
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
-    <div style="background:#111827;padding:24px 36px;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="vertical-align:middle;">
-            <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="28" style="display:block;" />
-          </td>
-          <td style="vertical-align:middle;text-align:right;padding-left:16px;white-space:nowrap;">
-            <p style="color:#fff;font-size:18px;font-weight:800;margin:0;letter-spacing:-0.3px;">Payment Receipt</p>
-            <p style="color:#6b7280;font-size:12px;margin:4px 0 0;">
-              ${periodLabel} &nbsp;·&nbsp; <span style="color:#9ca3af;">${invoiceNo}</span> &nbsp;·&nbsp; <span style="color:#9ca3af;">Issued ${issuedLabel}</span>
-            </p>
-          </td>
-        </tr>
-      </table>
+    <div style="background:#111827;padding:28px 32px;">
+      <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="24" style="display:block;margin-bottom:16px;" />
+      <p style="color:#fff;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.3px;">Payment Receipt</p>
+      <p style="color:#6b7280;font-size:12px;margin:0;line-height:1.6;">
+        ${periodLabel}<br>
+        <span style="color:#9ca3af;">${invoiceNo} &nbsp;·&nbsp; Issued ${issuedLabel}</span>
+      </p>
     </div>
 
     <div style="background:#ecfdf5;padding:12px 36px;border-bottom:1px solid #d1fae5;">

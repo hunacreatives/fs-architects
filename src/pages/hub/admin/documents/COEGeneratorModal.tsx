@@ -3,21 +3,13 @@ import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 
-async function downloadAsPdf(html: string, filename: string) {
-  // @ts-ignore
-  const html2pdf = (await import('html2pdf.js')).default;
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  document.body.appendChild(container);
-  await html2pdf().set({
-    margin: 0,
-    filename: `${filename}.pdf`,
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-  }).from(container).save();
-  document.body.removeChild(container);
+function printDoc(html: string) {
+  const win = window.open('', '_blank', 'width=794,height=1123');
+  if (!win) return;
+  const withPrint = html.replace('</body>', '<script>window.onload=function(){window.focus();window.print();}<\/script></body>');
+  win.document.open();
+  win.document.write(withPrint);
+  win.document.close();
 }
 
 interface Props {
@@ -69,7 +61,7 @@ function generateCOEHtml(
 <head>
 <meta charset="UTF-8" />
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   html, body { width: 210mm; height: 297mm; background: #fff; }
   body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; line-height: 1.6; }
   .page { width: 210mm; height: 297mm; padding: 0 22mm 0 22mm; display: flex; flex-direction: column; overflow: hidden; }
@@ -233,7 +225,7 @@ export default function COEGeneratorModal({ contractors, onClose, onDone }: Prop
         .insert({ document_id: doc.id, contractor_id: contractorId });
     }
 
-    await downloadAsPdf(previewHtml, `COE_${employeeName.replace(/\s+/g, '_')}`);
+    printDoc(previewHtml);
 
     setSaving(false);
     onDone();

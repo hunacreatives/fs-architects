@@ -245,7 +245,7 @@ function generatePayslipHTML(opts: {
         </div>
       </td>
       <td style="vertical-align:top;text-align:right;padding-top:16px;">
-        <img src="${logoUrl}" alt="FS Architects" style="height:28px;width:auto;opacity:0.3;" onerror="this.style.display='none'" />
+        <img src="${logoUrl.replace('fs-architects-logo-horizontal.png', 'fs-architects-icon.png')}" alt="FS Architects" style="height:32px;width:auto;opacity:0.2;" onerror="this.style.display='none'" />
       </td>
     </tr>
   </table>
@@ -649,7 +649,7 @@ export default function ContractorPayoutsPage() {
       overtimePay: displayOvertimePay,
       totalPay: displayTotalPay,
       generatedDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-      logoUrl: `${window.location.origin}/images/fs-architects-logo-horizontal.jpg`,
+      logoUrl: `${window.location.origin}/images/fs-architects-logo-horizontal.png`,
     });
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:-9999px;';
@@ -703,7 +703,7 @@ export default function ContractorPayoutsPage() {
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                 <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
+                    <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
                     <div>
                       <p className="text-white font-bold text-base">FS Architects</p>
                       <p className="text-white/40 text-xs mt-0.5">Fund Transfer Request</p>
@@ -866,7 +866,7 @@ export default function ContractorPayoutsPage() {
               {/* Payslip header */}
               <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
+                  <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-9 h-9 rounded-md object-cover flex-shrink-0" />
                   <div>
                     <p className="text-white font-bold text-base">FS Architects</p>
                     <p className="text-white/40 text-xs mt-0.5">Employee Payment Summary</p>

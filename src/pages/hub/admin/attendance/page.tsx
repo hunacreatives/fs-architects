@@ -111,7 +111,7 @@ function rangeLabelFmt(start: string, end: string) {
 }
 
 async function generateAttendancePDF(start: string, end: string, label: string) {
-  const logoUrl = `${window.location.origin}/images/547b59870e776a20eb28e4f20931787c.png`;
+  const logoUrl = `${window.location.origin}/images/fs-architects-logo-horizontal.png`;
 
   // Fetch hours data for range
   const { data: hoursData } = await supabase

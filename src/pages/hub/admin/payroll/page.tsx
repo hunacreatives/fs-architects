@@ -685,7 +685,7 @@ export default function AdminPayrollPage() {
   }, [closedPeriods, isDemo, selectedPeriod.start]);
 
   const buildPayrollReportMarkup = (label: string, generatedLabel: string) => {
-    const logoUrl = `${window.location.origin}/images/547b59870e776a20eb28e4f20931787c.png`;
+    const logoUrl = `${window.location.origin}/images/fs-architects-logo-horizontal.png`;
     const hourlyRows = rows.filter(r => r.contractor.payment_type === 'hourly').length;
     const fixedRows = rows.length - hourlyRows;
     const tableRows = rows.map(r => {
@@ -1210,7 +1210,7 @@ export default function AdminPayrollPage() {
   const fixedCount = rows.filter(r => r.contractor.payment_type === 'fixed').length;
 
   const downloadPDF = () => {
-    const logoUrl = `${window.location.origin}/images/547b59870e776a20eb28e4f20931787c.png`;
+    const logoUrl = `${window.location.origin}/images/fs-architects-logo-horizontal.png`;
 
     const tableRows = rows.map(r => {
       const c = r.contractor;

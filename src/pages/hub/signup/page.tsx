@@ -101,7 +101,7 @@ export default function HubSignupPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-[#080c14] flex-col justify-between p-12">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
-            <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-full h-full object-cover" />
+            <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-full h-full object-cover" />
           </div>
           <span className="text-white font-bold text-base tracking-wide">FS Architects</span>
         </div>
@@ -118,7 +118,7 @@ export default function HubSignupPage() {
         <div className="w-full max-w-md space-y-8">
           <div className="flex items-center gap-2 lg:hidden">
             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
-              <img src="/images/fs-architects-logo.jpg" alt="FS Architects" className="w-full h-full object-cover" />
+              <img src="/images/fs-architects-logo-horizontal.png" alt="FS Architects" className="w-full h-full object-cover" />
             </div>
             <span className="text-[#111827] font-bold text-base tracking-wide">FS Architects</span>
           </div>

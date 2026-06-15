@@ -13,7 +13,7 @@ function normalizeWorkDay(day: string) {
 export function isAutoPayrollUser(user: { full_name?: string | null; role?: string | null }) {
   const name = (user.full_name || '').trim().toLowerCase();
   const role = (user.role || '').trim().toLowerCase();
-  return name.includes('abigail') && (role === 'admin' || role === 'hr');
+  return (role === 'admin' || role === 'hr') && !name.includes('testing');
 }
 
 type DailyHoursRow = {

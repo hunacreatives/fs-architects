@@ -84,20 +84,26 @@ function generatePayslipHTML(opts: {
 <body>
 
   <!-- Letterhead -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #1c2b3a;margin-bottom:28px;">
-    <div style="display:flex;align-items:center;gap:14px;">
-      <img src="${logoUrl}" alt="FS Architects" style="height:44px;width:auto;object-fit:contain;" />
-      <div>
-        <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">FS Architects</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · fsarchitects.ph</div>
-      </div>
-    </div>
-    <div style="text-align:right;">
-      <div style="font-size:22px;font-weight:800;color:#1c2b3a;letter-spacing:3px;">PAYSLIP</div>
-      <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Document No. FSA-${Date.now().toString().slice(-8)}</div>
-      <div style="font-size:11px;color:#9ca3af;">Issued: ${generatedDate}</div>
-    </div>
-  </div>
+  <table style="width:100%;border-collapse:collapse;padding-bottom:20px;border-bottom:3px solid #1c2b3a;margin-bottom:28px;">
+    <tr>
+      <td style="vertical-align:middle;">
+        <table style="border-collapse:collapse;"><tr>
+          <td style="vertical-align:middle;padding-right:14px;">
+            <img src="${logoUrl}" alt="FS Architects" style="height:44px;width:auto;object-fit:contain;display:block;" onerror="this.style.display='none'" />
+          </td>
+          <td style="vertical-align:middle;">
+            <div style="font-size:18px;font-weight:800;color:#111827;letter-spacing:-0.3px;">FS Architects</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:1px;">Cebu, Philippines · fsarchitects.ph</div>
+          </td>
+        </tr></table>
+      </td>
+      <td style="vertical-align:top;text-align:right;">
+        <div style="font-size:22px;font-weight:800;color:#1c2b3a;letter-spacing:3px;">PAYSLIP</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Document No. FSA-${Date.now().toString().slice(-8)}</div>
+        <div style="font-size:11px;color:#9ca3af;">Issued: ${generatedDate}</div>
+      </td>
+    </tr>
+  </table>
 
   <!-- Certification statement -->
   <div style="background:#f9fafb;border-left:3px solid #1c2b3a;padding:14px 16px;border-radius:0 8px 8px 0;margin-bottom:28px;">
@@ -108,45 +114,56 @@ function generatePayslipHTML(opts: {
   </div>
 
   <!-- Contractor + Period info -->
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:28px;">
-    <div>
-      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Employee</div>
-      <div style="font-size:15px;font-weight:700;color:#111827;">${name}</div>
-      ${department ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${department}</div>` : ''}
-      <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Employee</div>
-    </div>
-    <div>
-      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Pay Period</div>
-      <div style="font-size:14px;font-weight:700;color:#111827;">${period.label}</div>
-      <div style="font-size:11px;color:#6b7280;margin-top:2px;">${period.start} to ${period.end}</div>
-    </div>
-    <div>
-      <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Compensation Basis</div>
-      <div style="font-size:13px;font-weight:600;color:#111827;">${paymentType === 'fixed' ? 'Fixed Monthly Rate' : 'Hourly Rate'}</div>
-      <div style="font-size:11px;color:#6b7280;margin-top:2px;">${rateDisplay}</div>
-    </div>
-  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px;">
+    <tr>
+      <td style="width:33%;vertical-align:top;padding-right:16px;">
+        <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Employee</div>
+        <div style="font-size:15px;font-weight:700;color:#111827;">${name}</div>
+        ${department ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">${department}</div>` : ''}
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Employee</div>
+      </td>
+      <td style="width:33%;vertical-align:top;padding-right:16px;">
+        <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Pay Period</div>
+        <div style="font-size:14px;font-weight:700;color:#111827;">${period.label}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px;">${period.start} to ${period.end}</div>
+      </td>
+      <td style="width:33%;vertical-align:top;">
+        <div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;font-weight:600;">Compensation Basis</div>
+        <div style="font-size:13px;font-weight:600;color:#111827;">${paymentType === 'fixed' ? 'Fixed Monthly Rate' : 'Hourly Rate'}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px;">${rateDisplay}</div>
+      </td>
+    </tr>
+  </table>
 
   <!-- Summary stats -->
-  <div style="display:grid;grid-template-columns:repeat(${totalOvertime > 0 ? 4 : 3},1fr);gap:10px;margin-bottom:28px;">
-    <div style="background:#f3f4f6;border-radius:10px;padding:14px;text-align:center;">
-      <div style="font-size:24px;font-weight:800;color:#111827;">${totalDaysWorked}</div>
-      <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Days Worked</div>
-    </div>
-    <div style="background:#f3f4f6;border-radius:10px;padding:14px;text-align:center;">
-      <div style="font-size:24px;font-weight:800;color:#111827;">${totalHoursRaw.toFixed(1)}</div>
-      <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Total Hours Logged</div>
-    </div>
-    <div style="background:#e0f2fe;border-radius:10px;padding:14px;text-align:center;">
-      <div style="font-size:24px;font-weight:800;color:#0369a1;">${totalHoursBillable.toFixed(1)}</div>
-      <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Billable Hours</div>
-    </div>
-    ${totalOvertime > 0 ? `
-    <div style="background:#ede9fe;border-radius:10px;padding:14px;text-align:center;">
-      <div style="font-size:24px;font-weight:800;color:#7c3aed;">+${totalOvertime}</div>
-      <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Overtime Hours</div>
-    </div>` : ''}
-  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:28px;">
+    <tr>
+      <td style="width:${totalOvertime > 0 ? '25%' : '33%'};padding-right:10px;">
+        <div style="background:#f3f4f6;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#111827;">${totalDaysWorked}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Days Worked</div>
+        </div>
+      </td>
+      <td style="width:${totalOvertime > 0 ? '25%' : '33%'};padding-right:10px;">
+        <div style="background:#f3f4f6;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#111827;">${totalHoursRaw.toFixed(1)}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Hours Logged</div>
+        </div>
+      </td>
+      <td style="width:${totalOvertime > 0 ? '25%' : '34%'};${totalOvertime > 0 ? 'padding-right:10px;' : ''}">
+        <div style="background:#e0f2fe;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#0369a1;">${totalHoursBillable.toFixed(1)}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Billable Hours</div>
+        </div>
+      </td>
+      ${totalOvertime > 0 ? `<td style="width:25%;">
+        <div style="background:#ede9fe;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#7c3aed;">+${totalOvertime}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;">Overtime Hours</div>
+        </div>
+      </td>` : ''}
+    </tr>
+  </table>
 
   <!-- Attendance table -->
   <div style="margin-bottom:28px;">
@@ -199,33 +216,39 @@ function generatePayslipHTML(opts: {
   </div>
 
   <!-- Signature block -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:32px;margin-top:16px;">
-    <div>
-      <div style="border-top:1.5px solid #374151;padding-top:8px;margin-top:48px;">
-        <div style="font-size:12px;font-weight:700;color:#111827;">Francis Fiel Roble</div>
-        <div style="font-size:11px;color:#6b7280;">Studio Head · FS Architects</div>
-        <div style="font-size:11px;color:#6b7280;">Date: ${generatedDate}</div>
-      </div>
-    </div>
-    <div>
-      <div style="border-top:1.5px solid #d1d5db;padding-top:8px;margin-top:48px;">
-        <div style="font-size:12px;font-weight:700;color:#111827;">${name}</div>
-        <div style="font-size:11px;color:#6b7280;">Employee</div>
-        <div style="font-size:11px;color:#6b7280;">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-      </div>
-    </div>
-  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:32px;margin-top:16px;">
+    <tr>
+      <td style="width:50%;padding-right:48px;vertical-align:bottom;">
+        <div style="margin-top:48px;border-top:1.5px solid #374151;padding-top:8px;">
+          <div style="font-size:12px;font-weight:700;color:#111827;">Fretz Suralta</div>
+          <div style="font-size:11px;color:#6b7280;">Owner · FS Architects</div>
+          <div style="font-size:11px;color:#6b7280;">Date: ${generatedDate}</div>
+        </div>
+      </td>
+      <td style="width:50%;vertical-align:bottom;">
+        <div style="margin-top:48px;border-top:1.5px solid #d1d5db;padding-top:8px;">
+          <div style="font-size:12px;font-weight:700;color:#111827;">${name}</div>
+          <div style="font-size:11px;color:#6b7280;">Employee</div>
+          <div style="font-size:11px;color:#6b7280;">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        </div>
+      </td>
+    </tr>
+  </table>
 
   <!-- Footer -->
-  <div style="border-top:1px solid #f0f0f0;padding-top:16px;display:flex;justify-content:space-between;align-items:flex-start;">
-    <div style="font-size:10px;color:#9ca3af;max-width:420px;line-height:1.7;">
-      This document is an officially issued payslip by FS Architects. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
-      <br>For verification, contact us at <strong>fsarchitects.ph</strong>.
-    </div>
-    <div style="text-align:right;">
-      <img src="${logoUrl}" alt="FS Architects" style="height:28px;width:auto;opacity:0.3;" />
-    </div>
-  </div>
+  <table style="width:100%;border-collapse:collapse;border-top:1px solid #f0f0f0;padding-top:16px;">
+    <tr>
+      <td style="vertical-align:top;padding-top:16px;">
+        <div style="font-size:10px;color:#9ca3af;max-width:420px;line-height:1.7;">
+          This document is an officially issued payslip by FS Architects. Attendance and hours are recorded via the company's internal time-tracking system. This payslip may be presented to banks, government agencies, or other institutions as proof of income.
+          <br>For verification, contact us at <strong>fsarchitects.ph</strong>.
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;padding-top:16px;">
+        <img src="${logoUrl}" alt="FS Architects" style="height:28px;width:auto;opacity:0.3;" onerror="this.style.display='none'" />
+      </td>
+    </tr>
+  </table>
 
 </body>
 </html>`;
@@ -628,11 +651,20 @@ export default function ContractorPayoutsPage() {
       generatedDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       logoUrl: `${window.location.origin}/images/fs-architects-logo-horizontal.jpg`,
     });
-    const win = window.open('', '_blank', 'width=900,height=1000');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => win.print(), 400);
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:-9999px;';
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentDocument || (iframe.contentWindow as any)?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+      setTimeout(() => {
+        (iframe.contentWindow as any)?.focus();
+        (iframe.contentWindow as any)?.print();
+        setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} }, 2000);
+      }, 400);
+    }
   };
 
   // Hourly contractors get a completely separate, simpler payout flow

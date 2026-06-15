@@ -123,15 +123,20 @@ Deno.serve(async (req) => {
       .select('id, full_name, avatar_url, department, email, status, slack_username, slack_id, payment_type, shift_start')
       .eq('status', 'active');
 
-    // Fetch approved OT requests for the target date — used to compute actual OT from Slack hours
+    // Fetch approved OT for today + yesterday — past-midnight shifts start on the previous date
+    // so shiftDate may be yesterday even when the function runs today.
+    const yesterdayDate = new Date(phNow.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const { data: approvedOTRows } = await supabase
       .from('hub_overtime_requests')
-      .select('contractor_id, hours')
-      .eq('date', todayDate)
+      .select('contractor_id, hours, date')
+      .gte('date', yesterdayDate)
+      .lte('date', todayDate)
       .eq('status', 'approved');
-    const approvedOTMap: Record<string, number> = {};
+    // Keyed by user_id → date so we look up by shiftDate (not todayDate)
+    const approvedOTMap: Record<string, Record<string, number>> = {};
     for (const r of approvedOTRows || []) {
-      approvedOTMap[r.contractor_id] = (approvedOTMap[r.contractor_id] || 0) + (r.hours || 0);
+      if (!approvedOTMap[r.contractor_id]) approvedOTMap[r.contractor_id] = {};
+      approvedOTMap[r.contractor_id][r.date] = (approvedOTMap[r.contractor_id][r.date] || 0) + (r.hours || 0);
     }
 
     const emailMap: Record<string, any> = {};
@@ -230,7 +235,7 @@ Deno.serve(async (req) => {
 
       // Compute actual OT from Slack hours vs approved OT request for this date.
       // Requires 9+ raw hours (full shift + lunch), capped at admin-approved hours.
-      const approvedOT = hubUser ? (approvedOTMap[hubUser.id] || 0) : 0;
+      const approvedOT = hubUser ? (approvedOTMap[hubUser.id]?.[shiftDate] || 0) : 0;
       const actualOT = approvedOT > 0
         ? parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2))
         : 0;

@@ -142,15 +142,13 @@ export interface HubClient {
 
 export interface HubAsset {
   id: number;
-  contractor_id: number;
+  assigned_to: string;
   platform: string;
   account_name: string;
-  access_level?: string;
-  status: 'active' | 'revoked' | 'pending';
+  username?: string;
+  password_hint?: string;
   notes?: string;
   created_at?: string;
-  updated_at?: string;
-  hub_users?: HubUser;
 }
 
 export interface HubPayout {

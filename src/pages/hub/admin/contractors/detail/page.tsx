@@ -107,7 +107,7 @@ export default function ContractorDetailPage() {
         supabase.from('hub_client_assignments')
           .select('role, hub_clients(*)')
           .eq('contractor_id', id),
-        supabase.from('hub_assets').select('*').eq('contractor_id', id),
+        supabase.from('hub_assets').select('*').eq('assigned_to', id),
       ]);
 
       const user = (u.data as HubUser) ?? null;

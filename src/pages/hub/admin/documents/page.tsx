@@ -170,11 +170,6 @@ export default function AdminDocumentsPage() {
   const [drSearch, setDrSearch] = useState('');
   const [reviewing, setReviewing] = useState<HubDocRequest | null>(null);
 
-  // Signing for admins who also have documents assigned to them
-  const [myAssignments, setMyAssignments] = useState<any[]>([]);
-  const [signModal, setSignModal] = useState<any | null>(null);
-  const [signName, setSignName] = useState('');
-  const [signing, setSigning] = useState(false);
 
   // Upload form state
   const [title, setTitle] = useState('');
@@ -193,7 +188,6 @@ export default function AdminDocumentsPage() {
     fetchDocs();
     fetchContractors();
     fetchDocRequests();
-    if (hubUser?.id) fetchMyAssignments();
   }, [hubUser]);
 
   const fetchDocRequests = async () => {
@@ -215,32 +209,6 @@ export default function AdminDocumentsPage() {
     showToast('Contract deleted.');
   };
 
-  const fetchMyAssignments = async () => {
-    const { data } = await supabase
-      .from('hub_sign_assignments')
-      .select('*, hub_sign_documents(id, title, description, content, file_url, is_generated, created_at)')
-      .eq('contractor_id', hubUser!.id)
-      .neq('status', 'signed')
-      .order('created_at', { ascending: false });
-    setMyAssignments(data ?? []);
-  };
-
-  const submitSign = async () => {
-    if (!signModal || !signName.trim()) return;
-    setSigning(true);
-    const signedAt = new Date().toISOString();
-    await supabase
-      .from('hub_sign_assignments')
-      .update({ status: 'signed', signed_name: signName.trim(), signed_at: signedAt })
-      .eq('id', signModal.id);
-    supabase.functions.invoke('send-signed-contract', { body: { assignment_id: signModal.id } }).catch(() => {});
-    setSigning(false);
-    setSignModal(null);
-    setSignName('');
-    fetchMyAssignments();
-    fetchDocs();
-    showToast('Document signed! A copy has been sent to your email.');
-  };
 
   const fetchDocs = async () => {
     setLoading(true);
@@ -370,10 +338,6 @@ export default function AdminDocumentsPage() {
     }
   };
 
-  const signedCount = (doc: HubSignDocument) =>
-    doc.hub_sign_assignments?.filter(a => a.status === 'signed').length ?? 0;
-  const totalCount = (doc: HubSignDocument) =>
-    doc.hub_sign_assignments?.length ?? 0;
 
   return (
     <AdminLayout title="Documents">
@@ -429,45 +393,6 @@ export default function AdminDocumentsPage() {
           </div>
         </div>
 
-        {/* Documents assigned to this admin for signing */}
-        {myAssignments.length > 0 && (
-          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <i className="ri-pen-nib-line text-[#1c2b3a]/70"></i>
-              <p className="text-sm font-semibold text-violet-800">You have {myAssignments.length} document{myAssignments.length > 1 ? 's' : ''} to sign</p>
-            </div>
-            {myAssignments.map((a: any) => {
-              const doc = a.hub_sign_documents;
-              return (
-                <div key={a.id} className="bg-white rounded-lg border border-slate-100 p-4 flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <i className="ri-file-text-line text-[#1c2b3a]/70 text-sm"></i>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{doc?.title}</p>
-                    {doc?.description && <p className="text-xs text-gray-400">{doc.description}</p>}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {doc?.content && (
-                      <button
-                        onClick={() => { const b = new Blob([doc.content], { type: 'text/html' }); window.open(URL.createObjectURL(b), '_blank'); }}
-                        className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2.5 py-1.5 rounded-lg cursor-pointer"
-                      >
-                        <i className="ri-external-link-line mr-1"></i>Preview
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setSignModal(a); setSignName(hubUser?.full_name ?? ''); }}
-                      className="text-xs font-medium bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-[#0f1c28] cursor-pointer"
-                    >
-                      <i className="ri-pen-nib-line mr-1"></i>Sign
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {loading ? (
           <div className="text-center py-12 text-gray-400 text-sm">Loading…</div>
@@ -483,16 +408,13 @@ export default function AdminDocumentsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Document', 'Signatories', 'Progress', 'Date', ''].map(h => (
+                    {['Document', 'Assigned To', 'Status', 'Date', ''].map(h => (
                       <th key={h} className="text-left text-xs text-gray-400 font-medium px-4 py-3">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {docs.map(doc => {
-                    const signed = signedCount(doc);
-                    const total = totalCount(doc);
-                    const allSigned = total > 0 && signed === total;
                     return (
                       <>
                         <tr key={doc.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => openDetail(doc)}>
@@ -515,20 +437,16 @@ export default function AdminDocumentsPage() {
                                   <div key={a.id} className="flex items-center gap-2">
                                     {u?.avatar_url
                                       ? <img src={u.avatar_url} alt={u.full_name} className="w-5 h-5 rounded-full object-cover object-top flex-shrink-0" />
-                                      : <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${a.status === 'signed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>{u?.full_name?.[0] ?? '?'}</div>
+                                      : <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-500 flex-shrink-0">{u?.full_name?.[0] ?? '?'}</div>
                                     }
-                                    <span className={`text-xs truncate max-w-[140px] ${a.status === 'signed' ? 'text-emerald-600' : 'text-gray-500'}`}>{u?.full_name}</span>
-                                    {a.status === 'signed'
-                                      ? <i className="ri-checkbox-circle-fill text-emerald-500 text-xs flex-shrink-0"></i>
-                                      : <i className="ri-time-line text-gray-300 text-xs flex-shrink-0"></i>
-                                    }
+                                    <span className="text-xs text-gray-600 truncate max-w-[140px]">{u?.full_name}</span>
                                   </div>
                                 );
                               })}
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            {doc.is_generated ? (() => {
+                            {(() => {
                               const anyReady = doc.hub_sign_assignments?.some(a => (a as any).pickup_ready);
                               const noAssignment = !doc.hub_sign_assignments?.length;
                               return (
@@ -538,20 +456,10 @@ export default function AdminDocumentsPage() {
                                   : 'bg-amber-50 text-amber-600'
                                 }`}>
                                   <i className={`text-xs ${noAssignment ? 'ri-file-text-line' : anyReady ? 'ri-checkbox-circle-fill' : 'ri-time-line'}`}></i>
-                                  {noAssignment ? 'Manual' : anyReady ? 'Ready for pickup' : 'Pending pickup'}
+                                  {noAssignment ? 'No assignee' : anyReady ? 'Ready for pickup' : 'Pending pickup'}
                                 </span>
                               );
-                            })() : (
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 bg-gray-100 rounded-full h-1.5">
-                                  <div className={`h-1.5 rounded-full ${allSigned ? 'bg-emerald-500' : 'bg-[#1c2b3a]'}`}
-                                    style={{ width: total > 0 ? `${(signed / total) * 100}%` : '0%' }} />
-                                </div>
-                                <span className={`text-xs font-medium ${allSigned ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                  {signed}/{total}
-                                </span>
-                              </div>
-                            )}
+                            })()}
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                             {new Date(doc.created_at!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -570,7 +478,7 @@ export default function AdminDocumentsPage() {
                               <div className="flex items-center gap-3">
                                 <i className="ri-error-warning-line text-red-500 flex-shrink-0"></i>
                                 <p className="text-xs text-red-700 flex-1">
-                                  {doc.hub_sign_assignments?.some(a => a.status === 'signed') ? 'This contract has already been signed. ' : ''}Delete permanently?
+                                  Delete permanently?
                                 </p>
                                 <button onClick={() => deleteDoc(doc.id)} className="text-xs font-semibold text-red-600 hover:text-red-800 cursor-pointer px-2 py-1 rounded hover:bg-red-100">Yes, delete</button>
                                 <button onClick={() => setConfirmDeleteId(null)} className="text-xs text-gray-500 cursor-pointer px-2 py-1 rounded hover:bg-gray-100">Cancel</button>
@@ -796,29 +704,24 @@ export default function AdminDocumentsPage() {
                           <img src={(a as any).hub_users?.avatar_url || ''} alt="" className="w-7 h-7 rounded-full object-cover object-top bg-gray-100 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800">{(a as any).hub_users?.full_name}</p>
-                            {a.status === 'signed' && a.signed_at && (
-                              <p className="text-xs text-gray-400">Signed as "{a.signed_name}" · {new Date(a.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                            )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            {a.status === 'signed' && (
-                              a.drive_file_id ? (
-                                <span title="Saved in Google Drive" className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                                  <i className="ri-google-fill text-xs"></i> In Drive
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => uploadAssignmentToDrive(a.id)}
-                                  disabled={uploadingToDrive === a.id}
-                                  title="Upload to Google Drive"
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-sky-600 hover:bg-sky-50 transition-colors cursor-pointer disabled:opacity-40"
-                                >
-                                  {uploadingToDrive === a.id
-                                    ? <i className="ri-loader-4-line animate-spin text-sm"></i>
-                                    : <i className="ri-google-fill text-sm"></i>}
-                                </button>
-                              )
-                            )}
+                            {a.drive_file_id ? (
+                              <span title="Saved in Google Drive" className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                <i className="ri-google-fill text-xs"></i> In Drive
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => uploadAssignmentToDrive(a.id)}
+                                disabled={uploadingToDrive === a.id}
+                                title="Upload to Google Drive"
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-sky-600 hover:bg-sky-50 transition-colors cursor-pointer disabled:opacity-40"
+                              >
+                                {uploadingToDrive === a.id
+                                  ? <i className="ri-loader-4-line animate-spin text-sm"></i>
+                                  : <i className="ri-google-fill text-sm"></i>}
+                              </button>
+                            )
                           </div>
                         </div>
 
@@ -862,53 +765,17 @@ export default function AdminDocumentsPage() {
         <ContractGeneratorModal
           contractors={contractors}
           onClose={() => setShowGenerator(false)}
-          onDone={() => { setShowGenerator(false); fetchDocs(); showToast('Contract sent for signature!'); }}
+          onDone={() => { setShowGenerator(false); fetchDocs(); showToast('MOA saved and downloaded.'); }}
         />
       )}
       {showCOE && (
         <COEGeneratorModal
           contractors={contractors}
           onClose={() => setShowCOE(false)}
-          onDone={() => { setShowCOE(false); fetchDocs(); showToast('COE sent to employee!'); }}
+          onDone={() => { setShowCOE(false); fetchDocs(); showToast('COE saved and downloaded.'); }}
         />
       )}
 
-      {/* Sign modal for admins with pending assignments */}
-      {signModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-white rounded-xl w-full max-w-md p-6 space-y-4">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">Sign Document</h2>
-              <p className="text-sm text-gray-500 mt-0.5">{(signModal as any).hub_sign_documents?.title}</p>
-            </div>
-            <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 text-xs text-amber-700">
-              By typing your full name below, you are applying your electronic signature to this document.
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Full name (as signature)</label>
-              <input
-                type="text"
-                value={signName}
-                onChange={e => setSignName(e.target.value)}
-                placeholder="Type your full name"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400"
-              />
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button onClick={() => setSignModal(null)} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 cursor-pointer">
-                Cancel
-              </button>
-              <button
-                onClick={submitSign}
-                disabled={signing || !signName.trim()}
-                className="flex-1 bg-violet-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40"
-              >
-                {signing ? 'Signing…' : 'Confirm Signature'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
 }

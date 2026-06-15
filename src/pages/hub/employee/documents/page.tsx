@@ -32,7 +32,7 @@ const STATUS_ICONS: Record<string, string> = {
 
 export default function ContractorDocumentsPage() {
   const { hubUser } = useAuth();
-  const [tab, setTab] = useState<'sign' | 'requests'>('sign');
+  const [tab, setTab] = useState<'docs' | 'requests'>('docs');
   const [requests, setRequests] = useState<HubDocRequest[]>([]);
   const [assignments, setAssignments] = useState<HubSignAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,11 +44,6 @@ export default function ContractorDocumentsPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sign modal
-  const [signModal, setSignModal] = useState<HubSignAssignment | null>(null);
-  const [signName, setSignName] = useState('');
-  const [signing, setSigning] = useState(false);
-
   useEffect(() => {
     if (hubUser?.id) {
       fetchRequests();
@@ -56,11 +51,8 @@ export default function ContractorDocumentsPage() {
     }
   }, [hubUser]);
 
-  // Clear pending toast timeout on unmount
   useEffect(() => {
-    return () => {
-      if (toastRef.current) clearTimeout(toastRef.current);
-    };
+    return () => { if (toastRef.current) clearTimeout(toastRef.current); };
   }, []);
 
   const showToast = (msg: string) => {
@@ -89,82 +81,13 @@ export default function ContractorDocumentsPage() {
     setAssignments((data as HubSignAssignment[]) ?? []);
   };
 
-  const buildSignedHtml = (content: string, signedName: string, signedAt: string): string => {
-    const dateLabel = new Date(signedAt).toLocaleDateString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric',
-    });
-    const dom = new DOMParser().parseFromString(content, 'text/html');
-
-    const link = dom.createElement('link');
-    link.setAttribute('href', 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap');
-    link.setAttribute('rel', 'stylesheet');
-    dom.head.appendChild(link);
-
-    // "Signature" label has style="margin-top:4pt;" — replace preceding blank div with cursive name
-    const signatureLabel = dom.querySelector('p.sig-label[style*="margin-top"]');
-    if (signatureLabel) {
-      const blankDiv = signatureLabel.previousElementSibling as HTMLElement;
-      if (blankDiv) {
-        blankDiv.style.borderBottom = 'none';
-        blankDiv.style.display = 'flex';
-        blankDiv.style.alignItems = 'flex-end';
-        blankDiv.style.paddingBottom = '4pt';
-        blankDiv.innerHTML = `<p style="font-family:'Dancing Script',cursive;font-size:26pt;color:#111;margin:0;line-height:1;">${signedName}</p>`;
-      }
-      signatureLabel.remove();
-    }
-
-    // "Name | Date" placeholder — no style attribute, ends with "Date"
-    dom.querySelectorAll('p.sig-label:not([style])').forEach(p => {
-      if (p.innerHTML.trim().endsWith('Date')) {
-        p.innerHTML = `${signedName} &nbsp;|&nbsp; ${dateLabel}`;
-      }
-    });
-
-    return dom.documentElement.outerHTML;
-  };
-
-  const openDoc = (doc: any, assignment?: HubSignAssignment) => {
+  const openDoc = (doc: any) => {
     if (doc?.is_generated && doc?.content) {
-      let content = doc.content;
-      if (assignment?.status === 'signed' && assignment.signed_name && assignment.signed_at) {
-        content = buildSignedHtml(content, assignment.signed_name, assignment.signed_at);
-      }
-      const blob = new Blob([content], { type: 'text/html' });
+      const blob = new Blob([doc.content], { type: 'text/html' });
       window.open(URL.createObjectURL(blob), '_blank');
     } else if (doc?.file_url) {
       window.open(doc.file_url, '_blank');
     }
-  };
-
-  const openSignModal = (a: HubSignAssignment) => {
-    setSignModal(a);
-    setSignName(hubUser?.full_name ?? '');
-  };
-
-  const submitSign = async () => {
-    if (!signModal || !signName.trim()) return;
-    setSigning(true);
-    const signedAt = new Date().toISOString();
-    await supabase
-      .from('hub_sign_assignments')
-      .update({ status: 'signed', signed_name: signName.trim(), signed_at: signedAt })
-      .eq('id', signModal.id);
-
-    // Send signed copy to contractor's email
-    supabase.functions.invoke('send-signed-contract', {
-      body: { assignment_id: signModal.id },
-    }).catch(() => {}); // fire and forget
-
-    supabase.functions.invoke('notify-internal-request', {
-      body: { type: 'contract_signed', contractor_name: hubUser!.full_name, detail: signModal.hub_sign_documents?.title ?? 'Contract', notes: null },
-    }).catch(() => {});
-
-    setSigning(false);
-    setSignModal(null);
-    setSignName('');
-    fetchAssignments();
-    showToast('Document signed! A copy has been sent to your email.');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -189,10 +112,9 @@ export default function ContractorDocumentsPage() {
   };
 
   const filtered = filterStatus === 'all' ? requests : requests.filter(r => r.status === filterStatus);
-
   const pendingCount = requests.filter(r => r.status === 'pending' || r.status === 'in_progress').length;
   const completedCount = requests.filter(r => r.status === 'completed').length;
-  const pendingSignCount = assignments.filter(a => a.status === 'pending').length;
+  const pickupReadyCount = assignments.filter(a => (a as any).pickup_ready).length;
 
   return (
     <ContractorLayout title="Documents">
@@ -218,13 +140,13 @@ export default function ContractorDocumentsPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
           <button
-            onClick={() => setTab('sign')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${tab === 'sign' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setTab('docs')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${tab === 'docs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
-            <i className="ri-pen-nib-line"></i>
-            To Sign
-            {pendingSignCount > 0 && (
-              <span className="w-4 h-4 bg-[#1c2b3a] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{pendingSignCount}</span>
+            <i className="ri-file-text-line"></i>
+            My Documents
+            {pickupReadyCount > 0 && (
+              <span className="w-4 h-4 bg-emerald-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{pickupReadyCount}</span>
             )}
           </button>
           <button
@@ -236,43 +158,47 @@ export default function ContractorDocumentsPage() {
           </button>
         </div>
 
-        {/* --- TO SIGN TAB --- */}
-        {tab === 'sign' && (() => {
-          const pending = assignments.filter(a => a.status === 'pending');
-          const signed = assignments.filter(a => a.status === 'signed');
+        {/* --- MY DOCUMENTS TAB --- */}
+        {tab === 'docs' && (() => {
           if (assignments.length === 0) return (
             <div className="bg-white rounded-xl border border-gray-100 py-14 text-center">
-              <i className="ri-pen-nib-line text-4xl text-gray-200 block mb-3"></i>
-              <p className="text-gray-400 text-sm">No documents to sign.</p>
-              <p className="text-gray-300 text-xs mt-1">HR will send contracts here when needed.</p>
+              <i className="ri-file-text-line text-4xl text-gray-200 block mb-3"></i>
+              <p className="text-gray-400 text-sm">No documents yet.</p>
+              <p className="text-gray-300 text-xs mt-1">HR will issue your contracts and documents here.</p>
             </div>
           );
+
+          const readyForPickup = assignments.filter(a => (a as any).pickup_ready);
+          const processing = assignments.filter(a => !(a as any).pickup_ready);
+
           return (
             <div className="space-y-6">
-              {/* Needs Signature */}
-              {pending.length > 0 && (
+              {/* Ready for pickup */}
+              {readyForPickup.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Needs Your Signature</p>
-                  {pending.map(a => {
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Ready for Pickup</p>
+                  {readyForPickup.map(a => {
                     const doc = (a as any).hub_sign_documents;
                     return (
-                      <div key={a.id} className="bg-white rounded-xl border border-[#1c2b3a]/20 p-5 shadow-sm">
+                      <div key={a.id} className="bg-white rounded-xl border border-emerald-200 p-5 shadow-sm">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
-                            <i className="ri-file-text-line text-[#1c2b3a] text-lg"></i>
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                            <i className="ri-store-2-line text-emerald-600 text-lg"></i>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-sm">{doc?.title}</p>
-                            {doc?.description && <p className="text-xs text-gray-400 mt-0.5">{doc.description}</p>}
-                            <p className="text-xs text-gray-400 mt-1">Sent {new Date(doc?.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                            <div className="flex items-center gap-3 mt-4">
-                              <button onClick={() => openDoc(doc)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
-                                <i className="ri-eye-line"></i> View
-                              </button>
-                              <button onClick={() => openSignModal(a)} className="flex items-center gap-1.5 text-sm bg-[#1c2b3a] text-white px-4 py-2 rounded-lg hover:bg-[#e55a24] cursor-pointer font-medium">
-                                <i className="ri-pen-nib-line"></i> Sign Document
-                              </button>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-gray-900 text-sm">{doc?.title}</p>
+                              <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Ready for Pickup</span>
                             </div>
+                            {doc?.description && <p className="text-xs text-gray-400 mt-0.5">{doc.description}</p>}
+                            <div className="mt-3 bg-emerald-50 rounded-lg px-4 py-3 text-xs text-emerald-800">
+                              <p className="font-semibold mb-0.5">Pick up your document at:</p>
+                              <p>FS Architects Office — Unit 2115 Meridian by Avenir, Golam Drive, Mabolo, Cebu City</p>
+                              <p className="mt-1 text-emerald-600">Bring a valid ID. Office hours: Mon–Fri, 9AM–6PM.</p>
+                            </div>
+                            <button onClick={() => openDoc(doc)} className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 cursor-pointer">
+                              <i className="ri-eye-line"></i> View Document
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -281,25 +207,30 @@ export default function ContractorDocumentsPage() {
                 </div>
               )}
 
-              {/* Signed */}
-              {signed.length > 0 && (
+              {/* Processing */}
+              {processing.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Signed</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Processing</p>
                   <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
-                    {signed.map(a => {
+                    {processing.map(a => {
                       const doc = (a as any).hub_sign_documents;
                       return (
                         <div key={a.id} className="flex items-center gap-3 px-4 py-3.5">
-                          <i className="ri-checkbox-circle-fill text-emerald-500 text-lg flex-shrink-0"></i>
+                          <div className="w-8 h-8 rounded-lg bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                            <i className="ri-file-text-line text-[#1c2b3a] text-sm"></i>
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-700 truncate">{doc?.title}</p>
                             <p className="text-xs text-gray-400">
-                              Signed {a.signed_at ? new Date(a.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                              Issued {doc?.created_at ? new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                             </p>
                           </div>
-                          <button onClick={() => openDoc(doc, a)} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer flex items-center gap-1 flex-shrink-0">
-                            <i className="ri-eye-line"></i> View
-                          </button>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">Pending Pickup</span>
+                            <button onClick={() => openDoc(doc)} className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer flex items-center gap-1">
+                              <i className="ri-eye-line"></i> View
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -313,7 +244,6 @@ export default function ContractorDocumentsPage() {
         {/* --- DOC REQUESTS TAB --- */}
         {tab === 'requests' && (
           <>
-            {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
                 { label: 'Total Requests', value: requests.length, icon: 'ri-file-list-3-line', color: 'text-gray-600', bg: 'bg-gray-50' },
@@ -332,7 +262,6 @@ export default function ContractorDocumentsPage() {
               ))}
             </div>
 
-            {/* Available Doc Types Info */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <h2 className="text-sm font-semibold text-gray-900 mb-3">Available Documents</h2>
               <div className="flex flex-wrap gap-2">
@@ -343,7 +272,6 @@ export default function ContractorDocumentsPage() {
               <p className="text-xs text-gray-400 mt-3">Documents are processed within 1–3 business days. You&apos;ll receive a notification once ready.</p>
             </div>
 
-            {/* Request History */}
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <div className="flex items-center justify-between p-4 border-b border-gray-100">
                 <h2 className="text-sm font-semibold text-gray-900">Request History</h2>
@@ -416,54 +344,6 @@ export default function ContractorDocumentsPage() {
         )}
       </div>
 
-      {/* Sign Modal */}
-      {signModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-white rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">Sign Document</h2>
-              <button onClick={() => setSignModal(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
-                <i className="ri-close-line text-lg"></i>
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <i className="ri-file-text-line text-[#1c2b3a]"></i>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{(signModal as any).hub_sign_documents?.title}</p>
-                </div>
-                <button onClick={() => openDoc((signModal as any).hub_sign_documents)} className="text-xs text-[#1c2b3a] cursor-pointer whitespace-nowrap">
-                  View <i className="ri-external-link-line"></i>
-                </button>
-              </div>
-              <p className="text-sm text-gray-600">By typing your full name below, you confirm that you have read and agree to this document.</p>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Full Name (as signature) *</label>
-                <input
-                  type="text"
-                  value={signName}
-                  onChange={e => setSignName(e.target.value)}
-                  placeholder="Type your full name"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
-                />
-              </div>
-              <div className="bg-amber-50 rounded-lg px-4 py-3 text-xs text-amber-700 flex gap-2">
-                <i className="ri-information-line flex-shrink-0 mt-0.5"></i>
-                This constitutes your digital signature. Date and timestamp will be recorded automatically.
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setSignModal(null)} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 cursor-pointer">
-                  Cancel
-                </button>
-                <button onClick={submitSign} disabled={signing || !signName.trim()} className="flex-1 bg-[#1c2b3a] text-white rounded-lg py-2 text-sm font-medium hover:bg-[#e55a24] cursor-pointer disabled:opacity-50">
-                  {signing ? 'Signing…' : 'Confirm Signature'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Request Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -499,7 +379,7 @@ export default function ContractorDocumentsPage() {
               </div>
               <div className="bg-amber-50 rounded-lg px-4 py-3 text-xs text-amber-700">
                 <i className="ri-information-line mr-1"></i>
-                Documents are usually processed within 1–3 business days. HR will notify you once ready.
+                Documents are usually processed within 1–3 business days. HR will notify you once ready for pickup.
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">

@@ -146,7 +146,9 @@ export default function ContractorsPage() {
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex -space-x-1.5">
                   {contractors.filter(c => c.status === 'active' && c.avatar_url).slice(0, 4).map(c => (
-                    <img key={c.id} src={c.avatar_url!} alt={c.full_name} className="w-7 h-7 rounded-full object-cover object-top border-2 border-[#111827] flex-shrink-0" />
+                    <div key={c.id} className="w-7 h-7 rounded-full overflow-hidden border-2 border-[#111827] flex-shrink-0">
+                      <img src={c.avatar_url!} alt={c.full_name} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%', transform: 'scale(1.8)', transformOrigin: 'center' }} />
+                    </div>
                   ))}
                 </div>
                 <p className="text-white/50 text-xs">{contractors.filter(c => c.status === 'active').length} active</p>
@@ -261,7 +263,9 @@ export default function ContractorsPage() {
                   {/* Avatar */}
                   <div className="flex-shrink-0 relative">
                     {c.avatar_url ? (
-                      <img src={c.avatar_url} alt={c.full_name} className="w-10 h-10 rounded-full object-cover object-top" />
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <img src={c.avatar_url} alt={c.full_name} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%', transform: 'scale(1.8)', transformOrigin: 'center' }} />
+                      </div>
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-[#1c2b3a] flex items-center justify-center">
                         <span className="text-white text-sm font-bold">{c.full_name.charAt(0).toUpperCase()}</span>

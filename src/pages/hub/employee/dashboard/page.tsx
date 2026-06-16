@@ -555,7 +555,7 @@ export default function ContractorDashboard() {
             <div className="bg-[#111827] rounded-2xl p-5 text-white relative overflow-hidden">
               <style>{`
                 @keyframes sun-pulse{0%,100%{box-shadow:0 0 24px 10px rgba(255,185,50,0.35)}50%{box-shadow:0 0 42px 20px rgba(255,185,50,0.6)}}
-                @keyframes eve-pulse{0%,100%{box-shadow:0 0 24px 10px rgba(255,100,30,0.4)}50%{box-shadow:0 0 42px 20px rgba(255,100,30,0.65)}}
+                @keyframes eve-pulse{0%,100%{box-shadow:0 0 24px 10px rgba(249,115,22,0.4)}50%{box-shadow:0 0 42px 20px rgba(249,115,22,0.65)}}
                 @keyframes moon-pulse{0%,100%{box-shadow:0 0 18px 7px rgba(180,215,255,0.2)}50%{box-shadow:0 0 32px 14px rgba(180,215,255,0.42)}}
                 @keyframes twinkle-a{0%,100%{opacity:.15}50%{opacity:.9}}
                 @keyframes twinkle-b{0%,100%{opacity:.6}50%{opacity:.1}}
@@ -568,7 +568,7 @@ export default function ContractorDashboard() {
                   background: isNight
                     ? 'radial-gradient(ellipse at 78% 18%, rgba(25,35,75,0.9) 0%, transparent 65%)'
                     : isEvening
-                    ? 'radial-gradient(ellipse at 82% 28%, rgba(200,70,20,0.28) 0%, transparent 60%)'
+                    ? 'radial-gradient(ellipse at 82% 28%, rgba(239,68,68,0.28) 0%, transparent 60%)'
                     : isMorning
                     ? 'radial-gradient(ellipse at 85% 20%, rgba(255,165,30,0.22) 0%, transparent 58%)'
                     : 'radial-gradient(ellipse at 85% 12%, rgba(255,210,50,0.18) 0%, transparent 56%)'
@@ -608,7 +608,7 @@ export default function ContractorDashboard() {
                     top: isMorning ? '18%' : isEvening ? '30%' : '8%',
                     width:38, height:38, borderRadius:'50%',
                     background: isEvening
-                      ? 'radial-gradient(circle, #FFBC70 0%, #1c2b3a 55%, #C0392B 100%)'
+                      ? 'radial-gradient(circle, #fbbf24 0%, #f97316 50%, #ef4444 100%)'
                       : isMorning
                       ? 'radial-gradient(circle, #FFE566 0%, #FFBB30 55%, #FF9500 100%)'
                       : 'radial-gradient(circle, #FFF176 0%, #FFD740 55%, #FFA000 100%)',
@@ -880,7 +880,9 @@ export default function ContractorDashboard() {
                   <div key={t.full_name} className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">
                       {t.avatar_url
-                        ? <img src={t.avatar_url} alt={t.full_name} className="w-7 h-7 rounded-full object-cover object-top" />
+                        ? <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                            <img src={t.avatar_url} alt={t.full_name} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%', transform: 'scale(1.8)', transformOrigin: 'center' }} />
+                          </div>
                         : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-xs font-bold">{t.full_name.charAt(0)}</span></div>
                       }
                       <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${

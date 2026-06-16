@@ -73,6 +73,7 @@ const TEAM = [
     img: '/images/team/gab.webp',
     imgShift: '-20%',
     imgShiftX: '3%',
+    imgScale: 1.85,
     credentials: [
       { label: 'Role', value: 'Junior Architect' },
     ],
@@ -111,6 +112,7 @@ const TEAM = [
     bioKey: 'studio_team_chico_bio',
     img: '/images/team/chico.webp',
     imgShift: '-22%',
+    imgScale: 1.85,
     credentials: [
       { label: 'Role', value: 'Architectural Apprentice' },
     ],

@@ -1,5 +1,5 @@
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const CHANNELS = ['C0830PCJB4P', 'C0830PCGQK1'];
+const CHANNELS = ['C0830PCJB4P', 'C0830PCGQK1', 'C0BBA4Q18Q0'];
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

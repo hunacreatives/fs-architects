@@ -426,7 +426,7 @@ export default function AdminDashboardPage() {
         <div className="bg-[#111827] rounded-2xl p-5 text-white relative overflow-hidden">
           <style>{`
             @keyframes sun-pulse{0%,100%{box-shadow:0 0 24px 10px rgba(255,185,50,0.35)}50%{box-shadow:0 0 42px 20px rgba(255,185,50,0.6)}}
-            @keyframes eve-pulse{0%,100%{box-shadow:0 0 24px 10px rgba(255,100,30,0.4)}50%{box-shadow:0 0 42px 20px rgba(255,100,30,0.65)}}
+            @keyframes eve-pulse{0%,100%{box-shadow:0 0 24px 10px rgba(249,115,22,0.4)}50%{box-shadow:0 0 42px 20px rgba(249,115,22,0.65)}}
             @keyframes moon-pulse{0%,100%{box-shadow:0 0 18px 7px rgba(180,215,255,0.2)}50%{box-shadow:0 0 32px 14px rgba(180,215,255,0.42)}}
             @keyframes twinkle-a{0%,100%{opacity:.15}50%{opacity:.9}}
             @keyframes twinkle-b{0%,100%{opacity:.6}50%{opacity:.1}}
@@ -439,7 +439,7 @@ export default function AdminDashboardPage() {
               background: isNight
                 ? 'radial-gradient(ellipse at 78% 18%, rgba(25,35,75,0.9) 0%, transparent 65%)'
                 : isEvening
-                ? 'radial-gradient(ellipse at 82% 28%, rgba(200,70,20,0.28) 0%, transparent 60%)'
+                ? 'radial-gradient(ellipse at 82% 28%, rgba(239,68,68,0.28) 0%, transparent 60%)'
                 : isMorning
                 ? 'radial-gradient(ellipse at 85% 20%, rgba(255,165,30,0.22) 0%, transparent 58%)'
                 : 'radial-gradient(ellipse at 85% 12%, rgba(255,210,50,0.18) 0%, transparent 56%)'
@@ -473,7 +473,7 @@ export default function AdminDashboardPage() {
                 top: isMorning ? '20%' : isEvening ? '35%' : '10%',
                 width:38, height:38, borderRadius:'50%',
                 background: isEvening
-                  ? 'radial-gradient(circle, #FFBC70 0%, #1c2b3a 55%, #C0392B 100%)'
+                  ? 'radial-gradient(circle, #fbbf24 0%, #f97316 50%, #ef4444 100%)'
                   : isMorning
                   ? 'radial-gradient(circle, #FFE566 0%, #FFBB30 55%, #FF9500 100%)'
                   : 'radial-gradient(circle, #FFF176 0%, #FFD740 55%, #FFA000 100%)',

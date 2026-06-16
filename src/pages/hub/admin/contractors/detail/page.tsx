@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { supabase } from '@/lib/supabase';
 import { HubUser, HubTimeOff, HubRequest, HubClient, HubAsset } from '@/lib/types';
 import EditContractorModal from './EditContractorModal';
@@ -47,20 +48,21 @@ export default function ContractorDetailPage() {
   const [rateError, setRateError] = useState('');
   const [confirmDeleteRateId, setConfirmDeleteRateId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
 
-  const handlePhotoUpload = async (file: File) => {
+  const handlePhotoUpload = async (file: Blob) => {
     if (!contractor) return;
     setUploadingPhoto(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${contractor.id}/avatar.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      const path = `${contractor.id}/avatar.jpg`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: 'image/jpeg' });
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const { error: dbErr } = await supabase.from('hub_users').update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', contractor.id);
+      const bustUrl = `${publicUrl}?t=${Date.now()}`;
+      const { error: dbErr } = await supabase.from('hub_users').update({ avatar_url: bustUrl, updated_at: new Date().toISOString() }).eq('id', contractor.id);
       if (dbErr) throw dbErr;
-      setContractor(prev => prev ? { ...prev, avatar_url: publicUrl } : prev);
+      setContractor(prev => prev ? { ...prev, avatar_url: bustUrl } : prev);
     } catch (e: any) {
       alert(e.message || 'Photo upload failed');
     }
@@ -378,7 +380,11 @@ export default function ContractorDetailPage() {
               {uploadingPhoto ? <i className="ri-loader-4-line animate-spin text-xs"></i> : <i className="ri-camera-line text-xs"></i>}
             </button>
             <input ref={photoRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setCropSrc(URL.createObjectURL(f));
+                e.target.value = '';
+              }} />
           </div>
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex flex-wrap items-start gap-2">
@@ -1248,6 +1254,14 @@ export default function ContractorDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {cropSrc && (
+        <AvatarCropModal
+          imageSrc={cropSrc}
+          onCancel={() => { URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+          onCropped={(blob) => { URL.revokeObjectURL(cropSrc); setCropSrc(null); handlePhotoUpload(blob); }}
+        />
       )}
     </AdminLayout>
   );

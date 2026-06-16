@@ -9,7 +9,6 @@ export interface HubUser {
   phone?: string;
   birthday?: string;
   address?: string;
-  emergency_contact?: string;
   emergency_contact_name?: string;
   emergency_contact_relationship?: string;
   emergency_contact_phone?: string;

@@ -50,9 +50,10 @@ export default function HubLoginPage() {
   }, [loading, authLoading, hubUser]);
 
   // Prevent flashing the login form while auth is still rehydrating from localStorage
-  if (authLoading || hubUser) {
+  // Skip during active submission — authLoading briefly toggles and would flash the screen
+  if (!loading && (authLoading || hubUser)) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#FAFAFA]">
+      <div className="flex h-screen items-center justify-center bg-[#0a0608]">
         <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
       </div>
     );

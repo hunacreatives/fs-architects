@@ -84,7 +84,7 @@ const TEAM = [
     titleKey: 'studio_team_mikee_title',
     bioKey: 'studio_team_mikee_bio',
     img: '/images/team/mikee.webp',
-    imgShift: '-30%',
+    imgShift: '-24%',
     imgScale: 1.8,
     credentials: [
       { label: 'Education', value: 'B.S. Architecture' },

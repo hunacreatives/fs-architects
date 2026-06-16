@@ -1504,7 +1504,7 @@ export default function AdminPayrollPage() {
                 {[
                   { label: 'Total Payroll', value: fmt(displayTotalPay, 'PHP'), accent: true },
                   { label: 'Total Hours', value: `${totalHours.toFixed(1)}h` },
-                  { label: 'Employees', value: `${rows.length} employee${rows.length !== 1 ? 's' : ''}` },
+                  { label: 'Employees', value: `${rows.length}` },
                   { label: 'Approved', value: `${Object.values(payoutsMap).filter((p: any) => p?.status === 'hr_approved' || p?.status === 'owner_approved' || p?.status === 'paid').length}` },
                 ].map((k) => (
                   <div key={k.label}>

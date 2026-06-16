@@ -285,7 +285,7 @@ export default function ContractorsPage() {
                   </div>
 
                   {/* Dept + rate */}
-                  <div className="hidden sm:flex flex-col items-start gap-1 min-w-[130px]">
+                  <div className="hidden sm:flex flex-col items-start gap-1 w-[150px] flex-shrink-0">
                     {c.department && (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${departmentColors[c.department] || 'bg-gray-100 text-gray-600'}`}>
                         {c.department}
@@ -295,7 +295,7 @@ export default function ContractorsPage() {
                   </div>
 
                   {/* Slack */}
-                  <div className="hidden md:flex items-center gap-1.5 min-w-[100px]">
+                  <div className="hidden md:flex items-center gap-1.5 w-[140px] flex-shrink-0">
                     {c.slack_username ? (
                       <>
                         <i className="ri-slack-line text-gray-300 text-sm flex-shrink-0"></i>
@@ -307,7 +307,7 @@ export default function ContractorsPage() {
                   </div>
 
                   {/* Start date */}
-                  <div className="hidden lg:block text-xs text-gray-400 whitespace-nowrap min-w-[90px] text-right">
+                  <div className="hidden lg:block text-xs text-gray-400 whitespace-nowrap w-[100px] flex-shrink-0 text-right">
                     {c.start_date ? new Date(c.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                   </div>
 
@@ -316,7 +316,7 @@ export default function ContractorsPage() {
                     const pct = getCompleteness(c);
                     const color = pct >= 80 ? 'bg-emerald-100 text-emerald-700' : pct >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
                     return (
-                      <div className="hidden xl:flex flex-col items-end gap-0.5 min-w-[56px]" title={`Profile ${pct}% complete`}>
+                      <div className="hidden xl:flex flex-col items-end gap-0.5 w-[56px] flex-shrink-0" title={`Profile ${pct}% complete`}>
                         <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${color}`}>{pct}%</span>
                         <div className="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${pct >= 80 ? 'bg-emerald-400' : pct >= 50 ? 'bg-amber-400' : 'bg-rose-400'}`} style={{ width: `${pct}%` }} />

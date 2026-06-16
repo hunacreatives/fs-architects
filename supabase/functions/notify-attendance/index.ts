@@ -96,6 +96,9 @@ Deno.serve(async (req) => {
 
     if (!record?.user_id) return new Response('no user_id', { headers: cors });
 
+    // Manual admin corrections (EditHoursModal) aren't live punches — don't fire "clocked in/out" pushes for them
+    if (record.is_manual) return new Response('manual edit, no push needed', { headers: cors });
+
     // Get contractor name
     const users = await dbSelect<{ full_name: string }>('hub_users', 'full_name', { id: record.user_id });
     const name = users[0]?.full_name ?? 'Someone';

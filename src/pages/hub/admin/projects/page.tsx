@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { GanttTimeline } from '@/pages/hub/components/GanttTimeline';
 import { supabase } from '@/lib/supabase';
 import { createHubNotifications } from '@/lib/hubNotifications';
@@ -192,8 +193,7 @@ function getProjectActivityDescription(activity: ProjectActivity) {
 }
 
 function Avatar({ name, url }: { name: string; url?: string | null }) {
-  if (url) return <img src={url} alt={name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />;
-  return <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{name[0].toUpperCase()}</span></div>;
+  return <HubAvatar fullName={name} avatarUrl={url} size="w-7 h-7" />;
 }
 
 export default function AdminProjectsPage() {
@@ -2077,10 +2077,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                               onClick={() => setNewTaskAssigneeIds((prev) => prev.includes(member.id) ? prev.filter((id) => id !== member.id) : [...prev, member.id])}
                               className={`flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full border transition-all cursor-pointer ${newTaskAssigneeIds.includes(member.id) ? 'border-[#1c2b3a]/50 bg-slate-50' : 'border-gray-200 hover:border-gray-300'}`}
                             >
-                              {member.avatar_url
-                                ? <img src={member.avatar_url} alt={member.full_name} className="w-4 h-4 rounded-full object-cover object-top" />
-                                : <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-[#1c2b3a]">{member.full_name[0]}</div>
-                              }
+                              <HubAvatar fullName={member.full_name} avatarUrl={member.avatar_url} size="w-4 h-4" />
                               <span className={`text-xs font-medium ${newTaskAssigneeIds.includes(member.id) ? 'text-[#1c2b3a]' : 'text-gray-600'}`}>{member.full_name.split(' ')[0]}</span>
                             </button>
                           ))}
@@ -2510,10 +2507,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <div className="space-y-2.5">
                         {wsTeam.map(m => (
                           <div key={m.id} className="flex items-center gap-2.5">
-                            {m.avatar_url
-                              ? <img src={m.avatar_url} alt={m.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-                              : <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">{m.full_name[0]}</div>
-                            }
+                            <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-7 h-7" className="flex-shrink-0" />
                             <span className="text-sm text-gray-700 truncate">{m.full_name}</span>
                           </div>
                         ))}
@@ -3074,10 +3068,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</p>
                 {activeClient.assignments.map(a => (
                   <div key={a.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
-                    {a.hub_users?.avatar_url
-                      ? <img src={a.hub_users.avatar_url} alt={a.hub_users.full_name} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" />
-                      : <div className="w-8 h-8 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-sm font-bold">{a.hub_users?.full_name?.[0]}</span></div>
-                    }
+                    <HubAvatar fullName={a.hub_users?.full_name ?? ''} avatarUrl={a.hub_users?.avatar_url} size="w-8 h-8" className="flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 truncate">{a.hub_users?.full_name}</p>
                       {a.role && <p className="text-xs text-gray-400 truncate">{a.role}</p>}
@@ -3225,10 +3216,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                       <div className="space-y-2">
                         {activeProject.hub_project_contractors.map((pc: any) => (
                           <div key={pc.hub_users?.id} className="flex items-center gap-2.5">
-                            {pc.hub_users?.avatar_url
-                              ? <img src={pc.hub_users.avatar_url} alt={pc.hub_users.full_name} className="w-7 h-7 rounded-full object-cover object-top" />
-                              : <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">{pc.hub_users?.full_name?.[0]}</div>
-                            }
+                            <HubAvatar fullName={pc.hub_users?.full_name ?? ''} avatarUrl={pc.hub_users?.avatar_url} size="w-7 h-7" />
                             <div>
                               <p className="text-sm text-[#111827]">{pc.hub_users?.full_name}</p>
                               <p className="text-xs text-gray-400">{pc.hub_users?.department}</p>
@@ -3641,10 +3629,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                   <div className="flex items-center gap-2">
                     {activeProject.hub_project_contractors.slice(0, 5).map(pc => pc.hub_users && (
                       <div key={pc.hub_users.id} title={pc.hub_users.full_name}>
-                        {pc.hub_users.avatar_url
-                          ? <img src={pc.hub_users.avatar_url} alt={pc.hub_users.full_name} className="w-7 h-7 rounded-full object-cover object-top border-2 border-white -ml-1 first:ml-0" />
-                          : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] border-2 border-white flex items-center justify-center -ml-1 first:ml-0"><span className="text-white text-[10px] font-bold">{pc.hub_users.full_name[0]}</span></div>
-                        }
+                        <HubAvatar fullName={pc.hub_users.full_name} avatarUrl={pc.hub_users.avatar_url} size="w-7 h-7" className="border-2 border-white -ml-1 first:ml-0" />
                       </div>
                     ))}
                     <span className="text-xs text-gray-400 ml-1">{activeProject.hub_project_contractors.length} member{activeProject.hub_project_contractors.length !== 1 ? 's' : ''} · click to expand</span>

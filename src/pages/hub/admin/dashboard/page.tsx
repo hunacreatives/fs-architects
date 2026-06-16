@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
@@ -80,13 +81,7 @@ function getBirthdayAlerts(contractors: { full_name: string; avatar_url?: string
 }
 
 function Avatar({ name, url, size = 9 }: { name: string; url: string | null; size?: number }) {
-  const sz = `w-${size} h-${size}`;
-  if (url) return <img src={url} alt={name} className={`${sz} rounded-full object-cover object-top flex-shrink-0`} />;
-  return (
-    <div className={`${sz} rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0`}>
-      <span className="text-white text-xs font-bold">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  );
+  return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
 }
 
 function formatTime(iso: string | null) {

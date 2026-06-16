@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 import { HubClient, HubClientAssignment, HubUser } from '@/lib/types';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import { logAudit } from '@/lib/audit';
@@ -31,13 +32,7 @@ function normalizeAssignment(row: AssignmentRow): HubClientAssignment {
 }
 
 function Avatar({ name, avatar_url, size = 7 }: { name: string; avatar_url?: string | null; size?: number }) {
-  const s = `w-${size} h-${size}`;
-  if (avatar_url) return <img src={avatar_url} alt={name} className={`${s} rounded-full object-cover object-top flex-shrink-0`} />;
-  return (
-    <div className={`${s} rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0`}>
-      <span className="text-white text-xs font-bold">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  );
+  return <HubAvatar fullName={name} avatarUrl={avatar_url} size={`w-${size} h-${size}`} />;
 }
 
 export default function ClientsPage() {
@@ -314,10 +309,7 @@ export default function ClientsPage() {
                                 if (!u) return null;
                                 return (
                                   <div key={a.id} className="w-7 h-7 rounded-full border-2 border-white flex-shrink-0 overflow-hidden" title={u.full_name}>
-                                    {u.avatar_url
-                                      ? <img src={u.avatar_url} alt={u.full_name} className="w-full h-full object-cover object-top" />
-                                      : <div className="w-full h-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-[10px] font-bold">{u.full_name.charAt(0)}</span></div>
-                                    }
+                                    <HubAvatar fullName={u.full_name} avatarUrl={u.avatar_url} size="w-full h-full" />
                                   </div>
                                 );
                               })}

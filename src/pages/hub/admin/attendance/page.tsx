@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_ATTENDANCE, DEMO_ATTENDANCE_HISTORY } from '@/lib/demoData';
@@ -67,15 +68,13 @@ function isAfterNoon(iso: string | null): boolean {
   return hour >= 12;
 }
 
+// HR/Admin staff don't work a fixed Slack-tracked shift, so they're exempt from lateness tagging.
+function isExemptFromLateness(department: string | null): boolean {
+  return department === 'Admin';
+}
+
 function Avatar({ name, avatar_url }: { name: string; avatar_url: string | null }) {
-  if (avatar_url) {
-    return <img src={avatar_url} alt={name} className="w-9 h-9 rounded-full object-cover object-top flex-shrink-0" />;
-  }
-  return (
-    <div className="w-9 h-9 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
-      <span className="text-white text-sm font-bold">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  );
+  return <HubAvatar fullName={name} avatarUrl={avatar_url} size="w-9 h-9" />;
 }
 
 // ----- PDF helpers -----
@@ -519,7 +518,7 @@ export default function AdminAttendancePage() {
                 {!isToday && (
                   <button
                     onClick={() => setSelectedDate(todayStr)}
-                    className="text-xs text-[#1c2b3a] hover:text-[#1c2b3a]/80 cursor-pointer whitespace-nowrap transition-colors"
+                    className="text-xs text-white/70 hover:text-white cursor-pointer whitespace-nowrap transition-colors"
                   >
                     Today
                   </button>
@@ -556,7 +555,7 @@ export default function AdminAttendancePage() {
                   <p className="text-xs text-amber-400 mt-0.5 font-medium">Absent</p>
                 </div>
                 <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                  <p className="text-2xl font-bold text-[#1c2b3a] tabular-nums">{histCounts.totalHours.toFixed(1)}h</p>
+                  <p className="text-2xl font-bold text-white tabular-nums">{histCounts.totalHours.toFixed(1)}h</p>
                   <p className="text-xs text-white/50 mt-0.5">Total Hours</p>
                 </div>
               </>
@@ -770,7 +769,7 @@ export default function AdminAttendancePage() {
                         <td className="px-4 py-3.5 text-sm text-gray-600 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             {formatTime(r.first_on)}
-                            {r.worked && isAfterNoon(r.first_on) && (
+                            {r.worked && isAfterNoon(r.first_on) && !isExemptFromLateness(r.department) && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium whitespace-nowrap">Late In</span>
                             )}
                           </div>
@@ -789,13 +788,13 @@ export default function AdminAttendancePage() {
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              r.worked && isAfterNoon(r.first_on) ? 'bg-amber-100 text-amber-700' :
+                              r.worked && isAfterNoon(r.first_on) && !isExemptFromLateness(r.department) ? 'bg-amber-100 text-amber-700' :
                               r.worked ? 'bg-emerald-100 text-emerald-700' :
                               r.first_on && !r.last_off ? 'bg-sky-100 text-sky-700' :
                               r.isDayOff ? 'bg-gray-100 text-gray-400' :
                               'bg-amber-100 text-amber-700'
                             }`}>
-                              {r.worked && isAfterNoon(r.first_on) ? 'Late' :
+                              {r.worked && isAfterNoon(r.first_on) && !isExemptFromLateness(r.department) ? 'Late' :
                                r.worked ? 'Worked' :
                                r.first_on && !r.last_off ? 'In Progress' :
                                r.isDayOff ? 'Day Off' : 'Absent'}

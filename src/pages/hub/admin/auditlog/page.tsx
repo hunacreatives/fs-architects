@@ -3,6 +3,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 import { HubAuditLog, HubUser } from '@/lib/types';
 import { useDemo } from '@/contexts/DemoContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const actionColors: Record<string, string> = {
   create: 'bg-emerald-100 text-emerald-700',
@@ -119,7 +120,7 @@ export default function AuditLogPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {user && (
                           <div className="flex items-center gap-1.5">
-                            <img src={user.avatar_url || ''} alt="" className="w-5 h-5 rounded-full object-cover object-top" />
+                            <HubAvatar fullName={user.full_name ?? ''} avatarUrl={user.avatar_url} size="w-5 h-5" />
                             <span className="text-sm font-medium text-[#111827]">{user.full_name}</span>
                           </div>
                         )}

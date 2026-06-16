@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 type ApplicationStatus = 'new' | 'reviewing' | 'shortlisted' | 'archived';
 
@@ -334,10 +335,7 @@ export default function ApplicationsPage() {
                   >
                     <div className="flex items-start gap-2.5">
                       <div className="flex-shrink-0 mt-0.5">
-                        {note.author_avatar_url
-                          ? <img src={note.author_avatar_url} alt={note.author_name} className="w-6 h-6 rounded-full object-cover object-top" />
-                          : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-[10px] font-bold">{note.author_name.charAt(0)}</span></div>
-                        }
+                        <HubAvatar fullName={note.author_name} avatarUrl={note.author_avatar_url} size="w-6 h-6" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">

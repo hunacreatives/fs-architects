@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_ANNOUNCEMENTS } from '@/lib/demoData';
 import { createHubNotifications } from '@/lib/hubNotifications';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const priorityColors: Record<string, string> = {
   normal: 'bg-gray-100 text-gray-600',
@@ -161,10 +162,7 @@ export default function AnnouncementsPage() {
                     <h3 className="text-sm font-semibold text-[#111827] mb-1">{a.title}</h3>
                     <p className="text-sm text-gray-500 line-clamp-2">{a.body}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      {(a as any).hub_users?.avatar_url
-                        ? <img src={(a as any).hub_users.avatar_url} className="w-5 h-5 rounded-full object-cover object-top" />
-                        : <div className="w-5 h-5 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-[9px] font-bold">{(a as any).hub_users?.full_name?.charAt(0) ?? '?'}</span></div>
-                      }
+                      <HubAvatar fullName={(a as any).hub_users?.full_name ?? ''} avatarUrl={(a as any).hub_users?.avatar_url} size="w-5 h-5" />
                       <p className="text-xs text-gray-400">{(a as any).hub_users?.full_name ?? 'Unknown'} · {new Date(a.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                     </div>
                   </div>
@@ -308,10 +306,7 @@ export default function AnnouncementsPage() {
                 <h2 className="text-base font-semibold text-[#111827] mb-2">{detailAnn.title}</h2>
                 <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{detailAnn.body}</p>
                 <div className="flex items-center gap-2 mt-3">
-                  {(detailAnn as any).hub_users?.avatar_url
-                    ? <img src={(detailAnn as any).hub_users.avatar_url} className="w-6 h-6 rounded-full object-cover object-top" />
-                    : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-[10px] font-bold">{(detailAnn as any).hub_users?.full_name?.charAt(0) ?? '?'}</span></div>
-                  }
+                  <HubAvatar fullName={(detailAnn as any).hub_users?.full_name ?? ''} avatarUrl={(detailAnn as any).hub_users?.avatar_url} size="w-6 h-6" />
                   <p className="text-xs text-gray-400">{(detailAnn as any).hub_users?.full_name ?? 'Unknown'} · {new Date(detailAnn.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               </div>
@@ -354,10 +349,7 @@ export default function AnnouncementsPage() {
                           const poster = c.hub_users;
                           return (
                             <div key={c.id} className="flex items-start gap-2.5">
-                              {poster?.avatar_url
-                                ? <img src={poster.avatar_url} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-                                : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{poster?.full_name?.charAt(0) ?? '?'}</span></div>
-                              }
+                              <HubAvatar fullName={poster?.full_name ?? ''} avatarUrl={poster?.avatar_url} size="w-7 h-7" className="flex-shrink-0" />
                               <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2">
                                 <div className="flex items-center justify-between mb-0.5">
                                   <span className="text-xs font-semibold text-[#111827]">{poster?.full_name?.split(' ')[0] ?? 'Unknown'}</span>

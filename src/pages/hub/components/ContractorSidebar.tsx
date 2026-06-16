@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHubAuth } from '@/hooks/useHubAuth';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const baseNavItems = [
   { to: '/hub/employee/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
@@ -124,12 +125,7 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
         <div className={`border-t border-white/60 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] ${collapsed ? 'px-2' : ''}`}>
           {!collapsed && hubUser ? (
             <div className="flex items-center gap-2.5 px-2 py-1 min-w-0">
-              {hubUser.avatar_url ? (
-                <img src={hubUser.avatar_url} alt={hubUser.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-white">{hubUser.full_name.charAt(0)}</span>
-                </div>
+              <HubAvatar fullName={hubUser.full_name} avatarUrl={hubUser.avatar_url} size="w-7 h-7" />
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{hubUser.full_name}</p>

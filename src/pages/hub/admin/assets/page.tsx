@@ -3,6 +3,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 import { HubAsset, HubUser } from '@/lib/types';
 import { useDemo } from '@/contexts/DemoContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const platformIcons: Record<string, string> = {
   canva: 'ri-pencil-ruler-2-line',
@@ -148,7 +149,7 @@ export default function AssetsPage() {
                       <td className="px-5 py-3.5 text-sm font-medium text-[#111827]">{a.account_name}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
-                          <img src={user?.avatar_url || ''} alt="" className="w-6 h-6 rounded-full object-cover object-top" />
+                          <HubAvatar fullName={user?.full_name ?? ''} avatarUrl={user?.avatar_url} size="w-6 h-6" />
                           <span className="text-sm text-gray-700">{user?.full_name}</span>
                         </div>
                       </td>

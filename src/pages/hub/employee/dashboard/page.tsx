@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { getPeriods } from '@/lib/formatUtils';
 import { supabase } from '@/lib/supabase';
 import { HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
@@ -121,10 +122,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
                 if (!poster) return <p className="text-xs text-gray-400">{new Date(a.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>;
                 return (
                   <>
-                    {poster.avatar_url
-                      ? <img src={poster.avatar_url} alt={poster.full_name} className="w-4 h-4 rounded-full object-cover object-top flex-shrink-0" />
-                      : <div className="w-4 h-4 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold" style={{fontSize:'8px'}}>{poster.full_name.charAt(0)}</span></div>
-                    }
+                    <HubAvatar fullName={poster.full_name} avatarUrl={poster.avatar_url} size="w-4 h-4" className="flex-shrink-0" />
                     <p className="text-xs text-gray-400">
                       <span className="text-gray-500 font-medium">{poster.full_name.split(' ')[0]}</span>
                       {' · '}{new Date(a.created_at!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -184,12 +182,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
           )}
           {comments.map((c) => (
             <div key={c.id} className="flex items-start gap-2.5">
-              {c.hub_users?.avatar_url
-                ? <img src={c.hub_users.avatar_url} alt={c.hub_users.full_name} className="w-6 h-6 rounded-full object-cover object-top flex-shrink-0 mt-0.5" />
-                : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-white text-xs font-bold">{(c.hub_users?.full_name ?? '?').charAt(0)}</span>
-                  </div>
-              }
+              <HubAvatar fullName={c.hub_users?.full_name ?? ''} avatarUrl={c.hub_users?.avatar_url} size="w-6 h-6" className="flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 relative group">
                   <p className="text-xs font-semibold text-gray-700">{c.hub_users?.full_name?.split(' ')[0] ?? 'Unknown'}</p>
@@ -879,12 +872,7 @@ export default function ContractorDashboard() {
                 ) : teamStatus.map((t) => (
                   <div key={t.full_name} className="flex items-center gap-2.5">
                     <div className="relative flex-shrink-0">
-                      {t.avatar_url
-                        ? <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                            <img src={t.avatar_url} alt={t.full_name} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%', transform: 'scale(1.8)', transformOrigin: 'center' }} />
-                          </div>
-                        : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center"><span className="text-white text-xs font-bold">{t.full_name.charAt(0)}</span></div>
-                      }
+                      <HubAvatar fullName={t.full_name} avatarUrl={t.avatar_url} size="w-7 h-7" />
                       <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
                         t.status === 'on' ? 'bg-emerald-500' : t.status === 'off' ? 'bg-gray-400' : 'bg-amber-400'
                       }`} />

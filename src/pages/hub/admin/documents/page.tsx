@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import ContractGeneratorModal from './ContractGeneratorModal';
 import COEGeneratorModal from './COEGeneratorModal';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const DR_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
@@ -435,10 +436,7 @@ export default function AdminDocumentsPage() {
                                 const u = (a as any).hub_users;
                                 return (
                                   <div key={a.id} className="flex items-center gap-2">
-                                    {u?.avatar_url
-                                      ? <img src={u.avatar_url} alt={u.full_name} className="w-5 h-5 rounded-full object-cover object-top flex-shrink-0" />
-                                      : <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-500 flex-shrink-0">{u?.full_name?.[0] ?? '?'}</div>
-                                    }
+                                    <HubAvatar fullName={u?.full_name ?? ''} avatarUrl={u?.avatar_url} size="w-5 h-5" className="flex-shrink-0" />
                                     <span className="text-xs text-gray-600 truncate max-w-[140px]">{u?.full_name}</span>
                                   </div>
                                 );
@@ -638,7 +636,7 @@ export default function AdminDocumentsPage() {
                         onChange={() => toggleContractor(c.id)}
                         className="accent-[#1c2b3a]"
                       />
-                      <img src={c.avatar_url || ''} alt="" className="w-6 h-6 rounded-full object-cover object-top bg-gray-100" />
+                      <HubAvatar fullName={c.full_name ?? ''} avatarUrl={c.avatar_url} size="w-6 h-6" />
                       <span className="text-sm text-gray-700">{c.full_name}</span>
                     </label>
                   ))}
@@ -701,7 +699,7 @@ export default function AdminDocumentsPage() {
                     return (
                       <div key={a.id} className="border border-gray-100 rounded-xl p-3 space-y-2.5">
                         <div className="flex items-center gap-3">
-                          <img src={(a as any).hub_users?.avatar_url || ''} alt="" className="w-7 h-7 rounded-full object-cover object-top bg-gray-100 flex-shrink-0" />
+                          <HubAvatar fullName={(a as any).hub_users?.full_name ?? ''} avatarUrl={(a as any).hub_users?.avatar_url} size="w-7 h-7" className="flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800">{(a as any).hub_users?.full_name}</p>
                           </div>

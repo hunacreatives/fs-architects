@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { supabase } from '@/lib/supabase';
 import { HubAnnouncement } from '@/lib/types';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const priorityColors: Record<string, string> = {
   normal: 'bg-gray-100 text-gray-600',
@@ -95,10 +96,7 @@ export default function ContractorAnnouncementsPage() {
                         const roleLabel = poster.role === 'owner' ? 'Owner' : poster.role === 'admin' ? 'HR / Admin' : 'Contractor';
                         return (
                           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-50">
-                            {poster.avatar_url
-                              ? <img src={poster.avatar_url} alt={poster.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-                              : <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{poster.full_name?.charAt(0)}</span></div>
-                            }
+                            <HubAvatar fullName={poster.full_name ?? ''} avatarUrl={poster.avatar_url} size="w-7 h-7" className="flex-shrink-0" />
                             <div>
                               <p className="text-xs font-semibold text-[#111827]">{poster.full_name}</p>
                               <p className="text-[10px] text-gray-400">{roleLabel} · {new Date(a.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>

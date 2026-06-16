@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
 import { useDemo } from '@/contexts/DemoContext';
@@ -108,7 +109,7 @@ export default function ContractorsPage() {
     const fields = [
       c.avatar_url, c.phone, c.birthday, c.department,
       c.shift_start, c.shift_end, c.work_days?.length,
-      c.bank_account_number, c.emergency_contact, c.contract_expiry_date,
+      c.bank_account_number, c.emergency_contact_name,
     ];
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
@@ -146,9 +147,7 @@ export default function ContractorsPage() {
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex -space-x-1.5">
                   {contractors.filter(c => c.status === 'active' && c.avatar_url).slice(0, 4).map(c => (
-                    <div key={c.id} className="w-7 h-7 rounded-full overflow-hidden border-2 border-[#111827] flex-shrink-0">
-                      <img src={c.avatar_url!} alt={c.full_name} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%', transform: 'scale(1.8)', transformOrigin: 'center' }} />
-                    </div>
+                    <HubAvatar key={c.id} fullName={c.full_name} avatarUrl={c.avatar_url} size="w-7 h-7" className="border-2 border-[#111827]" />
                   ))}
                 </div>
                 <p className="text-white/50 text-xs">{contractors.filter(c => c.status === 'active').length} active</p>
@@ -262,15 +261,7 @@ export default function ContractorsPage() {
 
                   {/* Avatar */}
                   <div className="flex-shrink-0 relative">
-                    {c.avatar_url ? (
-                      <div className="w-10 h-10 rounded-full overflow-hidden">
-                        <img src={c.avatar_url} alt={c.full_name} className="w-full h-full object-cover" style={{ objectPosition: 'center 15%', transform: 'scale(1.8)', transformOrigin: 'center' }} />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#1c2b3a] flex items-center justify-center">
-                        <span className="text-white text-sm font-bold">{c.full_name.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
+                    <HubAvatar fullName={c.full_name} avatarUrl={c.avatar_url} size="w-10 h-10" />
                   </div>
 
                   {/* Name + email */}

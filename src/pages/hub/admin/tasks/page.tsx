@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { localToday } from '@/lib/formatUtils';
 
@@ -31,12 +32,7 @@ const PRIORITY_CFG = {
 };
 
 function Avatar({ name, url }: { name: string; url: string | null }) {
-  if (url) return <img src={url} alt={name} className="w-6 h-6 rounded-full object-cover object-top flex-shrink-0" />;
-  return (
-    <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
-      <span className="text-white text-[9px] font-bold">{name[0].toUpperCase()}</span>
-    </div>
-  );
+  return <HubAvatar fullName={name} avatarUrl={url} size="w-6 h-6" />;
 }
 
 export default function AdminTasksPage() {

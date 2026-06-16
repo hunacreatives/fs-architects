@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
@@ -22,6 +23,11 @@ interface Contractor {
   monthly_rate: number | null;
   start_date: string | null;
   work_days: string[] | null;
+  payment_method?: string | null;
+  bank_name?: string | null;
+  bank_account_name?: string | null;
+  bank_account_number?: string | null;
+  bank_account_type?: string | null;
 }
 
 interface RateEntry {
@@ -49,12 +55,7 @@ interface PayRow {
 }
 
 function Avatar({ name, avatar_url }: { name: string; avatar_url: string | null }) {
-  if (avatar_url) return <img src={avatar_url} alt={name} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" />;
-  return (
-    <div className="w-8 h-8 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
-      <span className="text-white text-xs font-bold">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  );
+  return <HubAvatar fullName={name} avatarUrl={avatar_url} size="w-8 h-8" />;
 }
 
 function uint8ToBase64(bytes: Uint8Array) {
@@ -178,6 +179,7 @@ export default function AdminPayrollPage() {
   const [disputeNotesMap, setDisputeNotesMap] = useState<Record<string, string>>({});
 
   // Row edit overrides (before approval)
+  const [bankInfoContractor, setBankInfoContractor] = useState<Contractor | null>(null);
   const [editRowId, setEditRowId] = useState<string | null>(null);
   const [editHours, setEditHours] = useState('');
   const [editPay, setEditPay] = useState('');
@@ -979,7 +981,7 @@ export default function AdminPayrollPage() {
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
-        .select('id, full_name, role, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days')
+        .select('id, full_name, role, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days, payment_method, bank_name, bank_account_name, bank_account_number, bank_account_type')
         .eq('status', 'active')
         .in('role', ['contractor', 'admin'])
         .neq('is_developer', true),
@@ -1668,6 +1670,9 @@ export default function AdminPayrollPage() {
                         {c.department && <><span className="text-gray-200">·</span><span className="text-xs text-gray-400">{c.department}</span></>}
                       </div>
                     </div>
+                    <button onClick={() => setBankInfoContractor(c)} className="text-gray-300 hover:text-[#1c2b3a] cursor-pointer flex-shrink-0">
+                      <i className="ri-bank-line text-sm"></i>
+                    </button>
                     <button onClick={() => openEditRow(r)} className="text-gray-300 hover:text-[#1c2b3a] cursor-pointer flex-shrink-0">
                       <i className="ri-edit-line text-sm"></i>
                     </button>
@@ -1918,6 +1923,13 @@ export default function AdminPayrollPage() {
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button
+                              onClick={() => setBankInfoContractor(c)}
+                              title="View bank details"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#1c2b3a] hover:bg-slate-50 transition-colors cursor-pointer flex-shrink-0"
+                            >
+                              <i className="ri-bank-line text-sm"></i>
+                            </button>
+                            <button
                               onClick={() => openEditRow(r)}
                               title="Edit payroll"
                               className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#1c2b3a] hover:bg-slate-50 transition-colors cursor-pointer flex-shrink-0"
@@ -2149,10 +2161,7 @@ export default function AdminPayrollPage() {
                     const fd = (s: string) => new Date(s + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     return (
                       <div key={req.id} className="flex items-center gap-3 px-5 py-3.5">
-                        {c?.avatar_url
-                          ? <img src={c.avatar_url} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" alt={c.full_name} />
-                          : <div className="w-8 h-8 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0"><span className="text-white text-xs font-bold">{c?.full_name?.[0]}</span></div>
-                        }
+                        <HubAvatar fullName={c?.full_name ?? ''} avatarUrl={c?.avatar_url} size="w-8 h-8" className="flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900">{c?.full_name}</p>
                           <p className="text-xs text-gray-400">{fd(req.cutoff_start)} – {fd(req.cutoff_end)} · {req.approved_hours?.toFixed(1)}h × ₱{c?.hourly_rate}/hr</p>
@@ -2469,6 +2478,44 @@ export default function AdminPayrollPage() {
           </div>
         );
       })()}
+
+      {/* Bank details modal */}
+      {bankInfoContractor && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4" onClick={() => setBankInfoContractor(null)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <Avatar name={bankInfoContractor.full_name} avatar_url={bankInfoContractor.avatar_url} />
+                <div>
+                  <h2 className="font-semibold text-[#111827] text-sm">{bankInfoContractor.full_name}</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Payment details</p>
+                </div>
+              </div>
+              <button onClick={() => setBankInfoContractor(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
+                <i className="ri-close-line text-lg"></i>
+              </button>
+            </div>
+            <div className="p-5 space-y-3">
+              {bankInfoContractor.bank_name || bankInfoContractor.bank_account_number ? (
+                [
+                  { label: 'Payment method', value: bankInfoContractor.payment_method },
+                  { label: 'Bank', value: bankInfoContractor.bank_name },
+                  { label: 'Account name', value: bankInfoContractor.bank_account_name },
+                  { label: 'Account number', value: bankInfoContractor.bank_account_number },
+                  { label: 'Account type', value: bankInfoContractor.bank_account_type },
+                ].filter(f => f.value).map(f => (
+                  <div key={f.label} className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-gray-400 flex-shrink-0">{f.label}</span>
+                    <span className="text-sm font-medium text-[#111827] text-right break-all">{f.value}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">No bank details on file for this employee.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

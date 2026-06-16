@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const navItems = [
   { to: '/hub/admin/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
@@ -133,13 +134,7 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
         <div className={`border-t border-white/60 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] ${collapsed ? 'px-2' : ''}`}>
           {!collapsed && activeUser ? (
             <div className="flex items-center gap-2.5 px-2 py-1 min-w-0">
-              {activeUser.avatar_url ? (
-                <img src={activeUser.avatar_url} alt={activeUser.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-white">{activeUser.full_name.charAt(0)}</span>
-                </div>
-              )}
+              <HubAvatar fullName={activeUser.full_name} avatarUrl={activeUser.avatar_url} size="w-7 h-7" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{activeUser.full_name}</p>
                 <p className="text-[11px] text-gray-400 capitalize truncate">{activeUser.role}</p>

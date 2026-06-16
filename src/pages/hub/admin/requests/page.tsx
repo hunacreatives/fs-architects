@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { HubRequest, HubUser } from '@/lib/types';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_REQUESTS } from '@/lib/demoData';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const typeLabels: Record<string, string> = {
   reimbursement: 'Reimbursement', account_access: 'Account Access',
@@ -71,7 +72,7 @@ export default function RequestsPage() {
               <div key={r.id} className="bg-white border border-gray-100 rounded-xl p-4 cursor-pointer hover:border-gray-200 transition-colors" onClick={() => { setSelected(r); setAdminNotes(r.admin_notes || ''); }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <img src={(r.hub_users as HubUser)?.avatar_url || ''} alt="" className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0 mt-0.5" />
+                    <HubAvatar fullName={(r.hub_users as HubUser)?.full_name ?? ''} avatarUrl={(r.hub_users as HubUser)?.avatar_url} size="w-8 h-8" className="flex-shrink-0 mt-0.5" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-[#111827] truncate">{r.title}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{(r.hub_users as HubUser)?.full_name} · {typeLabels[r.type] || r.type} · {new Date(r.created_at!).toLocaleDateString()}</p>

@@ -12,6 +12,7 @@ import { localToday, slugify } from '@/lib/formatUtils';
 import { createTaskAttachment } from '@/lib/taskAttachments';
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeTaskAssigneePayload } from '@/lib/taskAssignments';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 
 const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -600,10 +601,7 @@ function ProjectDetail({ row, tasks, team, onClose, onReceiptClick }: {
                 <div className="flex flex-wrap gap-2">
                   {team.map(m => (
                     <div key={m.id} className="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1.5">
-                      {m.avatar_url
-                        ? <img src={m.avatar_url} alt={m.full_name} className="w-5 h-5 rounded-full object-cover object-top flex-shrink-0" />
-                        : <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">{m.full_name[0]}</div>
-                      }
+                      <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-5 h-5" className="flex-shrink-0" />
                       <span className="text-xs text-gray-700 font-medium">{m.full_name}</span>
                     </div>
                   ))}
@@ -2452,10 +2450,7 @@ export default function ContractorProjectsPage() {
                     <div className="space-y-2.5">
                       {wsTeam.map(m => (
                         <div key={m.id} className="flex items-center gap-2.5">
-                          {m.avatar_url
-                            ? <img src={m.avatar_url} alt={m.full_name} className="w-7 h-7 rounded-full object-cover object-top flex-shrink-0" />
-                            : <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">{m.full_name[0]}</div>
-                          }
+                          <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-7 h-7" className="flex-shrink-0" />
                           <span className="text-sm text-gray-700 truncate">{m.full_name}</span>
                         </div>
                       ))}
@@ -3025,10 +3020,7 @@ export default function ContractorProjectsPage() {
                           {wsTeam.map(m => (
                             <button key={m.id} onClick={() => setTaskForm(f => ({ ...f, assigned_to: m.id }))}
                               className={`flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full border cursor-pointer transition-all ${taskForm.assigned_to === m.id ? 'border-[#1c2b3a]/50 bg-slate-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                              {m.avatar_url
-                                ? <img src={m.avatar_url} alt={m.full_name} className="w-4 h-4 rounded-full object-cover object-top" />
-                                : <div className="w-4 h-4 rounded-full bg-indigo-200 flex items-center justify-center text-[8px] font-bold text-[#1c2b3a]">{m.full_name[0]}</div>
-                              }
+                              <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-4 h-4" />
                               <span className={`text-xs font-medium ${taskForm.assigned_to === m.id ? 'text-[#1c2b3a]' : 'text-gray-600'}`}>{m.full_name.split(' ')[0]}</span>
                             </button>
                           ))}
@@ -3036,10 +3028,7 @@ export default function ContractorProjectsPage() {
                       ) : (
                         assignee ? (
                           <div className="flex items-center gap-2">
-                            {assignee.avatar_url
-                              ? <img src={assignee.avatar_url} alt={assignee.full_name} className="w-6 h-6 rounded-full object-cover object-top" />
-                              : <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-[#1c2b3a]">{assignee.full_name[0]}</div>
-                            }
+                            <HubAvatar fullName={assignee.full_name} avatarUrl={assignee.avatar_url} size="w-6 h-6" />
                             <span className="text-sm font-medium text-gray-800">{assignee.full_name}</span>
                           </div>
                         ) : <span className="text-xs text-gray-400">Unassigned</span>
@@ -3146,10 +3135,7 @@ export default function ContractorProjectsPage() {
                       })();
                       return (
                         <div key={c.id} className="flex gap-2.5 group">
-                          {u?.avatar_url
-                            ? <img src={u.avatar_url} alt={u.full_name} className="w-6 h-6 rounded-full object-cover object-top flex-shrink-0 mt-0.5" />
-                            : <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-bold text-[#1c2b3a] flex-shrink-0 mt-0.5">{u?.full_name?.[0] ?? '?'}</div>
-                          }
+                          <HubAvatar fullName={u?.full_name ?? ''} avatarUrl={u?.avatar_url} size="w-6 h-6" className="flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 mb-0.5">
                               <span className="text-xs font-semibold text-gray-800">{u?.full_name?.split(' ')[0] ?? 'Unknown'}</span>
@@ -3173,10 +3159,7 @@ export default function ContractorProjectsPage() {
 
                   {/* Comment input */}
                   <div className="px-5 pt-2 pb-4 flex gap-2 items-end">
-                    {hubUser?.avatar_url
-                      ? <img src={hubUser.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover object-top flex-shrink-0 mb-0.5" />
-                      : <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-bold text-[#1c2b3a] flex-shrink-0 mb-0.5">{hubUser?.full_name?.[0] ?? '?'}</div>
-                    }
+                    <HubAvatar fullName={hubUser?.full_name ?? ''} avatarUrl={hubUser?.avatar_url} size="w-6 h-6" className="flex-shrink-0 mb-0.5" />
                     <div className="relative flex-1">
                       {(() => {
                         const mentionSuggestions = wsTeam.filter(m =>
@@ -3188,10 +3171,7 @@ export default function ContractorProjectsPage() {
                             {mentionSuggestions.map(m => (
                               <button key={m.id} onMouseDown={e => { e.preventDefault(); insertMention(m); }}
                                 className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors text-left cursor-pointer">
-                                {m.avatar_url
-                                  ? <img src={m.avatar_url} alt={m.full_name} className="w-6 h-6 rounded-full object-cover object-top flex-shrink-0" />
-                                  : <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-[#1c2b3a] flex-shrink-0">{m.full_name[0]}</div>
-                                }
+                                <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-6 h-6" className="flex-shrink-0" />
                                 <div>
                                   <p className="text-sm font-medium text-gray-800">{m.full_name}</p>
                                   <p className="text-[10px] text-gray-400">@{m.full_name.split(' ')[0].toLowerCase()}</p>

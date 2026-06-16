@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { logAudit } from '@/lib/audit';
 
@@ -47,12 +48,7 @@ function Stars({ value, onChange }: { value: number; onChange?: (v: number) => v
 }
 
 function Avatar({ name, url }: { name: string; url: string | null }) {
-  if (url) return <img src={url} alt={name} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" />;
-  return (
-    <div className="w-8 h-8 rounded-full bg-[#1c2b3a] flex items-center justify-center flex-shrink-0">
-      <span className="text-white text-xs font-bold">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  );
+  return <HubAvatar fullName={name} avatarUrl={url} size="w-8 h-8" />;
 }
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'] as const;

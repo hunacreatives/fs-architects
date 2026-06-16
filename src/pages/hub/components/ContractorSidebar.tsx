@@ -126,7 +126,6 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
           {!collapsed && hubUser ? (
             <div className="flex items-center gap-2.5 px-2 py-1 min-w-0">
               <HubAvatar fullName={hubUser.full_name} avatarUrl={hubUser.avatar_url} size="w-7 h-7" />
-              )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800 truncate leading-tight">{hubUser.full_name}</p>
                 <p className="text-[11px] text-gray-400 truncate">{hubUser.department ?? 'Employee'}</p>

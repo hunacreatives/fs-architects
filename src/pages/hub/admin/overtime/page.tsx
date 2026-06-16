@@ -23,6 +23,8 @@ export default function AdminOvertimePage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [restDay, setRestDay] = useState(false);
+  const [slackHours, setSlackHours] = useState<number | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -46,9 +48,18 @@ export default function AdminOvertimePage() {
     fetchRequests();
   }, [isDemo, statusFilter]);
 
-  const openReview = (r: any) => {
+  const openReview = async (r: any) => {
     setSelected(r);
     setAdminNotes('');
+    setRestDay(r.is_rest_day ?? (new Date(r.date + 'T12:00:00').getDay() % 6 === 0));
+    setSlackHours(null);
+    const { data: dayRow } = await supabase
+      .from('hub_daily_hours')
+      .select('hours_raw')
+      .eq('user_id', r.contractor_id)
+      .eq('date', r.date)
+      .maybeSingle();
+    setSlackHours(dayRow?.hours_raw ?? 0);
   };
 
   const decide = async (status: 'approved' | 'rejected') => {
@@ -57,43 +68,33 @@ export default function AdminOvertimePage() {
 
     await supabase.from('hub_overtime_requests').update({
       status,
+      is_rest_day: restDay,
       reviewed_by: hubUser.id,
       admin_notes: adminNotes || null,
       updated_at: new Date().toISOString(),
     }).eq('id', selected.id);
 
-    // On approval, compute actual OT earned from stored Slack hours_raw.
-    // Requires 9+ raw hours (full shift + lunch). Only applies to past/today dates —
-    // future dates will be handled automatically when slack-attendance runs that day.
+    // On approval, credit the full approved OT hours for that date directly into
+    // hub_daily_hours. HR approval is the source of truth here — it doesn't depend
+    // on Slack-logged raw hours, since Slack attendance tracking can be flaky or
+    // missing entirely (the request flow already required a reason/justification).
     if (status === 'approved') {
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
-      if (selected.date <= today) {
-        const { data: approvedForDate } = await supabase
-          .from('hub_overtime_requests')
-          .select('hours')
-          .eq('contractor_id', selected.contractor_id)
-          .eq('date', selected.date)
-          .eq('status', 'approved');
+      const { data: approvedForDate } = await supabase
+        .from('hub_overtime_requests')
+        .select('hours')
+        .eq('contractor_id', selected.contractor_id)
+        .eq('date', selected.date)
+        .eq('status', 'approved')
+        .neq('id', selected.id);
 
-        const totalApproved = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0) + (selected.hours || 0);
+      const totalApproved = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0) + (selected.hours || 0);
 
-        const { data: dayRow } = await supabase
-          .from('hub_daily_hours')
-          .select('hours_raw')
-          .eq('user_id', selected.contractor_id)
-          .eq('date', selected.date)
-          .maybeSingle();
-
-        const rawHours = dayRow?.hours_raw ?? 0;
-        const actualOT = Math.min(Math.max(0, rawHours - 9), totalApproved);
-
-        await supabase.from('hub_daily_hours').upsert({
-          user_id: selected.contractor_id,
-          date: selected.date,
-          overtime_hours: actualOT,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,date' });
-      }
+      await supabase.from('hub_daily_hours').upsert({
+        user_id: selected.contractor_id,
+        date: selected.date,
+        overtime_hours: totalApproved,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,date' });
     }
 
     supabase.functions.invoke('notify-contractor', {
@@ -213,6 +214,25 @@ export default function AdminOvertimePage() {
                 <div>
                   <p className="text-xs font-medium text-gray-700 mb-1">Reason</p>
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{selected.reason}</p>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-gray-700">Slack logged that day</span>
+                {slackHours === null ? (
+                  <span className="text-gray-400">Loading…</span>
+                ) : (
+                  <span className={slackHours < 9 ? 'text-amber-600 font-medium' : 'text-gray-500'}>
+                    {slackHours.toFixed(1)}h {slackHours < 9 && '— below a full 9h shift'}
+                  </span>
+                )}
+              </div>
+              {selected.status === 'pending' && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-700">Rate</span>
+                  <button type="button" onClick={() => setRestDay(prev => !prev)}
+                    className={`text-[11px] px-2.5 py-1 rounded-full font-medium cursor-pointer whitespace-nowrap ${restDay ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'}`}>
+                    {restDay ? '30% rest day' : '25% weekday'}
+                  </button>
                 </div>
               )}
               <div className="space-y-1">

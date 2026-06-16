@@ -163,7 +163,9 @@ export function dateBefore(dateStr: string, days = 1) {
 }
 
 // DOLE overtime multipliers: 1.25× for regular weekdays, 1.30× for rest days (Sat/Sun)
-export function getOTMultiplier(date: string): number {
+// Pass isRestDay explicitly to override auto-detection (e.g. holidays on weekdays).
+export function getOTMultiplier(date: string, isRestDay?: boolean | null): number {
+  if (isRestDay != null) return isRestDay ? 1.30 : 1.25;
   const day = new Date(date + 'T12:00:00').getDay(); // 0=Sun, 6=Sat
   return (day === 0 || day === 6) ? 1.30 : 1.25;
 }
@@ -172,16 +174,20 @@ export function getOTMultiplier(date: string): number {
 const OT_QUALIFYING_RAW_HOURS = 9;
 
 // Compute OT pay from a date→hours map, applying per-date DOLE multipliers.
-// rawHoursByDate: if provided, OT is skipped for dates where actual raw hours < 9
-// (employee didn't complete their full shift, so pre-approved OT doesn't vest).
+// rawHoursByDate: if provided, OT is skipped for dates where actual raw hours < 9 —
+// UNLESS the date is in trackedDates (explicitly admin/employee-approved via hub_overtime_requests),
+// in which case it always vests since a human already confirmed the hours.
+// isRestDayMap: explicit rest-day flags per date (from hub_overtime_requests.is_rest_day).
 export function computeOTPayFromDates(
   otDates: Record<string, number>,
   rate: number,
-  rawHoursByDate?: Record<string, number>
+  rawHoursByDate?: Record<string, number>,
+  isRestDayMap?: Record<string, boolean>,
+  trackedDates?: Set<string>
 ): number {
   return Object.entries(otDates).reduce((sum, [date, hours]) => {
-    if (rawHoursByDate && (rawHoursByDate[date] ?? 0) < OT_QUALIFYING_RAW_HOURS) return sum;
-    return sum + hours * rate * getOTMultiplier(date);
+    if (!trackedDates?.has(date) && rawHoursByDate && (rawHoursByDate[date] ?? 0) < OT_QUALIFYING_RAW_HOURS) return sum;
+    return sum + hours * rate * getOTMultiplier(date, isRestDayMap?.[date]);
   }, 0);
 }
 
@@ -191,12 +197,14 @@ export function computeSplitOTPayFromDates(
   splitDate: string,
   oldRate: number,
   newRate: number,
-  rawHoursByDate?: Record<string, number>
+  rawHoursByDate?: Record<string, number>,
+  isRestDayMap?: Record<string, boolean>,
+  trackedDates?: Set<string>
 ): number {
   return Object.entries(otDates).reduce((sum, [date, hours]) => {
-    if (rawHoursByDate && (rawHoursByDate[date] ?? 0) < OT_QUALIFYING_RAW_HOURS) return sum;
+    if (!trackedDates?.has(date) && rawHoursByDate && (rawHoursByDate[date] ?? 0) < OT_QUALIFYING_RAW_HOURS) return sum;
     const rate = date < splitDate ? oldRate : newRate;
-    return sum + hours * rate * getOTMultiplier(date);
+    return sum + hours * rate * getOTMultiplier(date, isRestDayMap?.[date]);
   }, 0);
 }
 
@@ -275,12 +283,13 @@ export function computeSplitFixedAccrual(params: {
 }
 
 export async function fetchPayrollTotal(periodStart: string, periodEnd: string, usdRate = 56): Promise<number> {
-  const [contractorsRes, hoursRes, paidPayoutsRes] = await Promise.all([
+  const [contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes] = await Promise.all([
     supabase
       .from('hub_users')
       .select('id, full_name, role, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days')
       .eq('status', 'active')
-      .in('role', ['contractor', 'admin']),
+      .in('role', ['contractor', 'admin'])
+      .neq('is_developer', true),
     supabase
       .from('hub_daily_hours')
       .select('user_id, hours_capped, overtime_hours, date')
@@ -291,7 +300,20 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
       .select('contractor_id, payment_date')
       .eq('cutoff_start', periodStart)
       .eq('status', 'paid'),
+    supabase
+      .from('hub_overtime_requests')
+      .select('contractor_id, date, is_rest_day')
+      .eq('status', 'approved')
+      .gte('date', periodStart)
+      .lte('date', periodEnd),
   ]);
+
+  const isRestDayByUser: Record<string, Record<string, boolean>> = {};
+  for (const req of otRequestsRes.data || []) {
+    if (req.is_rest_day == null) continue;
+    if (!isRestDayByUser[req.contractor_id]) isRestDayByUser[req.contractor_id] = {};
+    isRestDayByUser[req.contractor_id][req.date] = req.is_rest_day;
+  }
 
   const contractors = (contractorsRes.data || []).filter((c: any) =>
     c.payment_type !== 'project_based' &&
@@ -408,12 +430,8 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
         const oldOT = (beforeChange?.hourly_rate) || oldMonthly / 176;
         const newOT = changeInPeriod.hourly_rate || newMonthly / 176;
         const otDates = overtimeByDate[c.id] || {};
-        let otAtOld = 0, otAtNew = 0;
-        for (const [date, ot] of Object.entries(otDates)) {
-          if (date < changeInPeriod.effective_date) otAtOld += ot as number;
-          else otAtNew += ot as number;
-        }
-        pay = basePay + otAtOld * oldOT + otAtNew * newOT;
+        const otPay = computeSplitOTPayFromDates(otDates, changeInPeriod.effective_date, oldOT, newOT, undefined, isRestDayByUser[c.id]);
+        pay = basePay + otPay;
       } else {
         const datesMap = hoursByDate[c.id] || {};
         let hrsAtOld = 0, hrsAtNew = 0;
@@ -421,12 +439,14 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
           if (date < changeInPeriod.effective_date) hrsAtOld += h as number;
           else hrsAtNew += h as number;
         }
-        pay = hrsAtOld * oldHourly + hrsAtNew * newHourly + hrs.overtime * newHourly;
+        const otPay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly, undefined, isRestDayByUser[c.id]);
+        pay = hrsAtOld * oldHourly + hrsAtNew * newHourly + otPay;
       }
     } else {
       const monthly = rateAtStart?.monthly_rate ?? c.monthly_rate ?? 0;
       const hourly  = rateAtStart?.hourly_rate  ?? c.hourly_rate  ?? 0;
       const otRate  = payType === 'fixed' || payType === 'fixed_flexible' ? (hourly || monthly / 176) : hourly;
+      const otPay = computeOTPayFromDates(overtimeByDate[c.id] || {}, otRate, undefined, isRestDayByUser[c.id]);
       if (payType === 'fixed' || payType === 'fixed_flexible') {
         pay = computeFixedAccrual({
           periodStart,
@@ -434,9 +454,9 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
           monthlyRate: monthly,
           workDays: c.work_days,
           cappedHours: isAutoPayrollUser(c) ? Number.MAX_SAFE_INTEGER : hrs.capped,
-        }).accruedPay + hrs.overtime * otRate;
+        }).accruedPay + otPay;
       } else {
-        pay = hrs.capped * hourly + hrs.overtime * hourly;
+        pay = hrs.capped * hourly + otPay;
       }
     }
 

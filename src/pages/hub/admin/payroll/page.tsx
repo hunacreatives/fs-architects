@@ -8,7 +8,7 @@ import { FULL_MONTHS, getPeriods, fmtCurrency as fmt, getNextPayrollCutoff, loca
 import { logAudit } from '@/lib/audit';
 import { getSetting, setSetting } from '@/lib/settings';
 import { DEMO_PAYOUTS, DEMO_CONTRACTORS } from '@/lib/demoData';
-import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeSplitOTPayFromDates } from '@/lib/payrollUtils';
+import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeSplitOTPayFromDates, getOTMultiplier } from '@/lib/payrollUtils';
 
 interface Contractor {
   id: string;
@@ -181,9 +181,11 @@ export default function AdminPayrollPage() {
   const [editRowId, setEditRowId] = useState<string | null>(null);
   const [editHours, setEditHours] = useState('');
   const [editPay, setEditPay] = useState('');
-  const [editOTHours, setEditOTHours] = useState('');
-  const [editOTRate, setEditOTRate] = useState('');
-  const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number; otHours?: number; otRate?: number }>>({});
+  const [editOTEntries, setEditOTEntries] = useState<{ id?: string; date: string; hours: number; is_rest_day: boolean; toDelete?: boolean }[]>([]);
+  const [editOTNewDate, setEditOTNewDate] = useState('');
+  const [editOTNewHours, setEditOTNewHours] = useState('');
+  const [editOTNewRestDay, setEditOTNewRestDay] = useState(false);
+  const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number }>>({});
   const [editAdjItems, setEditAdjItems] = useState<{ label: string; amount: number; type: string }[]>([]);
   const [editAdjLabel, setEditAdjLabel] = useState('');
   const [editAdjAmount, setEditAdjAmount] = useState('');
@@ -202,19 +204,59 @@ export default function AdminPayrollPage() {
 
   const isAutoPayrollContractor = (contractor: Contractor) => isAutoPayrollUser(contractor);
 
-  const openEditRow = (r: PayRow) => {
+  const openEditRow = async (r: PayRow) => {
     const override = rowOverrides[r.contractor.id];
     const p = payoutsMap[r.contractor.id];
     setEditHours(String(override?.hours ?? r.cappedHours));
     setEditPay(String(override?.pay !== undefined ? override.pay : parseFloat(r.pay.toFixed(2))));
-    setEditOTHours(String(override?.otHours !== undefined ? override.otHours : r.overtimeHours));
-    setEditOTRate(String(override?.otRate !== undefined ? override.otRate : r.derivedHourlyRate));
     setEditAdjItems((p?.adjustments || []).map((a: any) => ({ ...a, type: a.type || 'other' })));
     setEditAdjLabel('');
     setEditAdjAmount('');
     setEditAdjType('bonus');
     setEditAdjSign('+');
+    setEditOTNewDate('');
+    setEditOTNewHours('');
+    setEditOTNewRestDay(false);
     setEditRowId(r.contractor.id);
+    const [{ data: otReqs }, { data: dailyHrs }] = await Promise.all([
+      supabase
+        .from('hub_overtime_requests')
+        .select('id, date, hours, is_rest_day')
+        .eq('contractor_id', r.contractor.id)
+        .eq('status', 'approved')
+        .gte('date', selectedPeriod.start)
+        .lte('date', selectedPeriod.end)
+        .order('date', { ascending: true }),
+      supabase
+        .from('hub_daily_hours')
+        .select('date, overtime_hours')
+        .eq('user_id', r.contractor.id)
+        .gt('overtime_hours', 0)
+        .gte('date', selectedPeriod.start)
+        .lte('date', selectedPeriod.end),
+    ]);
+    const entries = (otReqs || []).map((e: any) => ({
+      id: e.id,
+      date: e.date,
+      hours: e.hours,
+      is_rest_day: e.is_rest_day ?? (new Date(e.date + 'T12:00:00').getDay() % 6 === 0),
+    }));
+    // Surface legacy OT hours that live only in hub_daily_hours (pre-dating the
+    // per-date request flow) as untracked entries so admins can review/clear them
+    // instead of them silently inflating the displayed hours total.
+    const trackedDates = new Set(entries.map(e => e.date));
+    for (const dh of dailyHrs || []) {
+      if (!trackedDates.has(dh.date) && dh.overtime_hours > 0) {
+        entries.push({
+          id: undefined,
+          date: dh.date,
+          hours: dh.overtime_hours,
+          is_rest_day: new Date(dh.date + 'T12:00:00').getDay() % 6 === 0,
+        });
+      }
+    }
+    entries.sort((a, b) => a.date.localeCompare(b.date));
+    setEditOTEntries(entries);
   };
 
   const addEditAdjItem = () => {
@@ -242,49 +284,58 @@ export default function AdminPayrollPage() {
 
     const h = parseFloat(editHours);
     const p = parseFloat(editPay);
-    const otH = parseFloat(editOTHours);
-    const otR = parseFloat(editOTRate);
     setRowOverrides(prev => ({
       ...prev,
       [contractorId]: {
         hours: isNaN(h) ? undefined : h,
         pay: isNaN(p) ? undefined : p,
-        otHours: isNaN(otH) ? undefined : otH,
-        otRate: isNaN(otR) ? undefined : otR,
       },
     }));
 
     const row = rows.find(r => r.contractor.id === contractorId);
     const basePay = isNaN(p) ? (row?.pay ?? 0) : p;
-    const computedOTPay = (!isNaN(otH) && !isNaN(otR)) ? otH * otR : (row?.overtimePay ?? 0);
     const adjTotal = finalAdjItems.reduce((s, i) => s + i.amount, 0);
-    const finalPay = basePay + computedOTPay + adjTotal;
 
-    // Write edited OT hours back to hub_daily_hours for each day in the period
-    if (!isNaN(otH) && row && otH !== row.overtimeHours) {
-      const { data: dailyRows } = await supabase
-        .from('hub_daily_hours')
-        .select('date, overtime_hours')
-        .eq('user_id', contractorId)
-        .gte('date', selectedPeriod.start)
-        .lte('date', selectedPeriod.end)
-        .gt('overtime_hours', 0)
-        .order('date', { ascending: true });
-      if (dailyRows && dailyRows.length > 0) {
-        // Distribute OT hours: put all on the last OT day to keep daily records meaningful
-        const otDays = [...dailyRows];
-        const lastOTDate = otDays[otDays.length - 1].date;
-        const otherDays = otDays.slice(0, -1);
-        const otherTotal = otherDays.reduce((s: number, d: any) => s + (d.overtime_hours || 0), 0);
-        const lastDayOT = Math.max(0, otH - otherTotal);
-        await supabase.from('hub_daily_hours').upsert({
-          user_id: contractorId,
-          date: lastOTDate,
-          overtime_hours: lastDayOT,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,date' });
+    // Upsert / delete OT entries in hub_overtime_requests
+    const activeEntries = editOTEntries.filter(e => !e.toDelete);
+    const deletedEntries = editOTEntries.filter(e => e.toDelete);
+    const toDeleteEntries = deletedEntries.filter(e => e.id);
+    for (const entry of toDeleteEntries) {
+      await supabase.from('hub_overtime_requests').delete().eq('id', entry.id!);
+    }
+    for (const entry of activeEntries) {
+      if (entry.id) {
+        await supabase.from('hub_overtime_requests')
+          .update({ hours: entry.hours, is_rest_day: entry.is_rest_day })
+          .eq('id', entry.id);
+      } else {
+        await supabase.from('hub_overtime_requests').insert({
+          contractor_id: contractorId,
+          date: entry.date,
+          hours: entry.hours,
+          is_rest_day: entry.is_rest_day,
+          status: 'approved',
+          admin_created: true,
+        });
       }
     }
+    // Sync hub_daily_hours.overtime_hours per date
+    const dateToOTHours: Record<string, number> = {};
+    for (const e of activeEntries) dateToOTHours[e.date] = (dateToOTHours[e.date] || 0) + e.hours;
+    for (const e of deletedEntries) { if (!(e.date in dateToOTHours)) dateToOTHours[e.date] = 0; }
+    for (const [date, hours] of Object.entries(dateToOTHours)) {
+      await supabase.from('hub_daily_hours').upsert(
+        { user_id: contractorId, date, overtime_hours: hours, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,date' }
+      );
+    }
+
+    const otRate = row?.derivedHourlyRate ?? 0;
+    const computedOTPay = activeEntries.reduce(
+      (sum, e) => sum + e.hours * otRate * getOTMultiplier(e.date, e.is_rest_day),
+      0
+    );
+    const finalPay = basePay + computedOTPay + adjTotal;
     const existing = payoutsMap[contractorId];
 
     const { error } = await supabase.from('hub_payouts').upsert({
@@ -305,7 +356,7 @@ export default function AdminPayrollPage() {
       return;
     }
 
-    await fetchWorkflow();
+    await Promise.all([fetchPayroll(), fetchWorkflow()]);
     setEditSaving(false);
     setEditRowId(null);
   };
@@ -373,9 +424,7 @@ export default function AdminPayrollPage() {
     const row = rows.find(r => r.contractor.id === contractorId);
     const override = rowOverrides[contractorId];
     const basePay = override?.pay !== undefined ? override.pay : computedPay;
-    const otPay = override?.otHours !== undefined && override?.otRate !== undefined
-      ? override.otHours * override.otRate
-      : (row?.overtimePay ?? 0);
+    const otPay = row?.overtimePay ?? 0;
     const adjs: any[] = payoutsMap[contractorId]?.adjustments || [];
     const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
     const finalPay = basePay + otPay + adjTotal;
@@ -427,9 +476,7 @@ export default function AdminPayrollPage() {
     await Promise.all(toApprove.map(async r => {
       const override = rowOverrides[r.contractor.id];
       const basePay = override?.pay !== undefined ? override.pay : r.pay;
-      const otPay = override?.otHours !== undefined && override?.otRate !== undefined
-        ? override.otHours * override.otRate
-        : r.overtimePay;
+      const otPay = r.overtimePay;
       const adjs: any[] = payoutsMap[r.contractor.id]?.adjustments || [];
       const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
       const finalPay = basePay + otPay + adjTotal;
@@ -698,8 +745,8 @@ export default function AdminPayrollPage() {
         : isUSD ? `$${c.hourly_rate}/hr` : `PHP ${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/hr`;
       const override = rowOverrides[c.id];
       const basePay = override?.pay !== undefined ? override.pay : r.pay;
-      const displayOTHours = override?.otHours !== undefined ? override.otHours : r.overtimeHours;
-      const displayOTPay = override?.otHours !== undefined && override?.otRate !== undefined ? override.otHours * override.otRate : r.overtimePay;
+      const displayOTHours = r.overtimeHours;
+      const displayOTPay = r.overtimePay;
       const p = payoutsMap[c.id];
       const adjs: { amount: number }[] = p?.adjustments || [];
       const adjTotal = adjs.reduce((sum, item) => sum + item.amount, 0);
@@ -928,7 +975,7 @@ export default function AdminPayrollPage() {
     const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
 
     // Payroll reads from hub_daily_hours, so sync Slack punches first for the live cutoff.
-    const [slackRes, contractorsRes, hoursRes, paidPayoutsRes] = await Promise.all([
+    const [slackRes, contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes] = await Promise.all([
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
@@ -946,6 +993,12 @@ export default function AdminPayrollPage() {
         .select('contractor_id, payment_date')
         .eq('cutoff_start', selectedPeriod.start)
         .eq('status', 'paid'),
+      supabase
+        .from('hub_overtime_requests')
+        .select('contractor_id, date, is_rest_day')
+        .eq('status', 'approved')
+        .gte('date', selectedPeriod.start)
+        .lte('date', selectedPeriod.end),
     ]);
 
     // Map contractor_id → payment_date for already-paid payouts this period.
@@ -991,6 +1044,19 @@ export default function AdminPayrollPage() {
         if (!overtimeByDate[h.user_id]) overtimeByDate[h.user_id] = {};
         overtimeByDate[h.user_id][h.date] = (overtimeByDate[h.user_id][h.date] || 0) + h.overtime_hours;
       }
+    }
+
+    // Explicit rest-day flags per user/date (from manual OT entries) — overrides date-based detection
+    const isRestDayByUser: Record<string, Record<string, boolean>> = {};
+    // Dates with an explicit approved hub_overtime_requests record — these always vest,
+    // regardless of raw Slack hours, since a human already confirmed them.
+    const trackedDatesByUser: Record<string, Set<string>> = {};
+    for (const req of (otRequestsRes as any)?.data || []) {
+      if (!trackedDatesByUser[req.contractor_id]) trackedDatesByUser[req.contractor_id] = new Set();
+      trackedDatesByUser[req.contractor_id].add(req.date);
+      if (req.is_rest_day == null) continue;
+      if (!isRestDayByUser[req.contractor_id]) isRestDayByUser[req.contractor_id] = {};
+      isRestDayByUser[req.contractor_id][req.date] = req.is_rest_day;
     }
 
     // Fetch all rate history for eligible contractors up to period end
@@ -1083,7 +1149,7 @@ export default function AdminPayrollPage() {
             else otAtNew += ot;
           }
           derivedHourlyRate = newHourlyForOT;
-          overtimePay = computeSplitOTPayFromDates(otDates, changeInPeriod.effective_date, oldHourlyForOT, newHourlyForOT, rawHoursByDate[c.id]);
+          overtimePay = computeSplitOTPayFromDates(otDates, changeInPeriod.effective_date, oldHourlyForOT, newHourlyForOT, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);
           pay = splitAccrual.accruedPay;
           accrualTotalOriginalCurrency = splitAccrual.oldPortion + splitAccrual.newPortion;
           proratedNote = `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
@@ -1097,7 +1163,7 @@ export default function AdminPayrollPage() {
             else hrsAtNew += h;
           }
           derivedHourlyRate = newHourly;
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly, rawHoursByDate[c.id]);
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);
           pay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
           proratedNote = `${hrsAtOld.toFixed(1)}h @ ₱${oldHourly}/hr · ${hrsAtNew.toFixed(1)}h @ ₱${newHourly}/hr`;
         }
@@ -1111,10 +1177,10 @@ export default function AdminPayrollPage() {
         derivedHourlyRate = payType === 'fixed' ? (hourly || monthly / 176) : hourly;
 
         if (payType === 'hourly') {
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id]);
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);
           pay = hrs.capped * derivedHourlyRate;
         } else {
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id]);
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);
           const today = localToday();
           const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
           const autoPayroll = isAutoPayrollContractor(c as Contractor);
@@ -1172,9 +1238,7 @@ export default function AdminPayrollPage() {
     const p = payoutsMap[r.contractor.id];
     const override = rowOverrides[r.contractor.id];
     const basePay = override?.pay !== undefined ? override.pay : r.pay;
-    const otPay = override?.otHours !== undefined && override?.otRate !== undefined
-      ? override.otHours * override.otRate
-      : r.overtimePay;
+    const otPay = r.overtimePay;
     const adjs: any[] = p?.adjustments || [];
     const adjTotal = adjs.reduce((as: number, a: any) => as + (a.amount || 0), 0);
     return s + basePay + otPay + adjTotal;
@@ -1188,9 +1252,7 @@ export default function AdminPayrollPage() {
 
     const override = rowOverrides[row.contractor.id];
     const basePay = override?.pay !== undefined ? override.pay : row.pay;
-    const otPay = override?.otHours !== undefined && override?.otRate !== undefined
-      ? override.otHours * override.otRate
-      : row.overtimePay;
+    const otPay = row.overtimePay;
     const adjs: any[] = payout?.adjustments || [];
     const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
     return basePay + otPay + adjTotal;
@@ -1445,7 +1507,7 @@ export default function AdminPayrollPage() {
                 ].map((k) => (
                   <div key={k.label}>
                     <p className="text-white/40 text-[11px] uppercase tracking-wide mb-1">{k.label}</p>
-                    <p className={`text-lg font-bold tabular-nums leading-tight ${k.accent ? 'text-[#1c2b3a]' : 'text-white'}`}>{k.value}</p>
+                    <p className={`text-lg font-bold tabular-nums leading-tight ${k.accent ? 'text-emerald-400' : 'text-white'}`}>{k.value}</p>
                   </div>
                 ))}
               </div>
@@ -1464,7 +1526,7 @@ export default function AdminPayrollPage() {
                       const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
                       const override = rowOverrides[c.id];
                       const displayPay = override?.pay !== undefined ? override.pay : r.pay;
-                      const displayOT = override?.otHours !== undefined && override?.otRate !== undefined ? override.otHours * override.otRate : r.overtimePay;
+                      const displayOT = r.overtimePay;
                       const total = getRowDisplayTotal(r);
                       const rate = c.payment_type === 'fixed' ? `${c.monthly_rate}/mo` : `${c.hourly_rate}/hr`;
                       return [c.full_name, c.department || '', c.payment_type, rate, r.days, r.hours.toFixed(2), r.cappedHours.toFixed(2), r.overtimeHours.toFixed(2), r.overtimePay.toFixed(2), total.toFixed(2)];
@@ -1581,8 +1643,8 @@ export default function AdminPayrollPage() {
               const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
               const adjs: { label: string; amount: number }[] = p?.adjustments || [];
               const adjTotal = adjs.reduce((s, i) => s + i.amount, 0);
-              const displayOTHours = override?.otHours !== undefined ? override.otHours : r.overtimeHours;
-              const displayOTPay = override?.otHours !== undefined && override?.otRate !== undefined ? override.otHours * override.otRate : r.overtimePay;
+              const displayOTHours = r.overtimeHours;
+              const displayOTPay = r.overtimePay;
               const total = getRowDisplayTotal(r);
               const dispute = p ? disputesMap[p.id] : null;
               const hoursExceeded = r.hours > r.cappedHours;
@@ -1747,7 +1809,9 @@ export default function AdminPayrollPage() {
                         ? `$${c.hourly_rate}/hr`
                         : `₱${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/hr`;
                     const otRateLabel = isFixed
-                      ? isUSD ? `$${r.derivedHourlyRate} OT` : `₱${r.derivedHourlyRate} OT`
+                      ? isUSD
+                        ? `$${(r.derivedHourlyRate * 1.25).toFixed(2)}/$${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`
+                        : `₱${(r.derivedHourlyRate * 1.25).toFixed(2)}/₱${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`
                       : null;
                     const hoursExceeded = r.hours > r.cappedHours;
                     const override = rowOverrides[c.id];
@@ -1757,10 +1821,8 @@ export default function AdminPayrollPage() {
                     const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
                     const adjs: { label: string; amount: number }[] = p?.adjustments || [];
                     const adjTotal = adjs.reduce((s: number, i: { label: string; amount: number }) => s + i.amount, 0);
-                    const displayOTHours = override?.otHours !== undefined ? override.otHours : r.overtimeHours;
-                    const displayOTPay = override?.otHours !== undefined && override?.otRate !== undefined
-                      ? override.otHours * override.otRate
-                      : r.overtimePay;
+                    const displayOTHours = r.overtimeHours;
+                    const displayOTPay = r.overtimePay;
                     const total = getRowDisplayTotal(r);
                     const dispute = p ? disputesMap[p.id] : null;
 
@@ -2135,9 +2197,10 @@ export default function AdminPayrollPage() {
         const c = editRow.contractor;
         const adjTotal = editAdjItems.reduce((s, i) => s + i.amount, 0);
         const basePay = parseFloat(editPay) || editRow.pay;
-        const otHoursVal = parseFloat(editOTHours) || 0;
-        const otRateVal = parseFloat(editOTRate) || 0;
-        const otPay = otHoursVal * otRateVal;
+        const otRateVal = editRow.derivedHourlyRate;
+        const activeOTEntries = editOTEntries.filter(e => !e.toDelete);
+        const otHoursVal = activeOTEntries.reduce((s, e) => s + e.hours, 0);
+        const otPay = activeOTEntries.reduce((s, e) => s + e.hours * otRateVal * getOTMultiplier(e.date, e.is_rest_day), 0);
         const grandTotal = basePay + otPay + adjTotal;
         return (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setEditRowId(null)}>
@@ -2227,22 +2290,76 @@ export default function AdminPayrollPage() {
                 {/* Overtime */}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Overtime</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-600">OT Hours</label>
-                      <input type="number" value={editOTHours} onChange={e => setEditOTHours(e.target.value)} step="0.5" min="0"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
-                      <p className="text-[10px] text-gray-400">Approved: {editRow.overtimeHours}h</p>
+                  {activeOTEntries.length > 0 ? (
+                    <div className="space-y-1.5 mb-3">
+                      {editOTEntries.map((entry, idx) => !entry.toDelete && (
+                        <div key={entry.id ?? `new-${idx}`} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
+                          <span className="text-xs text-gray-700 flex-1">
+                            {new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-700">{entry.hours}h</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditOTEntries(prev => prev.map((e, i) => i === idx ? { ...e, is_rest_day: !e.is_rest_day } : e))}
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium cursor-pointer whitespace-nowrap ${
+                              entry.is_rest_day ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'
+                            }`}
+                          >
+                            {entry.is_rest_day ? '30% rest day' : '25% weekday'}
+                          </button>
+                          <button onClick={() => setEditOTEntries(prev => prev.map((e, i) => i === idx ? { ...e, toDelete: true } : e))}
+                            className="text-gray-300 hover:text-rose-400 cursor-pointer flex-shrink-0">
+                            <i className="ri-delete-bin-line text-sm"></i>
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-600">OT Rate (₱/hr)</label>
-                      <input type="number" value={editOTRate} onChange={e => setEditOTRate(e.target.value)} step="0.01" min="0"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
-                      <p className="text-[10px] text-gray-400">Computed: {fmt(editRow.derivedHourlyRate, 'PHP')}/hr</p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mb-3">No overtime entries for this period.</p>
+                  )}
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-[10px] text-gray-500">Date</label>
+                      <input type="date" value={editOTNewDate} min={selectedPeriod.start} max={selectedPeriod.end}
+                        onChange={e => {
+                          setEditOTNewDate(e.target.value);
+                          if (e.target.value) {
+                            const day = new Date(e.target.value + 'T12:00:00').getDay();
+                            setEditOTNewRestDay(day === 0 || day === 6);
+                          }
+                        }}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                     </div>
+                    <div className="w-20 space-y-1">
+                      <label className="text-[10px] text-gray-500">Hours</label>
+                      <input type="number" value={editOTNewHours} onChange={e => setEditOTNewHours(e.target.value)} step="0.5" min="0" max="12" placeholder="hrs"
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditOTNewRestDay(v => !v)}
+                      className={`text-[10px] px-2 py-1.5 rounded-lg font-medium cursor-pointer flex-shrink-0 border whitespace-nowrap ${
+                        editOTNewRestDay ? 'bg-violet-50 border-violet-200 text-violet-700' : 'bg-sky-50 border-sky-200 text-sky-700'
+                      }`}
+                    >
+                      {editOTNewRestDay ? 'Rest day' : 'Weekday'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const h = parseFloat(editOTNewHours);
+                        if (!editOTNewDate || isNaN(h) || h <= 0) return;
+                        setEditOTEntries(prev => [...prev, { date: editOTNewDate, hours: h, is_rest_day: editOTNewRestDay }]);
+                        setEditOTNewDate('');
+                        setEditOTNewHours('');
+                        setEditOTNewRestDay(false);
+                      }}
+                      className="px-3 py-1.5 bg-[#111827] text-white text-xs rounded-lg hover:bg-gray-700 cursor-pointer whitespace-nowrap"
+                    >
+                      Add
+                    </button>
                   </div>
                   {otPay > 0 && (
-                    <p className="text-[10px] text-gray-400 mt-1.5">OT pay: {fmt(otPay, 'PHP')}</p>
+                    <p className="text-[10px] text-gray-400 mt-2">OT pay: {fmt(otPay, 'PHP')} ({otHoursVal}h total @ {fmt(otRateVal, 'PHP')}/hr base)</p>
                   )}
                 </div>
 
@@ -2315,7 +2432,7 @@ export default function AdminPayrollPage() {
                   </div>
                   {otPay > 0 && (
                     <div className="flex justify-between text-xs text-gray-500">
-                      <span>Overtime ({otHoursVal}h × {fmt(otRateVal, 'PHP')})</span>
+                      <span>Overtime ({otHoursVal}h @ {fmt(otRateVal, 'PHP')}/hr base, +25-30%)</span>
                       <span className="text-emerald-600">+{fmt(otPay, 'PHP')}</span>
                     </div>
                   )}
@@ -2335,7 +2452,7 @@ export default function AdminPayrollPage() {
 
               <div className="px-5 pb-4 pt-3 border-t border-gray-100 flex justify-between gap-2 flex-shrink-0">
                 <button
-                  onClick={() => { setRowOverrides(prev => { const n = { ...prev }; delete n[editRowId!]; return n; }); setEditAdjItems([]); setEditOTHours(''); setEditOTRate(''); setEditRowId(null); }}
+                  onClick={() => { setRowOverrides(prev => { const n = { ...prev }; delete n[editRowId!]; return n; }); setEditAdjItems([]); setEditOTEntries([]); setEditRowId(null); }}
                   className="px-3 py-2 text-xs text-rose-400 hover:text-rose-600 cursor-pointer"
                 >
                   Reset all

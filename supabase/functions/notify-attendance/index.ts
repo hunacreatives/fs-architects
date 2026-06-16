@@ -103,16 +103,18 @@ Deno.serve(async (req) => {
 
     let title: string;
     let body: string;
-    // Use the actual punch timestamp from the record (not the time this function runs)
-    const eventTime = record.created_at ?? record.last_on ?? new Date().toISOString();
+    let eventTime: string;
 
     if (eventType === 'INSERT') {
       title = `${firstName} clocked in`;
       body = 'Now in the office';
+      // hub_daily_hours has no created_at column — first_on is the actual clock-in instant
+      eventTime = record.first_on ?? new Date().toISOString();
     } else if (eventType === 'UPDATE' && record.last_off && !oldRecord?.last_off) {
       const hours = record.hours_raw ? parseFloat(record.hours_raw).toFixed(1) : '?';
       title = `${firstName} clocked out`;
       body = `Logged ${hours}h today`;
+      eventTime = record.last_off ?? new Date().toISOString();
     } else {
       return new Response('no push needed', { headers: cors });
     }

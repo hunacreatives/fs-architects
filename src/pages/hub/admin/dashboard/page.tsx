@@ -494,7 +494,7 @@ export default function AdminDashboardPage() {
               </p>
               <h2 className="text-xl font-bold">{greeting}, team.</h2>
               <p className="text-white/60 text-sm mt-1">
-                {counts.on > 0 ? `${counts.on} contractor${counts.on > 1 ? 's' : ''} in the office right now.` : 'No one in the office yet today.'}
+                {counts.on > 0 ? `${counts.on} teammate${counts.on > 1 ? 's' : ''} in the office right now.` : 'No one in the office yet today.'}
               </p>
             </div>
             {/* Payroll period card */}

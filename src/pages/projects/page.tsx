@@ -624,8 +624,8 @@ export default function ProjectsPage() {
   const gridRef = useRef<HTMLDivElement>(null);
   const projectsSectionRef = useRef<HTMLDivElement>(null);
 
-  // ── Projects visibility (revealed after map interaction) ──
-  const [projectsVisible, setProjectsVisible] = useState(false);
+  // ── Projects visibility — always open ──
+  const [projectsVisible, setProjectsVisible] = useState(true);
 
   const locations = ['all', 'Manila', 'Bataan', 'Bacolod', 'Butuan', 'Cavite', 'Iligan', 'Leyte', 'Cebu', 'CDO', 'Davao', 'Ozamiz', 'Tagum', 'Zamboanga'];
 
@@ -659,6 +659,7 @@ export default function ProjectsPage() {
   const [visibleCount, setVisibleCount] = useState(8);
   const batchStartRef = useRef(0);
   const [showGoUp, setShowGoUp] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Count projects per location (filtered by category+search, not by location)
   const projectCounts = useMemo(() => {
@@ -765,7 +766,27 @@ export default function ProjectsPage() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(8);
+    batchStartRef.current = 0;
   }, [activeLocation, activeCategory, sortBy, sortOrder, searchQuery]);
+
+  // Infinite scroll — re-attach observer each time sentinel mounts/moves
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((prev) => {
+            batchStartRef.current = prev;
+            return prev + 8;
+          });
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [visibleCount, sortedProjects.length]);
 
   // Show/hide Go Up button
   useEffect(() => {
@@ -1011,18 +1032,9 @@ export default function ProjectsPage() {
               })}
             </div>
 
-            <div className="flex items-center justify-end mt-8 mb-4 gap-4">
-              {visibleCount < sortedProjects.length && (
-                <button
-                  onClick={() => { batchStartRef.current = visibleCount; setVisibleCount((prev) => Math.min(prev + 8, sortedProjects.length)); }}
-                  className="flex items-center gap-2 px-6 py-2.5 border border-black/20 rounded-full text-sm tracking-widest text-navy/70 hover:border-black hover:text-navy transition-all duration-300 cursor-pointer whitespace-nowrap"
-                  style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
-                >
-                  Show More Projects
-                  <i className="ri-arrow-down-line text-base" />
-                </button>
-              )}
-            </div>
+            {visibleCount < sortedProjects.length && (
+              <div ref={sentinelRef} className="h-16 mt-4" aria-hidden="true" />
+            )}
           </div>
         </div>
       )}

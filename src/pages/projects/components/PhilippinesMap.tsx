@@ -250,10 +250,10 @@ export default function PhilippinesMap({
         .map-hero-hint  { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.72s both; }
         .map-hero-cta   { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.90s both; }
         @keyframes arrowBounce {
-          0%, 100% { transform: translateX(-50%) translateY(0); }
-          50%       { transform: translateX(-50%) translateY(6px); }
+          0%, 100% { transform: translateY(0); }
+          50%       { transform: translateY(5px); }
         }
-        .map-down-arrow { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both, arrowBounce 2s ease-in-out 2s infinite; }
+        .map-down-arrow { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both, arrowBounce 2s ease-in-out 2.1s infinite; }
         .pin-pulse {
           position: absolute; top: 50%; left: 50%;
           width: 36px; height: 36px; border-radius: 50%;
@@ -598,6 +598,13 @@ export default function PhilippinesMap({
         >
           {t('map_click_hint')}
         </p>
+        <button
+          onClick={onViewAllProjects}
+          className="map-down-arrow w-9 h-9 rounded-full bg-white border border-[#1c2b3a]/15 shadow-sm flex items-center justify-center cursor-pointer hover:border-[#1c2b3a]/40 hover:shadow-md transition-all duration-300"
+          aria-label="Scroll to projects"
+        >
+          <i className="ri-arrow-down-s-line text-[#1c2b3a]/60 text-lg" />
+        </button>
       </div>
 
       {/* ── DESKTOP: Right overlay — animated stats ── */}
@@ -634,11 +641,18 @@ export default function PhilippinesMap({
           {t('map_select_location')}
         </h2>
         <p
-          className="map-hero-hint text-[10px] tracking-widest text-left w-full"
+          className="map-hero-hint text-[10px] tracking-widest text-left w-full mb-4"
           style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em', color: 'rgba(28,43,58,0.35)' }}
         >
           {t('map_click_hint')}
         </p>
+        <button
+          onClick={onViewAllProjects}
+          className="map-down-arrow w-9 h-9 rounded-full bg-white border border-[#1c2b3a]/15 shadow-sm flex items-center justify-center cursor-pointer hover:border-[#1c2b3a]/40 hover:shadow-md transition-all duration-300"
+          aria-label="Scroll to projects"
+        >
+          <i className="ri-arrow-down-s-line text-[#1c2b3a]/60 text-lg" />
+        </button>
       </div>
 
       {/* ── MOBILE: Stats + View All at bottom ── */}
@@ -679,15 +693,6 @@ export default function PhilippinesMap({
         }}
       />
 
-      {/* ── Down arrow — scroll to projects ── */}
-      <button
-        onClick={onViewAllProjects}
-        className="map-down-arrow absolute left-1/2 z-30 w-10 h-10 rounded-full bg-white border border-[#1c2b3a]/15 shadow-sm flex items-center justify-center cursor-pointer hover:border-[#1c2b3a]/40 hover:shadow-md transition-all duration-300"
-        style={{ bottom: '28px' }}
-        aria-label="Scroll to projects"
-      >
-        <i className="ri-arrow-down-s-line text-[#1c2b3a]/60 text-xl" />
-      </button>
     </div>
   );
 }

@@ -2700,43 +2700,43 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
 
         <section className="space-y-3">
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
             {/* Status tabs */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+            <div className="flex gap-0.5 bg-gray-100 p-1 rounded-xl">
               {statusTabs.filter(tab => tab.key !== 'all').map(tab => (
                 <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${statusFilter === tab.key ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${statusFilter === tab.key ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                   {tab.label}
                 </button>
               ))}
             </div>
-            {/* Type dropdown */}
+            {/* Filters */}
             <select value={projectTypeFilter} onChange={e => setProjectTypeFilter(e.target.value as any)}
-              className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white text-gray-600 focus:outline-none cursor-pointer">
+              className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">All Types</option>
               <option value="client">Fixed Contract</option>
               <option value="internal">Internal</option>
             </select>
-            {/* Service dropdown */}
             <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-              className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white text-gray-600 focus:outline-none cursor-pointer">
+              className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none cursor-pointer">
               <option value="all">All Services</option>
               {projectTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+            {/* Spacer */}
             <div className="flex-1" />
-            <button onClick={() => { setEditingProject(null); setForm({ ...emptyForm, project_type: 'retainer' }); setShowForm(true); }}
-              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap">
-              <i className="ri-add-line text-sm"></i>
-              <span className="hidden sm:inline">Add Client</span>
-            </button>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button onClick={() => setPageView('projects')} className={`px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${pageView === 'projects' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:bg-gray-50'}`}><i className="ri-folder-line text-sm"></i><span className="hidden sm:inline">Projects</span></button>
-              <button onClick={() => { setPageView('tasks'); fetchAllTasks(); }} className={`px-3 py-2 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${pageView === 'tasks' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:bg-gray-50'}`}><i className="ri-task-line text-sm"></i><span className="hidden sm:inline">All Tasks</span></button>
+            {/* View toggle */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
+              <button onClick={() => setPageView('projects')} className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${pageView === 'projects' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:bg-gray-50'}`}><i className="ri-folder-line text-sm"></i>Projects</button>
+              <button onClick={() => { setPageView('tasks'); fetchAllTasks(); }} className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${pageView === 'tasks' ? 'bg-[#111827] text-white' : 'text-gray-500 hover:bg-gray-50'}`}><i className="ri-task-line text-sm"></i>All Tasks</button>
             </div>
+            {/* Actions */}
+            <button onClick={() => { setEditingProject(null); setForm({ ...emptyForm, project_type: 'retainer' }); setShowForm(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+              <i className="ri-add-line"></i>Add Client
+            </button>
             <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#111827] text-white text-sm rounded-lg hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap">
-              <i className="ri-add-line text-sm"></i>
-              <span className="hidden sm:inline">New Project</span>
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111827] text-white text-xs rounded-lg hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+              <i className="ri-add-line"></i>New Project
             </button>
           </div>
 

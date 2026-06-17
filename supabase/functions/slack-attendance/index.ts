@@ -226,10 +226,10 @@ Deno.serve(async (req) => {
         effectiveStatus = 'off';
       }
 
-      // Handbook rule: clock-in at/after 12 PM PHT → max half day (4 hrs)
+      // Handbook rule: clock-in at/after 11 AM PHT → max half day (4 hrs)
       if (firstOn) {
         const firstOnHour = parseInt(new Date(firstOn.ts * 1000).toLocaleString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', hour12: false }));
-        if (firstOnHour >= 12) {
+        if (firstOnHour >= 11) {
           hoursCapped = Math.min(hoursCapped, 4);
         }
       }

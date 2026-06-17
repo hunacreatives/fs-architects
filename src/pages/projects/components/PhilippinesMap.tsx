@@ -249,6 +249,11 @@ export default function PhilippinesMap({
         .map-hero-title { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.55s both; }
         .map-hero-hint  { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.72s both; }
         .map-hero-cta   { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 0.90s both; }
+        @keyframes arrowBounce {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50%       { transform: translateX(-50%) translateY(6px); }
+        }
+        .map-down-arrow { animation: mapFadeIn 0.9s cubic-bezier(0.22,1,0.36,1) 1.1s both, arrowBounce 2s ease-in-out 2s infinite; }
         .pin-pulse {
           position: absolute; top: 50%; left: 50%;
           width: 36px; height: 36px; border-radius: 50%;
@@ -593,14 +598,6 @@ export default function PhilippinesMap({
         >
           {t('map_click_hint')}
         </p>
-        <button
-          onClick={() => { onLocationChange('all'); onViewAllProjects(); }}
-          className="map-hero-cta self-start flex items-center gap-3 px-7 py-3 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
-          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
-        >
-          {t('map_view_all')}
-          <span className="text-[10px] text-[#1c2b3a]/40">{totalCount}</span>
-        </button>
       </div>
 
       {/* ── DESKTOP: Right overlay — animated stats ── */}
@@ -670,26 +667,27 @@ export default function PhilippinesMap({
             </div>
           ))}
         </div>
-        {/* View All button */}
-        <button
-          onClick={() => { onLocationChange('all'); onViewAllProjects(); }}
-          className="map-hero-cta inline-flex items-center gap-3 px-7 py-2.5 rounded-full text-xs tracking-widest transition-all duration-300 cursor-pointer whitespace-nowrap border bg-white text-[#1c2b3a] border-[#1c2b3a]/20 hover:border-[#1c2b3a]"
-          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.12em' }}
-        >
-          {t('map_view_all')}
-          <span className="text-[10px] text-[#1c2b3a]/40">{totalCount}</span>
-        </button>
       </div>
 
-      {/* ── Bottom fade-to-white (desktop only — mobile has stats bar instead) ── */}
+      {/* ── Bottom fade-to-white ── */}
       <div
-        className="hidden md:block absolute bottom-0 left-0 right-0 pointer-events-none"
+        className="absolute bottom-0 left-0 right-0 pointer-events-none"
         style={{
           height: '180px',
           zIndex: 25,
           background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.92) 72%, #ffffff 100%)',
         }}
       />
+
+      {/* ── Down arrow — scroll to projects ── */}
+      <button
+        onClick={onViewAllProjects}
+        className="map-down-arrow absolute left-1/2 z-30 w-10 h-10 rounded-full bg-white border border-[#1c2b3a]/15 shadow-sm flex items-center justify-center cursor-pointer hover:border-[#1c2b3a]/40 hover:shadow-md transition-all duration-300"
+        style={{ bottom: '28px' }}
+        aria-label="Scroll to projects"
+      >
+        <i className="ri-arrow-down-s-line text-[#1c2b3a]/60 text-xl" />
+      </button>
     </div>
   );
 }

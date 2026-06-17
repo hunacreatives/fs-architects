@@ -600,10 +600,10 @@ export default function PhilippinesMap({
         </p>
         <button
           onClick={onViewAllProjects}
-          className="map-down-arrow w-9 h-9 rounded-full bg-white border border-[#1c2b3a]/15 shadow-sm flex items-center justify-center cursor-pointer hover:border-[#1c2b3a]/40 hover:shadow-md transition-all duration-300"
+          className="map-down-arrow flex items-center justify-center cursor-pointer hover:opacity-100 transition-opacity duration-300"
           aria-label="Scroll to projects"
         >
-          <i className="ri-arrow-down-s-line text-[#1c2b3a]/60 text-lg" />
+          <i className="ri-arrow-down-s-line text-[#1c2b3a]/40 text-2xl" />
         </button>
       </div>
 
@@ -648,10 +648,10 @@ export default function PhilippinesMap({
         </p>
         <button
           onClick={onViewAllProjects}
-          className="map-down-arrow w-9 h-9 rounded-full bg-white border border-[#1c2b3a]/15 shadow-sm flex items-center justify-center cursor-pointer hover:border-[#1c2b3a]/40 hover:shadow-md transition-all duration-300"
+          className="map-down-arrow flex items-center justify-center cursor-pointer hover:opacity-100 transition-opacity duration-300"
           aria-label="Scroll to projects"
         >
-          <i className="ri-arrow-down-s-line text-[#1c2b3a]/60 text-lg" />
+          <i className="ri-arrow-down-s-line text-[#1c2b3a]/40 text-2xl" />
         </button>
       </div>
 

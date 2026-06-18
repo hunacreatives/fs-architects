@@ -19,7 +19,7 @@ const SLIDES: Slide[] = [
   { src: "/images/hero-denza-greenhills.webp",        title: "Denza Greenhills",           location: "Mandaluyong City",        year: "2025" },
   { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025", video: "/images/projects/blush-video.mp4" },
   { src: "/images/hero-byd-butuan.webp",              title: "BYD Butuan",                 location: "Butuan City",             year: "2025" },
-  { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025" },
+  { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025", video: "/images/projects/byd-c5-acropolis-video.mp4" },
   { src: "/images/hero-byd-marikina.webp",            title: "BYD Marikina",               location: "Marikina City",           year: "2025" },
   { src: "/images/hero-byd-marikina-interiors.webp",  title: "BYD Marikina Interiors",     location: "Marikina City",           year: "2025" },
   { src: "/images/hero-byd-zamboanga.webp",           title: "BYD Zamboanga",              location: "Zamboanga City",          year: "2024" },
@@ -59,7 +59,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeSlideRef = useRef(0);
-  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   // Tracks which slides have completed at least one full animation run.
   // Used to park the slide at kb.to (its end position) instead of kb.from.
   const activatedRef = useRef<boolean[]>(new Array(SLIDES.length).fill(false));
@@ -107,15 +107,14 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Play/pause hero video when its slide becomes active
+  // Play/pause hero videos when their slide becomes active
   useEffect(() => {
-    const videoSlideIndex = SLIDES.findIndex(s => s.video);
-    if (videoSlideIndex === -1 || !heroVideoRef.current) return;
-    if (activeSlide === videoSlideIndex) {
-      heroVideoRef.current.play().catch(() => {});
-    } else {
-      heroVideoRef.current.pause();
-    }
+    SLIDES.forEach((slide, i) => {
+      const vid = videoRefs.current[i];
+      if (!slide.video || !vid) return;
+      if (i === activeSlide) vid.play().catch(() => {});
+      else { vid.pause(); vid.currentTime = 0; }
+    });
   }, [activeSlide]);
 
   const goToSlide = (i: number) => {
@@ -160,7 +159,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
             return (
               <video
                 key={i}
-                ref={heroVideoRef}
+                ref={el => { videoRefs.current[i] = el; }}
                 src={slide.video}
                 muted
                 playsInline

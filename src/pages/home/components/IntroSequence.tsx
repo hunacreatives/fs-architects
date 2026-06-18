@@ -9,7 +9,8 @@ const NAV_LOGO_SIZE = 43;
 const INTRO_LOGO_SIZE = 96;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
-const VIDEO_URL = '/images/intro-video.mp4';
+const VIDEO_WEBM_URL = '/images/intro-video.webm';
+const VIDEO_MP4_URL = '/images/intro-video.mp4';
 const PNG_URL = '/images/intro-logo.png';
 
 type Phase = 'video' | 'hold' | 'moving' | 'fading' | 'done';
@@ -143,7 +144,6 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
         {/* Video — on top while playing */}
         <video
           ref={videoRef}
-          src={VIDEO_URL}
           autoPlay
           muted
           playsInline
@@ -157,7 +157,10 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             // Hide via visibility so layout is preserved; switch to none only after video phase
             display: phase === 'video' ? 'block' : 'none',
           }}
-        />
+        >
+          <source src={VIDEO_WEBM_URL} type="video/webm" />
+          <source src={VIDEO_MP4_URL} type="video/mp4" />
+        </video>
 
         {/* PNG — hidden while video plays, shown the instant video phase ends */}
         <img

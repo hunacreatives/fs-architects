@@ -9,17 +9,20 @@ const NAV_LOGO_SIZE = 43;
 const INTRO_LOGO_SIZE = 96;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
+const VIDEO_WEBM_URL = '/images/intro-video.webm';
+const VIDEO_MP4_URL = '/images/intro-video.mp4';
 const PNG_URL = '/images/intro-logo.png';
 
-type Phase = 'intro' | 'hold' | 'moving' | 'fading' | 'done';
+type Phase = 'video' | 'hold' | 'moving' | 'fading' | 'done';
 
 export default function IntroSequence({ userInterrupted, onComplete }: IntroSequenceProps) {
-  const [phase, setPhase] = useState<Phase>('intro');
-  const [logoOpacity, setLogoOpacity] = useState(0);
+  const [phase, setPhase] = useState<Phase>('video');
   const [animated, setAnimated] = useState(false);
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const logoRef = useRef<HTMLDivElement>(null);
 
   const clearAll = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
@@ -27,10 +30,11 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   }, []);
 
   const advance = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
     setPhase('hold');
     const t1 = setTimeout(() => {
       setPhase('moving');
-      // RAF ensures the browser sees the identity transform before we apply the target
+      // Double-RAF ensures browser paints identity transform before animating to target
       requestAnimationFrame(() => requestAnimationFrame(() => setAnimated(true)));
     }, 300);
     const t2 = setTimeout(() => setPhase('fading'), 1800);
@@ -59,22 +63,64 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   useEffect(() => {
     if (userInterrupted) {
       clearAll();
+      cancelAnimationFrame(rafRef.current);
+      if (videoRef.current) videoRef.current.pause();
       setPhase('done');
       onComplete();
     }
   }, [userInterrupted, clearAll, onComplete]);
 
-  // Fade logo in, then start advance sequence
+  // Canvas luma-key: reads video frames, keys black to transparent
   useEffect(() => {
-    const t0 = setTimeout(() => setLogoOpacity(1), 80);
-    const t1 = setTimeout(advance, 1800);
-    timersRef.current = [t0, t1];
-    return clearAll;
-  }, [advance, clearAll]);
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const drawFrame = () => {
+      if (video.readyState >= 2 && !video.paused && !video.ended) {
+        ctx.clearRect(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+        ctx.drawImage(video, 0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+        try {
+          const img = ctx.getImageData(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+          const d = img.data;
+          for (let i = 0; i < d.length; i += 4) {
+            d[i + 3] = Math.round((d[i] + d[i + 1] + d[i + 2]) / 3);
+          }
+          ctx.putImageData(img, 0, 0);
+        } catch { /* canvas tainted — frame drawn as-is */ }
+      }
+      rafRef.current = requestAnimationFrame(drawFrame);
+    };
+
+    const start = () => { rafRef.current = requestAnimationFrame(drawFrame); };
+    video.addEventListener('play', start);
+    if (!video.paused) start();
+    return () => {
+      video.removeEventListener('play', start);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // Video end / fallback triggers the fly-to-nav sequence
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    // 4s hard fallback — fires if video never ends (autoplay blocked, unsupported format, etc.)
+    const fallback = setTimeout(advance, 4000);
+    const handleEnded = () => { clearTimeout(fallback); advance(); };
+    const handleError = () => { clearTimeout(fallback); advance(); };
+    video.addEventListener('ended', handleEnded);
+    video.addEventListener('error', handleError);
+    return () => {
+      clearTimeout(fallback);
+      video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('error', handleError);
+    };
+  }, [advance]);
 
   if (phase === 'done') return null;
-
-  const overlayOpacity = phase === 'fading' ? 0 : 1;
 
   const transform = animated
     ? `translate(${targetPos.x}px, ${targetPos.y}px) scale(${TARGET_SCALE})`
@@ -85,12 +131,11 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
         backgroundColor: '#2c363e',
-        opacity: overlayOpacity,
+        opacity: phase === 'fading' ? 0 : 1,
         transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
       }}
     >
       <div
-        ref={logoRef}
         style={{
           position: 'relative',
           width: INTRO_LOGO_SIZE,
@@ -102,6 +147,44 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
           willChange: 'transform',
         }}
       >
+        {/*
+          Video at opacity 0.01 (not 0) — nearly invisible but browser still
+          decodes frames so the canvas can read them via getImageData.
+        */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: `${INTRO_LOGO_SIZE}px`,
+            height: `${INTRO_LOGO_SIZE}px`,
+            objectFit: 'contain',
+            opacity: 0.01,
+            pointerEvents: 'none',
+            display: phase === 'video' ? 'block' : 'none',
+          }}
+        >
+          <source src={VIDEO_WEBM_URL} type="video/webm" />
+          <source src={VIDEO_MP4_URL} type="video/mp4" />
+        </video>
+
+        {/* Canvas renders luma-keyed frames on top of the near-invisible video */}
+        <canvas
+          ref={canvasRef}
+          width={INTRO_LOGO_SIZE}
+          height={INTRO_LOGO_SIZE}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            display: phase === 'video' ? 'block' : 'none',
+          }}
+        />
+
+        {/* PNG shown once video phase ends */}
         <img
           src={PNG_URL}
           alt="FS Architects"
@@ -112,8 +195,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
             filter: 'grayscale(1) brightness(1.4)',
-            opacity: logoOpacity,
-            transition: 'opacity 0.6s ease',
+            visibility: phase === 'video' ? 'hidden' : 'visible',
           }}
           className="select-none"
           draggable={false}

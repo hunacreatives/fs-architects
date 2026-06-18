@@ -9,8 +9,9 @@ const NAV_LOGO_SIZE = 43;
 const INTRO_LOGO_SIZE = 200;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
-const VIDEO_WEBM_URL = '/images/intro-logo.webm';
-const PNG_URL        = '/images/intro-logo.png';
+const VIDEO_SAFARI_URL = '/images/intro-logo-safari.mp4'; // HEVC alpha — Safari
+const VIDEO_MP4_URL    = '/images/intro-logo.mp4';        // H.264 composited — Chrome/Firefox
+const PNG_URL          = '/images/intro-logo.png';
 
 type Phase = 'video' | 'hold' | 'moving' | 'fading' | 'done';
 
@@ -90,7 +91,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
-        backgroundColor: '#000',
+        backgroundColor: '#2c363e',
         opacity: phase === 'fading' ? 0 : 1,
         transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
       }}
@@ -123,7 +124,8 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             display: phase === 'video' ? 'block' : 'none',
           }}
         >
-          <source src={VIDEO_WEBM_URL} type="video/webm" />
+          <source src={VIDEO_SAFARI_URL} type='video/mp4; codecs="hvc1"' />
+          <source src={VIDEO_MP4_URL} type="video/mp4" />
         </video>
 
         {/* PNG shown once video phase ends */}

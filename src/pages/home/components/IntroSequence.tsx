@@ -6,7 +6,7 @@ interface IntroSequenceProps {
 }
 
 const NAV_LOGO_SIZE = 43;
-const INTRO_LOGO_SIZE = 200;
+const INTRO_LOGO_SIZE = 130;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
 const VIDEO_SAFARI_URL = '/images/intro-logo-safari.mp4'; // HEVC alpha — Safari
@@ -69,7 +69,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const fallback = setTimeout(advance, 16000);
+    const fallback = setTimeout(advance, 4000);
     const handleEnded = () => { clearTimeout(fallback); advance(); };
     const handleError = () => { clearTimeout(fallback); advance(); };
     video.addEventListener('ended', handleEnded);

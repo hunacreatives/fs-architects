@@ -408,7 +408,8 @@ const mockProjects = [
     location: 'CDO',
     lat: 8.4797,
     lng: 124.6525,
-    image: '/images/projects/blush-thumb.webp',
+    image: '/images/projects/blush-thumb-video.jpg',
+    video: '/images/projects/blush-video.mp4',
   },
   {
     id: 32,
@@ -606,6 +607,79 @@ const mockProjects = [
     image: '/images/projects/chen-residence-thumb.webp',
   },
 ];
+
+function ProjectCard({ project, delay, navigate, t }: {
+  project: (typeof mockProjects)[number];
+  delay: string;
+  navigate: (path: string) => void;
+  t: (key: string) => string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hovering, setHovering] = useState(false);
+  const hasVideo = !!project.video;
+
+  const handleMouseEnter = () => {
+    if (!hasVideo) return;
+    setHovering(true);
+    videoRef.current?.play().catch(() => {});
+  };
+
+  const handleMouseLeave = () => {
+    if (!hasVideo) return;
+    setHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  const handleClick = () => {
+    sessionStorage.setItem('projects_return_to_grid', '1');
+    navigate(`/projects/${project.slug}`);
+  };
+
+  return (
+    <div
+      className="proj-card group transition-all duration-300 overflow-hidden opacity-80 hover:opacity-100 cursor-pointer"
+      style={{ animationDelay: delay }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+    >
+      <div className="w-full aspect-[4/3] overflow-hidden relative">
+        <img
+          src={project.image.endsWith('.jpg') ? project.image : project.image.replace('-thumb.webp', '-hero.webp')}
+          alt={project.name}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          style={{ opacity: hasVideo && hovering ? 0 : 1, transition: 'opacity 0.5s, transform 0.7s' }}
+        />
+        {hasVideo && (
+          <video
+            ref={videoRef}
+            src={project.video}
+            muted
+            playsInline
+            loop
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: hovering ? 1 : 0, transition: 'opacity 0.5s' }}
+          />
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent px-3 pt-8 pb-3 pointer-events-none">
+          <h3
+            className="text-sm font-medium text-white mb-0.5 tracking-wide truncate"
+            style={{ fontFamily: 'Marcellus, serif', maxWidth: '200px' }}
+            title={t(`${project.translationKey}_name`)}
+          >
+            {t(`${project.translationKey}_name`)}
+          </h3>
+          <p className="text-xs text-white/55 tracking-wide" style={{ fontFamily: 'Geist, sans-serif' }}>
+            {project.year} · {t(`${project.translationKey}_address`)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
@@ -993,41 +1067,13 @@ export default function ProjectsPage() {
                 const batchIdx = idx - batchStartRef.current;
                 const delay = batchIdx >= 0 ? `${Math.min(batchIdx * 0.06, 0.28)}s` : '0s';
                 return (
-                <div
-                  key={project.id}
-                  className="proj-card group transition-all duration-300 overflow-hidden rounded-xl opacity-80 hover:opacity-100"
-                  style={{ animationDelay: delay }}
-                >
-                  <div
-                    className="w-full aspect-[4/3] overflow-hidden bg-gray-100 cursor-pointer"
-                    onClick={() => { sessionStorage.setItem('projects_return_to_grid', '1'); navigate(`/projects/${project.slug}`); }}
-                  >
-                    <img
-                      src={project.image.replace('-thumb.webp', '-hero.webp')}
-                      alt={project.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  </div>
-                  <div
-                    className="px-3 py-3 cursor-pointer"
-                    style={{ background: 'rgba(0,0,0,0.05)' }}
-                    onClick={() => { sessionStorage.setItem('projects_return_to_grid', '1'); navigate(`/projects/${project.slug}`); }}
-                  >
-                    <h3
-                      className="text-sm font-medium text-navy mb-0.5 tracking-wide truncate"
-                      style={{ fontFamily: 'Marcellus, serif', maxWidth: '200px' }}
-                      title={t(`${project.translationKey}_name`)}
-                    >
-                      {t(`${project.translationKey}_name`)}
-                    </h3>
-                    <p
-                      className="text-xs text-navy/50 tracking-wide"
-                      style={{ fontFamily: 'Geist, sans-serif' }}
-                    >
-                      {project.year} · {t(`${project.translationKey}_address`)}
-                    </p>
-                  </div>
-                </div>
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    delay={delay}
+                    navigate={navigate}
+                    t={t}
+                  />
                 );
               })}
             </div>

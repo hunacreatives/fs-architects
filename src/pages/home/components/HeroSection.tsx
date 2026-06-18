@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navigation from '../../../components/feature/Navigation';
@@ -12,11 +12,12 @@ interface Slide {
   title: string;
   location: string;
   year: string;
+  video?: string;
 }
 
 const SLIDES: Slide[] = [
   { src: "/images/hero-denza-greenhills.webp",        title: "Denza Greenhills",           location: "Mandaluyong City",        year: "2025" },
-  { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025" },
+  { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025", video: "/images/projects/blush-video.mp4" },
   { src: "/images/hero-byd-butuan.webp",              title: "BYD Butuan",                 location: "Butuan City",             year: "2025" },
   { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025" },
   { src: "/images/hero-byd-marikina.webp",            title: "BYD Marikina",               location: "Marikina City",           year: "2025" },
@@ -58,6 +59,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeSlideRef = useRef(0);
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
   // Tracks which slides have completed at least one full animation run.
   // Used to park the slide at kb.to (its end position) instead of kb.from.
   const activatedRef = useRef<boolean[]>(new Array(SLIDES.length).fill(false));
@@ -105,6 +107,17 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Play/pause hero video when its slide becomes active
+  useEffect(() => {
+    const videoSlideIndex = SLIDES.findIndex(s => s.video);
+    if (videoSlideIndex === -1 || !heroVideoRef.current) return;
+    if (activeSlide === videoSlideIndex) {
+      heroVideoRef.current.play().catch(() => {});
+    } else {
+      heroVideoRef.current.pause();
+    }
+  }, [activeSlide]);
+
   const goToSlide = (i: number) => {
     if (i === activeSlideRef.current) return;
     // Mark the outgoing slide as activated (even if mid-animation)
@@ -137,6 +150,27 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         {SLIDES.map((slide, i) => {
           const kb = KENBURNS[i % KENBURNS.length];
           const isActive = i === activeSlide;
+          const sharedStyle: React.CSSProperties = {
+            opacity: isActive ? 1 : 0,
+            transition: `opacity ${CROSSFADE_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
+            zIndex: isActive ? 1 : 0,
+          };
+
+          if (slide.video) {
+            return (
+              <video
+                key={i}
+                ref={heroVideoRef}
+                src={slide.video}
+                muted
+                playsInline
+                loop
+                className="absolute inset-0 w-full h-full object-cover object-center"
+                style={sharedStyle}
+              />
+            );
+          }
+
           return (
             <img
               key={i}
@@ -144,15 +178,9 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               alt={`Architectural work ${i + 1}`}
               className="absolute inset-0 w-full h-full object-cover object-center"
               style={{
-                opacity: isActive ? 1 : 0,
+                ...sharedStyle,
                 animation: isActive ? `kb-${i % KENBURNS.length} ${HOLD_REST_MS}ms ease-in-out forwards` : 'none',
-                // Inactive slides park at kb.to once they've completed their run (so the
-                // outgoing slide stays at its end position during the crossfade), or at
-                // kb.from on first load. No CSS transform transition — avoids browser
-                // inconsistencies with "from value" capture when removing an animation.
                 transform: isActive ? undefined : (activatedRef.current[i] ? kb.to : kb.from),
-                transition: `opacity ${CROSSFADE_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
-                zIndex: isActive ? 1 : 0,
               }}
             />
           );

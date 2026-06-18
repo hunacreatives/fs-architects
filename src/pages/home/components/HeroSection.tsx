@@ -107,13 +107,12 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Play/pause hero videos when their slide becomes active
+  // Restart video from beginning when its slide becomes active; let it keep playing as it fades out
   useEffect(() => {
     SLIDES.forEach((slide, i) => {
       const vid = videoRefs.current[i];
       if (!slide.video || !vid) return;
-      if (i === activeSlide) vid.play().catch(() => {});
-      else { vid.pause(); vid.currentTime = 0; }
+      if (i === activeSlide) { vid.currentTime = 0; vid.play().catch(() => {}); }
     });
   }, [activeSlide]);
 

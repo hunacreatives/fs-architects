@@ -462,7 +462,8 @@ const mockProjects = [
     location: 'CDO',
     lat: 8.4797,
     lng: 124.6525,
-    image: '/images/projects/graphic-annex-thumb.webp',
+    image: '/images/projects/graphic-annex-thumb-video.jpg',
+    video: '/images/projects/graphic-annex-video.mp4',
   },
   {
     id: 36,

@@ -37,6 +37,7 @@ auto-imports.d.ts
 *.mp4
 !public/images/projects/blush-video.mp4
 !public/images/projects/byd-c5-acropolis-video.mp4
+!public/images/projects/graphic-annex-video.mp4
 !public/images/intro-logo.mp4
 !public/images/intro-logo-safari.mp4
 .vercel

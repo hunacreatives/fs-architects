@@ -15,9 +15,11 @@ type Phase = 'intro' | 'hold' | 'moving' | 'fading' | 'done';
 
 export default function IntroSequence({ userInterrupted, onComplete }: IntroSequenceProps) {
   const [phase, setPhase] = useState<Phase>('intro');
-  const [logoVisible, setLogoVisible] = useState(false);
+  const [logoOpacity, setLogoOpacity] = useState(0);
+  const [animated, setAnimated] = useState(false);
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const logoRef = useRef<HTMLDivElement>(null);
 
   const clearAll = useCallback(() => {
     timersRef.current.forEach(clearTimeout);
@@ -26,12 +28,17 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
 
   const advance = useCallback(() => {
     setPhase('hold');
-    const t1 = setTimeout(() => setPhase('moving'), 300);
+    const t1 = setTimeout(() => {
+      setPhase('moving');
+      // RAF ensures the browser sees the identity transform before we apply the target
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimated(true)));
+    }, 300);
     const t2 = setTimeout(() => setPhase('fading'), 1800);
     const t3 = setTimeout(() => { setPhase('done'); onComplete(); }, 2600);
     timersRef.current = [t1, t2, t3];
   }, [onComplete]);
 
+  // Calculate nav logo target position
   useEffect(() => {
     const calc = () => {
       const vw = window.innerWidth;
@@ -48,6 +55,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     return () => window.removeEventListener('resize', calc);
   }, []);
 
+  // User interrupt
   useEffect(() => {
     if (userInterrupted) {
       clearAll();
@@ -56,38 +64,44 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     }
   }, [userInterrupted, clearAll, onComplete]);
 
-  // Fade in logo, then advance after hold
+  // Fade logo in, then start advance sequence
   useEffect(() => {
-    const t0 = setTimeout(() => setLogoVisible(true), 80);
+    const t0 = setTimeout(() => setLogoOpacity(1), 80);
     const t1 = setTimeout(advance, 1800);
     timersRef.current = [t0, t1];
-    return () => clearAll();
+    return clearAll;
   }, [advance, clearAll]);
 
   if (phase === 'done') return null;
 
-  const isMovingOrFading = phase === 'moving' || phase === 'fading';
+  const overlayOpacity = phase === 'fading' ? 0 : 1;
 
-  const logoStyle: React.CSSProperties = {
-    transform: isMovingOrFading
-      ? `translate(${targetPos.x}px, ${targetPos.y}px) scale(${TARGET_SCALE})`
-      : 'translate(0px, 0px) scale(1)',
-    transition: phase === 'moving' ? 'transform 1.5s cubic-bezier(0.76, 0, 0.24, 1)' : 'none',
-    transformOrigin: 'center center',
-    willChange: 'transform',
-  };
-
-  const overlayStyle: React.CSSProperties = {
-    opacity: phase === 'fading' ? 0 : 1,
-    transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
-  };
+  const transform = animated
+    ? `translate(${targetPos.x}px, ${targetPos.y}px) scale(${TARGET_SCALE})`
+    : 'translate(0px, 0px) scale(1)';
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#2c363e', ...overlayStyle }}
+      style={{
+        backgroundColor: '#2c363e',
+        opacity: overlayOpacity,
+        transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+      }}
     >
-      <div style={{ ...logoStyle, position: 'relative', width: INTRO_LOGO_SIZE, height: INTRO_LOGO_SIZE, flexShrink: 0 }}>
+      <div
+        ref={logoRef}
+        style={{
+          position: 'relative',
+          width: INTRO_LOGO_SIZE,
+          height: INTRO_LOGO_SIZE,
+          flexShrink: 0,
+          transform,
+          transition: 'transform 1.5s cubic-bezier(0.76, 0, 0.24, 1)',
+          transformOrigin: 'center center',
+          willChange: 'transform',
+        }}
+      >
         <img
           src={PNG_URL}
           alt="FS Architects"
@@ -98,7 +112,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
             filter: 'grayscale(1) brightness(1.4)',
-            opacity: logoVisible ? 1 : 0,
+            opacity: logoOpacity,
             transition: 'opacity 0.6s ease',
           }}
           className="select-none"

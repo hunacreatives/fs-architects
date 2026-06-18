@@ -9,10 +9,9 @@ const NAV_LOGO_SIZE = 43;
 const INTRO_LOGO_SIZE = 200;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
-// VP9 WebM with alpha (Chrome/Firefox/Edge) — HEVC MP4 with alpha (Safari)
-const VIDEO_WEBM_URL = '/images/intro-logo.webm';
-const VIDEO_MP4_URL  = '/images/intro-logo-safari.mp4';
-const PNG_URL        = '/images/intro-logo.png';
+// H.264 MP4 composited over #2c363e background — works in all browsers
+const VIDEO_MP4_URL = '/images/intro-logo.mp4';
+const PNG_URL       = '/images/intro-logo.png';
 
 type Phase = 'video' | 'hold' | 'moving' | 'fading' | 'done';
 
@@ -125,9 +124,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             display: phase === 'video' ? 'block' : 'none',
           }}
         >
-          {/* HEVC alpha first — Safari picks this up; Chrome/Firefox skip to WebM */}
-          <source src={VIDEO_MP4_URL} type='video/mp4; codecs="hvc1"' />
-          <source src={VIDEO_WEBM_URL} type="video/webm" />
+          <source src={VIDEO_MP4_URL} type="video/mp4" />
         </video>
 
         {/* PNG shown once video phase ends */}

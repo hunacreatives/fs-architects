@@ -24,7 +24,7 @@ const SLIDES: Slide[] = [
   { src: "/images/hero-byd-marikina-interiors.webp",  title: "BYD Marikina Interiors",     location: "Marikina City",           year: "2025" },
   { src: "/images/hero-byd-zamboanga.webp",           title: "BYD Zamboanga",              location: "Zamboanga City",          year: "2024" },
   { src: "/images/hero-byd-zamboanga-interiors.webp", title: "BYD Zamboanga Interiors",    location: "Zamboanga City",          year: "2024" },
-  { src: "/images/hero-graphic-gadget.webp",          title: "Graphic Gadget Store",       location: "Cagayan de Oro",          year: "2025" },
+  { src: "/images/hero-graphic-gadget.webp",          title: "Graphic Gadget Store",       location: "Cagayan de Oro",          year: "2025", video: "/images/projects/graphic-annex-video.mp4" },
   { src: "/images/hero-mixed-use-car-showroom.webp",  title: "Mixed Use Car Showroom",     location: "San Fernando, Pampanga",  year: "2025" },
   { src: "/images/hero-sorana-cafe.webp",             title: "Sorana Cafe",                location: "Bantayan, Cebu",          year: "2025" },
   { src: "/images/hero-yang-residence-cebu.webp",     title: "Yang Residence",             location: "Consolacion, Cebu",       year: "2025" },

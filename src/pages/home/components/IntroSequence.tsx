@@ -138,7 +138,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             width: `${INTRO_LOGO_SIZE}px`,
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
-            filter: 'grayscale(1) brightness(1.4)',
+            filter: 'grayscale(1) brightness(0.78)',
             visibility: phase === 'video' ? 'hidden' : 'visible',
           }}
           className="select-none"

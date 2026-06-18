@@ -19,8 +19,6 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   const [phase, setPhase] = useState<Phase>('video');
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef = useRef<number>(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const clearAll = useCallback(() => {
@@ -47,56 +45,17 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   useEffect(() => {
     if (userInterrupted) {
       clearAll();
-      cancelAnimationFrame(rafRef.current);
       if (videoRef.current) videoRef.current.pause();
       setPhase('done');
       onComplete();
     }
   }, [userInterrupted, clearAll, onComplete]);
 
-  // Canvas luma-key: draw video frames with black keyed to transparent
-  useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-
-    const drawFrame = () => {
-      if (video.readyState >= 2 && !video.paused && !video.ended) {
-        ctx.clearRect(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
-        ctx.drawImage(video, 0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
-        try {
-          const imageData = ctx.getImageData(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
-          const d = imageData.data;
-          for (let i = 0; i < d.length; i += 4) {
-            d[i + 3] = Math.round((d[i] + d[i + 1] + d[i + 2]) / 3);
-          }
-          ctx.putImageData(imageData, 0, 0);
-        } catch {
-          // not tainted — just skip alpha manipulation this frame
-        }
-      }
-      rafRef.current = requestAnimationFrame(drawFrame);
-    };
-
-    const start = () => { rafRef.current = requestAnimationFrame(drawFrame); };
-    video.addEventListener('play', start);
-    if (!video.paused) start();
-
-    return () => {
-      video.removeEventListener('play', start);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const advance = () => {
-      cancelAnimationFrame(rafRef.current);
       setPhase('hold');
       const t1 = setTimeout(() => setPhase('moving'), 300);
       const t2 = setTimeout(() => setPhase('fading'), 1800);
@@ -104,7 +63,6 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       timersRef.current = [t1, t2, t3];
     };
 
-    // 3s hard fallback — fires if video never ends (autoplay blocked, too long, etc.)
     const fallbackTimer = setTimeout(advance, 3000);
     const handleEnded = () => { clearTimeout(fallbackTimer); advance(); };
     const handleError = () => { clearTimeout(fallbackTimer); advance(); };
@@ -139,7 +97,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#2c363e', ...overlayStyle }}
+      style={{ backgroundColor: '#000000', ...overlayStyle }}
     >
       <div
         style={{
@@ -150,7 +108,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
           flexShrink: 0,
         }}
       >
-        {/* Video at full size but invisible — opacity:0 lets it play; 0x0 was blocking playback */}
+        {/* Video plays at full opacity — black overlay matches video's black background */}
         <video
           ref={videoRef}
           autoPlay
@@ -161,28 +119,15 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             inset: 0,
             width: `${INTRO_LOGO_SIZE}px`,
             height: `${INTRO_LOGO_SIZE}px`,
-            opacity: 0,
+            objectFit: 'contain',
             pointerEvents: 'none',
+            display: phase === 'video' ? 'block' : 'none',
           }}
         >
           <source src={VIDEO_WEBM_URL} type="video/webm" />
           <source src={VIDEO_MP4_URL} type="video/mp4" />
         </video>
 
-        {/* Canvas renders luma-keyed frames — black becomes transparent */}
-        <canvas
-          ref={canvasRef}
-          width={INTRO_LOGO_SIZE}
-          height={INTRO_LOGO_SIZE}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            display: phase === 'video' ? 'block' : 'none',
-          }}
-        />
-
-        {/* PNG shown once video phase ends */}
         <img
           src={PNG_URL}
           alt="FS Architects"

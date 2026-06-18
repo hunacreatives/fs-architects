@@ -124,7 +124,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#33404a', ...overlayStyle }}
+      style={{ backgroundColor: '#2c363e', ...overlayStyle }}
     >
       {/*
         PNG sits underneath as the base layer — always visible.

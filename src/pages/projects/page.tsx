@@ -343,7 +343,8 @@ const mockProjects = [
     location: 'Manila',
     lat: 14.5995,
     lng: 120.9842,
-    image: '/images/projects/byd-c5-acropolis-thumb.webp',
+    image: '/images/projects/byd-c5-acropolis-thumb-video.jpg',
+    video: '/images/projects/byd-c5-acropolis-video.mp4',
   },
   {
     id: 27,

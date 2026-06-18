@@ -240,7 +240,7 @@ export default function ProjectInfo({
 
           return rows.map((row, ri) => (
             <div key={ri}>
-              <div className={`mt-3 ${row.type === 'pair' ? 'grid grid-cols-2 gap-3' : ''}`}>
+              <div className={`mt-0.5 ${row.type === 'pair' ? 'grid grid-cols-2 gap-0.5' : ''}`}>
                 {row.type === 'full' ? (
                   <FadeImg
                     item={row.items[0]}

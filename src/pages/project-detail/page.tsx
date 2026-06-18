@@ -6,7 +6,6 @@ import StudioCTA from '../studio/components/StudioCTA';
 import ProjectHero from './components/ProjectHero';
 import ProjectInfo from './components/ProjectInfo';
 import ProjectSpecs from './components/ProjectSpecs';
-import ProjectLocation from './components/ProjectLocation';
 import NextProject from './components/NextProject';
 
 const projectSpecs: Record<string, { plotArea: string; builtArea: string; floors: string; typology: string }> = {
@@ -1531,14 +1530,6 @@ export default function ProjectDetailPage() {
         galleryImages={project.gallery}
         plans={floorPlans}
         quote={quote || undefined}
-      />
-
-      <div className="pb-8 md:pb-14" />
-
-      <ProjectLocation
-        lat={project.lat}
-        lng={project.lng}
-        name={name}
       />
 
       <NextProject

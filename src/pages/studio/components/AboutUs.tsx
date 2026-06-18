@@ -49,7 +49,7 @@ export default function AboutUs() {
 
   const TAGLINES = ['Defined by Form.', 'Shaped by Space.', 'Guided by Intent.'];
   const [taglineIndex, setTaglineIndex] = useState(0);
-  const [taglineVisible, setTaglineVisible] = useState(false);
+  const [taglineVisible, setTaglineVisible] = useState(true);
 
   // Cinematic intro: pitch black → slowly reveals background image
   useEffect(() => {
@@ -60,12 +60,6 @@ export default function AboutUs() {
       }
     }, 400);
     return () => clearTimeout(cinematicTimeout);
-  }, []);
-
-  // Tagline fade cycle — same rhythm as homepage
-  useEffect(() => {
-    const showTimer = setTimeout(() => setTaglineVisible(true), 800);
-    return () => clearTimeout(showTimer);
   }, []);
 
   useEffect(() => {
@@ -92,10 +86,8 @@ export default function AboutUs() {
 
         // Quote fades out fast — gone by ~12% of viewport scroll
         const quoteFade = Math.max(0, 1 - y / (vh * 0.12));
-        const quoteY = y * 0.22;
         if (quoteRef.current) {
           quoteRef.current.style.opacity = String(quoteFade);
-          quoteRef.current.style.transform = `translateY(-50%) translateY(-${quoteY}px)`;
         }
 
         // Logos track scroll bidirectionally — fade in at 2%, full by ~16%, fade back out on scroll up

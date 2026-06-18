@@ -47,54 +47,37 @@ export default function AboutUs() {
   const bodyRef = useReveal(0.2);
   const statsRef = useReveal(0.15);
 
-  // Typewriter state
   const TAGLINES = ['Defined by Form.', 'Shaped by Space.', 'Guided by Intent.'];
-  const [typewriterReady, setTypewriterReady] = useState(false);
   const [taglineIndex, setTaglineIndex] = useState(0);
-  const [displayed, setDisplayed] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [taglineVisible, setTaglineVisible] = useState(false);
 
-  // Cinematic intro: pitch black → typewriter starts → slowly reveals background image
+  // Cinematic intro: pitch black → slowly reveals background image
   useEffect(() => {
-    // Start typewriter at 400ms (matches original quote reveal timing)
-    const startTimer = setTimeout(() => setTypewriterReady(true), 400);
-
-    // Cinematic fade out of black overlay (starts at ~1400ms)
     const cinematicTimeout = setTimeout(() => {
       if (cinematicRef.current) {
         cinematicRef.current.style.transition = 'opacity 3.2s cubic-bezier(0.4, 0, 0.25, 1)';
         cinematicRef.current.style.opacity = '0';
       }
-    }, 1400);
+    }, 400);
+    return () => clearTimeout(cinematicTimeout);
+  }, []);
 
-    return () => {
-      clearTimeout(startTimer);
-      clearTimeout(cinematicTimeout);
-    };
+  // Tagline fade cycle — same rhythm as homepage
+  useEffect(() => {
+    const showTimer = setTimeout(() => setTaglineVisible(true), 800);
+    return () => clearTimeout(showTimer);
   }, []);
 
   useEffect(() => {
-    if (!typewriterReady) return;
-    const target = TAGLINES[taglineIndex];
-    let i = 0;
-    setDisplayed('');
-    setIsTyping(true);
-    const type = () => {
-      if (i < target.length) {
-        setDisplayed(target.slice(0, i + 1));
-        i++;
-        typeTimerRef.current = setTimeout(type, 38);
-      } else {
-        setIsTyping(false);
-        typeTimerRef.current = setTimeout(() => {
-          setTaglineIndex((prev) => (prev + 1) % TAGLINES.length);
-        }, 2800);
-      }
-    };
-    typeTimerRef.current = setTimeout(type, 200);
-    return () => { if (typeTimerRef.current) clearTimeout(typeTimerRef.current); };
-  }, [taglineIndex, typewriterReady]);
+    const interval = setInterval(() => {
+      setTaglineVisible(false);
+      setTimeout(() => {
+        setTaglineIndex(prev => (prev + 1) % TAGLINES.length);
+        setTaglineVisible(true);
+      }, 600);
+    }, 3800);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -228,39 +211,34 @@ export default function AboutUs() {
           style={{ opacity: 1, zIndex: 1, willChange: 'opacity' }}
         />
 
-        {/* ── QUOTE — typewriter ── */}
+        {/* ── QUOTE — homepage style, bottom-left ── */}
         <div
           ref={quoteRef}
-          className="absolute left-0 right-0 pointer-events-none flex flex-col items-center px-8"
-          style={{ top: '50%', transform: 'translateY(-50%)', willChange: 'opacity, transform', opacity: 1, zIndex: 2 }}
+          className="absolute left-6 md:left-16 lg:left-24 bottom-10 md:bottom-20 pointer-events-none"
+          style={{ willChange: 'opacity, transform', opacity: 1, zIndex: 2 }}
         >
           <h1
             style={{
-              fontFamily: 'Marcellus, serif',
-              fontStyle: 'italic',
-              fontWeight: 700,
-              fontSize: 'clamp(1.3rem, 2.4vw, 2.4rem)',
-              letterSpacing: '-0.01em',
-              lineHeight: 1.2,
+              fontSize: 'clamp(1.1rem, 1.9vw, 1.75rem)',
+              lineHeight: 1.5,
               textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-              color: 'white',
-              minHeight: '1.4em',
-              textAlign: 'center',
+              color: 'rgba(255,255,255,0.88)',
+              opacity: taglineVisible ? 1 : 0,
+              transition: 'opacity 0.6s ease',
+              margin: 0,
             }}
           >
-            {displayed}
-            <span
-              style={{
-                display: 'inline-block',
-                width: '2px',
-                height: '0.9em',
-                backgroundColor: 'white',
-                marginLeft: '2px',
-                verticalAlign: 'middle',
-                opacity: isTyping ? 1 : 0,
-                transition: 'opacity 0.15s ease',
-              }}
-            />
+            {(() => {
+              const words = TAGLINES[taglineIndex].split(' ');
+              const prefix = words.slice(0, 2).join(' ') + ' ';
+              const suffix = words.slice(2).join(' ');
+              return (
+                <>
+                  <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
+                  <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: 'clamp(1.4rem, 2.4vw, 2.2rem)' }}>{suffix}</span>
+                </>
+              );
+            })()}
           </h1>
         </div>
 

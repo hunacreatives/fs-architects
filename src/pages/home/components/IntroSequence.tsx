@@ -76,13 +76,16 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       ctx.clearRect(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
       ctx.drawImage(video, 0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
 
-      const imageData = ctx.getImageData(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
-      const d = imageData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        // Alpha = average brightness — black becomes transparent, bright logo stays opaque
-        d[i + 3] = Math.round((d[i] + d[i + 1] + d[i + 2]) / 3);
+      try {
+        const imageData = ctx.getImageData(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+        const d = imageData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i + 3] = Math.round((d[i] + d[i + 1] + d[i + 2]) / 3);
+        }
+        ctx.putImageData(imageData, 0, 0);
+      } catch {
+        // Canvas tainted — draw frame as-is without alpha manipulation
       }
-      ctx.putImageData(imageData, 0, 0);
 
       rafRef.current = requestAnimationFrame(drawFrame);
     };
@@ -172,7 +175,6 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
           autoPlay
           muted
           playsInline
-          crossOrigin="anonymous"
           style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
         >
           <source src={VIDEO_WEBM_URL} type="video/webm" />

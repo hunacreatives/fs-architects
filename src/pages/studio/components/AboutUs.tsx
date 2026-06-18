@@ -86,8 +86,10 @@ export default function AboutUs() {
 
         // Quote fades out fast — gone by ~12% of viewport scroll
         const quoteFade = Math.max(0, 1 - y / (vh * 0.12));
+        const quoteY = y * 0.22;
         if (quoteRef.current) {
           quoteRef.current.style.opacity = String(quoteFade);
+          quoteRef.current.style.transform = `translateY(calc(-50% - ${quoteY}px))`;
         }
 
         // Logos track scroll bidirectionally — fade in at 2%, full by ~16%, fade back out on scroll up
@@ -206,8 +208,8 @@ export default function AboutUs() {
         {/* ── QUOTE — homepage style, bottom-left ── */}
         <div
           ref={quoteRef}
-          className="absolute left-6 md:left-16 lg:left-24 bottom-10 md:bottom-20 pointer-events-none"
-          style={{ willChange: 'opacity, transform', opacity: 1, zIndex: 2 }}
+          className="absolute inset-x-0 flex justify-center px-8 pointer-events-none"
+          style={{ top: '50%', transform: 'translateY(-50%)', willChange: 'opacity', opacity: 1, zIndex: 2 }}
         >
           <h1
             style={{

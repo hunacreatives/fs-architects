@@ -1062,7 +1062,7 @@ export default function ProjectsPage() {
 
           {/* ── PROJECT GRID ── */}
           <div className="px-4 md:px-16 lg:px-24">
-            <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0.5">
               {sortedProjects.slice(0, visibleCount).map((project, idx) => {
                 const batchIdx = idx - batchStartRef.current;
                 const delay = batchIdx >= 0 ? `${Math.min(batchIdx * 0.06, 0.28)}s` : '0s';

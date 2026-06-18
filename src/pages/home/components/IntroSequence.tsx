@@ -172,6 +172,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
           autoPlay
           muted
           playsInline
+          crossOrigin="anonymous"
           style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
         >
           <source src={VIDEO_WEBM_URL} type="video/webm" />

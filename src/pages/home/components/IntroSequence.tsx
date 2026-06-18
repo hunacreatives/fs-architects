@@ -154,7 +154,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
             pointerEvents: 'none',
-            // Hide via visibility so layout is preserved; switch to none only after video phase
+            mixBlendMode: 'screen',
             display: phase === 'video' ? 'block' : 'none',
           }}
         >

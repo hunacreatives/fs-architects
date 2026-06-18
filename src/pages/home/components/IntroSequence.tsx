@@ -9,9 +9,8 @@ const NAV_LOGO_SIZE = 43;
 const INTRO_LOGO_SIZE = 200;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
-// H.264 MP4 composited over #2c363e background — works in all browsers
-const VIDEO_MP4_URL = '/images/intro-logo.mp4';
-const PNG_URL       = '/images/intro-logo.png';
+const VIDEO_WEBM_URL = '/images/intro-logo.webm';
+const PNG_URL        = '/images/intro-logo.png';
 
 type Phase = 'video' | 'hold' | 'moving' | 'fading' | 'done';
 
@@ -91,7 +90,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
-        backgroundColor: '#2c363e',
+        backgroundColor: '#000',
         opacity: phase === 'fading' ? 0 : 1,
         transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
       }}
@@ -124,7 +123,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             display: phase === 'video' ? 'block' : 'none',
           }}
         >
-          <source src={VIDEO_MP4_URL} type="video/mp4" />
+          <source src={VIDEO_WEBM_URL} type="video/webm" />
         </video>
 
         {/* PNG shown once video phase ends */}

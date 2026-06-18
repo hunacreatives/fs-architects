@@ -91,7 +91,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
-        backgroundColor: '#2c363e',
+        backgroundColor: '#000',
         opacity: phase === 'fading' ? 0 : 1,
         transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
       }}

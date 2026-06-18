@@ -19,6 +19,8 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   const [phase, setPhase] = useState<Phase>('video');
   const [targetPos, setTargetPos] = useState({ x: 0, y: 0 });
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const clearAll = useCallback(() => {
@@ -50,18 +52,58 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
   useEffect(() => {
     if (userInterrupted) {
       clearAll();
+      cancelAnimationFrame(rafRef.current);
       if (videoRef.current) videoRef.current.pause();
       setPhase('done');
       onComplete();
     }
   }, [userInterrupted, clearAll, onComplete]);
 
-  // Watch video time to trigger crossfade near the end
+  // Canvas luma-key loop: draw video frames with black keyed to transparent
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const drawFrame = () => {
+      if (video.paused || video.ended || video.readyState < 2) {
+        rafRef.current = requestAnimationFrame(drawFrame);
+        return;
+      }
+      ctx.clearRect(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+      ctx.drawImage(video, 0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+
+      const imageData = ctx.getImageData(0, 0, INTRO_LOGO_SIZE, INTRO_LOGO_SIZE);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        // Alpha = average brightness — black becomes transparent, bright logo stays opaque
+        d[i + 3] = Math.round((d[i] + d[i + 1] + d[i + 2]) / 3);
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      rafRef.current = requestAnimationFrame(drawFrame);
+    };
+
+    const start = () => { rafRef.current = requestAnimationFrame(drawFrame); };
+    video.addEventListener('play', start);
+    if (!video.paused) start();
+
+    return () => {
+      video.removeEventListener('play', start);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // Watch video end to trigger phase transitions
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const advance = () => {
+      cancelAnimationFrame(rafRef.current);
       setPhase('hold');
       const t1 = setTimeout(() => setPhase('moving'), 300);
       const t2 = setTimeout(() => setPhase('fading'), 1800);
@@ -72,23 +114,11 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       timersRef.current = [t1, t2, t3];
     };
 
-    // Fallback: if video fails to load or autoplay is blocked, skip it after 1s
     const fallbackTimer = setTimeout(advance, 1000);
 
-    const handleEnded = () => {
-      clearTimeout(fallbackTimer);
-      advance();
-    };
-
-    const handleError = () => {
-      clearTimeout(fallbackTimer);
-      advance();
-    };
-
-    const handleCanPlay = () => {
-      // Video loaded and can play — cancel the fallback
-      clearTimeout(fallbackTimer);
-    };
+    const handleEnded = () => { clearTimeout(fallbackTimer); advance(); };
+    const handleError = () => { clearTimeout(fallbackTimer); advance(); };
+    const handleCanPlay = () => { clearTimeout(fallbackTimer); };
 
     video.addEventListener('ended', handleEnded);
     video.addEventListener('error', handleError);
@@ -127,11 +157,6 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{ backgroundColor: '#2c363e', ...overlayStyle }}
     >
-      {/*
-        PNG sits underneath as the base layer — always visible.
-        Video plays on top and simply stops when done, revealing the PNG beneath.
-        No opacity swap needed, no flicker.
-      */}
       <div
         style={{
           ...logoStyle,
@@ -141,28 +166,32 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
           flexShrink: 0,
         }}
       >
-        {/* Video — on top while playing */}
+        {/* Hidden video — source for canvas drawing */}
         <video
           ref={videoRef}
           autoPlay
           muted
           playsInline
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: `${INTRO_LOGO_SIZE}px`,
-            height: `${INTRO_LOGO_SIZE}px`,
-            objectFit: 'contain',
-            pointerEvents: 'none',
-            mixBlendMode: 'screen',
-            display: phase === 'video' ? 'block' : 'none',
-          }}
+          style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
         >
           <source src={VIDEO_WEBM_URL} type="video/webm" />
           <source src={VIDEO_MP4_URL} type="video/mp4" />
         </video>
 
-        {/* PNG — hidden while video plays, shown the instant video phase ends */}
+        {/* Canvas with luma-keyed frames — transparent background, no box */}
+        <canvas
+          ref={canvasRef}
+          width={INTRO_LOGO_SIZE}
+          height={INTRO_LOGO_SIZE}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            display: phase === 'video' ? 'block' : 'none',
+          }}
+        />
+
+        {/* PNG — shown once video phase ends */}
         <img
           src={PNG_URL}
           alt="FS Architects"
@@ -172,9 +201,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             width: `${INTRO_LOGO_SIZE}px`,
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
-            // Strip blue cast so it matches the neutral nav logo (#e0e0e0)
             filter: 'grayscale(1) brightness(1.4)',
-            // Invisible during video, instantly visible after — no transition
             visibility: phase === 'video' ? 'hidden' : 'visible',
           }}
           className="select-none"

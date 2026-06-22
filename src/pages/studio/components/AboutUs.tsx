@@ -92,9 +92,11 @@ export default function AboutUs() {
           quoteRef.current.style.transform = `translateY(calc(-50% - ${quoteY}px))`;
         }
 
-        // Logos track scroll bidirectionally — fade in at 2%, full by ~16%, fade back out on scroll up
-        const logosProgress = Math.min(Math.max((y - vh * 0.02) / (vh * 0.14), 0), 1);
-        const logosY = Math.max(0, 36 * (1 - logosProgress));
+        // Logos: fade in 2%→16% of vh, hold, fade out 42%→60% of vh (well before white section covers them)
+        const logosFadeIn = Math.min(Math.max((y - vh * 0.02) / (vh * 0.14), 0), 1);
+        const logosFadeOut = Math.min(Math.max((y - vh * 0.42) / (vh * 0.18), 0), 1);
+        const logosProgress = logosFadeIn * (1 - logosFadeOut);
+        const logosY = Math.max(0, 36 * (1 - logosFadeIn));
         if (logosRef.current) {
           logosRef.current.style.opacity = String(logosProgress);
           logosRef.current.style.transform = `translateY(calc(-50% + ${logosY}px))`;

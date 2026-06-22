@@ -21,7 +21,12 @@ const categoryColors: Record<string, string> = {
   general: 'bg-gray-100 text-gray-600',
 };
 
-const emptyForm = { title: '', body: '', priority: 'normal', category: 'general', published: true, scheduled_at: '' };
+const SLACK_CHANNELS = [
+  { key: 'announcements', label: '#announcements' },
+  { key: 'attendance', label: '#attendance' },
+];
+
+const emptyForm = { title: '', body: '', priority: 'normal', category: 'general', published: true, scheduled_at: '', slack_channels: ['announcements'] as string[] };
 
 export default function AnnouncementsPage() {
   const { hubUser } = useAuth();
@@ -70,7 +75,7 @@ export default function AnnouncementsPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (a: HubAnnouncement) => {
     setEditing(a);
-    setForm({ title: a.title, body: a.body, priority: a.priority, category: a.category, published: a.published, scheduled_at: (a as any).scheduled_at ? new Date((a as any).scheduled_at).toISOString().slice(0, 16) : '' });
+    setForm({ title: a.title, body: a.body, priority: a.priority, category: a.category, published: a.published, scheduled_at: (a as any).scheduled_at ? new Date((a as any).scheduled_at).toISOString().slice(0, 16) : '', slack_channels: ['announcements'] });
     setShowModal(true);
   };
 
@@ -92,7 +97,7 @@ export default function AnnouncementsPage() {
         ({ error } = await supabase.from('hub_announcements').insert({ ...payload, posted_by: hubUser?.id }));
         if (!error && form.published && !isScheduled) {
           supabase.functions.invoke('notify-announcement', {
-            body: { title: form.title, body: form.body, priority: form.priority, category: form.category, poster_name: hubUser?.full_name, poster_avatar: hubUser?.avatar_url },
+            body: { title: form.title, body: form.body, priority: form.priority, category: form.category, poster_name: hubUser?.full_name, poster_avatar: hubUser?.avatar_url, channels: form.slack_channels },
           }).catch(() => {});
           // In-app notifications for all active contractors
           supabase.from('hub_users').select('id').eq('status', 'active').eq('role', 'contractor').neq('is_developer', true).then(({ data }) => {
@@ -220,6 +225,32 @@ export default function AnnouncementsPage() {
                       <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
                     ))}
                   </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-700">Post to Slack channels</label>
+                <div className="flex gap-2">
+                  {SLACK_CHANNELS.map(ch => {
+                    const active = form.slack_channels.includes(ch.key);
+                    return (
+                      <button
+                        key={ch.key}
+                        type="button"
+                        onClick={() => {
+                          const next = active
+                            ? form.slack_channels.filter(c => c !== ch.key)
+                            : [...form.slack_channels, ch.key];
+                          setForm({ ...form, slack_channels: next });
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+                          active ? 'bg-[#111827] text-white border-[#111827]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <i className="ri-slack-line"></i>
+                        {ch.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="space-y-2">

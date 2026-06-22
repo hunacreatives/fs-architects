@@ -1,5 +1,8 @@
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const CHANNELS = ['C0830PCJB4P', 'C0830PCGQK1', 'C0BBA4Q18Q0'];
+const CHANNEL_MAP: Record<string, string> = {
+  announcements: 'C0BB58W8R1U',
+  attendance: 'C0BBA4Q18Q0',
+};
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -57,12 +60,17 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const { title, body, priority = 'normal', category = 'general', poster_name } = await req.json();
+    const { title, body, priority = 'normal', category = 'general', poster_name, channels } = await req.json();
     if (!title || !body) {
       return new Response(JSON.stringify({ error: 'title and body required' }), { status: 400, headers: cors });
     }
 
-    await Promise.all(CHANNELS.map(ch => postToSlack(ch, title, body, priority, category, poster_name)));
+    // If channels array provided, use those; otherwise default to announcements only
+    const targetChannels: string[] = Array.isArray(channels) && channels.length > 0
+      ? channels.map((c: string) => CHANNEL_MAP[c]).filter(Boolean)
+      : [CHANNEL_MAP.announcements];
+
+    await Promise.all(targetChannels.map(ch => postToSlack(ch, title, body, priority, category, poster_name)));
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

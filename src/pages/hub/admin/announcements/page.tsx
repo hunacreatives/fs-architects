@@ -58,7 +58,8 @@ export default function AnnouncementsPage() {
 
   const fetchAnnouncements = async () => {
     setLoading(true);
-    const { data } = await supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url, is_developer)').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url, is_developer)').order('created_at', { ascending: false });
+    if (error) console.error('fetchAnnouncements error:', error);
     setAnnouncements((data as HubAnnouncement[]) ?? []);
     setLoading(false);
   };
@@ -115,7 +116,7 @@ export default function AnnouncementsPage() {
           });
         }
       }
-      if (error) { setSaveError(error.message); return; }
+      if (error) { console.error('save error:', error); setSaveError(error.message); return; }
       setShowModal(false);
       fetchAnnouncements();
     } catch (e: any) {

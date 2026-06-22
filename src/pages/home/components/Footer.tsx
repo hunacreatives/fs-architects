@@ -36,6 +36,8 @@ export default function Footer() {
         const el = document.getElementById(hash);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }, 500);
+    } else {
+      window.scrollTo(0, 0);
     }
   };
 
@@ -66,7 +68,7 @@ export default function Footer() {
               </p>
               <div className="flex flex-col gap-1.5">
                 {projectLinks.map(({ label, href }) => (
-                  <a key={label} href={href} onClick={(e) => { e.preventDefault(); navigate(href); }} className={linkClass} style={linkStyle}>
+                  <a key={label} href={href} onClick={(e) => { e.preventDefault(); navigate(href); window.scrollTo(0, 0); }} className={linkClass} style={linkStyle}>
                     {label}
                   </a>
                 ))}
@@ -87,16 +89,14 @@ export default function Footer() {
           </div>
 
           {/* Get in Touch + social */}
-          <div className="flex items-end justify-between pt-5 border-t border-white/10">
-            <div className="flex flex-col gap-1">
-              <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
-                {t('footer_get_in_touch')}
-              </p>
-              <a href="mailto:info@fsarchitects.ph" className={linkClass} style={linkStyle}>
-                info@fsarchitects.ph
-              </a>
-            </div>
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-1.5 pt-5 border-t border-white/10">
+            <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
+              {t('footer_get_in_touch')}
+            </p>
+            <a href="mailto:info@fsarchitects.ph" className={linkClass} style={linkStyle}>
+              info@fsarchitects.ph
+            </a>
+            <div className="flex items-center gap-3 mt-1">
               {socialLinks.map(({ icon, label, href }) => (
                 <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
                   className="flex items-center justify-center text-white/30 hover:text-white/65 transition-colors duration-300 cursor-pointer">
@@ -173,7 +173,7 @@ export default function Footer() {
                   <a
                     key={label}
                     href={href}
-                    onClick={(e) => { e.preventDefault(); navigate(href); }}
+                    onClick={(e) => { e.preventDefault(); navigate(href); window.scrollTo(0, 0); }}
                     className={linkClass}
                     style={linkStyle}
                   >

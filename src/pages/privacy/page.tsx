@@ -73,7 +73,7 @@ export default function PrivacyPage() {
             Privacy Notice
           </h1>
           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '13px', color: 'rgba(0,0,0,0.4)', marginTop: '16px', lineHeight: 1.7 }}>
-            Effective date: January 1, 2026 &nbsp;·&nbsp; FS Architects, Cebu City, Philippines
+            Effective date: July 1, 2026 &nbsp;·&nbsp; FS Architects, Cebu City, Philippines
           </p>
         </div>
 

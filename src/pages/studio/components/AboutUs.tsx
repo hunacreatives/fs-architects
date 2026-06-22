@@ -94,8 +94,7 @@ export default function AboutUs() {
 
         // Logos: fade in 2%→16% of vh, hold, fade out 42%→60% of vh (well before white section covers them)
         const logosFadeIn = Math.min(Math.max((y - vh * 0.02) / (vh * 0.14), 0), 1);
-        const logosFadeOut = Math.min(Math.max((y - vh * 0.42) / (vh * 0.18), 0), 1);
-        const logosProgress = logosFadeIn * (1 - logosFadeOut);
+        const logosProgress = logosFadeIn;
         const logosY = Math.max(0, 36 * (1 - logosFadeIn));
         if (logosRef.current) {
           logosRef.current.style.opacity = String(logosProgress);
@@ -177,6 +176,9 @@ export default function AboutUs() {
             font-size: 10px !important;
             letter-spacing: 0.14em !important;
           }
+          .logos-block {
+            top: 32% !important;
+          }
         }
       `}</style>
 
@@ -241,9 +243,9 @@ export default function AboutUs() {
         {/* ── LOGOS — wow reveal ── */}
         <div
           ref={logosRef}
-          className="absolute left-0 right-0 pointer-events-none flex flex-col items-center"
+          className="logos-block absolute left-0 right-0 pointer-events-none flex flex-col items-center"
           style={{
-            top: '44%',
+            top: '38%',
             transform: 'translateY(-50%)',
             willChange: 'opacity, transform',
             opacity: 0,

@@ -268,10 +268,8 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
     onSelect(key);
     setPanelKey(key);
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setPanelOpen(true);
-        scrollToPanel(rowIdx, key);
-      });
+      setPanelOpen(true);
+      scrollToPanel(rowIdx, key);
     });
   };
 
@@ -281,7 +279,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
       setActiveKey(null);
       setPanelKey(null);
       onSelect(null);
-    }, 280);
+    }, 180);
   };
 
   useEffect(() => {
@@ -381,7 +379,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
         .team-bio-panel-outer {
           display: grid;
           grid-template-rows: 0fr;
-          transition: grid-template-rows 0.28s cubic-bezier(0.22,1,0.36,1);
+          transition: grid-template-rows 0.18s cubic-bezier(0.22,1,0.36,1);
           overflow: hidden;
         }
         .team-bio-panel-outer.open {

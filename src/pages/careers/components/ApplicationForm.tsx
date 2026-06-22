@@ -292,7 +292,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
 
         {/* Portfolio — link or upload */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
             <label className={`text-xs tracking-widest uppercase ${labelColor}`} style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.1em' }}>
               Portfolio{req}
             </label>

@@ -119,7 +119,7 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
                 {/* Drawer */}
                 <div className={`role-drawer${isOpen ? ' open' : ''}`}>
                   <div className="role-drawer-inner">
-                    <div style={{ paddingBottom: '32px', paddingLeft: '36px' }}>
+                    <div className="pl-0 md:pl-9" style={{ paddingBottom: '32px' }}>
                       {/* Description */}
                       <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', lineHeight: 1.9, color: 'rgba(0,0,0,0.45)', letterSpacing: '0.01em', maxWidth: '600px', marginBottom: '32px' }}>
                         {t(role.expKey)}

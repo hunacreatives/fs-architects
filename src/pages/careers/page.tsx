@@ -38,13 +38,13 @@ export default function CareersPage() {
       </div>
 
       {/* ── HERO IMAGE ── */}
-      <div className="px-4 md:px-16 lg:px-24 mb-20">
+      <div className="px-4 md:px-16 lg:px-24 mb-10 md:mb-20">
         <div className="w-full overflow-hidden" style={{ height: 'clamp(220px, 38vw, 480px)', borderRadius: '12px' }}>
           <img
             src="/images/careers-banner.webp"
             alt="FS Architects studio"
             className="w-full h-full object-cover"
-            style={{ objectPosition: '50% 65%' }}
+            style={{ objectPosition: '50% 40%' }}
             draggable={false}
           />
         </div>

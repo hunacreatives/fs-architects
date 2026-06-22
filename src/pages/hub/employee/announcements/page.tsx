@@ -31,7 +31,7 @@ export default function ContractorAnnouncementsPage() {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       setLoading(true);
-      const { data } = await supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name, avatar_url, role)').eq('published', true).order('created_at', { ascending: false });
+      const { data } = await supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name, avatar_url, role, is_developer)').eq('published', true).order('created_at', { ascending: false });
       setAnnouncements((data as HubAnnouncement[]) ?? []);
       setLoading(false);
     };
@@ -92,7 +92,7 @@ export default function ContractorAnnouncementsPage() {
                       {/* Posted by */}
                       {(() => {
                         const poster = (a as any).hub_users;
-                        if (!poster) return null;
+                        if (!poster || poster.is_developer) return null;
                         const roleLabel = poster.role === 'owner' ? 'Owner' : poster.role === 'admin' ? 'HR / Admin' : 'Contractor';
                         return (
                           <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-50">

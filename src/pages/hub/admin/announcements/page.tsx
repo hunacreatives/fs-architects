@@ -58,7 +58,7 @@ export default function AnnouncementsPage() {
 
   const fetchAnnouncements = async () => {
     setLoading(true);
-    const { data } = await supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url)').order('created_at', { ascending: false });
+    const { data } = await supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url, is_developer)').order('created_at', { ascending: false });
     setAnnouncements((data as HubAnnouncement[]) ?? []);
     setLoading(false);
   };
@@ -166,10 +166,12 @@ export default function AnnouncementsPage() {
                     </div>
                     <h3 className="text-sm font-semibold text-[#111827] mb-1">{a.title}</h3>
                     <p className="text-sm text-gray-500 line-clamp-2">{a.body}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <HubAvatar fullName={(a as any).hub_users?.full_name ?? ''} avatarUrl={(a as any).hub_users?.avatar_url} size="w-5 h-5" />
-                      <p className="text-xs text-gray-400">{(a as any).hub_users?.full_name ?? 'Unknown'} · {new Date(a.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                    </div>
+                    {!(a as any).hub_users?.is_developer && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <HubAvatar fullName={(a as any).hub_users?.full_name ?? ''} avatarUrl={(a as any).hub_users?.avatar_url} size="w-5 h-5" />
+                        <p className="text-xs text-gray-400">{(a as any).hub_users?.full_name ?? 'Unknown'} · {new Date(a.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <button onClick={() => openEdit(a)} className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer transition-colors rounded-lg hover:bg-gray-100 w-7 h-7 flex items-center justify-center">
@@ -336,10 +338,12 @@ export default function AnnouncementsPage() {
               <div className="px-5 py-4 border-b border-gray-50">
                 <h2 className="text-base font-semibold text-[#111827] mb-2">{detailAnn.title}</h2>
                 <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{detailAnn.body}</p>
-                <div className="flex items-center gap-2 mt-3">
-                  <HubAvatar fullName={(detailAnn as any).hub_users?.full_name ?? ''} avatarUrl={(detailAnn as any).hub_users?.avatar_url} size="w-6 h-6" />
-                  <p className="text-xs text-gray-400">{(detailAnn as any).hub_users?.full_name ?? 'Unknown'} · {new Date(detailAnn.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                </div>
+                {!(detailAnn as any).hub_users?.is_developer && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <HubAvatar fullName={(detailAnn as any).hub_users?.full_name ?? ''} avatarUrl={(detailAnn as any).hub_users?.avatar_url} size="w-6 h-6" />
+                    <p className="text-xs text-gray-400">{(detailAnn as any).hub_users?.full_name ?? 'Unknown'} · {new Date(detailAnn.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                  </div>
+                )}
               </div>
 
               {detailLoading ? (

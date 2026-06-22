@@ -26,6 +26,7 @@ interface SlackRecord {
   avatar_url: string | null;
   department: string | null;
   status: 'on' | 'off' | 'absent';
+  work_location: string | null;
   last_punch: string | null;
   hours_today: number;
   overtime_today: number;
@@ -583,7 +584,7 @@ export default function AdminDashboardPage() {
         {show('kpi') && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'In Office', value: counts.on, icon: 'ri-user-follow-line', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: 'Working', value: counts.on, icon: 'ri-user-follow-line', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
               { label: 'Logged Off', value: counts.off, icon: 'ri-user-unfollow-line', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-100' },
               { label: 'Not In Yet', value: counts.absent, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
               { label: 'Cutoff Hours', value: `${totalHours}h`, icon: 'ri-bar-chart-2-line', color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100' },
@@ -613,7 +614,7 @@ export default function AdminDashboardPage() {
                   <div className="mb-4">
                     <p className="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                      In Office
+                      Working
                     </p>
                     <div className="space-y-2">
                       {onlineList.map(r => (

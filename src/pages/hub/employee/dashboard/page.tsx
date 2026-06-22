@@ -282,6 +282,7 @@ interface SlackTeamRecord {
   full_name: string;
   avatar_url: string | null;
   status: 'on' | 'off' | 'absent';
+  work_location: string | null;
   hours_today: number;
 }
 
@@ -291,6 +292,7 @@ export default function ContractorDashboard() {
   const navigate = useNavigate();
   const now = useClock();
   const [slackStatus, setSlackStatus] = useState<'on' | 'off' | 'absent' | null>(null);
+  const [myWorkLocation, setMyWorkLocation] = useState<string | null>(null);
   const [hoursThisCutoff, setHoursThisCutoff] = useState(0);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
   const [showPayout, setShowPayout] = useState(() => localStorage.getItem('hub_showPayout') === 'true');
@@ -459,6 +461,7 @@ export default function ContractorDashboard() {
         const all: any[] = slackResult.data.attendance;
         const mine = all.find((r: any) => r.email === user.email || r.hub_user_id === user.id);
         setSlackStatus(mine?.status ?? 'absent');
+        setMyWorkLocation(mine?.work_location ?? null);
         setTeamStatus(
           all
             .filter((r: any) => r.hub_user_id !== user.id && r.email !== user.email)
@@ -466,6 +469,7 @@ export default function ContractorDashboard() {
               full_name: r.full_name,
               avatar_url: r.avatar_url,
               status: r.status,
+              work_location: r.work_location ?? null,
               hours_today: r.hours_today || 0,
             }))
         );
@@ -632,7 +636,9 @@ export default function ContractorDashboard() {
                       slackStatus === 'on' ? 'bg-emerald-400 animate-pulse' :
                       slackStatus === 'off' ? 'bg-white/40' : 'bg-amber-400'
                     }`} />
-                    {slackStatus === 'on' ? 'In Office' : slackStatus === 'off' ? 'Logged Off' : 'Not clocked in'}
+                    {slackStatus === 'on'
+                      ? (myWorkLocation === 'on_site' ? 'On Site' : myWorkLocation === 'wfh' ? 'WFH' : 'In Office')
+                      : slackStatus === 'off' ? 'Logged Off' : 'Not clocked in'}
                   </div>
                 </div>
                 <div className="mt-4">
@@ -650,7 +656,7 @@ export default function ContractorDashboard() {
                 </div>
                 <p className="text-white/30 text-xs mt-3 flex items-center gap-1">
                   <i className="ri-slack-line"></i>
-                  Type <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On</span> or <span className="font-mono bg-white/10 px-1 rounded mx-0.5">Off</span> in the Slack attendance channel
+                  Type <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On</span>, <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On/Site</span>, or <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On/WFH</span> · <span className="font-mono bg-white/10 px-1 rounded mx-0.5">Off</span> in Slack
                 </p>
               </div>
             </div>
@@ -862,7 +868,7 @@ export default function ContractorDashboard() {
                 </div>
                 {onlineCount > 0 && (
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                    {onlineCount} in office
+                    {onlineCount} working
                   </span>
                 )}
               </div>
@@ -884,7 +890,9 @@ export default function ContractorDashboard() {
                       t.status === 'on' ? 'text-emerald-600 font-medium' :
                       t.status === 'off' ? 'text-gray-400' : 'text-amber-500'
                     }`}>
-                      {t.status === 'on' ? `${t.hours_today > 0 ? t.hours_today.toFixed(1) + 'h' : 'In Office'}` : t.status === 'off' ? 'Off' : 'Away'}
+                      {t.status === 'on'
+                        ? (t.hours_today > 0 ? t.hours_today.toFixed(1) + 'h' : (t.work_location === 'on_site' ? 'On Site' : t.work_location === 'wfh' ? 'WFH' : 'In Office'))
+                        : t.status === 'off' ? 'Off' : 'Away'}
                     </span>
                   </div>
                 ))}

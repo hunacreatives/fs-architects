@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
 
         if (body?.type === 'event_callback') {
           slackEventText = (body?.event?.text || '').trim().toLowerCase();
-          if (slackEventText !== 'on' && slackEventText !== 'off') {
+          const validPunches = ['on', 'on/site', 'on/wfh', 'off'];
+          if (!validPunches.includes(slackEventText)) {
             return new Response(JSON.stringify({ ok: true }), { headers: cors });
           }
         }
@@ -81,17 +82,27 @@ Deno.serve(async (req) => {
 
     const messages = [...(slack.messages || [])].reverse();
 
-    const userPunches: Record<string, { status: 'on' | 'off'; ts: number }[]> = {};
+    const userPunches: Record<string, { status: 'on' | 'off'; ts: number; location?: string }[]> = {};
     const hourlyOnMessages: { slackId: string; ts: string }[] = [];
+
+    const LOCATION_MAP: Record<string, string> = {
+      'on': 'in_office',
+      'on/site': 'on_site',
+      'on/wfh': 'wfh',
+    };
 
     for (const msg of messages) {
       const text = (msg.text || '').trim().toLowerCase();
+      const isOn = text in LOCATION_MAP;
+      const isOff = text === 'off';
 
-      if ((text === 'on' || text === 'off') && msg.user) {
+      if ((isOn || isOff) && msg.user) {
         if (!userPunches[msg.user]) userPunches[msg.user] = [];
-        userPunches[msg.user].push({ status: text as 'on' | 'off', ts: parseFloat(msg.ts) });
+        const status = isOn ? 'on' : 'off';
+        const location = isOn ? LOCATION_MAP[text] : undefined;
+        userPunches[msg.user].push({ status, ts: parseFloat(msg.ts), location });
 
-        if (text === 'on' && msg.reply_count > 0) {
+        if (isOn && msg.reply_count > 0) {
           hourlyOnMessages.push({ slackId: msg.user, ts: msg.ts });
         }
       }
@@ -241,6 +252,8 @@ Deno.serve(async (req) => {
         ? parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2))
         : 0;
 
+      const workLocation = firstOn?.location ?? null;
+
       if (hubUser && firstOn) {
         const validLastOff = (lastOff && lastOff.ts > firstOn.ts) ? new Date(lastOff.ts * 1000).toISOString() : null;
         const row = {
@@ -251,6 +264,7 @@ Deno.serve(async (req) => {
           overtime_hours: actualOT,
           first_on: new Date(firstOn.ts * 1000).toISOString(),
           last_off: validLastOff,
+          work_location: workLocation,
           updated_at: new Date().toISOString(),
         };
         if (hoursRaw > 0) {
@@ -269,6 +283,7 @@ Deno.serve(async (req) => {
           department: hubUser?.department || null,
           shift_date: shiftDate,
           status: effectiveStatus,
+          work_location: workLocation,
           last_punch: new Date(latestPunch.ts * 1000).toISOString(),
           punches: punchList,
           hours_today: parseFloat(hoursCapped.toFixed(2)),

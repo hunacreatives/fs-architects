@@ -11,6 +11,7 @@ interface PunchRecord {
 
 interface MyAttendance {
   status: 'on' | 'off' | 'absent';
+  work_location: string | null;
   last_punch: string | null;
   punches: PunchRecord[];
 }
@@ -169,11 +170,13 @@ export default function ContractorAttendancePage() {
                   : myRecord?.status === 'off' ? 'text-gray-700'
                   : 'text-amber-700'
                 }`}>
-                  {myRecord?.status === 'on' ? "You're In Office" : myRecord?.status === 'off' ? 'Logged Off' : 'Not Clocked In'}
+                  {myRecord?.status === 'on'
+                    ? (myRecord.work_location === 'on_site' ? "You're On Site" : myRecord.work_location === 'wfh' ? 'Working From Home' : "You're In Office")
+                    : myRecord?.status === 'off' ? 'Logged Off' : 'Not Clocked In'}
                 </p>
                 <p className="text-sm text-gray-500">
                   {myRecord?.status === 'absent'
-                    ? "Type On in Slack to clock in"
+                    ? "Type On, On/Site, or On/WFH in Slack to clock in"
                     : `Last punch: ${formatTime(myRecord?.last_punch ?? null)}`}
                 </p>
               </div>
@@ -267,9 +270,10 @@ export default function ContractorAttendancePage() {
           <p className="text-xs font-medium text-gray-500 mb-3">How to log attendance</p>
           <div className="space-y-2.5">
             {[
-              { icon: 'ri-login-box-line', bg: 'bg-emerald-100', color: 'text-emerald-600', title: 'Starting work', desc: <>Type <span className="font-mono bg-gray-50 border border-gray-200 px-1 rounded">On</span> in the Slack attendance channel</> },
+              { icon: 'ri-building-line', bg: 'bg-emerald-100', color: 'text-emerald-600', title: 'In office', desc: <>Type <span className="font-mono bg-gray-50 border border-gray-200 px-1 rounded">On</span> in the Slack attendance channel</> },
+              { icon: 'ri-map-pin-2-line', bg: 'bg-sky-100', color: 'text-sky-600', title: 'On site', desc: <>Type <span className="font-mono bg-gray-50 border border-gray-200 px-1 rounded">On/Site</span> in the Slack attendance channel</> },
+              { icon: 'ri-home-office-line', bg: 'bg-violet-100', color: 'text-violet-600', title: 'Work from home', desc: <>Type <span className="font-mono bg-gray-50 border border-gray-200 px-1 rounded">On/WFH</span> in the Slack attendance channel</> },
               { icon: 'ri-logout-box-line', bg: 'bg-gray-100', color: 'text-gray-500', title: 'Ending work', desc: <>Type <span className="font-mono bg-gray-50 border border-gray-200 px-1 rounded">Off</span> in the Slack attendance channel</> },
-              { icon: 'ri-time-fill', bg: 'bg-purple-100', color: 'text-purple-600', title: 'Logging overtime', desc: <>Type <span className="font-mono bg-gray-50 border border-gray-200 px-1 rounded">Overtime</span>, then reply with the number of hours</> },
             ].map(item => (
               <div key={item.title} className="flex items-start gap-3">
                 <div className={`w-7 h-7 rounded-lg ${item.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>

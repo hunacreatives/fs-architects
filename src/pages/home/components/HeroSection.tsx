@@ -13,18 +13,19 @@ interface Slide {
   location: string;
   year: string;
   video?: string;
+  videoMp4?: string;
 }
 
 const SLIDES: Slide[] = [
   { src: "/images/hero-denza-greenhills.webp",        title: "Denza Greenhills",           location: "Mandaluyong City",        year: "2025" },
-  { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025", video: "/images/projects/blush-video.mp4" },
+  { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025", video: "/images/projects/blush-video.webm", videoMp4: "/images/projects/blush-video.mp4" },
   { src: "/images/hero-byd-butuan.webp",              title: "BYD Butuan",                 location: "Butuan City",             year: "2025" },
-  { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025", video: "/images/projects/byd-c5-acropolis-video.mp4" },
+  { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025", video: "/images/projects/byd-c5-acropolis-video.webm", videoMp4: "/images/projects/byd-c5-acropolis-video.mp4" },
   { src: "/images/hero-byd-marikina.webp",            title: "BYD Marikina",               location: "Marikina City",           year: "2025" },
   { src: "/images/hero-byd-marikina-interiors.webp",  title: "BYD Marikina Interiors",     location: "Marikina City",           year: "2025" },
   { src: "/images/hero-byd-zamboanga.webp",           title: "BYD Zamboanga",              location: "Zamboanga City",          year: "2024" },
   { src: "/images/hero-byd-zamboanga-interiors.webp", title: "BYD Zamboanga Interiors",    location: "Zamboanga City",          year: "2024" },
-  { src: "/images/hero-graphic-gadget.webp",          title: "Graphic Gadget Store",       location: "Cagayan de Oro",          year: "2025", video: "/images/projects/graphic-annex-video.mp4" },
+  { src: "/images/hero-graphic-gadget.webp",          title: "Graphic Gadget Store",       location: "Cagayan de Oro",          year: "2025", video: "/images/projects/graphic-annex-video.webm", videoMp4: "/images/projects/graphic-annex-video.mp4" },
   { src: "/images/hero-mixed-use-car-showroom.webp",  title: "Mixed Use Car Showroom",     location: "San Fernando, Pampanga",  year: "2025" },
   { src: "/images/hero-sorana-cafe.webp",             title: "Sorana Cafe",                location: "Bantayan, Cebu",          year: "2025" },
   { src: "/images/hero-yang-residence-cebu.webp",     title: "Yang Residence",             location: "Consolacion, Cebu",       year: "2025" },
@@ -159,13 +160,15 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               <video
                 key={i}
                 ref={el => { videoRefs.current[i] = el; }}
-                src={slide.video}
                 muted
                 playsInline
                 loop
                 className="absolute inset-0 w-full h-full object-cover object-center"
                 style={sharedStyle}
-              />
+              >
+                <source src={slide.video} type="video/webm" />
+                {slide.videoMp4 && <source src={slide.videoMp4} type="video/mp4" />}
+              </video>
             );
           }
 
@@ -193,64 +196,73 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
       <Navigation theme="light" showContent={showContent} />
 
       {/* Hero Content */}
-      <div className="relative z-20 h-screen flex flex-col justify-end px-6 md:px-16 lg:px-24 pb-10 md:pb-20">
+      <div className="relative z-20 h-screen flex flex-col justify-end">
+
+        {/* ── MOBILE + DESKTOP padded content ── */}
+        <div className="px-6 md:px-16 lg:px-24 pb-6 md:pb-8">
 
         {/* ── MOBILE layout ── */}
-        <div className="flex flex-col gap-3 md:hidden">
-          {/* Project title + location */}
-          <div
-            className={`transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
-          >
-            <p style={{ fontFamily: 'Marcellus, serif', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
-              {SLIDES[activeSlide].title}
-            </p>
-            <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', fontWeight: 400, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
-              {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
-            </p>
+        <div className="flex flex-col gap-4 md:hidden">
+          {/* Row 1: tagline (left) | project title (right) — bottom aligned */}
+          <div className="flex items-end justify-between">
+            <h1
+              style={{
+                fontSize: '1.15rem',
+                lineHeight: '1.4',
+                textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+                color: 'rgba(255,255,255,0.88)',
+                opacity: taglineVisible ? 1 : 0,
+                transition: 'opacity 0.6s ease',
+                margin: 0,
+                transform: 'translateY(5px)',
+              }}
+            >
+              {(() => {
+                const words = TAGLINES[taglineIndex].split(' ');
+                const prefix = words.slice(0, 2).join(' ') + ' ';
+                const suffix = words.slice(2).join(' ');
+                return (
+                  <>
+                    <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
+                    <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: '1.35rem' }}>{suffix}</span>
+                  </>
+                );
+              })()}
+            </h1>
+            <div
+              className={`flex flex-col items-end gap-0.5 transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
+            >
+              <p style={{ fontFamily: 'Marcellus, serif', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
+                {SLIDES[activeSlide].title}
+              </p>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, margin: 0 }}>
+                {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+              </p>
+            </div>
           </div>
 
-          {/* Tagline — sits just above the switcher */}
-          <h1
-            style={{
-              fontSize: '1.25rem',
-              lineHeight: '1.4',
-              textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-              color: 'rgba(255,255,255,0.88)',
-              opacity: taglineVisible ? 1 : 0,
-              transition: 'opacity 0.6s ease',
-              margin: 0,
-              marginBottom: '-4px',
-            }}
-          >
-            {(() => {
-              const words = TAGLINES[taglineIndex].split(' ');
-              const prefix = words.slice(0, 2).join(' ') + ' ';
-              const suffix = words.slice(2).join(' ');
-              return (
-                <>
-                  <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
-                  <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: '1.5rem' }}>{suffix}</span>
-                </>
-              );
-            })()}
-          </h1>
+          {/* Row 2: indicator bar */}
+          <div className={`flex w-full transition-all duration-1000 delay-700 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+            {SLIDES.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToSlide(i)}
+                className="flex-1 cursor-pointer flex items-center"
+                style={{ height: '20px', background: 'none', border: 'none', padding: 0 }}
+              >
+                <div style={{
+                  width: '100%',
+                  height: '2px',
+                  backgroundColor: i === activeSlide ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)',
+                  transition: 'background-color 500ms',
+                }} />
+              </button>
+            ))}
+          </div>
 
-          {/* Switcher + CTA */}
-          <div className={`flex items-end justify-between transition-all duration-1000 delay-700 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
-            <div className="flex items-center gap-2">
-              {SLIDES.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goToSlide(i)}
-                  className="cursor-pointer flex items-center justify-center"
-                  style={{ width: i === activeSlide ? '28px' : '8px', height: '22px', background: 'none', transition: 'width 500ms' }}
-                  aria-label={`Slide ${i + 1}`}
-                >
-                  <div style={{ width: '100%', height: '2px', backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)', transition: 'background-color 500ms' }} />
-                </button>
-              ))}
-            </div>
+          {/* Row 3: CTA right */}
+          <div className={`flex justify-end transition-all duration-1000 delay-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
             <button
               onClick={() => navigate('/projects')}
               className="px-5 py-2 border border-white/80 rounded-full text-white text-xs cursor-pointer transition-all duration-500 hover:bg-white/10 whitespace-nowrap"
@@ -262,80 +274,69 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         </div>
 
         {/* ── DESKTOP layout ── */}
-        <div className="hidden md:grid" style={{ gridTemplateColumns: '1fr auto', rowGap: '6px' }}>
-          {/* Row 1 left — tagline, pushed to bottom of cell so it sits just above the indicators */}
-          <h1
-            style={{
-              fontSize: 'clamp(1.1rem, 1.9vw, 1.75rem)',
-              lineHeight: '1.5',
-              textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-              color: 'rgba(255,255,255,0.88)',
-              opacity: taglineVisible ? 1 : 0,
-              transition: 'opacity 0.6s ease',
-              margin: 0,
-              alignSelf: 'end',
-            }}
-          >
-            {(() => {
-              const words = TAGLINES[taglineIndex].split(' ');
-              const prefix = words.slice(0, 2).join(' ') + ' ';
-              const suffix = words.slice(2).join(' ');
-              return (
-                <>
-                  <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
-                  <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: 'clamp(1.4rem, 2.4vw, 2.2rem)' }}>{suffix}</span>
-                </>
-              );
-            })()}
-          </h1>
+        <div className="hidden md:flex flex-col gap-4">
 
-          {/* Row 1 right — project title + location */}
-          <div
-            className={`text-right transition-all duration-1000 delay-500 ${
-              showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-            style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)', alignSelf: 'start', paddingLeft: '2rem', paddingTop: '0.9rem' }}
-          >
-            <p style={{ fontFamily: 'Marcellus, serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
-              {SLIDES[activeSlide].title}
-            </p>
-            <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', fontWeight: 400, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>
-              {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
-            </p>
+          {/* Row 1: tagline (left) bottom-aligned with address (bottom of right column) */}
+          <div className="flex items-end justify-between">
+            <h1
+              style={{
+                fontSize: 'clamp(1.1rem, 1.9vw, 1.75rem)',
+                lineHeight: '1.5',
+                textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
+                color: 'rgba(255,255,255,0.88)',
+                opacity: taglineVisible ? 1 : 0,
+                transition: 'opacity 0.6s ease',
+                margin: 0,
+                transform: 'translateY(10px)',
+              }}
+            >
+              {(() => {
+                const words = TAGLINES[taglineIndex].split(' ');
+                const prefix = words.slice(0, 2).join(' ') + ' ';
+                const suffix = words.slice(2).join(' ');
+                return (
+                  <>
+                    <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
+                    <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: 'clamp(1.4rem, 2.4vw, 2.2rem)' }}>{suffix}</span>
+                  </>
+                );
+              })()}
+            </h1>
+            {/* Right — project title + address stacked; bottom of address aligns with tagline bottom */}
+            <div
+              className={`flex flex-col items-end gap-1 transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
+            >
+              <p style={{ fontFamily: 'Marcellus, serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
+                {SLIDES[activeSlide].title}
+              </p>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, margin: 0 }}>
+                {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+              </p>
+            </div>
           </div>
 
-          {/* Row 2 left — slide indicators */}
-          <div
-            className={`flex items-center gap-2 transition-all duration-1000 delay-700 ${
-              showContent ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{ alignSelf: 'end' }}
-          >
+          {/* Row 2: indicator bar */}
+          <div className={`flex w-full transition-all duration-1000 delay-700 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
             {SLIDES.map((_, i) => (
               <button
                 key={i}
                 onClick={() => goToSlide(i)}
-                className="cursor-pointer flex items-center justify-center"
-                style={{ width: i === activeSlide ? '28px' : '8px', height: '22px', background: 'none', transition: 'width 500ms' }}
-                aria-label={`Slide ${i + 1}`}
+                className="flex-1 cursor-pointer flex items-center"
+                style={{ height: '20px', background: 'none', border: 'none', padding: 0 }}
               >
                 <div style={{
                   width: '100%',
                   height: '2px',
-                  backgroundColor: i === activeSlide ? '#f2f2f2' : 'rgba(242,242,242,0.35)',
+                  backgroundColor: i === activeSlide ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)',
                   transition: 'background-color 500ms',
                 }} />
               </button>
             ))}
           </div>
 
-          {/* Row 2 right — CTA */}
-          <div
-            className={`flex justify-end transition-all duration-1000 delay-500 ${
-              showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-            style={{ alignSelf: 'end', paddingLeft: '2rem', paddingBottom: '11px' }}
-          >
+          {/* Row 3: CTA right */}
+          <div className={`flex justify-end transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <button
               onClick={() => navigate('/projects')}
               className="group px-7 py-2.5 border border-white/80 rounded-full text-white text-xs tracking-wide transition-all duration-500 hover:bg-white/10 hover:border-white whitespace-nowrap cursor-pointer"
@@ -344,7 +345,10 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               {t('hero_cta')}
             </button>
           </div>
-        </div>
+
+        </div>{/* end desktop column */}
+
+        </div>{/* end padded content */}
 
       </div>
     </div>

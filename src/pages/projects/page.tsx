@@ -344,7 +344,8 @@ const mockProjects = [
     lat: 14.5995,
     lng: 120.9842,
     image: '/images/projects/byd-c5-acropolis-thumb-video.jpg',
-    video: '/images/projects/byd-c5-acropolis-video.mp4',
+    video: '/images/projects/byd-c5-acropolis-video.webm',
+    videoMp4: '/images/projects/byd-c5-acropolis-video.mp4',
   },
   {
     id: 27,
@@ -410,7 +411,8 @@ const mockProjects = [
     lat: 8.4797,
     lng: 124.6525,
     image: '/images/projects/blush-thumb-video.jpg',
-    video: '/images/projects/blush-video.mp4',
+    video: '/images/projects/blush-video.webm',
+    videoMp4: '/images/projects/blush-video.mp4',
   },
   {
     id: 32,
@@ -463,7 +465,8 @@ const mockProjects = [
     lat: 8.4797,
     lng: 124.6525,
     image: '/images/projects/graphic-annex-thumb-video.jpg',
-    video: '/images/projects/graphic-annex-video.mp4',
+    video: '/images/projects/graphic-annex-video.webm',
+    videoMp4: '/images/projects/graphic-annex-video.mp4',
   },
   {
     id: 36,
@@ -658,13 +661,15 @@ function ProjectCard({ project, delay, navigate, t }: {
         {hasVideo && (
           <video
             ref={videoRef}
-            src={project.video}
             muted
             playsInline
             loop
             className="absolute inset-0 w-full h-full object-cover"
             style={{ opacity: hovering ? 1 : 0, transition: 'opacity 0.5s' }}
-          />
+          >
+            <source src={project.video} type="video/webm" />
+            {'videoMp4' in project && <source src={(project as any).videoMp4} type="video/mp4" />}
+          </video>
         )}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent px-3 pt-8 pb-3 pointer-events-none">
           <h3

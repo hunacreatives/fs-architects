@@ -43,7 +43,8 @@ export default function CareersPage() {
           <img
             src="/images/careers-banner.webp"
             alt="FS Architects studio"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover"
+            style={{ objectPosition: '50% 65%' }}
             draggable={false}
           />
         </div>

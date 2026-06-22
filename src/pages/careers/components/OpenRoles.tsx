@@ -85,7 +85,7 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
                 >
                   {/* Number */}
                   <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '11px', color: 'rgba(0,0,0,0.25)', letterSpacing: '0.08em', flexShrink: 0, width: '24px' }}>
-                    {String(i + 1).padStart(2, '0')}
+                    {i + 1}
                   </span>
 
                   {/* Title + meta */}

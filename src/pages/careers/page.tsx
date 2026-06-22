@@ -39,7 +39,7 @@ export default function CareersPage() {
 
       {/* ── HERO IMAGE ── */}
       <div className="px-4 md:px-16 lg:px-24 mb-10 md:mb-20">
-        <div className="w-full overflow-hidden" style={{ height: 'clamp(220px, 38vw, 480px)', borderRadius: '12px' }}>
+        <div className="w-full overflow-hidden" style={{ height: 'clamp(160px, 26vw, 340px)', borderRadius: '12px' }}>
           <img
             src="/images/careers-banner.webp"
             alt="FS Architects studio"

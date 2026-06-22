@@ -32,8 +32,8 @@ function BulletList({ text }: { text: string }) {
   return (
     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {items.map((item, i) => (
-        <li key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <span style={{ color: 'rgba(0,0,0,0.20)', flexShrink: 0, marginTop: '2px' }}>—</span>
+        <li key={i} style={{ display: 'flex', gap: '10px', alignItems: 'baseline' }}>
+          <span style={{ color: 'rgba(0,0,0,0.35)', flexShrink: 0, fontSize: '14px', lineHeight: 1 }}>•</span>
           <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', lineHeight: 1.75, color: 'rgba(0,0,0,0.48)', letterSpacing: '0.01em' }}>{item}</span>
         </li>
       ))}

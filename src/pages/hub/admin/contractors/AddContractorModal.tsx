@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface Props {
@@ -32,6 +32,12 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.rpc('preview_next_employee_id', { p_role: form.role })
+      .then(({ data }) => setPreviewId(data ?? null));
+  }, [form.role]);
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
   const currencySymbol = form.currency === 'USD' ? '$' : '₱';
@@ -190,6 +196,11 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                     <option value="admin">HR / Admin</option>
                     <option value="owner">Owner</option>
                   </select>
+                  {previewId && (
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Will be assigned <span className="font-mono font-semibold text-[#1c2b3a]">{previewId}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Slack ID</label>

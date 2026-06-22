@@ -31,6 +31,7 @@ export default function AdminOvertimePage() {
     let q = supabase
       .from('hub_overtime_requests')
       .select('*, hub_users!contractor_id(full_name, avatar_url, department)')
+      .eq('archived', false)
       .order('created_at', { ascending: false });
     if (statusFilter !== 'all') q = q.eq('status', statusFilter);
     const { data } = await q;

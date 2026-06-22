@@ -6,7 +6,7 @@ interface IntroSequenceProps {
 }
 
 const NAV_LOGO_SIZE = 43;
-const INTRO_LOGO_SIZE = 130;
+const INTRO_LOGO_SIZE = 60;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
 const VIDEO_SAFARI_URL = '/images/intro-logo-safari.mp4'; // HEVC alpha — Safari
@@ -91,7 +91,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
-        backgroundColor: '#000',
+        backgroundColor: '#000000',
         opacity: phase === 'fading' ? 0 : 1,
         transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
       }}
@@ -121,6 +121,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
             pointerEvents: 'none',
+            mixBlendMode: 'screen',
             display: phase === 'video' ? 'block' : 'none',
           }}
         >
@@ -138,7 +139,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
             width: `${INTRO_LOGO_SIZE}px`,
             height: `${INTRO_LOGO_SIZE}px`,
             objectFit: 'contain',
-            filter: 'grayscale(1) brightness(0.78)',
+            filter: 'none',
             visibility: phase === 'video' ? 'hidden' : 'visible',
           }}
           className="select-none"

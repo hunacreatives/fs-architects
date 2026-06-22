@@ -245,27 +245,31 @@ async function sendPayslip(payout_id: string) {
 
   // Slack DM to contractor — isolated so a Slack failure doesn't shadow email success
   const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN');
-  if (SLACK_BOT_TOKEN && contractor.slack_id) {
-    try {
-      const slackPost = async (path: string, body: unknown) => {
-        const res = await fetch(`https://slack.com/api/${path}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+  if (SLACK_BOT_TOKEN) {
+    const { resolveSlackId } = await import('../_shared/slack.ts');
+    const slackId = await resolveSlackId(SLACK_BOT_TOKEN, contractor.slack_id, contractor.email).catch(() => null);
+    if (slackId) {
+      try {
+        const slackPost = async (path: string, body: unknown) => {
+          const res = await fetch(`https://slack.com/api/${path}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          return res.json();
+        };
+        const dm = await slackPost('conversations.open', { users: slackId });
+        await slackPost('chat.postMessage', {
+          channel: dm.channel?.id ?? slackId,
+          text: `💸 Payment Sent — ${fmt(payout.final_payout)} for ${periodLabel}`,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `💸 *Payment Sent*\n${fmt(payout.final_payout)} for ${periodLabel} — check your email for the full receipt.` } },
+            { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Payslip →' }, url: `${Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph'}/hub/employee/payouts`, style: 'primary' }] },
+          ],
         });
-        const json = await res.json();
-        if (!res.ok || !json.ok) {
-          throw new Error(`Slack API failed: ${path} - ${json.error ?? res.status}`);
-        }
-        return json;
-      };
-      const dm = await slackPost('conversations.open', { users: contractor.slack_id });
-      await slackPost('chat.postMessage', {
-        channel: dm.channel.id,
-        text: `💸 *Payment sent!* Your payslip for *${periodLabel}* has been processed — *${fmt(payout.final_payout)}* is on its way. Check your email for the full receipt.`,
-      });
-    } catch (slackErr) {
-      console.error('Slack DM failed (payslip already sent):', slackErr);
+      } catch (slackErr) {
+        console.error('Slack DM failed (payslip):', slackErr);
+      }
     }
   }
 

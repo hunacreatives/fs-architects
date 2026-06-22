@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveSlackId } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
@@ -118,12 +119,17 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
       }),
     });
 
-    if (SLACK_BOT_TOKEN && contractor.slack_id) {
+    const slackId = await resolveSlackId(SLACK_BOT_TOKEN, contractor.slack_id, contractor.email).catch(() => null);
+    if (SLACK_BOT_TOKEN && slackId) {
       try {
-        const dm = await slackPost('conversations.open', { users: contractor.slack_id });
+        const dm = await slackPost('conversations.open', { users: slackId });
         await slackPost('chat.postMessage', {
           channel: dm.channel.id,
-          text: `✅ *Payslip approved!* Your payslip for *${periodLabel}* (${fmt(payout.final_payout)}) has been approved by HR. Payment will be sent within 2 business days.`,
+          text: `✅ Payslip Approved — ${fmt(payout.final_payout)} for ${periodLabel}`,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `✅ *Payslip Approved*\n${fmt(payout.final_payout)} for ${periodLabel} — payment within 2 business days.` } },
+            { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Payslip →' }, url: HUB_URL, style: 'primary' }] },
+          ],
         });
       } catch (slackErr) {
         console.error('Slack DM failed (hr_approved):', slackErr);
@@ -177,12 +183,17 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
       }),
     });
 
-    if (SLACK_BOT_TOKEN && contractor.slack_id) {
+    const slackId = await resolveSlackId(SLACK_BOT_TOKEN, contractor.slack_id, contractor.email).catch(() => null);
+    if (SLACK_BOT_TOKEN && slackId) {
       try {
-        const dm = await slackPost('conversations.open', { users: contractor.slack_id });
+        const dm = await slackPost('conversations.open', { users: slackId });
         await slackPost('chat.postMessage', {
           channel: dm.channel.id,
-          text: `🔔 *Dispute resolved* — Your payslip flag for *${periodLabel}* has been reviewed and resolved by HR. Questions? Reach out on Slack.`,
+          text: `🔔 Dispute Resolved — ${periodLabel}`,
+          blocks: [
+            { type: 'section', text: { type: 'mrkdwn', text: `🔔 *Dispute Resolved*\nYour payslip flag for ${periodLabel} has been reviewed. Questions? Reach out on Slack.` } },
+            { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Payslip →' }, url: HUB_URL, style: 'primary' }] },
+          ],
         });
       } catch (slackErr) {
         console.error('Slack DM failed (dispute_resolved):', slackErr);
@@ -196,10 +207,11 @@ async function sendOvertimeDecision(contractor_id: string, date: string, hours: 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const { data: employee } = await supabase
     .from('hub_users')
-    .select('full_name, slack_id')
+    .select('full_name, email, slack_id')
     .eq('id', contractor_id)
     .single();
-  if (!employee?.slack_id) return;
+
+  const slackId = await resolveSlackId(SLACK_BOT_TOKEN, employee?.slack_id, employee?.email).catch(() => null);
 
   const slackPost = async (path: string, body: unknown) => {
     const res = await fetch(`https://slack.com/api/${path}`, {
@@ -211,17 +223,23 @@ async function sendOvertimeDecision(contractor_id: string, date: string, hours: 
   };
 
   const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const notesLine = admin_notes ? `\n_Note: ${admin_notes}_` : '';
+  const notesLine = admin_notes ? ` — _${admin_notes}_` : '';
+  const isApproved = status === 'approved';
 
-  const text = status === 'approved'
-    ? `✅ *Overtime approved* — Your ${hours}h OT request for *${dateLabel}* has been approved. Make sure your Slack clock-in that day reaches 9+ hours for it to count.${notesLine}`
-    : `❌ *Overtime not approved* — Your ${hours}h OT request for *${dateLabel}* was not approved.${notesLine}`;
-
-  try {
-    const dm = await slackPost('conversations.open', { users: employee.slack_id });
-    const channel = dm.ok ? dm.channel?.id : employee.slack_id;
-    await slackPost('chat.postMessage', { channel, text });
-  } catch (_) { /* non-fatal */ }
+  if (slackId) {
+    try {
+      const dm = await slackPost('conversations.open', { users: slackId });
+      const channel = dm.ok ? dm.channel?.id : slackId;
+      await slackPost('chat.postMessage', {
+        channel,
+        text: `${isApproved ? '✅' : '❌'} OT ${isApproved ? 'Approved' : 'Not Approved'} — ${hours}h on ${dateLabel}`,
+        blocks: [
+          { type: 'section', text: { type: 'mrkdwn', text: `${isApproved ? '✅' : '❌'} *OT ${isApproved ? 'Approved' : 'Not Approved'}*\n${hours}h on ${dateLabel}${notesLine}` } },
+          { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Overtime →' }, url: HUB_URL, style: isApproved ? 'primary' : 'danger' }] },
+        ],
+      });
+    } catch (_) { /* non-fatal */ }
+  }
 
   await sendPush(contractor_id, status === 'approved' ? 'Overtime Approved' : 'Overtime Not Approved', `Your ${hours}h OT request for ${dateLabel} was ${status}.`, HUB_URL);
 }

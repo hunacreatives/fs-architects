@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveSlackId } from '../_shared/slack.ts';
 
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -33,7 +34,7 @@ async function run(projectId: number, contractorId: string) {
     .select(`
       project_role,
       hub_projects!inner(id, name, client_name),
-      hub_users!inner(id, full_name, slack_id)
+      hub_users!inner(id, full_name, email, slack_id)
     `)
     .eq('project_id', projectId)
     .eq('contractor_id', contractorId)
@@ -48,8 +49,8 @@ async function run(projectId: number, contractorId: string) {
   const contractor = (assignment as any)?.hub_users;
   const projectRole = (assignment as any)?.project_role as string | null | undefined;
 
-  if (!project || !contractor?.slack_id) {
-    console.log('[notify-project-assigned] missing project or slack_id, skipping DM');
+  if (!project) {
+    console.log('[notify-project-assigned] missing project, skipping DM');
     return;
   }
 
@@ -58,47 +59,22 @@ async function run(projectId: number, contractorId: string) {
   const clientName = project.client_name ?? null;
   const roleLine = projectRole ? `*Role:*\n${projectRole}` : null;
 
-  const dmOpen = await slackPost('conversations.open', { users: contractor.slack_id });
-  const dmChannel = dmOpen.ok ? dmOpen.channel?.id : contractor.slack_id;
+  const resolvedSlackId = await resolveSlackId(SLACK_BOT_TOKEN, contractor.slack_id, contractor.email);
+  if (!resolvedSlackId) {
+    console.log('[notify-project-assigned] could not resolve slack ID for', contractor.email);
+    return;
+  }
 
-  const message = [
-    `Hi ${firstName}! You've been assigned to a new project in Sentro Hub.`,
-    `Project: ${projectName}`,
-    clientName ? `Client: ${clientName}` : null,
-    projectRole ? `Role: ${projectRole}` : null,
-    `Open your projects here: ${PROJECTS_URL}`,
-  ].filter(Boolean).join('\n');
+  const dmOpen = await slackPost('conversations.open', { users: resolvedSlackId });
+  const dmChannel = dmOpen.ok ? dmOpen.channel?.id : resolvedSlackId;
+  const contextLine = [projectName, clientName].filter(Boolean).join(' — ');
 
   const dmResult = await slackPost('chat.postMessage', {
     channel: dmChannel,
-    text: message,
+    text: `🏗️ Project Assigned — ${contextLine}`,
     blocks: [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `Hi ${firstName}! :wave: You've been assigned to a new project in *Sentro Hub*.`,
-        },
-      },
-      {
-        type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*Project:*\n${projectName}` },
-          { type: 'mrkdwn', text: `*Client:*\n${clientName || 'Not set'}` },
-          ...(roleLine ? [{ type: 'mrkdwn', text: roleLine }] : []),
-        ],
-      },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'Open My Projects' },
-            url: PROJECTS_URL,
-            style: 'primary',
-          },
-        ],
-      },
+      { type: 'section', text: { type: 'mrkdwn', text: `🏗️ *Project Assigned*\n${contextLine}` } },
+      { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open Projects →' }, url: PROJECTS_URL, style: 'primary' }] },
     ],
   });
 

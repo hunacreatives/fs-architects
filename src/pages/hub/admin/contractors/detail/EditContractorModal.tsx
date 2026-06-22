@@ -35,6 +35,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     bank_account_number: contractor.bank_account_number || '',
     bank_account_type: contractor.bank_account_type || '',
     notes: contractor.notes || '',
+    employee_id: contractor.employee_id || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +52,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
       hourly_rate: form.hourly_rate ? parseFloat(form.hourly_rate) : null,
       monthly_rate: form.monthly_rate ? parseFloat(form.monthly_rate) : null,
       project_percentage: form.project_percentage ? parseFloat(form.project_percentage) : null,
+      employee_id: form.employee_id.trim() || null,
       updated_at: new Date().toISOString(),
     }).eq('id', contractor.id);
     setLoading(false);
@@ -73,6 +75,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
             {[
               { label: 'Full Name *', key: 'full_name', required: true, colSpan: '2' },
               { label: 'Email *', key: 'email', required: true, type: 'email', colSpan: '2' },
+              { label: 'Employee ID', key: 'employee_id', placeholder: 'e.g. FS26022' },
               { label: 'Phone', key: 'phone' },
               { label: 'Slack Username', key: 'slack_username' },
               { label: 'Address', key: 'address', colSpan: '2' },
@@ -87,6 +90,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                 <input
                   type={f.type || 'text'}
                   required={f.required}
+                  placeholder={(f as any).placeholder}
                   value={(form as Record<string, string>)[f.key]}
                   onChange={(e) => set(f.key, e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"

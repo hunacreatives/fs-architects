@@ -40,6 +40,7 @@ export default function ContractorOvertimePage() {
       .from('hub_overtime_requests')
       .select('*')
       .eq('contractor_id', user.id)
+      .eq('archived', false)
       .order('created_at', { ascending: false });
     setRequests(data ?? []);
     setLoading(false);

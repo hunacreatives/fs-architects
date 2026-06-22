@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveSlackId } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
@@ -50,38 +51,16 @@ async function run(assignment_id: string) {
   const firstName = contractor.full_name?.split(' ')[0] ?? contractor.full_name;
 
   // --- Slack DM ---
-  const slackUserId = contractor.slack_id ?? null;
+  const slackUserId = await resolveSlackId(SLACK_BOT_TOKEN, contractor.slack_id, contractor.email);
   if (slackUserId) {
     const dmOpen = await slackPost('conversations.open', { users: slackUserId });
     const dmChannel = dmOpen.ok ? dmOpen.channel?.id : slackUserId;
     const dmResult = await slackPost('chat.postMessage', {
       channel: dmChannel,
-      text: `Hi ${firstName}! You have a document waiting for your signature: *${doc?.title}*. Please sign it here: ${HUB_URL}`,
+      text: `✍️ Document to Sign — ${doc?.title}`,
       blocks: [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `Hi ${firstName}! :wave: You have a document waiting for your signature.`,
-          },
-        },
-        {
-          type: 'section',
-          fields: [
-            { type: 'mrkdwn', text: `*Document:*\n${doc?.title}` },
-          ],
-        },
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'Sign Document →' },
-              url: HUB_URL,
-              style: 'primary',
-            },
-          ],
-        },
+        { type: 'section', text: { type: 'mrkdwn', text: `✍️ *Document to Sign*\n${doc?.title}` } },
+        { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Sign Now →' }, url: HUB_URL, style: 'primary' }] },
       ],
     });
     console.log('[notify-contract-assigned] chat.postMessage result:', JSON.stringify(dmResult));

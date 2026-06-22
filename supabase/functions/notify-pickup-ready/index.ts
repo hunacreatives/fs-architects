@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveSlackId } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
@@ -51,28 +52,16 @@ async function run(assignment_id: string) {
   const docTitle = doc?.title ?? 'your document';
 
   // --- Slack DM ---
-  const slackId = contractor.slack_id ?? null;
+  const slackId = await resolveSlackId(SLACK_BOT_TOKEN, contractor.slack_id, contractor.email);
   if (slackId) {
     const dmOpen = await slackPost('conversations.open', { users: slackId });
     const dmChannel = dmOpen.ok ? dmOpen.channel?.id : slackId;
     await slackPost('chat.postMessage', {
       channel: dmChannel,
-      text: `Hi ${firstName}! Your document is ready for pickup at the FS Architects office: *${docTitle}*.`,
+      text: `📋 Document Ready for Pickup — ${docTitle}`,
       blocks: [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `Hi ${firstName}! :office: Your document is ready for pickup at the FS Architects office.`,
-          },
-        },
-        {
-          type: 'section',
-          fields: [
-            { type: 'mrkdwn', text: `*Document:*\n${docTitle}` },
-            { type: 'mrkdwn', text: `*Where:*\nFS Architects Office, Cebu City` },
-          ],
-        },
+        { type: 'section', text: { type: 'mrkdwn', text: `📋 *Document Ready for Pickup*\n${docTitle} — FS Architects Office, Cebu City` } },
+        { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Documents →' }, url: `${HUB_BASE_URL}/hub/employee/documents`, style: 'primary' }] },
       ],
     });
   }

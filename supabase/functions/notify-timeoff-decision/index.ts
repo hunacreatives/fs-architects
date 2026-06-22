@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveSlackId } from '../_shared/slack.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -22,7 +23,7 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-async function slackDm(userId: string, text: string) {
+async function slackDm(userId: string, text: string, url: string, approved: boolean) {
   if (!SLACK_BOT_TOKEN) return;
   const opened = await fetch('https://slack.com/api/conversations.open', {
     method: 'POST',
@@ -34,7 +35,13 @@ async function slackDm(userId: string, text: string) {
   await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ channel, text }),
+    body: JSON.stringify({
+      channel, text,
+      blocks: [
+        { type: 'section', text: { type: 'mrkdwn', text } },
+        { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Time Off →' }, url, style: approved ? 'primary' : 'danger' }] },
+      ],
+    }),
   });
 }
 
@@ -58,7 +65,7 @@ Deno.serve(async (req) => {
 
     const { data: user } = await supabase
       .from('hub_users')
-      .select('slack_id')
+      .select('slack_id, email')
       .eq('id', contractor_id)
       .single();
 
@@ -66,18 +73,20 @@ Deno.serve(async (req) => {
     let notifTitle: string;
     let notifBody: string;
 
-    if (decision === 'approved') {
-      slackText = `✅ *Time off approved*\nYour ${leave_type} request for ${start_date} to ${end_date} has been approved.\nEnjoy your time off! 🙏\n<${TIMEOFF_URL}|View →>`;
+    const isApproved = decision === 'approved';
+    if (isApproved) {
+      slackText = `✅ *Time Off Approved*\n${leave_type} — ${start_date} to ${end_date}`;
       notifTitle = 'Time off approved';
       notifBody = `Your ${leave_type} request for ${start_date} to ${end_date} has been approved.`;
     } else {
-      slackText = `❌ *Time off request not approved*\nYour ${leave_type} request for ${start_date} to ${end_date} was not approved this time.\nFeel free to message us if you'd like to discuss.\n<${TIMEOFF_URL}|View →>`;
+      slackText = `❌ *Time Off Not Approved*\n${leave_type} — ${start_date} to ${end_date}`;
       notifTitle = 'Time off not approved';
       notifBody = `Your ${leave_type} request for ${start_date} to ${end_date} was not approved.`;
     }
 
-    if (user?.slack_id) {
-      await slackDm(user.slack_id, slackText).catch(() => {});
+    const slackId = await resolveSlackId(SLACK_BOT_TOKEN, user?.slack_id, user?.email).catch(() => null);
+    if (slackId) {
+      await slackDm(slackId, slackText, TIMEOFF_URL, isApproved).catch(() => {});
     }
 
     await supabase.from('hub_notifications').insert({

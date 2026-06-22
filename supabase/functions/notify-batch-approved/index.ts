@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { resolveSlackId } from '../_shared/slack.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -22,7 +23,7 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-async function slackDm(userId: string, text: string) {
+async function slackDm(userId: string, text: string, url: string, btnLabel: string) {
   if (!SLACK_BOT_TOKEN) return;
   const opened = await fetch('https://slack.com/api/conversations.open', {
     method: 'POST',
@@ -34,7 +35,13 @@ async function slackDm(userId: string, text: string) {
   await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ channel, text }),
+    body: JSON.stringify({
+      channel, text,
+      blocks: [
+        { type: 'section', text: { type: 'mrkdwn', text } },
+        { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: btnLabel }, url, style: 'primary' }] },
+      ],
+    }),
   });
 }
 
@@ -57,7 +64,7 @@ Deno.serve(async (req) => {
         // Fetch contractor user info
         const { data: user } = await supabase
           .from('hub_users')
-          .select('full_name, slack_id')
+          .select('full_name, email, slack_id')
           .eq('id', contractor_id)
           .single();
 
@@ -72,12 +79,9 @@ Deno.serve(async (req) => {
         const finalPayout = payout?.final_payout ?? 0;
         const payoutFmt = '₱' + (finalPayout as number).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        // Send Slack DM if they have a slack_id
-        if (user?.slack_id && SLACK_BOT_TOKEN) {
-          await slackDm(
-            user.slack_id,
-            `✅ *Payroll approved*\nYour payment of ${payoutFmt} for ${period_label} has been approved by the owner and is being processed.\nPayment typically arrives within 1–2 business days. 🙏\n<${PAYOUTS_URL}|View payslip →>`,
-          );
+        const slackId = await resolveSlackId(SLACK_BOT_TOKEN, user?.slack_id, user?.email).catch(() => null);
+        if (slackId) {
+          await slackDm(slackId, `✅ *Payroll Approved*\n${payoutFmt} for ${period_label} — payment arriving within 1–2 business days.`, PAYOUTS_URL, 'View Payslip →').catch(() => {});
         }
 
         // Insert hub_notification

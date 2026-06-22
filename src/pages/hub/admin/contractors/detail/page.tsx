@@ -392,6 +392,9 @@ export default function ContractorDetailPage() {
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
                 contractor.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
               }`}>{contractor.status === 'active' ? 'Active' : 'Inactive'}</span>
+              {contractor.employee_id && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-mono font-medium bg-[#1c2b3a]/8 text-[#1c2b3a] whitespace-nowrap">{contractor.employee_id}</span>
+              )}
             </div>
             <div className="flex flex-wrap gap-3 text-sm text-gray-500">
               <span className="flex items-center gap-1"><i className="ri-mail-line text-xs"></i>{contractor.email}</span>

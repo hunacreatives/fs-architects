@@ -44,7 +44,7 @@ export default function CareersPage() {
             src="/images/careers-banner.webp"
             alt="FS Architects studio"
             className="w-full h-full object-cover"
-            style={{ objectPosition: '50% 40%' }}
+            style={{ objectPosition: '50% 55%', opacity: 0.9 }}
             draggable={false}
           />
         </div>

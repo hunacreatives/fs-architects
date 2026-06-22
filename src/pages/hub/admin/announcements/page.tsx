@@ -97,7 +97,7 @@ export default function AnnouncementsPage() {
         ({ error } = await supabase.from('hub_announcements').insert({ ...payload, posted_by: hubUser?.id }));
         if (!error && form.published && !isScheduled) {
           supabase.functions.invoke('notify-announcement', {
-            body: { title: form.title, body: form.body, priority: form.priority, category: form.category, poster_name: hubUser?.full_name, poster_avatar: hubUser?.avatar_url, channels: form.slack_channels },
+            body: { title: form.title, body: form.body, priority: form.priority, category: form.category, poster_name: hubUser?.is_developer ? undefined : hubUser?.full_name, channels: form.slack_channels },
           }).catch(() => {});
           // In-app notifications for all active contractors
           supabase.from('hub_users').select('id').eq('status', 'active').eq('role', 'contractor').neq('is_developer', true).then(({ data }) => {

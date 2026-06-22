@@ -27,9 +27,8 @@ const categoryEmoji: Record<string, string> = {
 async function postToSlack(channel: string, title: string, body: string, priority: string, category: string, posterName?: string) {
   const pEmoji = priorityEmoji[priority] ?? '📢';
   const cEmoji = categoryEmoji[category] ?? '📌';
-  const postedBy = posterName ? `Posted by *${posterName}*` : 'Posted via Sentro Hub';
 
-  const blocks = [
+  const blocks: any[] = [
     {
       type: 'header',
       text: { type: 'plain_text', text: `${pEmoji} ${title}`, emoji: true },
@@ -41,7 +40,7 @@ async function postToSlack(channel: string, title: string, body: string, priorit
     {
       type: 'context',
       elements: [
-        { type: 'mrkdwn', text: `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}* · ${postedBy}` },
+        { type: 'mrkdwn', text: posterName ? `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}* · Posted by *${posterName}*` : `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}*` },
       ],
     },
   ];

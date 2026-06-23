@@ -1,9 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const SLACK_CHANNEL = 'C0830PCGQK1';
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SLACK_CHANNEL = Deno.env.get('SLACK_ANNOUNCEMENTS_CHANNEL_ID') ?? 'C0BB58W8R1U';
 const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
 const HUB_URL = `${HUB_BASE_URL}/hub/login`;
 
@@ -85,24 +81,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, skipped: true, reason: 'Not a cutoff day' }), { headers: cors });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const dateLabel = getPHTDateString();
     const cutoffLabel = getCutoffLabel();
-
-    const { data: contractors, error } = await supabase
-      .from('hub_users')
-      .select('full_name, slack_id')
-      .eq('status', 'active')
-      .in('role', ['contractor']);
-
-    if (error) {
-      console.error('Failed to load contractors', error);
-      throw error;
-    }
-
-    const mentions = (contractors ?? [])
-      .map(c => c.slack_id ? `<@${c.slack_id}>` : c.full_name)
-      .join('  ·  ');
 
     const blocks = [
       {
@@ -113,16 +93,13 @@ Deno.serve(async (req) => {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*${cutoffLabel}* — ${dateLabel}.\n\nMake sure your attendance is up to date and submit your payslip before you log off today. Anything missing after cutoff moves to next period.`,
+          text: `<!channel>\n\n*${cutoffLabel}* — ${dateLabel}.\n\nMake sure your attendance is up to date and submit your payslip before you log off today. Anything missing after cutoff moves to next period.`,
         },
       },
       {
         type: 'section',
         text: { type: 'mrkdwn', text: `<${HUB_URL}|Open Sentro Hub →>` },
       },
-      ...(mentions
-        ? [{ type: 'context', elements: [{ type: 'mrkdwn', text: `For: ${mentions}` }] }]
-        : []),
       { type: 'divider' },
     ];
 

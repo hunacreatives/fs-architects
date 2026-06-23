@@ -86,10 +86,11 @@ function concatUint8Arrays(parts: Uint8Array[]) {
   return out;
 }
 
-function buildPdfFromJpeg(jpegBytes: Uint8Array, imageWidth: number, imageHeight: number) {
+function buildPdfFromJpeg(jpegBytes: Uint8Array, imageWidth: number, imageHeight: number, landscape = false) {
   const encoder = new TextEncoder();
-  const pageWidth = 612;
-  const pageHeight = 792;
+  // US Letter: 612×792 portrait, swapped for landscape.
+  const pageWidth = landscape ? 792 : 612;
+  const pageHeight = landscape ? 612 : 792;
   const margin = 36;
   const maxWidth = pageWidth - margin * 2;
   const maxHeight = pageHeight - margin * 2;
@@ -820,47 +821,63 @@ export default function AdminPayrollPage() {
     `;
   };
 
-  const savePayrollToDrive = async () => {
-    if (isDemo) return;
-    setSavingToDrive(true);
+  // Render the formatted payroll report to landscape PDF bytes (shared by the
+  // on-close Drive auto-save and the manual hub save).
+  const generatePayrollPdfBytes = async (label: string, generatedLabel: string) => {
+    const markup = buildPayrollReportMarkup(label, generatedLabel);
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-10000px';
+    container.style.top = '0';
+    container.style.zIndex = '-1';
+    container.innerHTML = markup;
+    document.body.appendChild(container);
     try {
-      const label = selectedPeriod.label;
-      const year = selectedPeriod.start.slice(0, 4);
-      const generatedLabel = `Closed ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-      const markup = buildPayrollReportMarkup(label, generatedLabel);
-      const container = document.createElement('div');
-      container.style.position = 'fixed';
-      container.style.left = '-10000px';
-      container.style.top = '0';
-      container.style.zIndex = '-1';
-      container.innerHTML = markup;
-      document.body.appendChild(container);
       const target = container.firstElementChild as HTMLElement | null;
       if (!target) throw new Error('Could not render payroll report for PDF export.');
       const canvas = await html2canvas(target, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
-      document.body.removeChild(container);
       const jpegBytes = dataUrlToUint8Array(canvas.toDataURL('image/jpeg', 0.92));
-      const pdfBytes = buildPdfFromJpeg(jpegBytes, canvas.width, canvas.height);
+      return buildPdfFromJpeg(jpegBytes, canvas.width, canvas.height, true);
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
+
+  // Auto-save the closed period's report to Google Drive. Idempotent: the
+  // `payroll_pdf_saved_<period>` setting + stable filename guard against dupes.
+  const savePayrollPdfToDrive = async (period: typeof selectedPeriod): Promise<boolean> => {
+    if (isDemo) return false;
+    const already = await getSetting(`payroll_pdf_saved_${period.start}`, 'false');
+    if (already === 'true') return true;
+    try {
+      const year = period.start.slice(0, 4);
+      const generatedLabel = `Closed ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+      const pdfBytes = await generatePayrollPdfBytes(period.label, generatedLabel);
       const b64 = uint8ToBase64(pdfBytes);
-      const safeName = label.replace(/[^a-zA-Z0-9\s]/g,'_').replace(/\s+/g,'_');
+      const safeName = period.label.replace(/[^a-zA-Z0-9\s]/g, '_').replace(/\s+/g, '_');
       const { data, error } = await supabase.functions.invoke('upload-to-drive', {
-        body: { type: 'payroll', year, filename: `Payroll_${safeName}_${new Date().toISOString().slice(0,10)}.pdf`, base64Content: b64, mimeType: 'application/pdf', meta: { year } },
+        body: { type: 'payroll', year, filename: `Payroll_${safeName}.pdf`, base64Content: b64, mimeType: 'application/pdf', meta: { year } },
       });
       if (error || (data as any)?.error) {
-        alert('Drive upload failed: ' + (error?.message || (data as any)?.error));
-      } else {
-        await setSetting(`payroll_pdf_saved_${selectedPeriod.start}`, 'true');
-        setSavedPdfPeriods((prev) => {
-          const next = new Set(prev);
-          next.add(selectedPeriod.start);
-          return next;
-        });
-        alert('Saved PDF to Google Drive ✓');
+        console.error('Payroll Drive upload failed:', error?.message || (data as any)?.error);
+        return false;
       }
+      await setSetting(`payroll_pdf_saved_${period.start}`, 'true');
+      setSavedPdfPeriods((prev) => new Set(prev).add(period.start));
+      return true;
     } catch (e) {
-      alert('Upload failed: ' + String(e));
+      console.error('Payroll Drive upload failed:', e);
+      return false;
     }
+  };
+
+  // Manual "Save PDF to Drive" button handler.
+  const savePayrollToDrive = async () => {
+    if (isDemo) return;
+    setSavingToDrive(true);
+    const ok = await savePayrollPdfToDrive(selectedPeriod);
     setSavingToDrive(false);
+    alert(ok ? 'Saved PDF to Google Drive ✓' : 'Drive upload failed — check the console.');
   };
 
   const closePeriod = async () => {
@@ -888,7 +905,13 @@ export default function AdminPayrollPage() {
       }).catch((invokeError) => {
         console.error('Failed to queue payroll closed Slack notification:', invokeError);
       });
+      // Auto-save the landscape PDF report to Google Drive (guarded — no dupes).
+      const closedPeriod = selectedPeriod;
+      const saved = await savePayrollPdfToDrive(closedPeriod);
       await fetchWorkflow();
+      alert(saved
+        ? 'Payroll period closed. PDF report saved to Google Drive ✓'
+        : 'Payroll period closed. (Drive PDF save failed — you can retry with "Save PDF to Drive".)');
     }
     setWorkflowLoading(false);
   };

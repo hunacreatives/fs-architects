@@ -19,28 +19,28 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-// ── Root Sentro OS Drive folder ───────────────────────────────────────────────
-const SENTRO_ROOT = '1XQzc0U_pQrhCtivjR4SsgE_WTG9DpvYd';
+// ── Root Sentro OS Drive folder ──────────────────────────────────────────────
+const SENTRO_ROOT = '1fuX6nxXERGIizoVEJRORUmvlO-auezNt';
 
 // ── Static folder IDs in Sentro OS Drive ─────────────────────────────────────
 const FOLDERS = {
   // Attendance Reports
-  attendance_weekly:       '1U-pv4haPrxs7J2qK8ZMHL5cDgQfxu-mf',
-  attendance_monthly:      '1aegFEr1kSyGD9VFY_yx9GRAi9tFDRNDS',
-  attendance_yearly:       '1u2tyo7N68QYQEWoVayCghVbhXwc6FauD',
+  attendance_weekly:       '1uJPVmqNmnrpWL6g5EQ-nPUKXELe1B_2h',
+  attendance_monthly:      '1NTWe3xbPY089-bJiuHIO2niUhX9J0ITe',
+  attendance_yearly:       '1LRg--sHkG7kyelMZiKW8UTAl57xaxOpl',
   // Invoices by year
-  invoices_2025:           '1jz5FDLTMzE7l-mOrhLihiIhyECVE50fE',
-  invoices_2026:           '1GTimrkflGp6LcbAQAh-kLY1fPiFEjTFi',
-  // Payroll by year
-  payroll_2025:            '1_YXPRMM4s0jGq6WjeE_WaBboD0xsNXjU',
-  payroll_2026:            '1XUVMJAfrj02wVSBeq13wYpcntxDr_h_d',
+  invoices_2025:           '1fsvlqAg2S3VpO1Ju8wzpQG954m66P9LF',
+  invoices_2026:           '1XPzx5z9HQ-iEuv2KWkGCTQrLuu_V6Qjh',
+  // Payroll by year (2025 folder removed — FS started 2026; fall back to 2026)
+  payroll_2025:            '1ap7c1LGWtvT9wm4IDfeq9C5tm4zs0GWr',
+  payroll_2026:            '1ap7c1LGWtvT9wm4IDfeq9C5tm4zs0GWr',
   // Contractors
-  contractors_agreements:  '1Pvqf6N4ZkBWimTVlbwzn1zKi04cP1jkM',
-  contractors_ids:         '1LipR8kjOLhTubugnT8EdUWFKaLsP_PqQ',
-  contractors_rates:       '1m3nLFN10T2JirT0L3ReMBXT5_Hcgv_o_',
+  contractors_agreements:  '1P2oBO-c_bPUdRYKAK13jWzBIlBA-6TVA',
+  contractors_ids:         '1lk8-OK9ZulItyTam5S97eUelDf32dOgW',
+  contractors_rates:       '1GZQ_I9u6eQcIQPZI32rPi4lus2OvKXLS',
   // Clients
-  clients_active:          '11uYE23gr8vekpSSCpNPZPDWwOadBpAgB',
-  clients_completed:       '1r8XUoedmhB2V_NsFygX829mj88bjhJF2',
+  clients_active:          '1k_dixTaODoTNEGR9ADVszynBYkI5qq55',
+  clients_completed:       '1--Nohua24443AQPPriy3DrGqn86WHgD-',
 };
 
 // ── Create or get a subfolder by name under a parent ─────────────────────────

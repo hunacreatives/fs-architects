@@ -67,6 +67,15 @@ function uint8ToBase64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
+// Rest day = a weekday NOT in the contractor's work_days. Falls back to Sat/Sun
+// when work_days isn't set. Used to default the is_rest_day flag for OT entries.
+const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function isRestDayFor(dateStr: string, workDays: string[] | null | undefined): boolean {
+  const day = DAY_ABBR[new Date(dateStr + 'T12:00:00').getDay()];
+  if (workDays && workDays.length > 0) return !workDays.includes(day);
+  return day === 'Sat' || day === 'Sun';
+}
+
 function dataUrlToUint8Array(dataUrl: string) {
   const base64 = dataUrl.split(',')[1] || '';
   const binary = atob(base64);
@@ -150,6 +159,7 @@ export default function AdminPayrollPage() {
 
   const [rows, setRows] = useState<PayRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payrollError, setPayrollError] = useState<string | null>(null);
   const [usdRate, setUsdRate] = useState<number>(56);
 
   // Load closed periods once on mount
@@ -242,7 +252,7 @@ export default function AdminPayrollPage() {
       id: e.id,
       date: e.date,
       hours: e.hours,
-      is_rest_day: e.is_rest_day ?? (new Date(e.date + 'T12:00:00').getDay() % 6 === 0),
+      is_rest_day: e.is_rest_day ?? isRestDayFor(e.date, r.contractor.work_days),
     }));
     // Surface legacy OT hours that live only in hub_daily_hours (pre-dating the
     // per-date request flow) as untracked entries so admins can review/clear them
@@ -254,7 +264,7 @@ export default function AdminPayrollPage() {
           id: undefined,
           date: dh.date,
           hours: dh.overtime_hours,
-          is_rest_day: new Date(dh.date + 'T12:00:00').getDay() % 6 === 0,
+          is_rest_day: isRestDayFor(dh.date, r.contractor.work_days),
         });
       }
     }
@@ -334,6 +344,12 @@ export default function AdminPayrollPage() {
     }
 
     const otRate = row?.derivedHourlyRate ?? 0;
+    if (activeEntries.length > 0 && otRate <= 0) {
+      console.error('saveEditRow: overtime rate is 0 — refusing to save OT pay as ₱0', { contractorId });
+      alert('Could not determine the overtime rate for this employee. Refresh the page and try again.');
+      setEditSaving(false);
+      return;
+    }
     const computedOTPay = activeEntries.reduce(
       (sum, e) => sum + e.hours * otRate * getOTMultiplier(e.date, e.is_rest_day),
       0
@@ -433,17 +449,21 @@ export default function AdminPayrollPage() {
     const finalPay = basePay + otPay + adjTotal;
     const existing = payoutsMap[contractorId];
     const contractorName = rows.find(r => r.contractor.id === contractorId)?.contractor.full_name ?? contractorId;
-    if (existing) {
-      await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay }).eq('id', existing.id);
-    } else {
-      await supabase.from('hub_payouts').insert({
-        contractor_id: contractorId,
-        cutoff_start: selectedPeriod.start,
-        cutoff_end: selectedPeriod.end,
-        final_payout: finalPay,
-        status: 'hr_approved',
-        approved_at: new Date().toISOString(),
-      });
+    const { error: approveErr } = existing
+      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay }).eq('id', existing.id)
+      : await supabase.from('hub_payouts').insert({
+          contractor_id: contractorId,
+          cutoff_start: selectedPeriod.start,
+          cutoff_end: selectedPeriod.end,
+          final_payout: finalPay,
+          status: 'hr_approved',
+          approved_at: new Date().toISOString(),
+        });
+    if (approveErr) {
+      console.error('Approve payout failed:', approveErr);
+      alert('Failed to approve payout: ' + approveErr.message);
+      setWorkflowLoading(false);
+      return;
     }
     // Optimistic update + unlock UI immediately — background sync confirms with DB
     setPayoutsMap(prev => ({
@@ -455,7 +475,7 @@ export default function AdminPayrollPage() {
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payout', entity_id: contractorId, description: `Approved payout of ${fmt(finalPay)} for ${contractorName} — ${selectedPeriod.label}` });
     const approvedPayout = existing
       ? { id: existing.id }
-      : (await supabase.from('hub_payouts').select('id').eq('contractor_id', contractorId).eq('cutoff_start', selectedPeriod.start).single()).data;
+      : (await supabase.from('hub_payouts').select('id').eq('contractor_id', contractorId).eq('cutoff_start', selectedPeriod.start).maybeSingle()).data;
     if (approvedPayout?.id) {
       supabase.functions.invoke('notify-contractor', { body: { payout_id: approvedPayout.id, type: 'hr_approved' } }).catch(() => {});
       supabase.from('hub_notifications').insert({
@@ -476,7 +496,7 @@ export default function AdminPayrollPage() {
     if (toApprove.length === 0) return;
     setWorkflowLoading(true);
     const now = new Date().toISOString();
-    await Promise.all(toApprove.map(async r => {
+    const approveResults = await Promise.all(toApprove.map(async r => {
       const override = rowOverrides[r.contractor.id];
       const basePay = override?.pay !== undefined ? override.pay : r.pay;
       const otPay = r.overtimePay;
@@ -484,19 +504,23 @@ export default function AdminPayrollPage() {
       const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
       const finalPay = basePay + otPay + adjTotal;
       const existing = payoutsMap[r.contractor.id];
-      if (existing) {
-        await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay }).eq('id', existing.id);
-      } else {
-        await supabase.from('hub_payouts').insert({
-          contractor_id: r.contractor.id,
-          cutoff_start: selectedPeriod.start,
-          cutoff_end: selectedPeriod.end,
-          final_payout: finalPay,
-          status: 'hr_approved',
-          approved_at: now,
-        });
-      }
+      const { error } = existing
+        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay }).eq('id', existing.id)
+        : await supabase.from('hub_payouts').insert({
+            contractor_id: r.contractor.id,
+            cutoff_start: selectedPeriod.start,
+            cutoff_end: selectedPeriod.end,
+            final_payout: finalPay,
+            status: 'hr_approved',
+            approved_at: now,
+          });
+      return error;
     }));
+    const approveFailed = approveResults.filter(Boolean);
+    if (approveFailed.length > 0) {
+      console.error('Some payouts failed to approve:', approveFailed);
+      alert(`${approveFailed.length} of ${toApprove.length} approvals failed to save. Refresh and retry.`);
+    }
     // Notify each contractor (fire-and-forget — fetch IDs after batch update)
     const { data: newPayouts } = await supabase
       .from('hub_payouts')
@@ -552,7 +576,14 @@ export default function AdminPayrollPage() {
 
     if (newBatch) {
       const approvedIds = approved.map(r => payoutsMap[r.contractor.id]?.id).filter(Boolean);
-      await supabase.from('hub_payouts').update({ batch_id: newBatch.id }).in('id', approvedIds);
+      const { error: linkError } = await supabase.from('hub_payouts').update({ batch_id: newBatch.id }).in('id', approvedIds);
+      if (linkError) {
+        console.error('Failed to link payouts to batch:', linkError);
+        alert('Batch created but linking payouts failed: ' + linkError.message + '. Please retry.');
+        await fetchWorkflow().catch(() => {});
+        setWorkflowLoading(false);
+        return;
+      }
       supabase.functions.invoke('notify-owner', { body: { batch_id: newBatch.id } }).catch(() => {});
     }
     await fetchWorkflow().catch(() => {});
@@ -562,11 +593,17 @@ export default function AdminPayrollPage() {
   const approveBatch = async () => {
     if (!batch) return;
     setWorkflowLoading(true);
-    await supabase.from('hub_payroll_batches').update({
+    const { error: batchApproveErr } = await supabase.from('hub_payroll_batches').update({
       status: 'owner_approved',
       approved_by: hubUser?.id,
       approved_at: new Date().toISOString(),
     }).eq('id', batch.id);
+    if (batchApproveErr) {
+      console.error('Approve batch failed:', batchApproveErr);
+      alert('Failed to approve fund transfer: ' + batchApproveErr.message);
+      setWorkflowLoading(false);
+      return;
+    }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} employees)` });
     supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(() => {});
     await fetchWorkflow().catch(() => {});
@@ -578,14 +615,18 @@ export default function AdminPayrollPage() {
     const p = payoutsMap[contractorId];
     if (!p) return;
     setWorkflowLoading(true);
-    if (p.status === 'paid') {
-      await supabase.from('hub_payouts').update({
-        status: 'hr_approved',
-        payment_date: null,
-        paid_at: null,
-      }).eq('id', p.id);
-    } else {
-      await supabase.from('hub_payouts').delete().eq('id', p.id);
+    const { error: cancelErr } = p.status === 'paid'
+      ? await supabase.from('hub_payouts').update({
+          status: 'hr_approved',
+          payment_date: null,
+          paid_at: null,
+        }).eq('id', p.id)
+      : await supabase.from('hub_payouts').delete().eq('id', p.id);
+    if (cancelErr) {
+      console.error('Cancel payout failed:', cancelErr);
+      alert('Failed to cancel: ' + cancelErr.message);
+      setWorkflowLoading(false);
+      return;
     }
     // Clean up batch if no more active payouts remain in it
     if (batch) {
@@ -608,12 +649,18 @@ export default function AdminPayrollPage() {
     if (!existing) return;
     setWorkflowLoading(true);
     const row = rows.find(r => r.contractor.id === contractorId);
-    await supabase.from('hub_payouts').update({
+    const { error: paidErr } = await supabase.from('hub_payouts').update({
       status: 'paid',
       payment_date: new Date().toISOString().slice(0, 10),
       paid_at: new Date().toISOString(),
       approved_hours: row?.cappedHours ?? existing.approved_hours ?? 0,
     }).eq('id', existing.id);
+    if (paidErr) {
+      console.error('Mark paid failed:', paidErr);
+      alert('Failed to mark as paid: ' + paidErr.message);
+      setWorkflowLoading(false);
+      return;
+    }
     // Fire payslip email (non-blocking — ignore failures)
     supabase.functions.invoke('send-payslip', { body: { payout_id: existing.id } }).catch(() => {});
     setPayoutsMap(prev => ({
@@ -666,7 +713,13 @@ export default function AdminPayrollPage() {
 
   const approveHourlyRequest = async (payoutId: string, contractorId: string, finalPay: number) => {
     setHourlyWorkflowLoading(true);
-    await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay }).eq('id', payoutId);
+    const { error: hrApproveErr } = await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay }).eq('id', payoutId);
+    if (hrApproveErr) {
+      console.error('Approve hourly request failed:', hrApproveErr);
+      alert('Failed to approve: ' + hrApproveErr.message);
+      setHourlyWorkflowLoading(false);
+      return;
+    }
     supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payroll_approved', title: 'Payout approved', body: `Your fund transfer request of ${fmt(finalPay)} has been approved by HR.`, link: '/hub/employee/payouts', read: false }).catch(() => {});
     supabase.functions.invoke('notify-contractor', { body: { payout_id: payoutId, type: 'hr_approved' } }).catch(() => {});
     await fetchHourlyRequests();
@@ -697,7 +750,13 @@ export default function AdminPayrollPage() {
   const approveHourlyBatch = async () => {
     if (!hourlyBatch) return;
     setHourlyWorkflowLoading(true);
-    await supabase.from('hub_payroll_batches').update({ status: 'owner_approved', approved_by: hubUser?.id, approved_at: new Date().toISOString() }).eq('id', hourlyBatch.id);
+    const { error: hourlyBatchErr } = await supabase.from('hub_payroll_batches').update({ status: 'owner_approved', approved_by: hubUser?.id, approved_at: new Date().toISOString() }).eq('id', hourlyBatch.id);
+    if (hourlyBatchErr) {
+      console.error('Approve hourly batch failed:', hourlyBatchErr);
+      alert('Failed to approve: ' + hourlyBatchErr.message);
+      setHourlyWorkflowLoading(false);
+      return;
+    }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: hourlyBatch.id, description: `Approved hourly fund transfer: ${hourlyBatch.period_label}` });
     await fetchHourlyRequests();
     setHourlyWorkflowLoading(false);
@@ -705,7 +764,13 @@ export default function AdminPayrollPage() {
 
   const markHourlyPaid = async (payoutId: string, contractorId: string, amount: number) => {
     setHourlyWorkflowLoading(true);
-    await supabase.from('hub_payouts').update({ status: 'paid', payment_date: new Date().toISOString().slice(0, 10), paid_at: new Date().toISOString() }).eq('id', payoutId);
+    const { error: hourlyPaidErr } = await supabase.from('hub_payouts').update({ status: 'paid', payment_date: new Date().toISOString().slice(0, 10), paid_at: new Date().toISOString() }).eq('id', payoutId);
+    if (hourlyPaidErr) {
+      console.error('Mark hourly paid failed:', hourlyPaidErr);
+      alert('Failed to mark as paid: ' + hourlyPaidErr.message);
+      setHourlyWorkflowLoading(false);
+      return;
+    }
     supabase.functions.invoke('send-payslip', { body: { payout_id: payoutId } }).catch(() => {});
     supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payment_received', title: 'Payment sent', body: `Your fund transfer of ${fmt(amount)} has been processed.`, link: '/hub/employee/payouts', read: false }).catch(() => {});
     await fetchHourlyRequests();
@@ -995,6 +1060,7 @@ export default function AdminPayrollPage() {
 
   const fetchPayroll = async () => {
     setLoading(true);
+    setPayrollError(null);
     try {
     const today = localToday();
     const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
@@ -1253,7 +1319,9 @@ export default function AdminPayrollPage() {
 
     result.sort((a, b) => b.pay - a.pay);
     setRows(result);
-    } catch (_e) {
+    } catch (e) {
+      console.error('Payroll calculation failed:', e);
+      setPayrollError('Could not calculate payroll — the figures below may be stale or incomplete. Refresh to retry.');
     } finally {
       setLoading(false);
     }
@@ -1443,6 +1511,15 @@ export default function AdminPayrollPage() {
   return (
     <AdminLayout title="Payroll">
       <div className="space-y-5">
+
+        {/* Calculation error — figures may be stale/incomplete */}
+        {payrollError && (
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3 border bg-red-50 border-red-200">
+            <i className="ri-error-warning-line text-lg flex-shrink-0 text-red-500"></i>
+            <p className="text-xs font-medium text-red-700 flex-1">{payrollError}</p>
+            <button onClick={refreshPayrollPage} className="text-xs font-semibold text-red-600 hover:text-red-800 underline cursor-pointer whitespace-nowrap">Retry</button>
+          </div>
+        )}
 
         {/* Payroll cutoff banner — hidden for closed periods */}
         {!closedPeriods.has(selectedPeriod.start) && (() => {

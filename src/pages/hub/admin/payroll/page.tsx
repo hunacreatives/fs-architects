@@ -1485,7 +1485,7 @@ export default function AdminPayrollPage() {
       setTimeout(() => {
         (iframe.contentWindow as any)?.focus();
         (iframe.contentWindow as any)?.print();
-        setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} }, 2000);
+        setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
       }, 400);
     }
 

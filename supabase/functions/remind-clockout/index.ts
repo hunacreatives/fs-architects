@@ -127,6 +127,7 @@ async function run() {
   const { data: users } = await supabase
     .from('hub_users')
     .select('id, full_name, email, slack_id, status')
+    .eq('role', 'contractor')
     .in('slack_id', stillOn.map((s) => s.slackId));
   const bySlack = new Map((users ?? []).map((u: any) => [String(u.slack_id).trim(), u]));
 

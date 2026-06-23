@@ -1,12 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getAdminSlackIds } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'payroll@fsarchitects.ph';
-const NOTIFY_EMAILS = ['francisfielroble@gmail.com', 'duterteabigaile@gmail.com'];
-const ABIGAIL_SLACK_ID = 'U091BL9PQ77';
+// HR/admin (Francis Yu) + owner (Fretz) — env-overridable
+const NOTIFY_EMAILS = [
+  Deno.env.get('ADMIN_EMAIL') ?? 'fyu.fsarchitects@gmail.com',
+  Deno.env.get('OWNER_EMAIL') ?? 'suraltafretz@gmail.com',
+];
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -129,14 +133,17 @@ async function sendNotification(payout_id: string, type: 'submitted' | 'dispute'
 
   if (type === 'dispute') {
     if (SLACK_BOT_TOKEN) {
-      try {
-        const dm = await slackPost('conversations.open', { users: ABIGAIL_SLACK_ID });
-        await slackPost('chat.postMessage', {
-          channel: dm.channel.id,
-          text: `🚩 *Payslip disputed* — *${contractor.full_name}* has flagged their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
-        });
-      } catch (slackErr) {
-        console.error('Slack DM failed (dispute notification):', slackErr);
+      const adminIds = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+      for (const adminId of adminIds) {
+        try {
+          const dm = await slackPost('conversations.open', { users: adminId });
+          await slackPost('chat.postMessage', {
+            channel: dm.channel.id,
+            text: `🚩 *Payslip disputed* — *${contractor.full_name}* has flagged their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
+          });
+        } catch (slackErr) {
+          console.error('Slack DM failed (dispute notification):', slackErr);
+        }
       }
     }
     await pushToAdmins(supabase, 'Payslip disputed', `${contractor.full_name} has flagged their payslip for ${periodLabel}. Review needed.`, payrollUrl);
@@ -200,16 +207,19 @@ async function sendNotification(payout_id: string, type: 'submitted' | 'dispute'
 
   await pushToAdmins(supabase, 'Payslip submitted', `${contractor.full_name} submitted their payslip for ${periodLabel} (${fmt(payout.final_payout)}). Review needed.`, payrollUrl);
 
-  // Slack DM to Abigail — isolated so email success is not masked
+  // Slack DM to admins — isolated so email success is not masked
   if (SLACK_BOT_TOKEN) {
-    try {
-      const dm = await slackPost('conversations.open', { users: ABIGAIL_SLACK_ID });
-      await slackPost('chat.postMessage', {
-        channel: dm.channel.id,
-        text: `💰 *Payslip submitted* — *${contractor.full_name}* has submitted their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
-      });
-    } catch (slackErr) {
-      console.error('Slack DM failed (submit notification):', slackErr);
+    const adminIds = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    for (const adminId of adminIds) {
+      try {
+        const dm = await slackPost('conversations.open', { users: adminId });
+        await slackPost('chat.postMessage', {
+          channel: dm.channel.id,
+          text: `💰 *Payslip submitted* — *${contractor.full_name}* has submitted their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
+        });
+      } catch (slackErr) {
+        console.error('Slack DM failed (submit notification):', slackErr);
+      }
     }
   }
 }

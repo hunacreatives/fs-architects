@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const NOTIFY_USERS = ['U091BL9PQ77', 'U0838LWSY4E']; // Abigail, Francis
+import { getAdminSlackIds } from '../_shared/slack.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -58,7 +58,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 400, headers: cors });
     }
 
-    await Promise.all(NOTIFY_USERS.map(id => dm(id, client_name, service_type)));
+    const notifyUsers = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    await Promise.all(notifyUsers.map(id => dm(id, client_name, service_type)));
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: admins } = await supabase.from('hub_users').select('id').in('role', ['admin', 'owner']).eq('status', 'active');

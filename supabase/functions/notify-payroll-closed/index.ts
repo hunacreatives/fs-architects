@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getAdminSlackIds } from '../_shared/slack.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const ABIGAIL_SLACK_ID = 'U091BL9PQ77';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -84,7 +84,10 @@ async function sendNotification(batchId: string, closedByName?: string | null) {
     `Closed by: ${closer}`;
 
   const recipients = new Map<string, string>();
-  recipients.set(ABIGAIL_SLACK_ID, 'Abigail');
+
+  // Active admins/owners/HR (dynamic — no hardcoded recipients)
+  const adminIds = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  for (const id of adminIds) recipients.set(id, 'Admin');
 
   for (const owner of owners ?? []) {
     if (owner.slack_id) recipients.set(owner.slack_id, owner.full_name || 'Owner');

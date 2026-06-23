@@ -1,9 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getAdminSlackIds } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const ADMIN_SLACK_IDS = ['U091BL9PQ77', 'U0838LWSY4E'];
 const FROM = `Sentro OS <${Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph'}>`;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -26,12 +26,13 @@ async function slackDm(userId: string, text: string) {
   });
 }
 
-async function slackDmAdmins(text: string) {
-  await Promise.all(ADMIN_SLACK_IDS.map(id => slackDm(id, text).catch(() => {})));
-}
-
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+async function slackDmAdmins(text: string) {
+  const ids = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  await Promise.all(ids.map(id => slackDm(id, text).catch(() => {})));
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 

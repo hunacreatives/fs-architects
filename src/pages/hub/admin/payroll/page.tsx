@@ -477,15 +477,15 @@ export default function AdminPayrollPage() {
       ? { id: existing.id }
       : (await supabase.from('hub_payouts').select('id').eq('contractor_id', contractorId).eq('cutoff_start', selectedPeriod.start).maybeSingle()).data;
     if (approvedPayout?.id) {
-      supabase.functions.invoke('notify-contractor', { body: { payout_id: approvedPayout.id, type: 'hr_approved' } }).catch(() => {});
+      supabase.functions.invoke('notify-contractor', { body: { payout_id: approvedPayout.id, type: 'hr_approved' } }).catch(console.error);
       supabase.from('hub_notifications').insert({
         user_id: contractorId, type: 'payroll_approved',
         title: 'Payout approved',
         body: `Your payout of ${fmt(finalPay)} for ${selectedPeriod.label} has been approved`,
         link: '/hub/employee/payouts', read: false,
-      }).catch(() => {});
+      }).catch(console.error);
     }
-    fetchWorkflow().catch(() => {});
+    fetchWorkflow().catch(console.error);
   };
 
   const approveAll = async () => {
@@ -529,17 +529,17 @@ export default function AdminPayrollPage() {
       .eq('status', 'hr_approved');
     for (const np of newPayouts ?? []) {
       if (toApprove.some(r => r.contractor.id === np.contractor_id)) {
-        supabase.functions.invoke('notify-contractor', { body: { payout_id: np.id, type: 'hr_approved' } }).catch(() => {});
+        supabase.functions.invoke('notify-contractor', { body: { payout_id: np.id, type: 'hr_approved' } }).catch(console.error);
         supabase.from('hub_notifications').insert({
           user_id: np.contractor_id, type: 'payroll_approved',
           title: 'Payout approved',
           body: `Your payout for ${selectedPeriod.label} has been approved`,
           link: '/hub/employee/payouts', read: false,
-        }).catch(() => {});
+        }).catch(console.error);
       }
     }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payout', entity_id: selectedPeriod.start, description: `Bulk approved ${toApprove.length} payouts for ${selectedPeriod.label}` });
-    await fetchWorkflow().catch(() => {});
+    await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
   };
 
@@ -580,13 +580,13 @@ export default function AdminPayrollPage() {
       if (linkError) {
         console.error('Failed to link payouts to batch:', linkError);
         alert('Batch created but linking payouts failed: ' + linkError.message + '. Please retry.');
-        await fetchWorkflow().catch(() => {});
+        await fetchWorkflow().catch(console.error);
         setWorkflowLoading(false);
         return;
       }
-      supabase.functions.invoke('notify-owner', { body: { batch_id: newBatch.id } }).catch(() => {});
+      supabase.functions.invoke('notify-owner', { body: { batch_id: newBatch.id } }).catch(console.error);
     }
-    await fetchWorkflow().catch(() => {});
+    await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
   };
 
@@ -605,8 +605,8 @@ export default function AdminPayrollPage() {
       return;
     }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} employees)` });
-    supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(() => {});
-    await fetchWorkflow().catch(() => {});
+    supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(console.error);
+    await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
   };
 
@@ -640,7 +640,7 @@ export default function AdminPayrollPage() {
       }
     }
     setConfirmCancelId(null);
-    await fetchWorkflow().catch(() => {});
+    await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
   };
 
@@ -662,13 +662,13 @@ export default function AdminPayrollPage() {
       return;
     }
     // Fire payslip email (non-blocking — ignore failures)
-    supabase.functions.invoke('send-payslip', { body: { payout_id: existing.id } }).catch(() => {});
+    supabase.functions.invoke('send-payslip', { body: { payout_id: existing.id } }).catch(console.error);
     setPayoutsMap(prev => ({
       ...prev,
       [contractorId]: { ...existing, status: 'paid', payment_date: new Date().toISOString().slice(0, 10) },
     }));
     setWorkflowLoading(false);
-    fetchWorkflow().catch(() => {});
+    fetchWorkflow().catch(console.error);
   };
 
   // ── Hourly fund transfer requests ─────────────────────────────────────────
@@ -720,8 +720,8 @@ export default function AdminPayrollPage() {
       setHourlyWorkflowLoading(false);
       return;
     }
-    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payroll_approved', title: 'Payout approved', body: `Your fund transfer request of ${fmt(finalPay)} has been approved by HR.`, link: '/hub/employee/payouts', read: false }).catch(() => {});
-    supabase.functions.invoke('notify-contractor', { body: { payout_id: payoutId, type: 'hr_approved' } }).catch(() => {});
+    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payroll_approved', title: 'Payout approved', body: `Your fund transfer request of ${fmt(finalPay)} has been approved by HR.`, link: '/hub/employee/payouts', read: false }).catch(console.error);
+    supabase.functions.invoke('notify-contractor', { body: { payout_id: payoutId, type: 'hr_approved' } }).catch(console.error);
     await fetchHourlyRequests();
     setHourlyWorkflowLoading(false);
   };
@@ -741,7 +741,7 @@ export default function AdminPayrollPage() {
     if (error) { alert('Failed: ' + error.message); setHourlyWorkflowLoading(false); return; }
     if (newBatch) {
       await supabase.from('hub_payouts').update({ batch_id: newBatch.id }).in('id', toApprove.map((r: any) => r.id));
-      supabase.functions.invoke('notify-owner', { body: { batch_id: newBatch.id } }).catch(() => {});
+      supabase.functions.invoke('notify-owner', { body: { batch_id: newBatch.id } }).catch(console.error);
     }
     await fetchHourlyRequests();
     setHourlyWorkflowLoading(false);
@@ -771,8 +771,8 @@ export default function AdminPayrollPage() {
       setHourlyWorkflowLoading(false);
       return;
     }
-    supabase.functions.invoke('send-payslip', { body: { payout_id: payoutId } }).catch(() => {});
-    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payment_received', title: 'Payment sent', body: `Your fund transfer of ${fmt(amount)} has been processed.`, link: '/hub/employee/payouts', read: false }).catch(() => {});
+    supabase.functions.invoke('send-payslip', { body: { payout_id: payoutId } }).catch(console.error);
+    supabase.from('hub_notifications').insert({ user_id: contractorId, type: 'payment_received', title: 'Payment sent', body: `Your fund transfer of ${fmt(amount)} has been processed.`, link: '/hub/employee/payouts', read: false }).catch(console.error);
     await fetchHourlyRequests();
     setHourlyWorkflowLoading(false);
   };
@@ -1048,7 +1048,7 @@ export default function AdminPayrollPage() {
         }, () => { fetchWorkflow(); })
         .subscribe();
 
-      const onVisibility = () => { if (document.visibilityState === 'visible') fetchWorkflow().catch(() => {}); };
+      const onVisibility = () => { if (document.visibilityState === 'visible') fetchWorkflow().catch(console.error); };
       document.addEventListener('visibilitychange', onVisibility);
 
       return () => {
@@ -1505,7 +1505,7 @@ export default function AdminPayrollPage() {
         type: 'payroll',
         meta: { year },
       },
-    }).catch(() => {});
+    }).catch(console.error);
   };
 
   return (
@@ -1652,7 +1652,7 @@ export default function AdminPayrollPage() {
                         type: 'payroll',
                         meta: { year },
                       },
-                    }).catch(() => {});
+                    }).catch(console.error);
                   }}
                   disabled={loading || rows.length === 0}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
@@ -2353,7 +2353,7 @@ export default function AdminPayrollPage() {
                             const note = disputeNotesMap[dispute.id]?.trim() || null;
                             await supabase.from('hub_payslip_disputes').update({ status: 'resolved', admin_notes: note }).eq('id', dispute.id);
                             if (payout?.id) {
-                              supabase.functions.invoke('notify-contractor', { body: { payout_id: payout.id, type: 'dispute_resolved' } }).catch(() => {});
+                              supabase.functions.invoke('notify-contractor', { body: { payout_id: payout.id, type: 'dispute_resolved' } }).catch(console.error);
                             }
                             setDisputeNotesMap(prev => { const n = { ...prev }; delete n[dispute.id]; return n; });
                             await fetchWorkflow();

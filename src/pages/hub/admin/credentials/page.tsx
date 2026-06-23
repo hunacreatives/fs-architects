@@ -62,15 +62,6 @@ export default function CredentialsVaultPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [requests, setRequests] = useState<CredentialRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +101,16 @@ export default function CredentialsVaultPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
 
   // Group credentials by client
   const filtered = credentials.filter((c) =>
@@ -204,12 +205,28 @@ export default function CredentialsVaultPage() {
   };
 
   const reviewRequest = async (id: string, status: 'approved' | 'denied') => {
-    await supabase.from('hub_credential_requests').update({
+    const { error } = await supabase.from('hub_credential_requests').update({
       status,
       reviewed_by: hubUser?.id,
       reviewed_at: new Date().toISOString(),
     }).eq('id', id);
+    if (error) {
+      console.error('Failed to update credential request:', error);
+      showToast('Failed to update request. Please try again.');
+      return;
+    }
     showToast(`Request ${status}.`);
+    const req = requests.find(r => r.id === id);
+    if (req) {
+      supabase.functions.invoke('notify-credential-decision', {
+        body: {
+          contractor_id: req.contractor_id,
+          platform: req.hub_credentials?.platform ?? 'credential',
+          client_name: req.hub_credentials?.client_name ?? '',
+          decision: status,
+        },
+      }).catch(console.error);
+    }
     fetchData();
   };
 

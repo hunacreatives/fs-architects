@@ -173,7 +173,7 @@ export default function AdminTimeOffPage() {
           end_date: selected.end_date,
           decision: status,
         },
-      }).catch(() => {});
+      }).catch(console.error);
     }
     setUpdating(false);
     setSelected(null);
@@ -213,7 +213,7 @@ export default function AdminTimeOffPage() {
             end_date: r.end_date,
             decision: status,
           },
-        }).catch(() => {});
+        }).catch(console.error);
       }
     }
     setSelectedIds(new Set());

@@ -215,7 +215,7 @@ async function generateAttendancePDF(start: string, end: string, label: string) 
       type: typeMap[label] || 'attendance_monthly',
       meta: { year: String(new Date(start + 'T00:00:00').getFullYear()) },
     },
-  }).catch(() => {});
+  }).catch(console.error);
 
   const win = window.open('', '_blank', 'width=1000,height=800');
   if (!win) return;

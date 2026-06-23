@@ -103,7 +103,7 @@ export default function ContractorDocumentsPage() {
     if (error) { showToast('Failed to submit. Try again.'); return; }
     supabase.functions.invoke('notify-internal-request', {
       body: { type: 'doc_request', contractor_name: hubUser!.full_name, detail: docType, notes: notes || null },
-    }).catch(() => {});
+    }).catch(console.error);
     setShowForm(false);
     setNotes('');
     setDocType(DOC_TYPES[0]);

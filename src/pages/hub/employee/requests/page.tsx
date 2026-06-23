@@ -52,7 +52,7 @@ export default function ContractorRequestsPage() {
     setTimeout(() => setToast(''), 3000);
     supabase.functions.invoke('notify-admin', {
       body: { type: 'request_submitted', data: { contractor_name: user.full_name, request_type: form.type, title: form.title } },
-    }).catch(() => {});
+    }).catch(console.error);
     fetchRequests();
   };
 

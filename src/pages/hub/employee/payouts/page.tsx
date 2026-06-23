@@ -602,7 +602,7 @@ export default function ContractorPayoutsPage() {
     }, { onConflict: 'contractor_id,cutoff_start' }).select('id, status, final_payout, cutoff_start, cutoff_end').single();
     if (!error && data) {
       setHourlyRequest(data);
-      supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } }).catch(() => {});
+      supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } }).catch(console.error);
     }
     setSubmitting(false);
   };
@@ -615,7 +615,7 @@ export default function ContractorPayoutsPage() {
       contractor_id: hubUser.id,
       reason: disputeReason.trim(),
     });
-    supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: existingPayout.id, type: 'dispute' } }).catch(() => {});
+    supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: existingPayout.id, type: 'dispute' } }).catch(console.error);
     setDisputeSaving(false);
     setDisputeModal(false);
     setDisputeReason('');

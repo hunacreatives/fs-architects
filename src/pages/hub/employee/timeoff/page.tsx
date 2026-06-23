@@ -182,10 +182,10 @@ export default function ContractorTimeOffPage() {
     const days = halfDay ? 0.5 : Math.ceil((new Date(endForCalc).getTime() - new Date(startDate).getTime()) / 86400000) + 1;
     supabase.functions.invoke('notify-internal-request', {
       body: { type: 'time_off', contractor_name: user.full_name, detail: `${type} · ${startDate}${halfDay ? '' : ` – ${endDate}`}`, notes: reason || null },
-    }).catch(() => {});
+    }).catch(console.error);
     supabase.functions.invoke('notify-admin', {
       body: { type: 'time_off_submitted', data: { contractor_name: user.full_name, leave_type: type, start_date: startDate, end_date: endForCalc, days } },
-    }).catch(() => {});
+    }).catch(console.error);
     fetchAll();
   };
 

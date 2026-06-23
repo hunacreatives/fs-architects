@@ -100,7 +100,7 @@ export default function AdminOvertimePage() {
 
     supabase.functions.invoke('notify-contractor', {
       body: { type: 'overtime_decision', contractor_id: selected.contractor_id, date: selected.date, hours: selected.hours, status, admin_notes: adminNotes || undefined },
-    }).catch(() => {});
+    }).catch(console.error);
 
     setUpdating(false);
     setSelected(null);

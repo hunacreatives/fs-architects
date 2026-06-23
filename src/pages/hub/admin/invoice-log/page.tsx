@@ -450,7 +450,7 @@ export default function InvoiceLogPage() {
           detail: `${proof.project_name} · ₱${(proof.amount ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} via ${proof.payment_channel}`,
           notes: receiptSent ? 'Receipt email sent to client.' : 'No client email — receipt not sent.',
         },
-      }).catch(() => {});
+      }).catch(console.error);
 
       setProofs(prev => prev.map(p => p.id === proof.id ? { ...p, verified: true, verified_at } : p));
     } finally {

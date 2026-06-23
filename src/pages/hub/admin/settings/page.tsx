@@ -10,15 +10,6 @@ export default function SettingsPage() {
   const { isDemo } = useDemo();
   const { user } = useAuth();
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
   const { hubUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'system'>('profile');
   const [devToolbarHidden, setDevToolbarHidden] = useState(() => localStorage.getItem('hub_dev_toolbar_hidden') === 'true');
@@ -98,6 +89,16 @@ export default function SettingsPage() {
     { id: 'password' as const, label: 'Password', icon: 'ri-lock-line' },
     { id: 'system' as const, label: 'System', icon: 'ri-settings-3-line' },
   ];
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
 
   return (
     <AdminLayout title="Settings">

@@ -138,15 +138,6 @@ export default function AdminDocumentsPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
 
-  if (isDemo) return (
-    <AdminLayout>
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
-        <i className="ri-lock-2-line text-3xl opacity-40"></i>
-        <p className="text-sm font-medium">Not available in demo</p>
-        <p className="text-xs text-gray-300">This section requires a live account.</p>
-      </div>
-    </AdminLayout>
-  );
   const [docs, setDocs] = useState<HubSignDocument[]>([]);
   const [contractors, setContractors] = useState<HubUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -339,6 +330,16 @@ export default function AdminDocumentsPage() {
     }
   };
 
+
+  if (isDemo) return (
+    <AdminLayout>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+        <i className="ri-lock-2-line text-3xl opacity-40"></i>
+        <p className="text-sm font-medium">Not available in demo</p>
+        <p className="text-xs text-gray-300">This section requires a live account.</p>
+      </div>
+    </AdminLayout>
+  );
 
   return (
     <AdminLayout title="Documents">

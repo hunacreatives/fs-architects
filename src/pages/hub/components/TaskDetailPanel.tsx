@@ -556,7 +556,7 @@ export default function TaskDetailPanel({
               assigned_to_ids: nextAssigneeIds,
               assigned_by_name: currentUserName,
             },
-          }).catch(() => {});
+          }).catch(console.error);
         }
         onClose();
       } else {
@@ -589,7 +589,7 @@ export default function TaskDetailPanel({
                 assigned_to_ids: addedAssigneeIds,
                 assigned_by_name: currentUserName,
               },
-            }).catch(() => {});
+            }).catch(console.error);
           }
         }
 
@@ -773,7 +773,7 @@ export default function TaskDetailPanel({
           method: 'POST',
           headers: { 'Authorization': `Bearer ${supabaseAnonKey_}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ comment_id: data.id, task_id: task.id, author_id: currentUserId, author_name: currentUserName, body: newComment.trim(), project_id: task.project_id }),
-        }).catch(() => {});
+        }).catch(console.error);
       }
     }
     setNewComment('');
@@ -794,7 +794,7 @@ export default function TaskDetailPanel({
     setComments(prev => prev.filter(c => c.id !== commentId));
     if (comment?.attachment_url) {
       const fileId = driveFileIdFromUrl(comment.attachment_url);
-      if (fileId) supabase.functions.invoke('delete-from-drive', { body: { fileId } }).catch(() => {});
+      if (fileId) supabase.functions.invoke('delete-from-drive', { body: { fileId } }).catch(console.error);
     }
   };
 

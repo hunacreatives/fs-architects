@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SLACK_CHANNEL = 'C0830PCJB4P';
+const SLACK_CHANNEL = Deno.env.get('SLACK_ANNOUNCEMENTS_CHANNEL_ID') ?? 'C0BB58W8R1U';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -144,11 +144,11 @@ async function checkAndPost(): Promise<any> {
   }
 }
 
-async function updateMessage(ts: string, blocks: any[]) {
+async function updateMessage(ts: string, blocks: any[], name: string) {
   const res = await fetch('https://slack.com/api/chat.update', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ channel: SLACK_CHANNEL, ts, text: 'Happy Birthday, Abigail! 🎈', blocks }),
+    body: JSON.stringify({ channel: SLACK_CHANNEL, ts, text: `Happy Birthday, ${name}! 🎈`, blocks }),
   });
   return res.json();
 }
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
       { type: 'context', elements: [{ type: 'image', image_url: 'https://fsarchitects.ph/apple-touch-icon.png', alt_text: 'FS Architects' }, { type: 'mrkdwn', text: '*FS Architects* — From the whole team 🧡' }] },
     ];
 
-    const result = await updateMessage(body.update_ts, blocks);
+    const result = await updateMessage(body.update_ts, blocks, firstName);
     return new Response(JSON.stringify({ ok: true, result }), { headers: cors });
   }
 

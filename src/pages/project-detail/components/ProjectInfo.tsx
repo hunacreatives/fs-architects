@@ -35,6 +35,26 @@ function useReveal(threshold = 0.08) {
   return ref;
 }
 
+function FadeImg({ item, className, fadingIdx, name }: {
+  item: { src: string; idx: number };
+  className?: string;
+  fadingIdx: number | null;
+  name: string;
+}) {
+  const isSwapping = fadingIdx === item.idx;
+  return (
+    <div className={`mag-reveal mag-img${className ? ' ' + className : ''}`}>
+      <img
+        src={item.src}
+        alt={name}
+        style={{
+          opacity: isSwapping ? 0 : 1,
+        }}
+      />
+    </div>
+  );
+}
+
 export default function ProjectInfo({
   name,
   description,
@@ -141,9 +161,9 @@ export default function ProjectInfo({
           object-fit: cover;
           object-position: center;
           display: block;
-          transition: transform 1.8s ease-out, opacity 0.5s ease;
+          transition: transform 0.6s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease;
         }
-        .mag-img:hover img { transform: scale(1.05); }
+        .mag-img:hover img { transform: scale(1.04); }
       `}</style>
 
       {/* ── DESCRIPTION ─────────────────────────────────────────────────── */}
@@ -220,24 +240,6 @@ export default function ProjectInfo({
 
           const quoteAfterRow = Math.floor(rows.length * 0.5);
 
-          const FadeImg = ({ item, className }: { item: { src: string; idx: number }; className?: string }) => {
-            const isSwapping = fadingIdx === item.idx;
-            return (
-              <div className={`mag-reveal mag-img${className ? ' ' + className : ''}`}>
-                <img
-                  src={item.src}
-                  alt={name}
-                  style={{
-                    opacity: isSwapping ? 0 : 1,
-                    transition: isSwapping
-                      ? 'opacity 0.4s ease'
-                      : 'opacity 0.4s ease 0.1s, transform 1.8s ease-out',
-                  }}
-                />
-              </div>
-            );
-          };
-
           return rows.map((row, ri) => (
             <div key={ri}>
               <div className={`mt-0.5 ${row.type === 'pair' ? 'grid grid-cols-2 gap-0.5' : ''}`}>
@@ -245,10 +247,12 @@ export default function ProjectInfo({
                   <FadeImg
                     item={row.items[0]}
                     className="w-full"
+                    fadingIdx={fadingIdx}
+                    name={name}
                   />
                 ) : (
                   row.items.map((item) => (
-                    <FadeImg key={item.idx} item={item} className="aspect-[4/3]" />
+                    <FadeImg key={item.idx} item={item} className="aspect-[4/3]" fadingIdx={fadingIdx} name={name} />
                   ))
                 )}
               </div>

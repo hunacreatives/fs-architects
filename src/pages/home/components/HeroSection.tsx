@@ -233,7 +233,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               className={`flex flex-col items-end gap-0.5 transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
-              <p style={{ fontFamily: 'Marcellus, serif', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
                 {SLIDES[activeSlide].title}
               </p>
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, margin: 0 }}>
@@ -307,7 +307,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               className={`flex flex-col items-end gap-1 transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
-              <p style={{ fontFamily: 'Marcellus, serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
                 {SLIDES[activeSlide].title}
               </p>
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, margin: 0 }}>

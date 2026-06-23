@@ -172,6 +172,7 @@ export default function ContractorProfilePage() {
             </div>
             <div className="divide-y divide-gray-50">
               {[
+                { label: 'Contractor ID', value: u.employee_id || '—' },
                 { label: 'Full Name', value: user.full_name },
                 { label: 'Email', value: user.email },
                 { label: 'Phone', value: user.phone || '—' },

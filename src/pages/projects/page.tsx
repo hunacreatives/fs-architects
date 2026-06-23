@@ -1000,6 +1000,32 @@ export default function ProjectsPage() {
 
           {/* ── CATEGORY FILTERS, SORT & SEARCH ── */}
           <div className="px-4 md:px-16 lg:px-24 mb-8">
+            {/* Active location badge */}
+            {activeLocation !== 'all' && (
+              <div className="flex items-center gap-2 mb-4">
+                <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.35)' }}>
+                  Showing
+                </span>
+                <button
+                  onClick={() => setActiveLocation('all')}
+                  className="flex items-center gap-1.5 cursor-pointer group"
+                  style={{
+                    background: 'rgba(0,0,0,0.06)',
+                    border: '1px solid rgba(0,0,0,0.12)',
+                    borderRadius: '20px',
+                    padding: '4px 10px 4px 12px',
+                  }}
+                >
+                  <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.70)' }}>
+                    {activeLocation}
+                  </span>
+                  <i className="ri-close-line group-hover:text-black transition-colors" style={{ fontSize: '12px', color: 'rgba(0,0,0,0.40)' }} />
+                </button>
+                <span style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.04em', color: 'rgba(0,0,0,0.28)' }}>
+                  · {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
             {/* Category tabs — scrollable row */}
             <div className="relative overflow-hidden" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
               <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-hide pr-10 md:pr-0">

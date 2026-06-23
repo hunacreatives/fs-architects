@@ -616,6 +616,22 @@ export default function ContractorDashboard() {
               </div>
 
               <div className="relative">
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                    <div className="h-32 aspect-[4/5] rounded-2xl overflow-hidden bg-white/10">
+                      {(user as any)?.avatar_url ? (
+                        <img src={(user as any).avatar_url} alt={user?.full_name ?? ''} className="w-full h-full object-cover object-top" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-white text-2xl font-bold">{user?.full_name?.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                    {(user as any)?.employee_id && (
+                      <span className="font-mono text-white/40 text-[10px] tracking-wide">{(user as any).employee_id}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-white/50 text-xs flex items-center gap-1.5">
@@ -658,6 +674,8 @@ export default function ContractorDashboard() {
                   <i className="ri-slack-line"></i>
                   Type <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On</span>, <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On/Site</span>, or <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On/WFH</span> · <span className="font-mono bg-white/10 px-1 rounded mx-0.5">Off</span> in Slack
                 </p>
+                  </div>
+                </div>
               </div>
             </div>
 

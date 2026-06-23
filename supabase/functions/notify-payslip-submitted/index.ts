@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getAdminSlackIds } from '../_shared/slack.ts';
+import { dmAdmins } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
@@ -132,20 +132,9 @@ async function sendNotification(payout_id: string, type: 'submitted' | 'dispute'
   };
 
   if (type === 'dispute') {
-    if (SLACK_BOT_TOKEN) {
-      const adminIds = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-      for (const adminId of adminIds) {
-        try {
-          const dm = await slackPost('conversations.open', { users: adminId });
-          await slackPost('chat.postMessage', {
-            channel: dm.channel.id,
-            text: `🚩 *Payslip disputed* — *${contractor.full_name}* has flagged their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
-          });
-        } catch (slackErr) {
-          console.error('Slack DM failed (dispute notification):', slackErr);
-        }
-      }
-    }
+    await dmAdmins(SLACK_BOT_TOKEN, {
+      text: `🚩 *Payslip disputed* — *${contractor.full_name}* has flagged their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
+    });
     await pushToAdmins(supabase, 'Payslip disputed', `${contractor.full_name} has flagged their payslip for ${periodLabel}. Review needed.`, payrollUrl);
     return;
   }
@@ -208,20 +197,9 @@ async function sendNotification(payout_id: string, type: 'submitted' | 'dispute'
   await pushToAdmins(supabase, 'Payslip submitted', `${contractor.full_name} submitted their payslip for ${periodLabel} (${fmt(payout.final_payout)}). Review needed.`, payrollUrl);
 
   // Slack DM to admins — isolated so email success is not masked
-  if (SLACK_BOT_TOKEN) {
-    const adminIds = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    for (const adminId of adminIds) {
-      try {
-        const dm = await slackPost('conversations.open', { users: adminId });
-        await slackPost('chat.postMessage', {
-          channel: dm.channel.id,
-          text: `💰 *Payslip submitted* — *${contractor.full_name}* has submitted their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
-        });
-      } catch (slackErr) {
-        console.error('Slack DM failed (submit notification):', slackErr);
-      }
-    }
-  }
+  await dmAdmins(SLACK_BOT_TOKEN, {
+    text: `💰 *Payslip submitted* — *${contractor.full_name}* has submitted their payslip for *${periodLabel}* (${fmt(payout.final_payout)}). Review it here: ${payrollUrl}`,
+  });
 }
 
 Deno.serve(async (req) => {

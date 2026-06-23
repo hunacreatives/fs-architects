@@ -6,7 +6,7 @@ const supabase = createClient(
 );
 
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-import { getAdminSlackIds } from '../_shared/slack.ts';
+import { dmAdmins } from '../_shared/slack.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -29,30 +29,22 @@ async function slackPost(path: string, body: object) {
 async function notifySlack(client_name: string, project_name: string, amount_due: number | null) {
   const amountStr = amount_due ? ` · *${fmt(amount_due)}* due` : '';
   const text = `📧 *Payment reminder sent* to *${client_name}* for *${project_name}*${amountStr}.`;
-  const notifyUsers = await getAdminSlackIds(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  await Promise.all(notifyUsers.map(async (userId) => {
-    const opened = await slackPost('conversations.open', { users: userId });
-    const channel = opened.ok ? opened.channel?.id : userId;
-    await slackPost('chat.postMessage', {
-      channel,
-      blocks: [
-        {
-          type: 'section',
-          text: { type: 'mrkdwn', text },
-        },
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: { type: 'plain_text', text: 'View Projects →', emoji: true },
-              url: 'https://fsarchitects.ph/hub/admin/projects',
-            },
-          ],
-        },
-      ],
-    });
-  }));
+  await dmAdmins(SLACK_BOT_TOKEN, {
+    text,
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text } },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'View Projects →', emoji: true },
+            url: 'https://fsarchitects.ph/hub/admin/projects',
+          },
+        ],
+      },
+    ],
+  });
 }
 
 Deno.serve(async (req) => {

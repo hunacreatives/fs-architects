@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getAdminSlackIds } from '../_shared/slack.ts';
+import { dmAdmins } from '../_shared/slack.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -83,21 +83,7 @@ async function sendNotification(batchId: string, closedByName?: string | null) {
     `Contractors: ${contractorCount}\n` +
     `Closed by: ${closer}`;
 
-  const recipients = new Map<string, string>();
-
-  // Active admins/owners/HR (dynamic — no hardcoded recipients)
-  const adminIds = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  for (const id of adminIds) recipients.set(id, 'Admin');
-
-  for (const owner of owners ?? []) {
-    if (owner.slack_id) recipients.set(owner.slack_id, owner.full_name || 'Owner');
-  }
-
-  if (recipients.size === 0) {
-    console.warn('notify-payroll-closed: no Slack recipients found');
-    return;
-  }
-
+  // In-app push to active owners
   for (const owner of owners ?? []) {
     if (owner.id) {
       await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
@@ -108,15 +94,8 @@ async function sendNotification(batchId: string, closedByName?: string | null) {
     }
   }
 
-  await Promise.allSettled(
-    Array.from(recipients.keys()).map(async (slackId) => {
-      try {
-        await slackDm(slackId, message);
-      } catch (error) {
-        console.error('notify-payroll-closed: failed to DM recipient', { slackId, error });
-      }
-    }),
-  );
+  // Slack DM to FS admin (Francis Yu) + owner (Fretz)
+  await dmAdmins(SLACK_BOT_TOKEN, { text: message });
 }
 
 Deno.serve(async (req) => {

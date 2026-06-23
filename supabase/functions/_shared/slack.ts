@@ -1,54 +1,34 @@
 // Shared Slack helpers for FS Architects edge functions
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-// Slack IDs of the people who should receive internal/admin notifications:
-// active owners, admins, and HR. Looked up live from hub_users so no person
-// is ever hardcoded. Returns [] (and logs) if none have a Slack ID set.
-export async function getAdminSlackIds(
-  supabaseUrl: string,
-  serviceKey: string,
-): Promise<string[]> {
-  try {
-    const supabase = createClient(supabaseUrl, serviceKey);
-    const { data, error } = await supabase
-      .from('hub_users')
-      .select('slack_id')
-      .in('role', ['owner', 'admin', 'hr'])
-      .eq('status', 'active')
-      .not('slack_id', 'is', null);
-    if (error) { console.error('getAdminSlackIds query failed:', error); return []; }
-    const ids = (data ?? []).map((u: { slack_id: string | null }) => u.slack_id).filter(Boolean) as string[];
-    if (ids.length === 0) console.error('getAdminSlackIds: no active owner/admin/hr has a Slack ID set');
-    return ids;
-  } catch (err) {
-    console.error('getAdminSlackIds threw:', err);
-    return [];
-  }
+// Slack DM channel IDs for the people who receive internal/admin alerts:
+// Francis Yu (HR/admin) and Fretz Suralta (owner). Env-overridable. These are
+// DM channel IDs (D…), so messages post directly — no conversations.open needed.
+export function getAdminDmChannels(): string[] {
+  return [
+    Deno.env.get('ADMIN_SLACK_DM') ?? 'D0BA4V5NC3H', // Francis Yu — HR/admin
+    Deno.env.get('OWNER_SLACK_DM') ?? 'D0BA9F40H0T', // Fretz Suralta — owner
+  ];
 }
 
-// Emails of active owners/admins/HR — for internal email alerts. Dynamic, no
-// hardcoded addresses. Returns [] (and logs) if none found.
-export async function getAdminEmails(
-  supabaseUrl: string,
-  serviceKey: string,
-): Promise<string[]> {
-  try {
-    const supabase = createClient(supabaseUrl, serviceKey);
-    const { data, error } = await supabase
-      .from('hub_users')
-      .select('email')
-      .in('role', ['owner', 'admin', 'hr'])
-      .eq('status', 'active')
-      .not('email', 'is', null);
-    if (error) { console.error('getAdminEmails query failed:', error); return []; }
-    const emails = (data ?? []).map((u: { email: string | null }) => u.email).filter(Boolean) as string[];
-    if (emails.length === 0) console.error('getAdminEmails: no active owner/admin/hr has an email set');
-    return emails;
-  } catch (err) {
-    console.error('getAdminEmails threw:', err);
-    return [];
-  }
+// Post a message (text and/or blocks) to every admin DM channel. Best-effort.
+export async function dmAdmins(
+  token: string,
+  payload: { text?: string; blocks?: unknown[] },
+): Promise<void> {
+  if (!token) return;
+  await Promise.all(getAdminDmChannels().map(async (channel) => {
+    try {
+      const res = await fetch('https://slack.com/api/chat.postMessage', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, ...payload }),
+      });
+      const json = await res.json();
+      if (!json.ok) console.error('dmAdmins postMessage failed:', { channel, error: json.error });
+    } catch (err) {
+      console.error('dmAdmins threw:', { channel, err });
+    }
+  }));
 }
 
 export async function resolveSlackId(

@@ -6,7 +6,7 @@ const supabase = createClient(
 );
 
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-import { getAdminSlackIds } from '../_shared/slack.ts';
+import { dmAdmins } from '../_shared/slack.ts';
 
 async function slackPost(path: string, body: object) {
   const res = await fetch(`https://slack.com/api/${path}`, {
@@ -20,26 +20,21 @@ async function slackPost(path: string, body: object) {
 async function notifySlack(clientName: string, projectName: string, channel: string, amount: number | null) {
   const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const text = `💳 *Payment Proof Submitted*\n*${clientName}* sent proof for *${projectName}*${amount ? `\n> ${fmt(amount)} via ${channel}` : `\n> via ${channel}`}`;
-  const notifyUsers = await getAdminSlackIds(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  await Promise.all(notifyUsers.map(async (userId) => {
-    const opened = await slackPost('conversations.open', { users: userId });
-    const dmChannel = opened.ok ? opened.channel?.id : userId;
-    await slackPost('chat.postMessage', {
-      channel: dmChannel,
-      blocks: [
-        { type: 'section', text: { type: 'mrkdwn', text } },
-        {
-          type: 'actions',
-          elements: [{
-            type: 'button',
-            text: { type: 'plain_text', text: 'Review Proof →', emoji: true },
-            url: 'https://fsarchitects.ph/hub/admin/invoice-log',
-            style: 'primary',
-          }],
-        },
-      ],
-    });
-  }));
+  await dmAdmins(SLACK_BOT_TOKEN, {
+    text,
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text } },
+      {
+        type: 'actions',
+        elements: [{
+          type: 'button',
+          text: { type: 'plain_text', text: 'Review Proof →', emoji: true },
+          url: 'https://fsarchitects.ph/hub/admin/invoice-log',
+          style: 'primary',
+        }],
+      },
+    ],
+  });
 }
 
 const cors = {

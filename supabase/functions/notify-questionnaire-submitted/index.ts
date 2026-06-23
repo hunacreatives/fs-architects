@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-import { getAdminSlackIds } from '../_shared/slack.ts';
+import { dmAdmins } from '../_shared/slack.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -20,35 +20,6 @@ async function slackPost(path: string, body: object) {
   return res.json();
 }
 
-async function dm(userId: string, client_name: string, service_type: string) {
-  const opened = await slackPost('conversations.open', { users: userId });
-  const channel = opened.ok ? opened.channel?.id : userId;
-
-  const blocks = [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `📋 *New questionnaire submitted!*\n*${client_name}* just filled out their *${service_type}* questionnaire.`,
-      },
-    },
-    {
-      type: 'actions',
-      elements: [
-        {
-          type: 'button',
-          text: { type: 'plain_text', text: 'View responses →', emoji: true },
-          url: 'https://fsarchitects.ph/hub/admin/questionnaires',
-          style: 'primary',
-        },
-      ],
-    },
-  ];
-
-  const result = await slackPost('chat.postMessage', { channel, blocks });
-  console.log(`DM to ${userId}:`, JSON.stringify(result));
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -58,8 +29,26 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 400, headers: cors });
     }
 
-    const notifyUsers = await getAdminSlackIds(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    await Promise.all(notifyUsers.map(id => dm(id, client_name, service_type)));
+    await dmAdmins(SLACK_BOT_TOKEN, {
+      text: `📋 New questionnaire submitted by ${client_name}`,
+      blocks: [
+        {
+          type: 'section',
+          text: { type: 'mrkdwn', text: `📋 *New questionnaire submitted!*\n*${client_name}* just filled out their *${service_type}* questionnaire.` },
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'View responses →', emoji: true },
+              url: 'https://fsarchitects.ph/hub/admin/questionnaires',
+              style: 'primary',
+            },
+          ],
+        },
+      ],
+    });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: admins } = await supabase.from('hub_users').select('id').in('role', ['admin', 'owner']).eq('status', 'active');

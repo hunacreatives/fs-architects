@@ -4,7 +4,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
-import { fetchUserFinanceMap, mergeFinance, HUB_USER_SAFE_COLUMNS } from '@/lib/userFinance';
+import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_CONTRACTORS } from '@/lib/demoData';
 import AddContractorModal from './AddContractorModal';
@@ -39,7 +39,7 @@ export default function ContractorsPage() {
   const fetchContractors = async () => {
     const { data } = await supabase
       .from('hub_users')
-      .select(HUB_USER_SAFE_COLUMNS)
+      .select('*')
       .in('role', ['contractor', 'admin'])
       .neq('is_developer', true)
       .order('full_name');

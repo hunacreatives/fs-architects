@@ -4,7 +4,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { supabase } from '@/lib/supabase';
 import { HubUser, HubTimeOff, HubRequest, HubClient, HubAsset } from '@/lib/types';
-import { fetchUserFinanceMap, HUB_USER_SAFE_COLUMNS } from '@/lib/userFinance';
+import { fetchUserFinanceMap } from '@/lib/userFinance';
 import EditContractorModal from './EditContractorModal';
 import { getPeriods, fmtTime, fmtDate, localToday } from '@/lib/formatUtils';
 import { logAudit } from '@/lib/audit';
@@ -104,7 +104,7 @@ export default function ContractorDetailPage() {
     setLoading(true);
     try {
       const [u, to, req, assignmentsRes, ast] = await Promise.all([
-        supabase.from('hub_users').select(HUB_USER_SAFE_COLUMNS).eq('id', id).maybeSingle(),
+        supabase.from('hub_users').select('*').eq('id', id).maybeSingle(),
         supabase.from('hub_time_off').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
         supabase.from('hub_requests').select('*').eq('contractor_id', id).order('created_at', { ascending: false }),
         supabase.from('hub_client_assignments')

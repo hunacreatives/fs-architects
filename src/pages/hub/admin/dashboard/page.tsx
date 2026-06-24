@@ -807,38 +807,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Portfolio Health strip */}
-        {show('kpi') && isOwnerOrAdmin && (() => {
-          const collectionRate = totalContractValue > 0
-            ? Math.min(Math.round((totalCollected / totalContractValue) * 100), 100)
-            : 0;
-          return (
-            <div className="flex items-center gap-4 bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl px-5 py-3.5 shadow-sm">
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest flex-shrink-0">Portfolio</span>
-              <div className="flex-1 flex items-center gap-6 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
-                  <span className="text-sm font-semibold text-gray-800">{onTrackCount}</span>
-                  <span className="text-xs text-gray-400">on track</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
-                  <span className="text-sm font-semibold text-gray-800">{atRiskCount}</span>
-                  <span className="text-xs text-gray-400">at risk</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-indigo-300 flex-shrink-0"></span>
-                  <span className="text-sm font-semibold text-gray-800">{internalProjectCount}</span>
-                  <span className="text-xs text-gray-400">internal</span>
-                </div>
-                <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-xs text-gray-400">Collection rate</span>
-                  <span className="text-sm font-bold text-gray-800">{collectionRate}%</span>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Announcements + Quick Actions */}
         {(show('announcements') || show('quickActions')) && (

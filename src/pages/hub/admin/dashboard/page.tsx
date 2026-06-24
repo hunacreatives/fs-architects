@@ -208,18 +208,7 @@ export default function AdminDashboardPage() {
         supabase.from('hub_invoice_log').select('id, invoice_number, client_name, project_name, project_id, balance, sent_at').gt('balance', 0).eq('settled', false).order('sent_at', { ascending: false }),
         supabase.from('hub_invoice_payment_links').select('invoice_number, project_id, due_date').order('created_at', { ascending: false }),
       ]);
-      // Prefer the exact total the Payroll page computed and cached for this
-      // cutoff, so the dashboard estimate always matches the Payroll page. Fall
-      // back to the live calc only when no cache row exists yet (period never
-      // opened on the payroll page).
-      const { data: payrollCache } = await supabase
-        .from('hub_payroll_cache')
-        .select('computed_total')
-        .eq('period_start', cutoffStart)
-        .maybeSingle();
-      const payrollTotal = payrollCache?.computed_total != null
-        ? Number(payrollCache.computed_total)
-        : await fetchPayrollTotal(cutoffStart, cutoffEnd, parseFloat(usdRateStr || '56')).catch(() => 0);
+      const payrollTotal = await fetchPayrollTotal(cutoffStart, cutoffEnd, parseFloat(usdRateStr || '56')).catch(() => 0);
 
       if (!slackResult.error && slackResult.data?.attendance) {
         setAttendance(slackResult.data.attendance);
@@ -709,7 +698,7 @@ export default function AdminDashboardPage() {
                       <i className="ri-money-dollar-circle-line text-[#1c2b3a]/60 text-sm"></i>
                       <p className="text-[#c4522a] text-xs font-medium tracking-wide uppercase">Estimated Payroll</p>
                     </div>
-                    <p className="text-2xl font-bold text-[#7a2e10]">₱{totalPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-2xl font-bold text-[#7a2e10]">₱{totalPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
                     <p className="text-[#c4522a]/70 text-xs mt-1">
                       {currentPeriod.label} cutoff
                     </p>

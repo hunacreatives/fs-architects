@@ -5,7 +5,7 @@ interface IntroSequenceProps {
   onComplete: () => void;
 }
 
-const NAV_LOGO_SIZE = 43;
+const NAV_LOGO_SIZE = 30;
 const INTRO_LOGO_SIZE = 60;
 const TARGET_SCALE = NAV_LOGO_SIZE / INTRO_LOGO_SIZE;
 
@@ -33,8 +33,8 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       setPhase('moving');
       requestAnimationFrame(() => requestAnimationFrame(() => setAnimated(true)));
     }, 300);
-    const t2 = setTimeout(() => setPhase('fading'), 1800);
-    const t3 = setTimeout(() => { setPhase('done'); onComplete(); }, 2600);
+    const t2 = setTimeout(() => setPhase('fading'), 1500);
+    const t3 = setTimeout(() => { setPhase('done'); onComplete(); }, 2200);
     timersRef.current = [t1, t2, t3];
   }, [onComplete]);
 
@@ -46,8 +46,8 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
       let navPaddingLeft = 32;
       if (vw >= 1024) navPaddingLeft = 96;
       else if (vw >= 768) navPaddingLeft = 64;
-      const navLogoCenterX = navPaddingLeft + NAV_LOGO_SIZE / 2;
-      const navLogoCenterY = 6 + NAV_LOGO_SIZE / 2;
+      const navLogoCenterX = navPaddingLeft + NAV_LOGO_SIZE / 2 + 4;
+      const navLogoCenterY = 10 + NAV_LOGO_SIZE / 2;
       setTargetPos({ x: navLogoCenterX - vw / 2, y: navLogoCenterY - vh / 2 });
     };
     calc();
@@ -91,9 +91,13 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
       style={{
-        backgroundColor: '#000000',
+        backgroundColor: phase === 'video' ? '#000000' : '#2b3640',
         opacity: phase === 'fading' ? 0 : 1,
-        transition: phase === 'fading' ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+        transition: phase === 'fading'
+          ? 'opacity 0.85s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.6s ease'
+          : phase === 'hold' || phase === 'moving'
+          ? 'background-color 0.9s ease'
+          : 'none',
       }}
     >
       <div
@@ -103,7 +107,7 @@ export default function IntroSequence({ userInterrupted, onComplete }: IntroSequ
           height: INTRO_LOGO_SIZE,
           flexShrink: 0,
           transform,
-          transition: 'transform 1.5s cubic-bezier(0.76, 0, 0.24, 1)',
+          transition: 'transform 1.3s cubic-bezier(0.76, 0, 0.24, 1)',
           transformOrigin: 'center center',
           willChange: 'transform',
         }}

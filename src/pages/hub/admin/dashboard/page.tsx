@@ -373,6 +373,9 @@ export default function AdminDashboardPage() {
   }
 
   const onlineList = attendance.filter(r => r.status === 'on');
+  const inOfficeList = onlineList.filter(r => !r.work_location || r.work_location === 'in_office');
+  const wfhList = onlineList.filter(r => r.work_location === 'wfh');
+  const onSiteList = onlineList.filter(r => r.work_location === 'on_site');
   const offList = attendance.filter(r => r.status === 'off');
   const absentList = attendance.filter(r => r.status === 'absent');
 
@@ -622,26 +625,34 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {onlineList.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                      Working
-                    </p>
-                    <div className="space-y-2">
-                      {onlineList.map(r => (
-                        <div key={r.hub_user_id || r.full_name} className="flex items-center gap-2.5 p-2 rounded-lg bg-emerald-50/50">
-                          <Avatar name={r.full_name} url={r.avatar_url} size={8} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">{r.full_name}</p>
-                            {r.department && <p className="text-xs text-gray-400">{r.department}</p>}
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            {r.hours_today > 0 && <p className="text-xs font-medium text-emerald-600">{r.hours_today.toFixed(1)}h today</p>}
-                            <p className="text-xs text-gray-400">since {formatTime(r.last_punch)}</p>
-                          </div>
+                  <div className="mb-4 space-y-4">
+                    {([
+                      { list: inOfficeList, label: 'In Office', dot: 'bg-emerald-500', bg: 'bg-emerald-50/50' },
+                      { list: wfhList,      label: 'WFH',       dot: 'bg-sky-400',     bg: 'bg-sky-50/50'     },
+                      { list: onSiteList,   label: 'On Site',   dot: 'bg-violet-400',  bg: 'bg-violet-50/50'  },
+                    ] as const).filter(g => g.list.length > 0).map(g => (
+                      <div key={g.label}>
+                        <p className="text-xs text-gray-400 font-medium mb-2 flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${g.dot} inline-block animate-pulse`}></span>
+                          {g.label}
+                        </p>
+                        <div className="space-y-2">
+                          {g.list.map(r => (
+                            <div key={r.hub_user_id || r.full_name} className={`flex items-center gap-2.5 p-2 rounded-lg ${g.bg}`}>
+                              <Avatar name={r.full_name} url={r.avatar_url} size={8} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-800 truncate">{r.full_name}</p>
+                                {r.department && <p className="text-xs text-gray-400">{r.department}</p>}
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                {r.hours_today > 0 && <p className="text-xs font-medium text-emerald-600">{r.hours_today.toFixed(1)}h today</p>}
+                                <p className="text-xs text-gray-400">since {formatTime(r.last_punch)}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 

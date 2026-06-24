@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF } from '@/lib/demoData';
 import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
+import { fetchUserFinanceMap } from '@/lib/userFinance';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
 
@@ -387,6 +388,8 @@ export default function ContractorDashboard() {
           .eq('cutoff_start', periodStartStr)
           .maybeSingle(),
       ]);
+      const financeMap = await fetchUserFinanceMap([user.id]);
+      const finance = financeMap[user.id] ?? null;
 
       const days = mergeLiveAttendanceIntoDailyHours(
         ((attResult.data ?? []) as any[]).map((d: any) => ({ ...d, user_id: user.id })),
@@ -398,8 +401,8 @@ export default function ContractorDashboard() {
       const totalOT    = days.reduce((s: number, r: any) => s + (r.overtime_hours || 0), 0);
       setHoursThisCutoff(parseFloat(totalHours.toFixed(2)));
 
-      const currentMonthly = (user as any).monthly_rate || 0;
-      const currentHourly  = (user as any).hourly_rate  || 0;
+      const currentMonthly = finance?.monthly_rate ?? (user as any).monthly_rate ?? 0;
+      const currentHourly  = finance?.hourly_rate  ?? (user as any).hourly_rate  ?? 0;
       const history: any[] = rateRes.data ?? [];
       const changeInPeriod = history.find(r => r.effective_date >= periodStartStr && r.effective_date <= periodEndStr);
       const rateAtStart = [...history].filter(r => r.effective_date < periodStartStr).pop() || null;

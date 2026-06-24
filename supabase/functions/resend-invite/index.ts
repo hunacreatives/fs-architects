@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { guardAdmin } from '../_shared/auth.ts';
+import { corsHeaders, guardAdmin } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -8,11 +8,6 @@ const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@fsarchitects.ph';
 const HUB_BASE_URL = Deno.env.get('HUB_BASE_URL') ?? 'https://fsarchitects.ph';
 const LOGO_URL = 'https://fsarchitects.ph/images/fs-architects-logo.jpg';
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
-};
 
 function emailHtml(firstName: string, linkUrl: string, isReset: boolean) {
   const headline = isReset ? 'Password Reset' : 'Your invite link';
@@ -89,6 +84,7 @@ function emailHtml(firstName: string, linkUrl: string, isReset: boolean) {
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req); // restrict CORS to allowlisted origins (W-23)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const denied = await guardAdmin(req);

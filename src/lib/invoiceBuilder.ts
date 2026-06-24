@@ -117,6 +117,11 @@ export function buildInvoicePreviewHtml(params: {
   const logoUrl = 'https://www.hunacreatives.com/images/fc04818c74ad69bdfb22b93a6a0c6a72.png';
   const currency = form.currency;
   const fmt = (amount: number) => formatInvoiceCurrency(amount, currency);
+  // Escape any user-controlled text before embedding it in the invoice HTML to
+  // prevent stored XSS in the preview iframe and the print/PDF popup.
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => (
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c]
+  ));
   const issueDate = form.issue_date
     ? new Date(`${form.issue_date}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : '—';
@@ -127,13 +132,13 @@ export function buildInvoicePreviewHtml(params: {
     ? project.hub_project_payments.map((payment) => `
       <tr>
         <td>${new Date(payment.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-        <td>${payment.notes ?? 'Payment received'}</td>
+        <td>${esc(payment.notes ?? 'Payment received')}</td>
         <td class="amount paid">+ ${fmt(payment.amount)}</td>
       </tr>`).join('')
     : '';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Invoice #${form.invoice_number || String(project.id).padStart(4, '0')} — ${project.project_name}</title>
+<title>Invoice #${esc(form.invoice_number || String(project.id).padStart(4, '0'))} — ${esc(project.project_name)}</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;background:#f9fafb;padding:24px}
@@ -198,7 +203,7 @@ export function buildInvoicePreviewHtml(params: {
   </div>
   <div class="header-right">
     <h1>Invoice</h1>
-    <div class="inv">#${form.invoice_number || String(project.id).padStart(4, '0')}</div>
+    <div class="inv">#${esc(form.invoice_number || String(project.id).padStart(4, '0'))}</div>
   </div>
 </div>
 <div class="content">
@@ -211,13 +216,13 @@ www.hunacreatives.com</div>
   </div>
   <div class="meta-col right">
     <div class="eyebrow">Bill To</div>
-    <div class="title">${form.client_name || project.client_name}</div>
-    <div class="line">${form.send_to ? `${form.send_to}${form.billing_address ? '\n' : ''}` : ''}${form.billing_address}</div>
+    <div class="title">${esc(form.client_name || project.client_name)}</div>
+    <div class="line">${form.send_to ? `${esc(form.send_to)}${form.billing_address ? '\n' : ''}` : ''}${esc(form.billing_address)}</div>
   </div>
 </div>
 <div class="project-box">
-  <div class="name">${project.project_name}</div>
-  ${project.service ? `<div class="sub">${project.service}</div>` : ''}
+  <div class="name">${esc(project.project_name)}</div>
+  ${project.service ? `<div class="sub">${esc(project.service)}</div>` : ''}
   ${project.start_date ? `<div class="sub">Started ${new Date(project.start_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>` : ''}
 </div>
 <div class="details-grid--compact">
@@ -226,7 +231,7 @@ www.hunacreatives.com</div>
 </div>
 <table>
   <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-  <tbody>${normalizedLineItems.map((item) => `<tr><td>${item.description}</td><td class="amount">${fmt(parseFloat(item.amount) || 0)}</td></tr>`).join('')}</tbody>
+  <tbody>${normalizedLineItems.map((item) => `<tr><td>${esc(item.description)}</td><td class="amount">${fmt(parseFloat(item.amount) || 0)}</td></tr>`).join('')}</tbody>
 </table>
 ${includePaymentHistory && project.hub_project_payments.length > 0 ? `
 <table>
@@ -253,9 +258,9 @@ ${includePaymentHistory && project.hub_project_payments.length > 0 ? `
   </div>
   ${form.payment_instructions ? `
 <div class="notes-grid">
-  <div class="note-card"><div class="eyebrow">Payment Instructions</div><div class="body">${form.payment_instructions}</div></div>
+  <div class="note-card"><div class="eyebrow">Payment Instructions</div><div class="body">${esc(form.payment_instructions)}</div></div>
 </div>` : ''}
-  ${form.customer_notes ? `<div class="customer-note"><div class="body">${form.customer_notes}</div></div>` : ''}
+  ${form.customer_notes ? `<div class="customer-note"><div class="body">${esc(form.customer_notes)}</div></div>` : ''}
 <div class="footer">This email is not monitored. For questions, reach us at <a href="mailto:contact@hunacreatives.com" style="color:#9ca3af">contact@hunacreatives.com</a>.</div>
 </div>
 </div>

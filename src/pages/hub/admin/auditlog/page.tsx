@@ -47,6 +47,14 @@ export default function AuditLogPage() {
       q = q.eq('action', actionFilter);
       countQ = countQ.eq('action', actionFilter);
     }
+    const term = search.trim();
+    if (term) {
+      // Search the whole log on the server, not just the current page.
+      const escaped = term.replace(/[%,]/g, ' ');
+      const filter = `description.ilike.%${escaped}%,entity_type.ilike.%${escaped}%`;
+      q = q.or(filter);
+      countQ = countQ.or(filter);
+    }
     const [{ data }, { count }] = await Promise.all([q, countQ]);
     setLogs((data as HubAuditLog[]) ?? []);
     setTotalCount(count ?? 0);
@@ -55,9 +63,17 @@ export default function AuditLogPage() {
 
   useEffect(() => { fetchLogs(); }, [actionFilter, page]);
 
-  const filtered = logs.filter((l) =>
-    !search || l.description?.toLowerCase().includes(search.toLowerCase()) || l.entity_type?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Debounce search and reset to the first page when the term changes.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (page !== 0) setPage(0);
+      else fetchLogs();
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const filtered = logs;
 
   const timeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
@@ -90,7 +106,7 @@ export default function AuditLogPage() {
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
           </div>
           <div className="flex gap-1 bg-gray-100 p-1 rounded-lg flex-wrap">
-            {['all', 'create', 'update', 'delete', 'approve', 'upload'].map((a) => (
+            {['all', 'create', 'update', 'delete', 'approve', 'reject', 'upload', 'login'].map((a) => (
               <button key={a} onClick={() => { setActionFilter(a); setPage(0); }}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap capitalize ${actionFilter === a ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                 {a === 'all' ? 'All' : a}

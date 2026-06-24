@@ -50,7 +50,11 @@ export default function DevToolbar() {
     return () => window.removeEventListener('keydown', handler);
   }, [hubUser?.is_developer, hubUser?.id]);
 
-  if (!hubUser?.is_developer) return null;
+  // Second layer beyond the DB flag: the role-impersonation toolbar is hidden in
+  // production unless explicitly enabled via VITE_ENABLE_DEV_TOOLBAR. This way an
+  // accidental is_developer=true can't expose impersonation to a live user.
+  const devToolbarAllowed = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_TOOLBAR === 'true';
+  if (!hubUser?.is_developer || !devToolbarAllowed) return null;
 
   const hide = async () => {
     setHidden(true);

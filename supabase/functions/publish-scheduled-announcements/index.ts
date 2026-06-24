@@ -54,6 +54,30 @@ Deno.serve(async (req) => {
   const ids = due.map((a: any) => a.id);
   await supabase.from('hub_announcements').update({ published: true }).in('id', ids);
 
+  // In-app notifications for active contractors — parity with immediate publish.
+  const { data: contractors } = await supabase
+    .from('hub_users')
+    .select('id')
+    .eq('status', 'active')
+    .eq('role', 'contractor')
+    .neq('is_developer', true);
+  if (contractors && contractors.length > 0) {
+    const rows: any[] = [];
+    for (const a of due) {
+      for (const u of contractors) {
+        rows.push({
+          user_id: u.id,
+          type: 'announcement',
+          title: a.priority === 'urgent' ? '🚨 ' + a.title : a.title,
+          body: (a.body ?? '').slice(0, 100),
+          link: '/hub/employee/announcements',
+          read: false,
+        });
+      }
+    }
+    if (rows.length > 0) await supabase.from('hub_notifications').insert(rows);
+  }
+
   // Post each to Slack
   for (const a of due) {
     const posterName = (a.hub_users as any)?.full_name;

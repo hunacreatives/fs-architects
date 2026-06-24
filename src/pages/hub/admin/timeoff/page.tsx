@@ -210,8 +210,23 @@ export default function AdminTimeOffPage() {
     fetchBlackouts();
   };
 
+  // Non-owners can't finalize in bulk — they forward the selected requests to the
+  // owner, mirroring the single-item HR→owner workflow.
+  const bulkForward = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkUpdating(true);
+    await supabase.from('hub_time_off')
+      .update({ status: 'forwarded', forwarded_to_owner: true })
+      .in('id', Array.from(selectedIds));
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'time_off', description: `Bulk forwarded ${selectedIds.size} leave request(s) to owner` });
+    setSelectedIds(new Set());
+    setBulkUpdating(false);
+    fetchRequests();
+  };
+
   const bulkDecide = async (status: 'approved' | 'rejected') => {
     if (selectedIds.size === 0) return;
+    if (!isOwner) return; // safety: only the owner finalizes
     setBulkUpdating(true);
     await supabase.from('hub_time_off').update({ status, admin_notes: null }).in('id', Array.from(selectedIds));
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: status === 'approved' ? 'approve' : 'reject', entity_type: 'time_off', description: `Bulk ${status} ${selectedIds.size} leave request(s)` });
@@ -296,14 +311,23 @@ export default function AdminTimeOffPage() {
             {selectedIds.size > 0 && (
               <div className="flex items-center gap-3 px-4 py-2.5 bg-[#111827] rounded-xl">
                 <span className="text-xs text-white/60 flex-1">{selectedIds.size} selected</span>
-                <button onClick={() => bulkDecide('approved')} disabled={bulkUpdating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 cursor-pointer transition-colors">
-                  <i className="ri-check-line"></i> Approve All
-                </button>
-                <button onClick={() => bulkDecide('rejected')} disabled={bulkUpdating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-50 cursor-pointer transition-colors">
-                  <i className="ri-close-line"></i> Reject All
-                </button>
+                {isOwner ? (
+                  <>
+                    <button onClick={() => bulkDecide('approved')} disabled={bulkUpdating}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 cursor-pointer transition-colors">
+                      <i className="ri-check-line"></i> Approve All
+                    </button>
+                    <button onClick={() => bulkDecide('rejected')} disabled={bulkUpdating}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-rose-500 text-white rounded-lg hover:bg-rose-600 disabled:opacity-50 cursor-pointer transition-colors">
+                      <i className="ri-close-line"></i> Reject All
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={bulkForward} disabled={bulkUpdating}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 cursor-pointer transition-colors">
+                    <i className="ri-send-plane-line"></i> Forward All to Owner
+                  </button>
+                )}
                 <button onClick={() => setSelectedIds(new Set())} className="text-white/40 hover:text-white cursor-pointer transition-colors">
                   <i className="ri-close-line text-sm"></i>
                 </button>

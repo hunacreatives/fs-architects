@@ -75,28 +75,24 @@ export default function AdminOvertimePage() {
       updated_at: new Date().toISOString(),
     }).eq('id', selected.id);
 
-    // On approval, credit the full approved OT hours for that date directly into
-    // hub_daily_hours. HR approval is the source of truth here — it doesn't depend
-    // on Slack-logged raw hours, since Slack attendance tracking can be flaky or
-    // missing entirely (the request flow already required a reason/justification).
-    if (status === 'approved') {
-      const { data: approvedForDate } = await supabase
-        .from('hub_overtime_requests')
-        .select('hours')
-        .eq('contractor_id', selected.contractor_id)
-        .eq('date', selected.date)
-        .eq('status', 'approved')
-        .neq('id', selected.id);
+    // Recompute the date's total approved OT from scratch (the new status is
+    // already persisted above). This credits hours on approval AND removes them
+    // when a previously-approved request is rejected on re-review.
+    const { data: approvedForDate } = await supabase
+      .from('hub_overtime_requests')
+      .select('hours')
+      .eq('contractor_id', selected.contractor_id)
+      .eq('date', selected.date)
+      .eq('status', 'approved');
 
-      const totalApproved = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0) + (selected.hours || 0);
+    const totalApproved = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0);
 
-      await supabase.from('hub_daily_hours').upsert({
-        user_id: selected.contractor_id,
-        date: selected.date,
-        overtime_hours: totalApproved,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,date' });
-    }
+    await supabase.from('hub_daily_hours').upsert({
+      user_id: selected.contractor_id,
+      date: selected.date,
+      overtime_hours: totalApproved,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,date' });
 
     supabase.functions.invoke('notify-contractor', {
       body: { type: 'overtime_decision', contractor_id: selected.contractor_id, date: selected.date, hours: selected.hours, status, admin_notes: adminNotes || undefined },
@@ -227,6 +223,15 @@ export default function AdminOvertimePage() {
                   </span>
                 )}
               </div>
+              {selected.status === 'pending' && selected.hours > 4 && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                  <i className="ri-alarm-warning-line text-amber-500 text-sm mt-0.5"></i>
+                  <p className="text-xs text-amber-700">
+                    This is <strong>{selected.hours}h</strong> of overtime in one day. DOLE caps overtime at 8h/day —
+                    confirm this is correct before approving.
+                  </p>
+                </div>
+              )}
               {selected.status === 'pending' && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-700">Rate</span>

@@ -1,10 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { guardAdmin } from '../_shared/auth.ts';
-
-const CORS = {
-  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, guardAdmin } from '../_shared/auth.ts';
 
 // Sentro OS root folder (Drive) — created during Drive integration setup
 const SENTRO_ROOT = '1fuX6nxXERGIizoVEJRORUmvlO-auezNt';
@@ -58,6 +53,7 @@ async function createOrGetFolder(name: string, parentId: string, token: string):
 }
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req); // restrict CORS to allowlisted origins (W-23)
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
   const denied = await guardAdmin(req);

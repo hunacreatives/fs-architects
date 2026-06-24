@@ -6,7 +6,7 @@ export interface ProjectTask {
   project_id: number;
   title: string;
   description: string | null;
-  status: 'todo' | 'in_progress' | 'done';
+  status: 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done';
   priority: 'low' | 'medium' | 'high';
   due_date: string | null;
   start_date: string | null;
@@ -310,7 +310,11 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
             <div className="space-y-1.5">
               {selectedTasks.map(t => {
                 const isOverdue = t.due_date && t.due_date < today && t.status !== 'done';
-                const statusIcon = t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : t.status === 'in_progress' ? 'ri-loader-2-line text-sky-400' : 'ri-checkbox-blank-circle-line text-gray-300';
+                const statusIcon = t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500'
+                  : t.status === 'in_progress' ? 'ri-loader-2-line text-sky-400'
+                  : t.status === 'blocked' ? 'ri-error-warning-fill text-rose-400'
+                  : t.status === 'in_review' ? 'ri-eye-line text-amber-400'
+                  : 'ri-checkbox-blank-circle-line text-gray-300';
                 return (
                   <div key={t.id} className="flex items-center gap-2.5">
                     <i className={`${statusIcon} text-base flex-shrink-0`}></i>

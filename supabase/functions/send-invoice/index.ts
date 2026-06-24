@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { guardAdmin } from '../_shared/auth.ts';
+import { corsHeaders, guardAdmin } from '../_shared/auth.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'billing@fsarchitects.ph';
@@ -15,11 +15,6 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
-};
 
 const fmt = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -35,6 +30,7 @@ function normalizeRecipients(input: unknown) {
 }
 
 Deno.serve(async (req) => {
+  const cors = corsHeaders(req); // restrict CORS to allowlisted origins (W-23)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const denied = await guardAdmin(req);
@@ -67,6 +63,7 @@ Deno.serve(async (req) => {
       existing_invoice_log_id,
       preview_only,
       issue_date,
+      currency,
     } = await req.json();
     const toList = normalizeRecipients(to);
     const ccList = normalizeRecipients(cc);
@@ -360,6 +357,7 @@ Deno.serve(async (req) => {
       balance: amountDue,
       line_items: lineItems,
       show_payments: showPayments,
+      currency: currency === 'USD' ? 'USD' : 'PHP',
       sent_at: new Date().toISOString(),
     };
 

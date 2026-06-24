@@ -158,6 +158,7 @@ export default function AdminPerformancePage() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm('Delete this performance review? This cannot be undone.')) return;
     await supabase.from('hub_performance_reviews').delete().eq('id', id);
     setSelectedReview(null);
     fetchAll();

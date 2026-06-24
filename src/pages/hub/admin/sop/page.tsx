@@ -206,9 +206,9 @@ export default function SopPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Content</label>
-                <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={6}
-                  placeholder="Write the SOP content..." maxLength={500}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
+                <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10}
+                  placeholder="Write the SOP content..."
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-y" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Video URL (optional)</label>

@@ -13,9 +13,9 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const redirectTo = window.location.hostname === 'localhost'
-      ? `${window.location.origin}/hub/reset-password`
-      : 'https://fsarchitects.ph/hub/reset-password';
+    // Always send users back to the origin they requested the reset from, so
+    // staging/preview deploys don't bounce people to production.
+    const redirectTo = `${window.location.origin}/hub/reset-password`;
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     setLoading(false);
     if (err) {

@@ -1,9 +1,4 @@
-import { guardUser } from '../_shared/auth.ts';
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, guardUser } from '../_shared/auth.ts';
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -22,6 +17,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 Deno.serve(async (req) => {
+  const CORS = corsHeaders(req); // restrict CORS to allowlisted origins (W-23)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const denied = await guardUser(req);

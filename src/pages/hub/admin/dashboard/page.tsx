@@ -757,7 +757,7 @@ export default function AdminDashboardPage() {
                           <span className="ml-2 text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">{pendingTimeOff.length}</span>
                         )}
                       </h3>
-                      <button onClick={() => navigate('/hub/admin/time-off')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
+                      <button onClick={() => navigate('/hub/admin/timeoff')} className="text-xs text-[#1c2b3a] hover:underline cursor-pointer">View all</button>
                     </div>
                     {pendingTimeOff.length === 0 ? (
                       <div className="flex items-center gap-2 py-2">

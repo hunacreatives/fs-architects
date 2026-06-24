@@ -69,10 +69,18 @@ export default function SettingsPage() {
   };
 
   const savePassword = async () => {
+    if (!passwordForm.current) { showMessage('error', 'Enter your current password.'); return; }
     if (passwordForm.newPass !== passwordForm.confirm) { showMessage('error', 'Passwords do not match.'); return; }
     if (passwordForm.newPass.length < 8) { showMessage('error', 'Password must be at least 8 characters.'); return; }
     setPasswordSaving(true);
     try {
+      // Re-authenticate with the current password so a lingering session can't
+      // silently change credentials.
+      const email = user?.email;
+      if (!email) { showMessage('error', 'No email on file for this account.'); setPasswordSaving(false); return; }
+      const { error: reauthErr } = await supabase.auth.signInWithPassword({ email, password: passwordForm.current });
+      if (reauthErr) { showMessage('error', 'Current password is incorrect.'); setPasswordSaving(false); return; }
+
       const timeout = new Promise<{ error: Error }>(resolve => setTimeout(() => resolve({ error: new Error('Request timed out. Please try again.') }), 10000));
       const result = await Promise.race([supabase.auth.updateUser({ password: passwordForm.newPass }), timeout]);
       if (result.error) showMessage('error', result.error.message);
@@ -181,9 +189,17 @@ export default function SettingsPage() {
             <h3 className="font-semibold text-[#111827]">Change Password</h3>
             <div className="space-y-4">
               <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Current Password</label>
+                <input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                  placeholder="Enter your current password"
+                  autoComplete="current-password"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+              </div>
+              <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">New Password</label>
                 <input type="password" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })}
                   placeholder="At least 8 characters"
+                  autoComplete="new-password"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
               <div className="space-y-1">
@@ -193,7 +209,7 @@ export default function SettingsPage() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
               </div>
             </div>
-            <button onClick={savePassword} disabled={passwordSaving || !passwordForm.newPass || !passwordForm.confirm}
+            <button onClick={savePassword} disabled={passwordSaving || !passwordForm.current || !passwordForm.newPass || !passwordForm.confirm}
               className="px-5 py-2.5 text-sm bg-[#111827] text-white rounded-lg hover:bg-gray-800 disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap">
               {passwordSaving ? 'Updating...' : 'Update Password'}
             </button>

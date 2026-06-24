@@ -4,8 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_INVOICES } from '@/lib/demoData';
 
-const fmt = (n: number | null) =>
-  n == null ? '—' : '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n: number | null, currency: 'PHP' | 'USD' = 'PHP') =>
+  n == null ? '—' : new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-PH', {
+    style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(n);
 
 interface InvoiceLog {
   id: number;
@@ -21,6 +23,7 @@ interface InvoiceLog {
   balance: number | null;
   line_items: { description: string; amount: string }[] | null;
   show_payments: boolean;
+  currency?: 'PHP' | 'USD';
   sent_at: string;
   settled: boolean;
   settled_at: string | null;
@@ -372,14 +375,17 @@ export default function InvoiceLogPage() {
     const verified_at = new Date().toISOString();
 
     try {
-      // 1. Log payment to project
+      // 1. Log payment to project — if this fails, abort before marking verified,
+      // sending a receipt, or settling the invoice, so we never get a verified
+      // proof with no recorded payment.
       if (proof.project_id && proof.amount) {
-        await supabase.from('hub_project_payments').insert({
+        const { error: payErr } = await supabase.from('hub_project_payments').insert({
           project_id: proof.project_id,
           amount: proof.amount,
           paid_at: proof.submitted_at,
           notes: `${proof.payment_channel} — verified from client proof`,
         });
+        if (payErr) throw new Error(`Could not record the payment: ${payErr.message}`);
       }
 
       // 2. Fetch project for receipt email (contract price + contact email + updated total)
@@ -453,6 +459,8 @@ export default function InvoiceLogPage() {
       }).catch(console.error);
 
       setProofs(prev => prev.map(p => p.id === proof.id ? { ...p, verified: true, verified_at } : p));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Verification failed. Please try again.');
     } finally {
       setVerifying(prev => { const s = new Set(prev); s.delete(proof.id); return s; });
     }
@@ -619,10 +627,10 @@ export default function InvoiceLogPage() {
                         <p className="text-xs text-gray-400 hidden sm:block">{inv.sent_to}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold text-gray-900">{fmt(inv.contract_price)}</p>
+                        <p className="text-sm font-bold text-gray-900">{fmt(inv.contract_price, inv.currency)}</p>
                         {inv.balance != null && (
                           <p className={`text-xs font-medium ${inv.balance <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]/70'}`}>
-                            {inv.balance <= 0 ? 'Paid' : `${fmt(inv.balance)} due`}
+                            {inv.balance <= 0 ? 'Paid' : `${fmt(inv.balance, inv.currency)} due`}
                           </p>
                         )}
                       </div>
@@ -689,15 +697,15 @@ export default function InvoiceLogPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Total</p>
-                          <p className="font-semibold text-gray-900">{fmt(inv.contract_price)}</p>
+                          <p className="font-semibold text-gray-900">{fmt(inv.contract_price, inv.currency)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Paid</p>
-                          <p className="font-semibold text-emerald-600">{fmt(inv.total_paid)}</p>
+                          <p className="font-semibold text-emerald-600">{fmt(inv.total_paid, inv.currency)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Balance</p>
-                          <p className={`font-semibold ${(inv.balance ?? 1) <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]/70'}`}>{inv.balance != null && inv.balance <= 0 ? 'Paid ✓' : fmt(inv.balance)}</p>
+                          <p className={`font-semibold ${(inv.balance ?? 1) <= 0 ? 'text-emerald-600' : 'text-[#1c2b3a]/70'}`}>{inv.balance != null && inv.balance <= 0 ? 'Paid ✓' : fmt(inv.balance, inv.currency)}</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -756,7 +764,7 @@ export default function InvoiceLogPage() {
                                 <p className="text-xs text-gray-400 truncate">{inv.client_name}</p>
                               </div>
                               <div className="text-right flex-shrink-0">
-                                <p className="text-sm font-bold text-gray-700">{fmt(inv.contract_price)}</p>
+                                <p className="text-sm font-bold text-gray-700">{fmt(inv.contract_price, inv.currency)}</p>
                                 <p className="text-xs font-medium text-emerald-600">Paid</p>
                               </div>
                               <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-full flex-shrink-0">

@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 import { clearSupabaseAuthStorage, supabase, supabaseUrl_, supabaseAnonKey_ } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
-import { HUB_USER_SAFE_COLUMNS } from '@/lib/userFinance';
 
 interface AuthContextValue {
   session: Session | null;
@@ -37,13 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // to avoid race conditions with the async IDB storage adapter not having flushed yet.
         if (accessToken) {
           const res = await fetch(
-            `${supabaseUrl_}/rest/v1/hub_users?id=eq.${userId}&select=${HUB_USER_SAFE_COLUMNS}&limit=1`,
+            `${supabaseUrl_}/rest/v1/hub_users?id=eq.${userId}&select=*&limit=1`,
             { headers: { apikey: supabaseAnonKey_, Authorization: `Bearer ${accessToken}` } }
           );
           const rows = await res.json();
           return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
         }
-        const { data } = await supabase.from('hub_users').select(HUB_USER_SAFE_COLUMNS).eq('id', userId).maybeSingle();
+        const { data } = await supabase.from('hub_users').select('*').eq('id', userId).maybeSingle();
         return data ?? null;
       };
       return await Promise.race([queryFn(), timeout]);

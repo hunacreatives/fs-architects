@@ -677,7 +677,7 @@ export default function AdminPayrollPage() {
     try {
       const { data: hourlyCs } = await supabase
         .from('hub_users')
-        .select('id, full_name, avatar_url, currency, department')
+        .select('id, full_name, avatar_url, hourly_rate, currency, department')
         .eq('payment_type', 'hourly')
         .eq('status', 'active')
         .eq('role', 'contractor')
@@ -1073,7 +1073,7 @@ export default function AdminPayrollPage() {
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
-        .select('id, full_name, role, avatar_url, department, currency, payment_type, start_date, work_days')
+        .select('id, full_name, role, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days, payment_method, bank_name, bank_account_name, bank_account_number, bank_account_type')
         .eq('status', 'active')
         .in('role', ['contractor', 'admin'])
         .neq('is_developer', true),

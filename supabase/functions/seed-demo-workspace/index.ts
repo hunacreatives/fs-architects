@@ -3,11 +3,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-seed-secret',
   'Content-Type': 'application/json',
 };
 
-const DEMO_PASSWORD = 'SentroDemo2026!';
+// Demo password is read from the environment; never hardcoded or returned in responses.
+const DEMO_PASSWORD = Deno.env.get('DEMO_SEED_PASSWORD') ?? '';
 
 type DemoUserConfig = {
   email: string;
@@ -78,6 +79,16 @@ const DEMO_USERS: DemoUserConfig[] = [
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
+  // This function creates real auth users — gate it behind a server-only shared
+  // secret. It is disabled unless SEED_SECRET (and a demo password) are configured.
+  const seedSecret = Deno.env.get('SEED_SECRET') ?? '';
+  if (!seedSecret || !DEMO_PASSWORD) {
+    return new Response(JSON.stringify({ error: 'Demo seeding is disabled.' }), { status: 403, headers: CORS });
+  }
+  if (req.headers.get('x-seed-secret') !== seedSecret) {
+    return new Response(JSON.stringify({ error: 'Forbidden.' }), { status: 403, headers: CORS });
+  }
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -106,11 +117,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       message: 'Demo workspace seeded successfully.',
-      credentials: DEMO_USERS.map((user) => ({
-        role: user.role,
-        email: user.email,
-        password: DEMO_PASSWORD,
-      })),
+      // Credentials are intentionally not returned. The demo password is the
+      // configured DEMO_SEED_PASSWORD secret, known only to operators.
+      accounts: DEMO_USERS.map((user) => ({ role: user.role, email: user.email })),
     }, null, 2), {
       headers: CORS,
     });

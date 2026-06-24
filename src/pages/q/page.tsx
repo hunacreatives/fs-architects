@@ -36,15 +36,13 @@ export default function PublicQuestionnairePage() {
   useEffect(() => {
     if (!token) { setNotFound(true); setLoading(false); return; }
     supabase
-      .from('hub_questionnaires')
-      .select('id, service_type, client_name, token, status, questions, intro_message')
-      .eq('token', token)
-      .single()
+      .rpc('get_questionnaire_by_token', { p_token: token })
       .then(({ data, error }) => {
-        if (error || !data) { setNotFound(true); }
-        else if (data.status === 'submitted') { setSubmitted(true); setQ(data as Questionnaire); }
-        else if (data.status === 'draft') { setNotFound(true); }
-        else { setQ(data as Questionnaire); }
+        const row = Array.isArray(data) ? data[0] : data;
+        if (error || !row) { setNotFound(true); }
+        else if (row.status === 'submitted') { setSubmitted(true); setQ(row as Questionnaire); }
+        else if (row.status === 'draft') { setNotFound(true); }
+        else { setQ(row as Questionnaire); }
         setLoading(false);
       });
   }, [token]);
@@ -75,10 +73,7 @@ export default function PublicQuestionnairePage() {
     if (!validate() || !q) return;
     setSubmitting(true);
     const { error } = await supabase
-      .from('hub_questionnaires')
-      .update({ answers, status: 'submitted', submitted_at: new Date().toISOString() })
-      .eq('token', token!)
-      .eq('status', 'sent');
+      .rpc('submit_questionnaire', { p_token: token!, p_answers: answers });
     setSubmitting(false);
     if (error) { setErrors({ _form: 'Something went wrong. Please try again.' }); return; }
     await supabase.functions.invoke('notify-questionnaire-submitted', {

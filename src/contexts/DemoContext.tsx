@@ -29,7 +29,9 @@ export function DemoProvider({ children }: { children: ReactNode }) {
   );
 
   const demoSignIn = (passcode: string) => {
-    if (passcode.toLowerCase() === 'sentro2026') {
+    const expected = (import.meta.env.VITE_DEMO_PASSCODE as string | undefined)?.toLowerCase();
+    // Demo mode is disabled unless a passcode is configured in the environment.
+    if (expected && passcode.toLowerCase() === expected) {
       localStorage.setItem('hub_demo', '1');
       localStorage.setItem('hub_demo_role', 'owner');
       setIsDemo(true);

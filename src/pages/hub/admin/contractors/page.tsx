@@ -4,6 +4,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
+import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_CONTRACTORS } from '@/lib/demoData';
 import AddContractorModal from './AddContractorModal';
@@ -42,7 +43,9 @@ export default function ContractorsPage() {
       .in('role', ['contractor', 'admin'])
       .neq('is_developer', true)
       .order('full_name');
-    setContractors((data as HubUser[]) ?? []);
+    const list = (data as HubUser[]) ?? [];
+    const finance = await fetchUserFinanceMap(list.map((c) => c.id));
+    setContractors(mergeFinance(list, finance));
     setLoading(false);
   };
 

@@ -1,8 +1,9 @@
-import { useState, useRef, FormEvent } from 'react';
+import { useState, useRef, useEffect, FormEvent } from 'react';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { fetchUserFinanceMap, UserFinance } from '@/lib/userFinance';
 
 export default function ContractorProfilePage() {
   const { user, refreshHubUser } = useAuth();
@@ -17,6 +18,13 @@ export default function ContractorProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const u = user as any;
+
+  // Own pay rate / payment method come through the finance RPC (column read revoked).
+  const [selfFin, setSelfFin] = useState<UserFinance | null>(null);
+  useEffect(() => {
+    if (!u?.id) return;
+    fetchUserFinanceMap([u.id]).then((m) => { if (m[u.id]) setSelfFin(m[u.id]); });
+  }, [u?.id]);
 
   const blankForm = () => ({
     full_name: u?.full_name || '',
@@ -94,9 +102,11 @@ export default function ContractorProfilePage() {
   if (!user) return null;
 
   const payType = u.payment_type || 'hourly';
+  const monthlyRate = selfFin?.monthly_rate ?? u.monthly_rate;
+  const hourlyRate = selfFin?.hourly_rate ?? u.hourly_rate;
   const rateLabel = payType === 'fixed'
-    ? `PHP ${(u.monthly_rate || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}/month (fixed)`
-    : u.hourly_rate ? `PHP ${u.hourly_rate}/hr` : '—';
+    ? `PHP ${(monthlyRate || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}/month (fixed)`
+    : hourlyRate ? `PHP ${hourlyRate}/hr` : '—';
 
   const ecName = u.emergency_contact_name;
   const ecRel = u.emergency_contact_relationship;
@@ -183,7 +193,7 @@ export default function ContractorProfilePage() {
                 { label: 'Birthday', value: u.birthday ? new Date(u.birthday).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
                 { label: 'Start Date', value: user.start_date ? new Date(user.start_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—' },
                 { label: 'Rate', value: rateLabel },
-                { label: 'Payment Method', value: user.payment_method || '—' },
+                { label: 'Payment Method', value: selfFin?.payment_method ?? user.payment_method ?? '—' },
               ].map((row) => (
                 <div key={row.label} className="flex items-start justify-between px-5 py-3.5 gap-4">
                   <span className="text-sm text-gray-500 flex-shrink-0">{row.label}</span>

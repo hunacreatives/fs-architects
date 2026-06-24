@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPeriods, fmtTime, fmtDate, fmtPHP, localToday } from '@/lib/formatUtils';
 import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates } from '@/lib/payrollUtils';
+import { fetchUserFinanceMap } from '@/lib/userFinance';
 
 interface DayRow {
   date: string;
@@ -409,9 +410,19 @@ export default function ContractorPayoutsPage() {
     if ((hubUser as any)?.payment_type === 'hourly' && hubUser?.id) fetchHourlyData();
   }, [hubUser]);
 
+  // Own pay rate is served through the finance RPC (direct column read revoked).
+  const [selfRate, setSelfRate] = useState<{ hourly_rate: number | null; monthly_rate: number | null } | null>(null);
+  useEffect(() => {
+    if (!hubUser?.id) return;
+    fetchUserFinanceMap([hubUser.id]).then((m) => {
+      const f = m[hubUser.id];
+      if (f) setSelfRate({ hourly_rate: f.hourly_rate, monthly_rate: f.monthly_rate });
+    });
+  }, [hubUser?.id]);
+
   const paymentType = (hubUser as any)?.payment_type || 'hourly';
-  const currentHourlyRate = Number((hubUser as any)?.hourly_rate || 0);
-  const currentMonthlyRate = Number((hubUser as any)?.monthly_rate || 0);
+  const currentHourlyRate = Number(selfRate?.hourly_rate ?? (hubUser as any)?.hourly_rate ?? 0);
+  const currentMonthlyRate = Number(selfRate?.monthly_rate ?? (hubUser as any)?.monthly_rate ?? 0);
   const workDays = ((hubUser as any)?.work_days as string[] | null | undefined) || [];
   const currency = (hubUser as any)?.currency || 'PHP';
   const isUSD = currency === 'USD';
@@ -580,7 +591,7 @@ export default function ContractorPayoutsPage() {
   const handleHourlyRequest = async () => {
     if (!hubUser || !hourlyPeriod || submitting) return;
     const totalHoursBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
-    const rate = Number((hubUser as any).hourly_rate || 0);
+    const rate = Number(selfRate?.hourly_rate ?? (hubUser as any).hourly_rate ?? 0);
     const basePay = totalHoursBillable * rate;
     const hourlyOtByDate: Record<string, number> = {};
     for (const d of hourlyDays) { if (d.overtime_hours) hourlyOtByDate[d.date] = (hourlyOtByDate[d.date] || 0) + d.overtime_hours; }
@@ -681,7 +692,7 @@ export default function ContractorPayoutsPage() {
     const hBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
     const hOvertime = hourlyDays.reduce((s, d) => s + (d.overtime_hours || 0), 0);
     const hRaw = hourlyDays.reduce((s, d) => s + d.hours_raw, 0);
-    const hRate = Number((hubUser as any).hourly_rate || 0);
+    const hRate = Number(selfRate?.hourly_rate ?? (hubUser as any).hourly_rate ?? 0);
     const hBase = hBillable * hRate;
     const hOT = hOvertime * hRate;
     const hTotal = hBase + hOT;

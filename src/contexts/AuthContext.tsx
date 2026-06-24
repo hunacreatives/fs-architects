@@ -75,6 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profile = await loadHubUser(nextUser.id);
     if (!mountedRef.current || requestId !== profileRequestIdRef.current) return;
 
+    // Eject deactivated accounts that still carry a valid session.
+    if (profile && profile.status !== 'active') {
+      await supabase.auth.signOut();
+      resetAuthState();
+      setLoading(false);
+      return;
+    }
+
     // Don't overwrite an existing authenticated user if the DB query returned null
     // (transient error, timeout, tab-switch re-hydration failure). Keep the previous
     // hubUser when the session belongs to the same user.
@@ -146,6 +154,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (mountedRef.current) setLoading(false);
       return {
         error: new Error('Your account signed in, but no hub profile was found for this workspace.'),
+        hubUser: null,
+      };
+    }
+
+    // Deactivated accounts must not hold a session, even if they authenticate.
+    if (profile.status !== 'active') {
+      await supabase.auth.signOut();
+      resetAuthState();
+      if (mountedRef.current) setLoading(false);
+      return {
+        error: new Error('Your account is inactive. Please contact your administrator.'),
         hubUser: null,
       };
     }

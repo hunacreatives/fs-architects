@@ -65,10 +65,12 @@ export default function ContractorCredentialsPage() {
     if (!hubUser?.id) return;
     setLoading(true);
 
+    // Secrets are served only through an authorization-checked RPC — the catalog
+    // and any decrypted password/additional_info for assigned/approved credentials
+    // come back together, scoped server-side. Direct table reads of secret columns
+    // are revoked, so a contractor can never fetch another client's password.
     const [credsRes, reqsRes, clientsRes] = await Promise.all([
-      supabase.from('hub_credentials')
-        .select('id, client_name, platform, login_type, status, account_email, otp_contact, notes')
-        .order('client_name').order('platform'),
+      supabase.rpc('get_my_credentials'),
       supabase.from('hub_credential_requests')
         .select('id, credential_id, status, reason')
         .eq('contractor_id', hubUser.id),
@@ -77,7 +79,11 @@ export default function ContractorCredentialsPage() {
         .eq('assigned_contractor_id', hubUser.id),
     ]);
 
-    const credList = (credsRes.data as CredentialCatalog[]) ?? [];
+    const rpcRows = (credsRes.data as any[]) ?? [];
+    const credList: CredentialCatalog[] = rpcRows.map((r) => ({
+      id: r.id, client_name: r.client_name, platform: r.platform, login_type: r.login_type,
+      status: r.status, account_email: r.account_email, otp_contact: r.otp_contact, notes: r.notes,
+    }));
     const reqList = (reqsRes.data as MyRequest[]) ?? [];
     const autoClientNames = new Set<string>((clientsRes.data ?? []).map((c: any) => c.client_name));
 
@@ -86,23 +92,11 @@ export default function ContractorCredentialsPage() {
     setAssignedClients(autoClientNames);
     setExpandedClients(new Set(credList.map((c) => c.client_name)));
 
-    // Fetch full data for: auto-access clients + approved requests
-    const approvedIds = new Set(reqList.filter((r) => r.status === 'approved').map((r) => r.credential_id));
-    const needFullIds = credList
-      .filter((c) => autoClientNames.has(c.client_name) || approvedIds.has(c.id))
-      .map((c) => c.id);
-
-    if (needFullIds.length > 0) {
-      const { data: full } = await supabase
-        .from('hub_credentials')
-        .select('id, password, additional_info')
-        .in('id', needFullIds);
-      const map: Record<string, FullData> = {};
-      (full ?? []).forEach((c: any) => { map[c.id] = { password: c.password, additional_info: c.additional_info }; });
-      setFullData(map);
-    } else {
-      setFullData({});
-    }
+    const map: Record<string, FullData> = {};
+    rpcRows.forEach((r) => {
+      if (r.has_access) map[r.id] = { password: r.password, additional_info: r.additional_info };
+    });
+    setFullData(map);
 
     setLoading(false);
   };

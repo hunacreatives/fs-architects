@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { localToday } from '@/lib/formatUtils';
+import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 
 const DAY_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
@@ -315,7 +316,9 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
     isRestDayByUser[req.contractor_id][req.date] = req.is_rest_day;
   }
 
-  const contractors = (contractorsRes.data || []).filter((c: any) =>
+  // Salary columns are served only through the authorization-checked finance RPC.
+  const financeMap = await fetchUserFinanceMap((contractorsRes.data || []).map((c: any) => c.id));
+  const contractors = mergeFinance((contractorsRes.data || []) as any[], financeMap).filter((c: any) =>
     c.payment_type !== 'project_based' &&
     (!c.start_date || c.start_date <= periodEnd)
   );

@@ -84,8 +84,10 @@ export default function CredentialsVaultPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    // Secrets are stored encrypted and direct column reads are revoked; the admin
+    // RPC decrypts and returns the full list (admin-only, enforced server-side).
     const [{ data: creds }, { data: reqs }] = await Promise.all([
-      supabase.from('hub_credentials').select('*').order('client_name').order('platform'),
+      supabase.rpc('admin_list_credentials'),
       supabase
         .from('hub_credential_requests')
         .select('*, hub_users!contractor_id(full_name, avatar_url), hub_credentials!credential_id(platform, client_name)')
@@ -174,24 +176,22 @@ export default function CredentialsVaultPage() {
   const save = async () => {
     if (!form.client_name.trim() || !form.platform.trim()) return;
     setSaving(true);
-    const payload = {
-      client_name: form.client_name.trim(),
-      platform: form.platform.trim(),
-      login_type: form.login_type,
-      account_email: form.account_email.trim() || null,
-      password: form.password.trim() || null,
-      otp_contact: form.otp_contact.trim() || null,
-      additional_info: form.additional_info.trim() || null,
-      status: form.status,
-      notes: form.notes.trim() || null,
-      updated_at: new Date().toISOString(),
-    };
-    if (editingCred) {
-      await supabase.from('hub_credentials').update(payload).eq('id', editingCred.id);
-    } else {
-      await supabase.from('hub_credentials').insert({ ...payload, created_by: hubUser?.id });
-    }
+    // Write through the RPC so secrets are encrypted server-side. Passing the
+    // current id updates; null inserts.
+    const { error } = await supabase.rpc('admin_save_credential', {
+      p_id: editingCred?.id ?? null,
+      p_client_name: form.client_name.trim(),
+      p_platform: form.platform.trim(),
+      p_account_email: form.account_email.trim() || null,
+      p_login_type: form.login_type,
+      p_otp_contact: form.otp_contact.trim() || null,
+      p_status: form.status,
+      p_notes: form.notes.trim() || null,
+      p_password: form.password.trim() || null,
+      p_additional_info: form.additional_info.trim() || null,
+    });
     setSaving(false);
+    if (error) { showToast('Failed to save credential. Try again.'); return; }
     setShowAdd(false);
     showToast(editingCred ? 'Credential updated.' : 'Credential added.');
     fetchData();

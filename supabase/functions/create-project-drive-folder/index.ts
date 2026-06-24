@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { guardAdmin } from '../_shared/auth.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
@@ -58,6 +59,9 @@ async function createOrGetFolder(name: string, parentId: string, token: string):
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+
+  const denied = await guardAdmin(req);
+  if (denied) return denied;
 
   try {
     const { project_id, client_name, project_name } = await req.json();

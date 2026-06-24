@@ -56,8 +56,22 @@ const addDays = (date: string, n: number) => {
   d.setDate(d.getDate() + n);
   return d.toISOString().split('T')[0];
 };
-const daysBetween = (a: string, b: string) =>
-  Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000) + 1;
+const WEEKDAY_TOKENS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const DEFAULT_WORK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
+
+// Count scheduled work days in an inclusive range, skipping rest days. Leave is
+// measured in working days, so a request spanning a weekend must not over-deduct.
+const workingDaysBetween = (start: string, end: string, workDays?: string[] | null) => {
+  const set = new Set((workDays && workDays.length ? workDays : DEFAULT_WORK_DAYS).map((d) => d.toLowerCase()));
+  const s = new Date(start + 'T12:00:00');
+  const e = new Date(end + 'T12:00:00');
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+  let count = 0;
+  for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+    if (set.has(WEEKDAY_TOKENS[d.getDay()])) count++;
+  }
+  return count;
+};
 
 export default function ContractorTimeOffPage() {
   const { user } = useAuth();
@@ -94,12 +108,13 @@ export default function ContractorTimeOffPage() {
   const approvedThisYear = requests.filter(
     (r) => r.status === 'approved' && new Date(r.start_date).getFullYear() === year
   );
+  const workDays = (user as any)?.work_days as string[] | undefined;
   const ptoUsed = approvedThisYear
     .filter((r) => r.type === 'pto' || r.type === 'vacation')
-    .reduce((sum, r) => sum + (r.half_day ? 0.5 : daysBetween(r.start_date, r.end_date)), 0);
+    .reduce((sum, r) => sum + (r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, workDays)), 0);
   const sickUsed = approvedThisYear
     .filter((r) => r.type === 'sick')
-    .reduce((sum, r) => sum + (r.half_day ? 0.5 : daysBetween(r.start_date, r.end_date)), 0);
+    .reduce((sum, r) => sum + (r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, workDays)), 0);
   const ptoLeft = Math.max(0, PTO_LIMIT - ptoUsed);
   const sickLeft = Math.max(0, SICK_LIMIT - sickUsed);
 
@@ -113,7 +128,7 @@ export default function ContractorTimeOffPage() {
     ? ptoEligibleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null;
 
-  const effectiveDays = halfDay ? 0.5 : (startDate && endDate ? daysBetween(startDate, endDate) : 0);
+  const effectiveDays = halfDay ? 0.5 : (startDate && endDate ? workingDaysBetween(startDate, endDate, workDays) : 0);
 
   // Validation
   const validate = () => {
@@ -179,7 +194,7 @@ export default function ContractorTimeOffPage() {
     setSaving(false);
     setShowModal(false);
     const endForCalc = halfDay ? startDate : endDate;
-    const days = halfDay ? 0.5 : Math.ceil((new Date(endForCalc).getTime() - new Date(startDate).getTime()) / 86400000) + 1;
+    const days = halfDay ? 0.5 : workingDaysBetween(startDate, endForCalc, workDays);
     supabase.functions.invoke('notify-internal-request', {
       body: { type: 'time_off', contractor_name: user.full_name, detail: `${type} · ${startDate}${halfDay ? '' : ` – ${endDate}`}`, notes: reason || null },
     }).catch(console.error);
@@ -269,7 +284,7 @@ export default function ContractorTimeOffPage() {
         ) : (
           <div className="space-y-2">
             {requests.map((r) => {
-              const days = r.half_day ? 0.5 : daysBetween(r.start_date, r.end_date);
+              const days = r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, workDays);
               return (
                 <div key={r.id} className="bg-white border border-gray-100 rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3">

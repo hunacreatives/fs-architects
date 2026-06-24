@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { guardAdmin } from '../_shared/auth.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'billing@fsarchitects.ph';
@@ -35,6 +36,9 @@ function normalizeRecipients(input: unknown) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  const denied = await guardAdmin(req);
+  if (denied) return denied;
 
   try {
     const {

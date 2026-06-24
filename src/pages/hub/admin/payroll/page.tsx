@@ -8,6 +8,7 @@ import { useDemo } from '@/contexts/DemoContext';
 import { FULL_MONTHS, getPeriods, fmtCurrency as fmt, getNextPayrollCutoff, localToday } from '@/lib/formatUtils';
 import { logAudit } from '@/lib/audit';
 import { getSetting, setSetting } from '@/lib/settings';
+import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 import { DEMO_PAYOUTS, DEMO_CONTRACTORS } from '@/lib/demoData';
 import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeSplitOTPayFromDates, getOTMultiplier } from '@/lib/payrollUtils';
 
@@ -689,7 +690,9 @@ export default function AdminPayrollPage() {
         .in('contractor_id', ids)
         .in('status', ['submitted', 'hr_approved'])
         .order('cutoff_end', { ascending: false });
-      const cMap: Record<string, any> = Object.fromEntries(hourlyCs.map((c: any) => [c.id, c]));
+      const hourlyFinance = await fetchUserFinanceMap(ids);
+      const hourlyMerged = mergeFinance(hourlyCs as any[], hourlyFinance);
+      const cMap: Record<string, any> = Object.fromEntries(hourlyMerged.map((c: any) => [c.id, c]));
       const merged = (payouts || []).map((p: any) => ({ ...p, contractor: cMap[p.contractor_id] }));
       setHourlyRequests(merged);
       const batchIds = [...new Set((payouts || []).filter((p: any) => p.batch_id).map((p: any) => p.batch_id))];
@@ -1099,7 +1102,12 @@ export default function AdminPayrollPage() {
       if (p.payment_date) paidPaymentDateMap[p.contractor_id] = p.payment_date;
     }
 
-    const eligibleContractors = (contractorsRes.data || []).filter((c: any) =>
+    // Salary/bank columns are no longer directly selectable; merge them in from
+    // the authorization-checked finance RPC before any pay computation.
+    const payrollFinance = await fetchUserFinanceMap((contractorsRes.data || []).map((c: any) => c.id));
+    const contractorsWithFinance = mergeFinance((contractorsRes.data || []) as any[], payrollFinance);
+
+    const eligibleContractors = contractorsWithFinance.filter((c: any) =>
       c.payment_type !== 'project_based' &&
       (!c.start_date || c.start_date <= selectedPeriod.end)
     );

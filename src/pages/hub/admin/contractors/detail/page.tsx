@@ -4,6 +4,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { supabase } from '@/lib/supabase';
 import { HubUser, HubTimeOff, HubRequest, HubClient, HubAsset } from '@/lib/types';
+import { fetchUserFinanceMap } from '@/lib/userFinance';
 import EditContractorModal from './EditContractorModal';
 import { getPeriods, fmtTime, fmtDate, localToday } from '@/lib/formatUtils';
 import { logAudit } from '@/lib/audit';
@@ -112,7 +113,11 @@ export default function ContractorDetailPage() {
         supabase.from('hub_assets').select('*').eq('assigned_to', id),
       ]);
 
-      const user = (u.data as HubUser) ?? null;
+      let user = (u.data as HubUser) ?? null;
+      if (user) {
+        const finance = await fetchUserFinanceMap([user.id]);
+        if (finance[user.id]) user = { ...user, ...finance[user.id] } as HubUser;
+      }
       setContractor(user);
       if (user) {
         setScheduleForm({

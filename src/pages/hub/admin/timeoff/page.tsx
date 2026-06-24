@@ -39,8 +39,23 @@ const statusLabels: Record<string, string> = {
   pending: 'Pending', forwarded: 'Forwarded', approved: 'Approved', rejected: 'Rejected',
 };
 
-const daysBetween = (a: string, b: string) =>
-  Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000) + 1;
+const WEEKDAY_TOKENS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const DEFAULT_WORK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
+
+// Count scheduled work days in an inclusive range, skipping the employee's rest
+// days (weekends or whatever their work_days exclude). DOLE leave entitlements are
+// measured in working days, so a leave spanning a weekend must not over-deduct.
+const workingDaysBetween = (start: string, end: string, workDays?: string[] | null) => {
+  const set = new Set((workDays && workDays.length ? workDays : DEFAULT_WORK_DAYS).map((d) => d.toLowerCase()));
+  const s = new Date(start + 'T12:00:00');
+  const e = new Date(end + 'T12:00:00');
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+  let count = 0;
+  for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+    if (set.has(WEEKDAY_TOKENS[d.getDay()])) count++;
+  }
+  return count;
+};
 
 export default function AdminTimeOffPage() {
   const { hubUser } = useAuth();
@@ -68,7 +83,7 @@ export default function AdminTimeOffPage() {
     setLoading(true);
     let q = supabase
       .from('hub_time_off')
-      .select('*, hub_users(full_name, avatar_url, department, start_date)')
+      .select('*, hub_users(full_name, avatar_url, department, start_date, work_days)')
       .order('created_at', { ascending: false });
     if (statusFilter !== 'all') q = q.eq('status', statusFilter);
     const { data } = await q;
@@ -88,7 +103,7 @@ export default function AdminTimeOffPage() {
     const yearEnd = `${year}-12-31`;
 
     const [usersRes, leavesRes] = await Promise.all([
-      supabase.from('hub_users').select('id, full_name, avatar_url, department, start_date, annual_pto_days, annual_sick_days').eq('status', 'active').eq('role', 'contractor').neq('is_developer', true),
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, start_date, annual_pto_days, annual_sick_days, work_days').eq('status', 'active').eq('role', 'contractor').neq('is_developer', true),
       supabase.from('hub_time_off').select('contractor_id, type, status, start_date, end_date, half_day').gte('start_date', yearStart).lte('start_date', yearEnd).eq('status', 'approved'),
     ]);
 
@@ -98,17 +113,14 @@ export default function AdminTimeOffPage() {
       leavesByUser[l.contractor_id].push(l);
     }
 
-    const daysBetween = (a: string, b: string) =>
-      Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / 86400000) + 1;
-
     const result = (usersRes.data || []).map((u: any) => {
       const ptoLimit = u.annual_pto_days ?? 15;
       const sickLimit = u.annual_sick_days ?? 10;
       const leaves = leavesByUser[u.id] || [];
       const ptoUsed = leaves.filter((l: any) => l.type === 'pto' || l.type === 'vacation')
-        .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : daysBetween(l.start_date, l.end_date)), 0);
+        .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : workingDaysBetween(l.start_date, l.end_date, u.work_days)), 0);
       const sickUsed = leaves.filter((l: any) => l.type === 'sick')
-        .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : daysBetween(l.start_date, l.end_date)), 0);
+        .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : workingDaysBetween(l.start_date, l.end_date, u.work_days)), 0);
       const ptoEligible = u.start_date
         ? new Date() >= new Date(new Date(u.start_date).setMonth(new Date(u.start_date).getMonth() + 6))
         : false;
@@ -131,7 +143,8 @@ export default function AdminTimeOffPage() {
   useEffect(() => { fetchBlackouts(); }, []);
   useEffect(() => { if (tab === 'balances') fetchBalances(); }, [tab]);
 
-  const days = (r: HubTimeOff) => r.half_day ? 0.5 : daysBetween(r.start_date, r.end_date);
+  const days = (r: HubTimeOff) =>
+    r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, (r.hub_users as any)?.work_days);
 
   const openReview = (r: HubTimeOff) => {
     setSelected(r);

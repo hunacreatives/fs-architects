@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import ContractorSidebar from './ContractorSidebar';
 import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
+import PushNotificationPrompt from './PushNotificationPrompt';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const QUICK_ACTIONS = [
   { label: 'Submit Payslip', icon: 'ri-send-plane-line', path: '/hub/employee/payouts', iconCls: 'bg-slate-50 text-[#1c2b3a]' },
@@ -36,6 +38,7 @@ export default function ContractorLayout({ children, title, titleContent, action
   const { loading, session, signOut } = useAuth();
   const { hubUser } = useHubAuth();
   const { isDemo, demoRole, demoSignOut, setDemoRole } = useDemo();
+  const push = usePushNotifications();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('contractor_sidebar_collapsed') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -361,6 +364,16 @@ export default function ContractorLayout({ children, title, titleContent, action
           {/* Page content */}
           <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
             <div className="max-w-7xl mx-auto">
+              {!isDemo && (
+                <PushNotificationPrompt
+                  supported={push.supported}
+                  canPrompt={push.canPrompt}
+                  needsSettings={push.needsSettings}
+                  subscribing={push.subscribing}
+                  error={push.error}
+                  onEnable={() => { void push.enableNotifications(); }}
+                />
+              )}
               {children}
             </div>
           </main>

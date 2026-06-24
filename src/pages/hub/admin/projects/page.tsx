@@ -4,6 +4,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { GanttTimeline } from '@/pages/hub/components/GanttTimeline';
 import { supabase } from '@/lib/supabase';
+import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 import { createHubNotifications } from '@/lib/hubNotifications';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
@@ -643,7 +644,10 @@ export default function AdminProjectsPage() {
       supabase.from('hub_clients').select('id, client_name, platform, status, notes, contract_value, contract_currency, hub_client_assignments(id, contractor_id, role, hub_users(id, full_name, avatar_url, department))').order('client_name'),
     ]);
     setProjects((pRes.data as Project[]) ?? []);
-    setContractors((cRes.data as Contractor[]) ?? []);
+    // project_percentage is served through the finance RPC (column read revoked).
+    const cList = (cRes.data as any[]) ?? [];
+    const cFinance = await fetchUserFinanceMap(cList.map((c) => c.id));
+    setContractors(mergeFinance(cList, cFinance) as Contractor[]);
     setIntlClients((clientRes.data ?? []).map((c: any) => ({
       id: c.id, client_name: c.client_name, platform: c.platform, status: c.status,
       notes: c.notes, contract_value: c.contract_value, contract_currency: c.contract_currency,

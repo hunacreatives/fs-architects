@@ -1,3 +1,5 @@
+import { guardUser } from '../_shared/auth.ts';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,6 +23,9 @@ async function getAccessToken(): Promise<string> {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+
+  const denied = await guardUser(req);
+  if (denied) return denied;
 
   try {
     const { fileId } = await req.json();

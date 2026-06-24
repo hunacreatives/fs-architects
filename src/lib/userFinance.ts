@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase';
 
+// Non-sensitive hub_users columns, safe to read directly. Sensitive financial/bank
+// columns are intentionally excluded — they come through get_user_finance(). Used
+// in place of SELECT * so a column-level revoke on the sensitive columns can never
+// break these queries (SELECT * would error when some columns aren't granted).
+// No spaces, so it can be dropped straight into a PostgREST select= URL param.
+export const HUB_USER_SAFE_COLUMNS =
+  'id,full_name,email,role,avatar_url,phone,birthday,address,emergency_contact,emergency_contact_name,emergency_contact_relationship,emergency_contact_phone,slack_username,slack_id,department,start_date,status,onboarding_completed,is_developer,shift_start,shift_end,work_days,annual_pto_days,annual_sick_days,contract_expiry_date,dev_toolbar_hidden,currency,payment_type,avatar_position,avatar_scale,created_at,updated_at';
+
 // Sensitive hub_users columns are no longer directly readable (see migration
 // 20260624000008). They are served through the get_user_finance RPC, which only
 // returns rows the caller is authorized to see (own row, or all for admin/hr).

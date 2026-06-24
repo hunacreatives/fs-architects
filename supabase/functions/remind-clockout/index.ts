@@ -100,6 +100,8 @@ async function run() {
   );
   if (!slack.ok) { console.error('slack history error', slack.error); return; }
 
+  console.log(`Slack returned ${(slack.messages || []).length} messages (has_more=${slack.has_more})`);
+
   // Collect on/off punches per Slack user (oldest → newest).
   const messages = [...(slack.messages || [])].reverse();
   const punches: Record<string, { status: 'on' | 'off'; ts: number }[]> = {};
@@ -112,6 +114,10 @@ async function run() {
     }
   }
 
+  console.log('punches found:', JSON.stringify(
+    Object.fromEntries(Object.entries(punches).map(([id, list]) => [id, list[list.length - 1]]))
+  ));
+
   // Map active Slack users → hub_users.
   const stillOn: { slackId: string; onTs: number }[] = [];
   for (const [slackId, list] of Object.entries(punches)) {
@@ -122,6 +128,8 @@ async function run() {
     if (elapsed > MAX_SESSION_HOURS) continue;     // stale/forgotten session
     stillOn.push({ slackId, onTs: last.ts });
   }
+
+  console.log('stillOn:', JSON.stringify(stillOn));
   if (!stillOn.length) return;
 
   const { data: users } = await supabase

@@ -302,16 +302,14 @@ Deno.serve(async (req) => {
         .eq('is_manual', true)
         .or(userDatePairs.join(','));
       if (manualErr) {
-        // If we can't confirm which rows are manual, don't risk overwriting any.
-        console.error('manual rows lookup failed, skipping hours upsert this cycle', manualErr);
-      } else {
-        const manualSet = new Set((manualRows || []).map((r: any) => `${r.user_id}::${r.date}`));
-        const safeUpserts = hoursUpserts.filter((r: any) => !manualSet.has(`${r.user_id}::${r.date}`));
-        if (safeUpserts.length > 0) {
-          await supabase
-            .from('hub_daily_hours')
-            .upsert(safeUpserts, { onConflict: 'user_id,date' });
-        }
+        console.error('manual rows lookup failed, proceeding without manual-edit guard', manualErr);
+      }
+      const manualSet = new Set((manualRows || []).map((r: any) => `${r.user_id}::${r.date}`));
+      const safeUpserts = hoursUpserts.filter((r: any) => !manualSet.has(`${r.user_id}::${r.date}`));
+      if (safeUpserts.length > 0) {
+        await supabase
+          .from('hub_daily_hours')
+          .upsert(safeUpserts, { onConflict: 'user_id,date' });
       }
     }
 

@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHubAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
@@ -9,6 +9,20 @@ import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+
+const EMPLOYEE_BOTTOM_NAV = [
+  { to: '/hub/employee/dashboard',    label: 'Dashboard',   icon: 'ri-layout-grid-line' },
+  { to: '/hub/employee/attendance',   label: 'Attendance',  icon: 'ri-time-line' },
+  { to: '/hub/employee/requests',     label: 'Requests',    icon: 'ri-inbox-line' },
+  { to: '/hub/employee/timeoff',      label: 'Time Off',    icon: 'ri-calendar-event-line' },
+  { to: '/hub/employee/overtime',     label: 'Overtime',    icon: 'ri-timer-flash-line' },
+  { to: '/hub/employee/payouts',      label: 'Payouts',     icon: 'ri-money-dollar-circle-line' },
+  { to: '/hub/employee/documents',    label: 'Documents',   icon: 'ri-file-list-3-line' },
+  { to: '/hub/employee/credentials',  label: 'Credentials', icon: 'ri-lock-2-line' },
+  { to: '/hub/employee/sop',          label: 'SOP',         icon: 'ri-book-open-line' },
+  { to: '/hub/employee/announcements',label: 'Notices',     icon: 'ri-megaphone-line' },
+  { to: '/hub/employee/profile',      label: 'Profile',     icon: 'ri-user-line' },
+];
 
 const QUICK_ACTIONS = [
   { label: 'Submit Payslip', icon: 'ri-send-plane-line', path: '/hub/employee/payouts', iconCls: 'bg-slate-50 text-[#1c2b3a]' },
@@ -198,12 +212,6 @@ export default function ContractorLayout({ children, title, titleContent, action
         >
           {/* Top bar */}
           <header className="border-b border-white/60 px-4 md:px-6 h-[78px] flex items-center gap-4 flex-shrink-0 bg-transparent">
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="lg:hidden w-10 h-10 rounded-2xl border border-gray-100 bg-white text-gray-500 hover:text-gray-900 cursor-pointer"
-            >
-              <i className="ri-menu-line text-lg"></i>
-            </button>
             <div className="flex-1 min-w-0">
               {titleContent ?? (title && <h1 className="text-gray-900 font-semibold text-lg sm:text-[28px] leading-tight truncate">{title}</h1>)}
             </div>
@@ -379,6 +387,34 @@ export default function ContractorLayout({ children, title, titleContent, action
           </main>
         </div>
       </div>
+      {/* Mobile bottom tab bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
+        style={{
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(0,0,0,0.06)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}>
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex px-2 py-2 gap-1" style={{ minWidth: 'max-content' }}>
+            {EMPLOYEE_BOTTOM_NAV.map(item => (
+              <NavLink key={item.to} to={item.to}
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all cursor-pointer min-w-[68px] ${
+                    isActive
+                      ? 'bg-[#1c2b3a]/10 text-[#1c2b3a]'
+                      : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100/60'
+                  }`
+                }>
+                <i className={`${item.icon} text-[26px] leading-none`}></i>
+                <span className="text-[11px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </nav>
+
       <DevToolbar />
     </div>
   );

@@ -82,7 +82,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
   <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <div style="background:#111827;padding:24px 32px;">
       <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
-      <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Payslip Approved</h1>
+      <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Payslip approved</h1>
       <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">Payment is on its way</p>
     </div>
     <div style="padding:28px 32px;">
@@ -125,9 +125,9 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
         const dm = await slackPost('conversations.open', { users: slackId });
         await slackPost('chat.postMessage', {
           channel: dm.channel.id,
-          text: `✅ Payslip Approved — ${fmt(payout.final_payout)} for ${periodLabel}`,
+          text: `✅ Payslip approved — ${fmt(payout.final_payout)} for ${periodLabel}`,
           blocks: [
-            { type: 'section', text: { type: 'mrkdwn', text: `✅ *Payslip Approved*\n${fmt(payout.final_payout)} for ${periodLabel} — payment within 2 business days.` } },
+            { type: 'section', text: { type: 'mrkdwn', text: `✅ *Payslip approved*\n${fmt(payout.final_payout)} for ${periodLabel} — payment within 2 business days.` } },
             { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Payslip →' }, url: HUB_URL, style: 'primary' }] },
           ],
         });
@@ -135,7 +135,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
         console.error('Slack DM failed (hr_approved):', slackErr);
       }
     }
-    await sendPush(payout.contractor_id, 'Payslip Approved', `Your payslip for ${periodLabel} (${fmt(payout.final_payout)}) has been approved. Payment incoming.`, HUB_URL);
+    await sendPush(payout.contractor_id, 'Payslip approved', `Your payslip for ${periodLabel} (${fmt(payout.final_payout)}) has been approved. Payment incoming.`, HUB_URL);
   }
 
   if (type === 'dispute_resolved') {
@@ -146,7 +146,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
   <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
     <div style="background:#111827;padding:24px 32px;">
       <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
-      <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Dispute Resolved</h1>
+      <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Dispute resolved</h1>
       <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">HR has reviewed your flag</p>
     </div>
     <div style="padding:28px 32px;">
@@ -189,9 +189,9 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
         const dm = await slackPost('conversations.open', { users: slackId });
         await slackPost('chat.postMessage', {
           channel: dm.channel.id,
-          text: `🔔 Dispute Resolved — ${periodLabel}`,
+          text: `🔔 Dispute resolved — ${periodLabel}`,
           blocks: [
-            { type: 'section', text: { type: 'mrkdwn', text: `🔔 *Dispute Resolved*\nYour payslip flag for ${periodLabel} has been reviewed. Questions? Reach out on Slack.` } },
+            { type: 'section', text: { type: 'mrkdwn', text: `🔔 *Dispute resolved*\nYour payslip flag for ${periodLabel} has been reviewed. Questions? Reach out on Slack.` } },
             { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'View Payslip →' }, url: HUB_URL, style: 'primary' }] },
           ],
         });
@@ -199,7 +199,7 @@ async function sendNotification(payout_id: string, type: 'hr_approved' | 'disput
         console.error('Slack DM failed (dispute_resolved):', slackErr);
       }
     }
-    await sendPush(payout.contractor_id, 'Dispute Resolved', `Your payslip dispute for ${periodLabel} has been reviewed and resolved by HR.`, HUB_URL);
+    await sendPush(payout.contractor_id, 'Dispute resolved', `Your payslip dispute for ${periodLabel} has been reviewed and resolved by HR.`, HUB_URL);
   }
 }
 

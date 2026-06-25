@@ -79,9 +79,9 @@ Deno.serve(async (req) => {
       notifTitle = 'Time off approved';
       notifBody = `Your ${leave_type} request for ${start_date} to ${end_date} has been approved.`;
     } else {
-      slackText = `❌ *Time Off Not Approved*\n${leave_type} — ${start_date} to ${end_date}`;
-      notifTitle = 'Time off not approved';
-      notifBody = `Your ${leave_type} request for ${start_date} to ${end_date} was not approved.`;
+      slackText = `❌ *Time Off Declined*\n${leave_type} — ${start_date} to ${end_date}`;
+      notifTitle = 'Time off declined';
+      notifBody = `Your ${leave_type} request for ${start_date} to ${end_date} was declined.`;
     }
 
     const slackId = await resolveSlackId(SLACK_BOT_TOKEN, user?.slack_id, user?.email).catch(() => null);

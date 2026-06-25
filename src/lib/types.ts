@@ -77,6 +77,7 @@ export interface HubRequest {
   type: string;
   title: string;
   description?: string;
+  amount?: number;
   attachment_url?: string;
   status: 'open' | 'in_review' | 'resolved' | 'closed';
   admin_notes?: string;

@@ -84,7 +84,7 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
       if (u?.full_name) approvedBy = u.full_name;
     }
     to = ADMIN_EMAIL;
-    subject = `Funds Approved — ${batch.period_label} | ${total}`;
+    subject = `Funds approved — ${batch.period_label} | ${total}`;
     heading = 'Fund Transfer Approved';
     subheading = 'Proceed with contractor payments';
     bodyText = `<strong>${approvedBy}</strong> has approved the fund transfer for payroll period <strong>${batch.period_label}</strong>. You can now proceed to mark contractors as paid.`;
@@ -167,7 +167,7 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
         );
       }
       if (owner?.id) {
-        await sendPush(owner.id, 'Fund Transfer Needed', `HR has approved payroll for ${batch.period_label} (${total}). Review and confirm the transfer.`, PAYROLL_URL);
+        await sendPush(owner.id, 'Fund transfer needed', `HR has approved payroll for ${batch.period_label} (${total}). Review and confirm the transfer.`, PAYROLL_URL);
       }
     } catch (_) { /* non-fatal */ }
   }
@@ -181,7 +181,7 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
           await slackDm(admin.slack_id, `✅ *Fund transfer approved — ${batch.period_label}*\nThe owner has approved the ${totalFmt} transfer. Proceed with marking employees as paid.`).catch(() => {});
         }
         if (admin.id) {
-          await sendPush(admin.id, 'Funds Approved', `The owner approved the transfer for ${batch.period_label} (${totalFmt}). Proceed with payments.`, PAYROLL_URL);
+          await sendPush(admin.id, 'Funds approved', `The owner approved the transfer for ${batch.period_label} (${totalFmt}). Proceed with payments.`, PAYROLL_URL);
         }
       }
     } catch (_) { /* non-fatal */ }

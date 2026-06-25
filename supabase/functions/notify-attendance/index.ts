@@ -114,9 +114,10 @@ Deno.serve(async (req) => {
       // hub_daily_hours has no created_at column — first_on is the actual clock-in instant
       eventTime = record.first_on ?? new Date().toISOString();
     } else if (eventType === 'UPDATE' && record.last_off && !oldRecord?.last_off) {
-      const hours = record.hours_raw ? parseFloat(record.hours_raw).toFixed(1) : '?';
+      const raw = record.hours_raw ? parseFloat(record.hours_raw) : 0;
+      const hours = raw % 1 === 0 ? raw.toFixed(0) : raw.toFixed(1);
       title = `${firstName} clocked out`;
-      body = `Logged ${hours}h today`;
+      body = `Logged ${hours} hours today`;
       eventTime = record.last_off ?? new Date().toISOString();
     } else {
       return new Response('no push needed', { headers: cors });

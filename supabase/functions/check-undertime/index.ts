@@ -214,10 +214,10 @@ async function run() {
 
       // ── Owner + admins: FYI ──
       const mgrTitle = 'Undertime alert';
-      const mgrBody = `${emp.full_name} has logged undertime (under ${UNDERTIME_THRESHOLD_HOURS}h) on ${count} days this pay period (${label}).`;
+      const mgrBody = `${emp.full_name} has logged undertime (under ${UNDERTIME_THRESHOLD_HOURS} hours) on ${count} days this pay period (${label}).`;
       const mgrEmailHtml = `<strong>${emp.full_name}</strong> has logged undertime — fewer than ${UNDERTIME_THRESHOLD_HOURS} clocked hours — on <strong>${count} scheduled work days</strong> during the pay period <strong>${label}</strong>.<br><br>They have been asked to explain. Review their attendance below.`;
       for (const m of managers) {
-        if (m.slack_id) await slackDm(m.slack_id, `:warning: *Undertime alert — ${emp.full_name}*\n${count} undertime days (under ${UNDERTIME_THRESHOLD_HOURS}h) this pay period (*${label}*). They've been asked to explain.`);
+        if (m.slack_id) await slackDm(m.slack_id, `:warning: *Undertime alert — ${emp.full_name}*\n${count} undertime days (under ${UNDERTIME_THRESHOLD_HOURS} hours) this pay period (*${label}*). They've been asked to explain.`);
         if (m.email) await sendEmail(m.email, `Undertime alert — ${emp.full_name} (${label})`, mgrTitle, label, mgrEmailHtml, 'Review Attendance →', adminUrl);
         await inApp(m.id, mgrTitle, mgrBody, adminUrl);
         await sendPush(m.id, mgrTitle, mgrBody, adminUrl);
@@ -225,9 +225,9 @@ async function run() {
 
       // ── Employee: explain ──
       const empTitle = 'Please explain your undertime';
-      const empBody = `Our records show ${count} undertime days (under ${UNDERTIME_THRESHOLD_HOURS}h) this pay period (${label}). Please reach out to HR with an explanation.`;
+      const empBody = `Our records show ${count} undertime days (under ${UNDERTIME_THRESHOLD_HOURS} hours) this pay period (${label}). Please reach out to HR with an explanation.`;
       const empEmailHtml = `Hi ${first},<br><br>Our records show <strong>${count} undertime days</strong> — fewer than ${UNDERTIME_THRESHOLD_HOURS} clocked hours on a scheduled work day — during the pay period <strong>${label}</strong>.<br><br>Please reach out to HR with an explanation. If you think this is a mistake, check your logged hours below.`;
-      if (emp.slack_id) await slackDm(emp.slack_id, `Hi ${first} — our records show *${count} undertime days* (under ${UNDERTIME_THRESHOLD_HOURS}h) this pay period (*${label}*). Please reply here or reach out to HR to explain.`);
+      if (emp.slack_id) await slackDm(emp.slack_id, `Hi ${first} — our records show *${count} undertime days* (under ${UNDERTIME_THRESHOLD_HOURS} hours) this pay period (*${label}*). Please reply here or reach out to HR to explain.`);
       if (emp.email) await sendEmail(emp.email, `Action needed: undertime this pay period (${label})`, empTitle, label, empEmailHtml, 'View My Hours →', employeeUrl);
       await inApp(emp.id, empTitle, empBody, employeeUrl);
       await sendPush(emp.id, empTitle, empBody, employeeUrl);

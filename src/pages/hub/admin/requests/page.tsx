@@ -46,6 +46,31 @@ export default function RequestsPage() {
   const updateStatus = async (id: number, status: string) => {
     setUpdating(true);
     await supabase.from('hub_requests').update({ status, admin_notes: adminNotes, updated_at: new Date().toISOString() }).eq('id', id);
+
+    if (status === 'resolved' && selected?.type === 'reimbursement' && selected?.amount) {
+      const { data: batches } = await supabase
+        .from('hub_payroll_batches')
+        .select('id')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const activeBatch = batches?.[0];
+      if (activeBatch) {
+        const { data: payout } = await supabase
+          .from('hub_payouts')
+          .select('id, adjustments')
+          .eq('contractor_id', selected.contractor_id)
+          .eq('batch_id', activeBatch.id)
+          .maybeSingle();
+        if (payout) {
+          const newAdj = { label: `Reimbursement: ${selected.title}`, amount: selected.amount, type: 'reimbursement' };
+          await supabase.from('hub_payouts')
+            .update({ adjustments: [...(payout.adjustments || []), newAdj] })
+            .eq('id', payout.id);
+        }
+      }
+    }
+
     setUpdating(false);
     setSelected(null);
     fetch();
@@ -99,6 +124,13 @@ export default function RequestsPage() {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColors[selected.status]}`}>{selected.status.replace('_', ' ')}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{typeLabels[selected.type] || selected.type}</span>
               </div>
+              {selected.amount != null && (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                  <i className="ri-money-peso-circle-line text-emerald-600"></i>
+                  <span className="text-sm font-semibold text-emerald-700">₱{selected.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-xs text-emerald-500">· will be added to payslip on resolve</span>
+                </div>
+              )}
               {selected.description && <p className="text-sm text-gray-600">{selected.description}</p>}
               {selected.attachment_url && (
                 <div className="space-y-1.5">

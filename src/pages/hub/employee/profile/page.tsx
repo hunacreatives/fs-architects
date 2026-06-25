@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { fetchUserFinanceMap, UserFinance } from '@/lib/userFinance';
 
 export default function ContractorProfilePage() {
-  const { user, refreshHubUser } = useAuth();
+  const { user, refreshHubUser, signOut } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'info' | 'password'>('info');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -267,6 +269,21 @@ export default function ContractorProfilePage() {
             </button>
           </div>
         )}
+      </div>
+
+      <div className="max-w-2xl mt-2">
+        <div className="bg-white border border-gray-100 rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Sign out</p>
+            <p className="text-xs text-gray-400 mt-0.5">You'll need to sign in again to access Sentro.</p>
+          </div>
+          <button
+            onClick={async () => { await signOut(); navigate('/hub/login'); }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <i className="ri-logout-box-r-line"></i> Sign out
+          </button>
+        </div>
       </div>
 
       {cropSrc && (

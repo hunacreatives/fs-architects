@@ -287,13 +287,6 @@ export default function AdminLayout({ children, title, actions }: Props) {
             {actions}
             <GlobalSearch />
             <NotificationBell />
-            <button
-              onClick={() => { if (isDemo) { demoSignOut(); navigate('/hub/demo'); } else signOut(); }}
-              className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-red-500 cursor-pointer flex-shrink-0"
-              title="Sign out"
-            >
-              <i className="ri-logout-box-r-line text-base"></i>
-            </button>
           </div>
         </header>
 

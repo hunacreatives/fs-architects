@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +9,8 @@ import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const { isDemo } = useDemo();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const { hubUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'system'>('profile');
@@ -268,6 +270,21 @@ export default function SettingsPage() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="max-w-2xl mt-6">
+        <div className="bg-white border border-gray-100 rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Sign out</p>
+            <p className="text-xs text-gray-400 mt-0.5">You'll need to sign in again to access Sentro.</p>
+          </div>
+          <button
+            onClick={async () => { await signOut(); navigate('/hub/login'); }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <i className="ri-logout-box-r-line"></i> Sign out
+          </button>
+        </div>
       </div>
 
       {cropSrc && (

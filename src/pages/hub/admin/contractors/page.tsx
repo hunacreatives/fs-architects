@@ -10,6 +10,7 @@ import { DEMO_CONTRACTORS } from '@/lib/demoData';
 import AddContractorModal from './AddContractorModal';
 
 type ConfirmAction = { type: 'deactivate' | 'delete' | 'resend-invite' | 'reset-password'; contractor: HubUser };
+type SyncResult = { updated: string[]; notFound: string[]; unchanged: number; errors: string[] };
 type Toast = { id: number; message: string; type: 'success' | 'error' };
 
 export default function ContractorsPage() {
@@ -26,6 +27,8 @@ export default function ContractorsPage() {
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
   const toastCounter = useRef(0);
@@ -91,6 +94,21 @@ export default function ContractorsPage() {
     fetchContractors();
   };
 
+  const handleSyncSlackIds = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    const { data, error } = await supabase.functions.invoke('sync-slack-ids');
+    setSyncing(false);
+    if (error || data?.error) {
+      showToast('Slack ID sync failed', 'error');
+      return;
+    }
+    setSyncResult(data as SyncResult);
+    if (data.updated?.length > 0) {
+      fetchContractors();
+    }
+  };
+
   const departments = Array.from(
     new Set(contractors.map(c => c.department).filter(Boolean) as string[])
   ).sort();
@@ -132,13 +150,23 @@ export default function ContractorsPage() {
     <AdminLayout
       title="Employees"
       actions={
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-[#1c2b3a] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap"
-        >
-          <i className="ri-user-add-line text-sm"></i>
-          Add Employee
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSyncSlackIds}
+            disabled={syncing}
+            className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
+          >
+            <i className={`ri-slack-line text-sm ${syncing ? 'animate-spin' : ''}`}></i>
+            {syncing ? 'Syncing…' : 'Sync Slack IDs'}
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 bg-[#1c2b3a] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <i className="ri-user-add-line text-sm"></i>
+            Add Employee
+          </button>
+        </div>
       }
     >
       <div className="space-y-4">
@@ -487,6 +515,57 @@ export default function ContractorsPage() {
                 {(actionLoading || resendingId !== null) ? <i className="ri-loader-4-line animate-spin"></i> : confirm.type === 'delete' ? 'Remove' : confirm.type === 'resend-invite' ? 'Send Invite' : confirm.type === 'reset-password' ? 'Send Reset Link' : 'Deactivate'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {syncResult && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Slack ID Sync Results</h3>
+              <button onClick={() => setSyncResult(null)} className="text-gray-400 hover:text-gray-600">
+                <i className="ri-close-line text-xl"></i>
+              </button>
+            </div>
+
+            {syncResult.updated.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Updated ({syncResult.updated.length})</p>
+                {syncResult.updated.map((line, i) => (
+                  <p key={i} className="text-xs text-gray-600 font-mono bg-gray-50 rounded px-2 py-1">{line}</p>
+                ))}
+              </div>
+            )}
+
+            {syncResult.notFound.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Not in Slack ({syncResult.notFound.length})</p>
+                {syncResult.notFound.map((name, i) => (
+                  <p key={i} className="text-xs text-gray-600">{name}</p>
+                ))}
+              </div>
+            )}
+
+            {syncResult.errors.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">Errors ({syncResult.errors.length})</p>
+                {syncResult.errors.map((e, i) => (
+                  <p key={i} className="text-xs text-gray-600">{e}</p>
+                ))}
+              </div>
+            )}
+
+            {syncResult.updated.length === 0 && syncResult.notFound.length === 0 && syncResult.errors.length === 0 && (
+              <p className="text-sm text-gray-500">All {syncResult.unchanged} Slack IDs are already up to date.</p>
+            )}
+
+            <button
+              onClick={() => setSyncResult(null)}
+              className="w-full bg-[#1c2b3a] text-white text-sm py-2 rounded-lg hover:bg-[#0f1c28] transition-colors"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

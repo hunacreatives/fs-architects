@@ -132,16 +132,30 @@ async function run() {
   console.log('stillOn:', JSON.stringify(stillOn));
   if (!stillOn.length) return;
 
+  // Resolve each Slack ID → email so we can fall back to email matching when
+  // the stored slack_id in hub_users is stale or wrong.
+  const slackEmailMap: Record<string, string> = {};
+  await Promise.all(
+    stillOn.map(async ({ slackId }) => {
+      const info = await slackGet(`users.info?user=${slackId}`);
+      if (info.ok) {
+        const email = info.user?.profile?.email;
+        if (email) slackEmailMap[slackId] = email.toLowerCase();
+      }
+    })
+  );
+
   const { data: users } = await supabase
     .from('hub_users')
     .select('id, full_name, email, slack_id, status')
-    .eq('role', 'contractor')
-    .in('slack_id', stillOn.map((s) => s.slackId));
-  const bySlack = new Map((users ?? []).map((u: any) => [String(u.slack_id).trim(), u]));
+    .eq('role', 'contractor');
+  const bySlackId = new Map((users ?? []).map((u: any) => [String(u.slack_id).trim(), u]));
+  const byEmail = new Map((users ?? []).map((u: any) => [String(u.email ?? '').toLowerCase().trim(), u]));
 
   for (const s of stillOn) {
     try {
-      const user = bySlack.get(s.slackId.trim());
+      const user = bySlackId.get(s.slackId.trim())
+        ?? (slackEmailMap[s.slackId] ? byEmail.get(slackEmailMap[s.slackId]) : undefined);
       if (!user || user.status !== 'active') continue;
       const day = phtDate(s.onTs);
 

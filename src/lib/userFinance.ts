@@ -23,7 +23,8 @@ export interface UserFinance {
 // callers that still read inline columns keep working.
 export async function fetchUserFinanceMap(ids?: string[]): Promise<Record<string, UserFinance>> {
   const { data, error } = await supabase.rpc('get_user_finance', ids?.length ? { p_ids: ids } : {});
-  if (error || !data) return {};
+  if (error) { console.error('get_user_finance error:', JSON.stringify(error)); return {}; }
+  if (!data) return {};
   const map: Record<string, UserFinance> = {};
   for (const row of data as UserFinance[]) map[row.id] = row;
   return map;

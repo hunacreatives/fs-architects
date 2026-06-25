@@ -48,8 +48,8 @@ export default function AnnouncementsPage() {
     setDetailAnn(a);
     setDetailLoading(true);
     const [commRes, reactRes] = await Promise.all([
-      supabase.from('hub_announcement_comments').select('*, hub_users(full_name, avatar_url)').eq('announcement_id', a.id).order('created_at', { ascending: true }),
-      supabase.from('hub_announcement_reactions').select('emoji, hub_users(full_name)').eq('announcement_id', a.id),
+      supabase.from('hub_announcement_comments').select('*, hub_users!user_id(full_name, avatar_url)').eq('announcement_id', a.id).order('created_at', { ascending: true }),
+      supabase.from('hub_announcement_reactions').select('emoji, hub_users!user_id(full_name)').eq('announcement_id', a.id),
     ]);
     setDetailComments(commRes.data ?? []);
     setDetailReactions(reactRes.data ?? []);
@@ -58,7 +58,7 @@ export default function AnnouncementsPage() {
 
   const fetchAnnouncements = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url, is_developer)').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name, avatar_url, is_developer)').order('created_at', { ascending: false });
     if (error) console.error('fetchAnnouncements error:', error);
     setAnnouncements((data as HubAnnouncement[]) ?? []);
     setLoading(false);

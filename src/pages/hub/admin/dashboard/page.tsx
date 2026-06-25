@@ -197,9 +197,9 @@ export default function AdminDashboardPage() {
       try {
       const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, clientsResult, usdRateStr, invResult, linkResult] = await Promise.all([
         supabase.functions.invoke('slack-attendance'),
-        supabase.from('hub_announcements').select('*, hub_users(full_name)').order('created_at', { ascending: false }).limit(4),
-        supabase.from('hub_requests').select('*, hub_users(full_name, avatar_url)').in('status', ['open', 'in_review']).order('created_at', { ascending: false }),
-        supabase.from('hub_time_off').select('*, hub_users(full_name, avatar_url)').eq('status', 'pending').order('created_at', { ascending: false }),
+        supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name)').order('created_at', { ascending: false }).limit(4),
+        supabase.from('hub_requests').select('*, hub_users!contractor_id(full_name, avatar_url)').in('status', ['open', 'in_review']).order('created_at', { ascending: false }),
+        supabase.from('hub_time_off').select('*, hub_users!contractor_id(full_name, avatar_url)').eq('status', 'pending').order('created_at', { ascending: false }),
         supabase.from('hub_users').select('id, full_name, avatar_url, payment_type, currency, birthday, start_date, work_days').eq('status', 'active').in('role', ['contractor', 'admin']).neq('is_developer', true),
         supabase.from('hub_daily_hours').select('user_id, hours_capped, hours_raw, overtime_hours, date, is_manual').gte('date', cutoffStart).lte('date', cutoffEnd),
         supabase.from('hub_projects').select('contract_price, status, deadline, project_type, monthly_rate, monthly_rate_currency, hub_project_costs(amount), hub_project_payments(amount)'),

@@ -33,7 +33,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
     supabase.from('hub_announcement_reactions').select('emoji, user_id').eq('announcement_id', a.id)
       .then(({ data }) => setReactions(data ?? []));
     supabase.from('hub_announcement_comments')
-      .select('id, body, user_id, created_at, hub_users(full_name, avatar_url)')
+      .select('id, body, user_id, created_at, hub_users!user_id(full_name, avatar_url)')
       .eq('announcement_id', a.id).order('created_at', { ascending: true })
       .then(({ data }) => setComments((data as any) ?? []));
   }, [a.id]);
@@ -55,7 +55,7 @@ function AnnouncementCard({ a, currentUserId, canDelete, onDeleted }: {
     setPosting(true);
     const { data, error } = await supabase.from('hub_announcement_comments')
       .insert({ announcement_id: a.id, user_id: currentUserId, body: commentText.trim() })
-      .select('id, body, user_id, created_at, hub_users(full_name, avatar_url)')
+      .select('id, body, user_id, created_at, hub_users!user_id(full_name, avatar_url)')
       .single();
     if (!error && data) {
       setComments(prev => [...prev, data as any]);
@@ -373,7 +373,7 @@ export default function ContractorDashboard() {
           .eq('user_id', user.id)
           .gte('date', periodStartStr)
           .lte('date', periodEndStr),
-        supabase.from('hub_announcements').select('*, hub_users(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(10),
+        supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(10),
         supabase.from('hub_requests').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
         supabase.from('hub_time_off').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
         supabase.functions.invoke('slack-attendance'),

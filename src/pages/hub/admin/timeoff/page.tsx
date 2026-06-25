@@ -83,7 +83,7 @@ export default function AdminTimeOffPage() {
     setLoading(true);
     let q = supabase
       .from('hub_time_off')
-      .select('*, hub_users(full_name, avatar_url, department, start_date, work_days)')
+      .select('*, hub_users!contractor_id(full_name, avatar_url, department, start_date, work_days)')
       .order('created_at', { ascending: false });
     if (statusFilter !== 'all') q = q.eq('status', statusFilter);
     const { data } = await q;

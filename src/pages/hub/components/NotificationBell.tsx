@@ -77,7 +77,7 @@ export default function NotificationBell() {
       // New time off requests
       const { data: toReqs } = await supabase
         .from('hub_time_off')
-        .select('id, type, created_at, hub_users(full_name)')
+        .select('id, type, created_at, hub_users!contractor_id(full_name)')
         .gte('created_at', since)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
@@ -99,7 +99,7 @@ export default function NotificationBell() {
       // New requests
       const { data: reqs } = await supabase
         .from('hub_requests')
-        .select('id, title, created_at, hub_users(full_name)')
+        .select('id, title, created_at, hub_users!contractor_id(full_name)')
         .gte('created_at', since)
         .eq('status', 'open')
         .order('created_at', { ascending: false })

@@ -19,6 +19,7 @@ const DEFAULT_ORIGINS = [
   'https://fsarchitects.ph',
   'https://www.fsarchitects.ph',
   'http://localhost:5173',
+  'http://localhost:3004',
 ];
 
 export function allowedOrigins(): string[] {

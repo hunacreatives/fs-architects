@@ -69,8 +69,10 @@ export default function ContractorRequestsPage() {
       });
       if (error || !data?.url) {
         setSaving(false);
-        setToast('Failed to upload receipt. Please try again.');
-        setTimeout(() => setToast(''), 4000);
+        const msg = error?.message || data?.error || 'Unknown error';
+        setToast(`Upload failed: ${msg}`);
+        console.error('upload-to-drive error:', error, data);
+        setTimeout(() => setToast(''), 8000);
         return;
       }
       attachment_url = data.url;

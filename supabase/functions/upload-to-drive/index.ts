@@ -112,6 +112,14 @@ async function getFolderForType(type: string, meta: Record<string, string>, acce
     return createOrGetFolder(year, careersFolder, accessToken);
   }
 
+  if (type === 'reimbursement_receipt') {
+    // Sentro Root / Reimbursements / {employee_name} / {year}
+    const employeeName = meta.employee_name || 'Unknown';
+    const reimbFolder = await createOrGetFolder('Reimbursements', SENTRO_ROOT, accessToken);
+    const empFolder = await createOrGetFolder(employeeName, reimbFolder, accessToken);
+    return createOrGetFolder(year, empFolder, accessToken);
+  }
+
   throw new Error(`Unknown upload type: ${type}`);
 }
 
@@ -196,7 +204,7 @@ Deno.serve(async (req) => {
     if (!uploadRes.ok) throw new Error(JSON.stringify(result));
 
     const fileId = result.id;
-    if (type === 'task_attachment') {
+    if (type === 'task_attachment' || type === 'reimbursement_receipt') {
       await ensureReadablePreview(fileId, accessToken);
     }
     const url = `https://drive.google.com/file/d/${fileId}/view`;

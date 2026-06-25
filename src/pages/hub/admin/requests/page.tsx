@@ -99,6 +99,23 @@ export default function RequestsPage() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{typeLabels[selected.type] || selected.type}</span>
               </div>
               {selected.description && <p className="text-sm text-gray-600">{selected.description}</p>}
+              {selected.attachment_url && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-gray-700">Receipt</p>
+                  <div className="rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
+                    <iframe
+                      src={selected.attachment_url.replace('/view', '/preview')}
+                      className="w-full h-56"
+                      allow="autoplay"
+                      title="Receipt preview"
+                    />
+                  </div>
+                  <a href={selected.attachment_url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-700 font-medium w-fit">
+                    <i className="ri-external-link-line"></i> Open in Drive
+                  </a>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Admin Notes</label>
                 <textarea value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} rows={3} placeholder="Add notes..."

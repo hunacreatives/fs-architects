@@ -27,6 +27,7 @@ export default function ContractorRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<HubRequest | null>(null);
   const [toast, setToast] = useState('');
@@ -43,11 +44,43 @@ export default function ContractorRequestsPage() {
 
   const submit = async () => {
     if (!form.title.trim() || !user) return;
+    if (form.type === 'reimbursement' && !receiptFile) return;
     setSaving(true);
-    await supabase.from('hub_requests').insert({ ...form, contractor_id: user.id, status: 'open' });
+
+    let attachment_url: string | undefined;
+    if (form.type === 'reimbursement' && receiptFile) {
+      const base64Content = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(receiptFile);
+      });
+      const { data, error } = await supabase.functions.invoke('upload-to-drive', {
+        body: {
+          filename: receiptFile.name,
+          mimeType: receiptFile.type,
+          base64Content,
+          type: 'reimbursement_receipt',
+          meta: {
+            employee_name: user.full_name,
+            year: String(new Date().getFullYear()),
+          },
+        },
+      });
+      if (error || !data?.url) {
+        setSaving(false);
+        setToast('Failed to upload receipt. Please try again.');
+        setTimeout(() => setToast(''), 4000);
+        return;
+      }
+      attachment_url = data.url;
+    }
+
+    await supabase.from('hub_requests').insert({ ...form, contractor_id: user.id, status: 'open', attachment_url });
     setSaving(false);
     setShowModal(false);
     setForm(emptyForm);
+    setReceiptFile(null);
     setToast('Request submitted successfully.');
     setTimeout(() => setToast(''), 3000);
     supabase.functions.invoke('notify-admin', {
@@ -105,7 +138,7 @@ export default function ContractorRequestsPage() {
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h2 className="font-semibold text-[#111827]">New Request</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
+              <button onClick={() => { setShowModal(false); setReceiptFile(null); setForm(emptyForm); }} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
                 <i className="ri-close-line text-lg"></i>
               </button>
             </div>
@@ -129,10 +162,21 @@ export default function ContractorRequestsPage() {
                   placeholder="Describe your request in detail..." maxLength={500}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
+              {form.type === 'reimbursement' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Receipt / Proof <span className="text-red-500">*</span></label>
+                  <label className={`flex items-center gap-2 w-full px-3 py-2.5 text-sm border rounded-lg cursor-pointer transition-colors ${receiptFile ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+                    <i className={`text-base ${receiptFile ? 'ri-file-check-line' : 'ri-upload-2-line'}`}></i>
+                    <span className="truncate">{receiptFile ? receiptFile.name : 'Upload receipt (image or PDF)'}</span>
+                    <input type="file" accept="image/*,application/pdf" className="hidden"
+                      onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 p-5 pt-0">
-              <button onClick={() => setShowModal(false)} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer whitespace-nowrap">Cancel</button>
-              <button onClick={submit} disabled={saving || !form.title.trim()}
+              <button onClick={() => { setShowModal(false); setReceiptFile(null); setForm(emptyForm); }} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer whitespace-nowrap">Cancel</button>
+              <button onClick={submit} disabled={saving || !form.title.trim() || (form.type === 'reimbursement' && !receiptFile)}
                 className="flex-1 py-2.5 text-sm bg-[#111827] text-white rounded-lg hover:bg-gray-800 disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap">
                 {saving ? 'Submitting...' : 'Submit Request'}
               </button>
@@ -156,6 +200,23 @@ export default function ContractorRequestsPage() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{typeLabels[selected.type]}</span>
               </div>
               {selected.description && <p className="text-sm text-gray-600">{selected.description}</p>}
+              {selected.attachment_url && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-gray-700">Receipt</p>
+                  <div className="rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
+                    <iframe
+                      src={selected.attachment_url.replace('/view', '/preview')}
+                      className="w-full h-56"
+                      allow="autoplay"
+                      title="Receipt preview"
+                    />
+                  </div>
+                  <a href={selected.attachment_url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-700 font-medium w-fit">
+                    <i className="ri-external-link-line"></i> Open in Drive
+                  </a>
+                </div>
+              )}
               {selected.admin_notes && (
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs font-medium text-gray-700 mb-1">Admin Response</p>

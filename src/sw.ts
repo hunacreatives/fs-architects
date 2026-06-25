@@ -26,12 +26,15 @@ self.addEventListener('push', (event: PushEvent) => {
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close();
-  const url = (event.notification.data?.url as string) ?? '/hub/admin/dashboard';
+  const path = (event.notification.data?.url as string) ?? '/hub/admin/dashboard';
+  const target = path.startsWith('http') ? path : `${self.location.origin}${path}`;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      const existing = clients.find(c => c.url.includes(self.location.origin));
-      if (existing) { existing.focus(); existing.navigate(url); }
-      else self.clients.openWindow(url);
+      const existing = clients.find(c => c.url.startsWith(self.location.origin));
+      if (existing) {
+        return existing.navigate(target).then(c => c?.focus() ?? existing.focus());
+      }
+      return self.clients.openWindow(target);
     })
   );
 });

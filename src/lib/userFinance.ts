@@ -22,7 +22,7 @@ export interface UserFinance {
 // Degrades to an empty map on error (e.g. before the migration is applied), so
 // callers that still read inline columns keep working.
 export async function fetchUserFinanceMap(ids?: string[]): Promise<Record<string, UserFinance>> {
-  const { data, error } = await supabase.rpc('get_user_finance', { p_ids: ids ?? null });
+  const { data, error } = await supabase.rpc('get_user_finance', ids?.length ? { p_ids: ids } : {});
   if (error || !data) return {};
   const map: Record<string, UserFinance> = {};
   for (const row of data as UserFinance[]) map[row.id] = row;

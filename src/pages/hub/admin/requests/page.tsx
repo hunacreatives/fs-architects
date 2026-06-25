@@ -27,7 +27,8 @@ export default function RequestsPage() {
   const fetch = async () => {
     let q = supabase.from('hub_requests').select('*, hub_users(full_name, avatar_url, department)').order('created_at', { ascending: false });
     if (statusFilter !== 'all') q = q.eq('status', statusFilter);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) console.error('hub_requests fetch error:', error);
     setRequests((data as HubRequest[]) ?? []);
     setLoading(false);
   };

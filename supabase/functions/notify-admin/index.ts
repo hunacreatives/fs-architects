@@ -4,7 +4,7 @@ import { dmAdmins } from '../_shared/slack.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const FROM = `Sentro OS <${Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph'}>`;
+const FROM = `FS Architects <${Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph'}>`;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -67,18 +67,15 @@ async function sendEmail(to: string[], subject: string, html: string) {
 function baseTemplate(title: string, body: string) {
   return `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;margin:0">
 <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
-  <div style="background:#111827;padding:20px 24px;display:flex;align-items:center;gap:12px">
-    <div style="width:28px;height:28px;background:#FF6B35;border-radius:6px;display:flex;align-items:center;justify-content:center">
-      <span style="color:#fff;font-weight:900;font-size:12px">S</span>
-    </div>
-    <span style="color:#fff;font-weight:700;font-size:14px;letter-spacing:0.05em">SENTRO <span style="color:#FF6B35">OS</span></span>
+  <div style="background:#111827;padding:20px 24px">
+    <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="22" style="display:block;" />
   </div>
   <div style="padding:24px">
     <h2 style="margin:0 0 12px;font-size:16px;color:#111827">${title}</h2>
     ${body}
   </div>
   <div style="padding:16px 24px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af">
-    Sentro OS · FS Architects · <a href="https://fsarchitects.ph/hub" style="color:#FF6B35;text-decoration:none">Open Hub</a>
+    © ${new Date().getFullYear()} FS Architects · <a href="https://fsarchitects.ph/hub" style="color:#9ca3af;text-decoration:none">Open Hub</a>
   </div>
 </div></body></html>`;
 }

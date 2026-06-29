@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import html2canvas from 'html2canvas';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
@@ -38,6 +38,13 @@ interface RateEntry {
   monthly_rate: number | null;
 }
 
+interface DayHours {
+  date: string;
+  billed: number;    // hours_capped — what they're paid for
+  raw: number;       // hours_raw — actual clocked time (basis for undertime flag)
+  overtime: number;  // overtime_hours
+}
+
 interface PayRow {
   contractor: Contractor;
   hours: number;
@@ -48,6 +55,7 @@ interface PayRow {
   pay: number;
   payOriginalCurrency?: number;
   days: number;
+  dailyBreakdown: DayHours[];
   prorated: boolean;
   proratedNote?: string;
   accruing?: boolean;
@@ -55,8 +63,50 @@ interface PayRow {
   accrualTotal?: number;
 }
 
+// A scheduled day is "undertime" when fewer than 9 raw hours were clocked
+// (handbook: 9h = 8h paid + 1h unpaid lunch). Matches the undertime-alert job.
+const UNDERTIME_THRESHOLD_HOURS = 9;
+
 function Avatar({ name, avatar_url }: { name: string; avatar_url: string | null }) {
   return <HubAvatar fullName={name} avatarUrl={avatar_url} size="w-8 h-8" />;
+}
+
+// "2026-06-18" → "Wed, Jun 18"
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function formatDayLabel(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  const [, m, day] = dateStr.split('-');
+  return `${DAY_ABBR[d.getDay()]}, ${MONTH_ABBR[Number(m) - 1]} ${Number(day)}`;
+}
+
+// Per-day hours breakdown shown when a payroll row is expanded. Days under the
+// 9h raw-clocked threshold are flagged amber to match the undertime alert.
+function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
+  if (days.length === 0) {
+    return <p className="text-xs text-gray-400 py-2">No daily hours logged this period.</p>;
+  }
+  return (
+    <div className="space-y-1">
+      {days.map((d) => {
+        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS;
+        return (
+          <div
+            key={d.date}
+            className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-md ${undertime ? 'bg-amber-50' : 'bg-gray-50'}`}
+          >
+            <span className={`font-medium ${undertime ? 'text-amber-700' : 'text-gray-600'}`}>
+              {formatDayLabel(d.date)}
+              {undertime && <i className="ri-error-warning-line ml-1 text-amber-500" title={`Under ${UNDERTIME_THRESHOLD_HOURS}h clocked`}></i>}
+            </span>
+            <span className="flex items-center gap-2 tabular-nums">
+              <span className={undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h</span>
+              {d.overtime > 0 && <span className="text-[#1c2b3a] font-medium">+{d.overtime.toFixed(1)} OT</span>}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function uint8ToBase64(bytes: Uint8Array) {
@@ -159,6 +209,13 @@ export default function AdminPayrollPage() {
   const [selectedPeriod, setSelectedPeriod] = useState(lastPeriod);
 
   const [rows, setRows] = useState<PayRow[]>([]);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRowExpanded = (id: string) =>
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const [loading, setLoading] = useState(true);
   const [payrollError, setPayrollError] = useState<string | null>(null);
   const [usdRate, setUsdRate] = useState<number>(56);
@@ -1012,6 +1069,7 @@ export default function AdminPayrollPage() {
           derivedHourlyRate: c.hourly_rate || (c.monthly_rate ? c.monthly_rate / 176 : 0),
           pay: p.base_pay,
           days: isFixed ? 10 : Math.round(p.approved_hours / 8),
+          dailyBreakdown: [],
           prorated: false,
         };
       });
@@ -1306,6 +1364,23 @@ export default function AdminPayrollPage() {
       const payInPHP = isUSD ? pay * usdRate : pay;
 
       const isAccruing = prorated && proratedNote?.includes('accruing');
+
+      // Per-day breakdown for the expandable row — only days with logged hours,
+      // sorted chronologically. Billed + OT shown; raw kept for the undertime flag.
+      const billedByDate = hoursByDate[c.id] || {};
+      const rawByDate = rawHoursByDate[c.id] || {};
+      const otByDate = overtimeByDate[c.id] || {};
+      const dailyBreakdown: DayHours[] = Array.from(
+        new Set([...Object.keys(billedByDate), ...Object.keys(rawByDate)]),
+      )
+        .sort()
+        .map((date) => ({
+          date,
+          billed: parseFloat((billedByDate[date] || 0).toFixed(2)),
+          raw: parseFloat((rawByDate[date] || 0).toFixed(2)),
+          overtime: parseFloat((otByDate[date] || 0).toFixed(2)),
+        }));
+
       return {
         contractor: c as Contractor,
         hours: parseFloat(hrs.raw.toFixed(2)),
@@ -1316,6 +1391,7 @@ export default function AdminPayrollPage() {
         pay: payInPHP,
         payOriginalCurrency: isUSD ? parseFloat(pay.toFixed(2)) : undefined,
         days: hrs.days,
+        dailyBreakdown,
         prorated,
         proratedNote,
         accruing: isAccruing,
@@ -1784,7 +1860,18 @@ export default function AdminPayrollPage() {
                     <button onClick={() => openEditRow(r)} className="text-gray-300 hover:text-[#1c2b3a] cursor-pointer flex-shrink-0">
                       <i className="ri-edit-line text-sm"></i>
                     </button>
+                    <button onClick={() => toggleRowExpanded(c.id)} className="text-gray-300 hover:text-[#1c2b3a] cursor-pointer flex-shrink-0" title="Show daily hours" aria-expanded={expandedRows.has(c.id)}>
+                      <i className={`ri-arrow-down-s-line text-base transition-transform ${expandedRows.has(c.id) ? 'rotate-180' : ''}`}></i>
+                    </button>
                   </div>
+
+                  {/* Daily hours breakdown */}
+                  {expandedRows.has(c.id) && (
+                    <div className="mb-3 pb-3 border-b border-gray-50">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">Daily hours · {selectedPeriod.label}</p>
+                      <DailyBreakdownPanel days={r.dailyBreakdown} />
+                    </div>
+                  )}
 
                   {/* Stats row */}
                   <div className="grid grid-cols-3 gap-2 mb-3">
@@ -1940,10 +2027,12 @@ export default function AdminPayrollPage() {
                     const dispute = p ? disputesMap[p.id] : null;
 
                     return (
-                      <tr key={c.id} className="hover:bg-gray-50/60 transition-colors group">
+                      <Fragment key={c.id}>
+                      <tr className="hover:bg-gray-50/60 transition-colors group cursor-pointer" onClick={() => toggleRowExpanded(c.id)}>
                         {/* Contractor */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
+                            <i className={`ri-arrow-down-s-line text-gray-300 group-hover:text-gray-500 transition-transform flex-shrink-0 ${expandedRows.has(c.id) ? 'rotate-180' : ''}`}></i>
                             <Avatar name={c.full_name} avatar_url={c.avatar_url} />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -2028,7 +2117,7 @@ export default function AdminPayrollPage() {
                         </td>
 
                         {/* Status + Action */}
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => setBankInfoContractor(c)}
@@ -2107,6 +2196,17 @@ export default function AdminPayrollPage() {
                           </div>
                         </td>
                       </tr>
+                      {expandedRows.has(c.id) && (
+                        <tr className="bg-gray-50/40">
+                          <td colSpan={5} className="px-5 pb-4 pt-0">
+                            <div className="pl-11 max-w-xl">
+                              <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">Daily hours · {selectedPeriod.label}</p>
+                              <DailyBreakdownPanel days={r.dailyBreakdown} />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

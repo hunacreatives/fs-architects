@@ -4,11 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { HubTimeOff } from '@/lib/types';
 
-const VL_LIMIT = 6;
-const SL_LIMIT = 4;
-const PTO_LIMIT = VL_LIMIT;
-const SICK_LIMIT = SL_LIMIT;
-const ADVANCE_DAYS = 30;
+// Annual leave allowances default to these but are overridden per employee by
+// their profile's annual_pto_days / annual_sick_days (set by admin).
+const DEFAULT_VL = 15;
+const DEFAULT_SL = 10;
+// Handbook: planned leave (PTO/vacation) must be submitted ≥ 3 business days ahead.
+const ADVANCE_BUSINESS_DAYS = 3;
 const MAX_CONSECUTIVE = 3;
 
 const typeLabels: Record<string, string> = {
@@ -55,6 +56,17 @@ const addDays = (date: string, n: number) => {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d.toISOString().split('T')[0];
+};
+// Earliest allowed date that is `n` business days (Mon–Fri) after `date`.
+const addBusinessDays = (date: string, n: number) => {
+  const d = new Date(date + 'T00:00:00');
+  let added = 0;
+  while (added < n) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const WEEKDAY_TOKENS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const DEFAULT_WORK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
@@ -109,14 +121,17 @@ export default function ContractorTimeOffPage() {
     (r) => r.status === 'approved' && new Date(r.start_date).getFullYear() === year
   );
   const workDays = (user as any)?.work_days as string[] | undefined;
+  // Per-employee allowance from their profile, falling back to company defaults.
+  const ptoLimit = Number((user as any)?.annual_pto_days ?? DEFAULT_VL);
+  const sickLimit = Number((user as any)?.annual_sick_days ?? DEFAULT_SL);
   const ptoUsed = approvedThisYear
     .filter((r) => r.type === 'pto' || r.type === 'vacation')
     .reduce((sum, r) => sum + (r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, workDays)), 0);
   const sickUsed = approvedThisYear
     .filter((r) => r.type === 'sick')
     .reduce((sum, r) => sum + (r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, workDays)), 0);
-  const ptoLeft = Math.max(0, PTO_LIMIT - ptoUsed);
-  const sickLeft = Math.max(0, SICK_LIMIT - sickUsed);
+  const ptoLeft = Math.max(0, ptoLimit - ptoUsed);
+  const sickLeft = Math.max(0, sickLimit - sickUsed);
 
   // Eligibility: 6 months from start_date
   const startDateUser = user && (user as any).start_date;
@@ -141,9 +156,9 @@ export default function ContractorTimeOffPage() {
       if (!isEligibleForPTO) return 'You are not yet eligible for PTO. Available 6 months after your start date.';
       if (ptoLeft <= 0) return 'You have no PTO days remaining for this year.';
       if (effectiveDays > ptoLeft) return `You only have ${ptoLeft} PTO day${ptoLeft !== 1 ? 's' : ''} left.`;
-      // 30-day advance notice
-      const advanceDate = addDays(today(), ADVANCE_DAYS);
-      if (startDate < advanceDate) return `PTO must be submitted at least ${ADVANCE_DAYS} days in advance. Earliest start: ${advanceDate}.`;
+      // Advance-notice rule (handbook: at least 3 business days ahead)
+      const advanceDate = addBusinessDays(today(), ADVANCE_BUSINESS_DAYS);
+      if (startDate < advanceDate) return `PTO must be submitted at least ${ADVANCE_BUSINESS_DAYS} business days in advance. Earliest start: ${advanceDate}.`;
       // Max 3 consecutive days
       if (!halfDay && effectiveDays > MAX_CONSECUTIVE) return `PTO cannot exceed ${MAX_CONSECUTIVE} consecutive days in a month.`;
     }
@@ -213,8 +228,8 @@ export default function ContractorTimeOffPage() {
   };
 
   // Advance notice check for display
-  const advanceWarning = type === 'pto' && startDate && startDate < addDays(today(), ADVANCE_DAYS)
-    ? `Earliest PTO start date is ${addDays(today(), ADVANCE_DAYS)}.` : null;
+  const advanceWarning = type === 'pto' && startDate && startDate < addBusinessDays(today(), ADVANCE_BUSINESS_DAYS)
+    ? `Earliest PTO start date is ${addBusinessDays(today(), ADVANCE_BUSINESS_DAYS)}.` : null;
 
   return (
     <ContractorLayout title="Time Off">
@@ -225,21 +240,21 @@ export default function ContractorTimeOffPage() {
           <div className={`border border-gray-100 rounded-xl p-4 ${isEligibleForPTO ? 'bg-sky-50' : 'bg-gray-50'}`}>
             <p className="text-xs text-gray-400 mb-1">VL Remaining</p>
             {isEligibleForPTO
-              ? <p className="text-2xl font-bold text-sky-600">{ptoLeft}<span className="text-sm font-normal text-gray-300">/{VL_LIMIT}</span></p>
+              ? <p className="text-2xl font-bold text-sky-600">{ptoLeft}<span className="text-sm font-normal text-gray-300">/{ptoLimit}</span></p>
               : <p className="text-sm font-semibold text-gray-400">Unlocks {ptoEligibleLabel}</p>
             }
           </div>
           <div className="bg-white border border-gray-100 rounded-xl p-4">
             <p className="text-xs text-gray-400 mb-1">VL Used</p>
-            <p className="text-2xl font-bold text-sky-400">{ptoUsed}<span className="text-sm font-normal text-gray-300">/{VL_LIMIT}</span></p>
+            <p className="text-2xl font-bold text-sky-400">{ptoUsed}<span className="text-sm font-normal text-gray-300">/{ptoLimit}</span></p>
           </div>
           <div className="bg-rose-50 border border-gray-100 rounded-xl p-4">
             <p className="text-xs text-gray-400 mb-1">SL Remaining</p>
-            <p className="text-2xl font-bold text-rose-600">{sickLeft}<span className="text-sm font-normal text-gray-300">/{SL_LIMIT}</span></p>
+            <p className="text-2xl font-bold text-rose-600">{sickLeft}<span className="text-sm font-normal text-gray-300">/{sickLimit}</span></p>
           </div>
           <div className="bg-white border border-gray-100 rounded-xl p-4">
             <p className="text-xs text-gray-400 mb-1">SL Used</p>
-            <p className="text-2xl font-bold text-rose-400">{sickUsed}<span className="text-sm font-normal text-gray-300">/{SL_LIMIT}</span></p>
+            <p className="text-2xl font-bold text-rose-400">{sickUsed}<span className="text-sm font-normal text-gray-300">/{sickLimit}</span></p>
           </div>
         </div>
 
@@ -372,8 +387,8 @@ export default function ContractorTimeOffPage() {
                 {(type === 'pto' || type === 'sick') && (
                   <p className="text-xs text-gray-400">
                     {type === 'pto'
-                      ? `${ptoLeft}/${PTO_LIMIT} days remaining this year`
-                      : `${sickLeft}/${SICK_LIMIT} days remaining this year`}
+                      ? `${ptoLeft}/${ptoLimit} days remaining this year`
+                      : `${sickLeft}/${sickLimit} days remaining this year`}
                   </p>
                 )}
               </div>
@@ -473,7 +488,7 @@ export default function ContractorTimeOffPage() {
                   <input
                     type="date"
                     value={startDate}
-                    min={type === 'emergency' ? undefined : type === 'pto' ? addDays(today(), ADVANCE_DAYS) : today()}
+                    min={type === 'emergency' ? undefined : type === 'pto' ? addBusinessDays(today(), ADVANCE_BUSINESS_DAYS) : today()}
                     onChange={(e) => { setStartDate(e.target.value); setFormError(''); }}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />

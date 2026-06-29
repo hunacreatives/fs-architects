@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { supabase } from '@/lib/supabase';
@@ -381,9 +382,7 @@ export default function AdminTimeOffPage() {
                           </td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
-                                <span className="text-[#1c2b3a] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
-                              </div>
+                              <HubAvatar fullName={u?.full_name || '?'} avatarUrl={u?.avatar_url ?? null} size="w-7 h-7" />
                               <div>
                                 <p className="text-sm font-medium text-[#111827]">{u?.full_name}</p>
                                 <p className="text-xs text-gray-400">{u?.department}</p>
@@ -517,9 +516,7 @@ export default function AdminTimeOffPage() {
                       <tr key={b.id} className="hover:bg-gray-50/50">
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
-                              <span className="text-[#1c2b3a] text-xs font-bold">{b.full_name?.charAt(0) || '?'}</span>
-                            </div>
+                            <HubAvatar fullName={b.full_name || '?'} avatarUrl={b.avatar_url ?? null} size="w-7 h-7" />
                             <div>
                               <p className="text-sm font-medium text-[#111827]">{b.full_name}</p>
                               {b.department && <p className="text-xs text-gray-400">{b.department}</p>}

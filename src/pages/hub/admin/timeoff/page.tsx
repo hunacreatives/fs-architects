@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase';
 import { HubTimeOff, HubUser } from '@/lib/types';
 import { logAudit } from '@/lib/audit';
 import { DEMO_TIME_OFF } from '@/lib/demoData';
+import { fetchUserFinanceMap } from '@/lib/userFinance';
+import { isPaidLeaveType } from '@/lib/payrollUtils';
 
 const typeLabels: Record<string, string> = {
   pto: 'Vacation (VL)', vacation: 'Vacation (VL)', sick: 'Sick (SL)',
@@ -58,6 +60,26 @@ const workingDaysBetween = (start: string, end: string, workDays?: string[] | nu
   return count;
 };
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Semi-monthly pay periods (1–15, 16–end) a date range touches, as short labels.
+const payPeriodsSpanned = (start: string, end: string): string[] => {
+  const s = new Date(start + 'T12:00:00');
+  const e = new Date(end + 'T12:00:00');
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return [];
+  const labels: string[] = [];
+  const cur = new Date(s.getFullYear(), s.getMonth(), 1);
+  while (cur <= e) {
+    const y = cur.getFullYear(), m = cur.getMonth();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    if (s <= new Date(y, m, 15, 12) && e >= new Date(y, m, 1, 12)) labels.push(`${MONTHS_SHORT[m]} 1–15`);
+    if (s <= new Date(y, m, lastDay, 12) && e >= new Date(y, m, 16, 12)) labels.push(`${MONTHS_SHORT[m]} 16–${lastDay}`);
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return labels;
+};
+
+const money = (n: number, currency: string) => `${currency === 'USD' ? '$' : '₱'}${Math.round(n).toLocaleString()}`;
+
 export default function AdminTimeOffPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
@@ -70,6 +92,13 @@ export default function AdminTimeOffPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<HubTimeOff | null>(null);
+  const [modalInfo, setModalInfo] = useState<null | {
+    currency: string; dailyRate: number; paid: boolean; estPay: number;
+    vlUsed: number; slUsed: number; vlLimit: number; slLimit: number;
+    teamOverlap: { name: string; start: string; end: string }[];
+    blackout: { reason: string | null; start_date: string; end_date: string } | null;
+    periods: string[];
+  }>(null);
   const [hrNotes, setHrNotes] = useState('');
   const [updating, setUpdating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -84,7 +113,7 @@ export default function AdminTimeOffPage() {
     setLoading(true);
     let q = supabase
       .from('hub_time_off')
-      .select('*, hub_users!contractor_id(full_name, avatar_url, department, start_date, work_days)')
+      .select('*, hub_users!contractor_id(full_name, avatar_url, department, start_date, work_days, annual_pto_days, annual_sick_days, currency, payment_type)')
       .order('created_at', { ascending: false });
     if (statusFilter !== 'all') q = q.eq('status', statusFilter);
     const { data } = await q;
@@ -146,6 +175,54 @@ export default function AdminTimeOffPage() {
 
   const days = (r: HubTimeOff) =>
     r.half_day ? 0.5 : workingDaysBetween(r.start_date, r.end_date, (r.hub_users as any)?.work_days);
+
+  // Load the review-modal context (pay impact, leave balance, blackout & team
+  // overlaps) whenever a request is opened.
+  useEffect(() => {
+    if (!selected) { setModalInfo(null); return; }
+    let cancelled = false;
+    const u = selected.hub_users as any;
+    const cid = selected.contractor_id as string;
+    const wd = days(selected);
+    const year = new Date(selected.start_date + 'T12:00:00').getFullYear();
+    (async () => {
+      const [finMap, ownLeaves, teamLeaves] = await Promise.all([
+        fetchUserFinanceMap([cid]).catch(() => ({} as any)),
+        supabase.from('hub_time_off').select('type, start_date, end_date, half_day')
+          .eq('contractor_id', cid).eq('status', 'approved')
+          .gte('start_date', `${year}-01-01`).lte('start_date', `${year}-12-31`),
+        supabase.from('hub_time_off').select('start_date, end_date, hub_users!contractor_id(full_name)')
+          .eq('status', 'approved').neq('contractor_id', cid)
+          .lte('start_date', selected.end_date).gte('end_date', selected.start_date),
+      ]);
+      if (cancelled) return;
+      const fin = (finMap as any)[cid] || {};
+      const paymentType = fin.payment_type || u?.payment_type || 'hourly';
+      const isFixed = paymentType === 'fixed' || paymentType === 'fixed_flexible';
+      // Daily rate: fixed → monthly / 22 working days (code uses 176 monthly hrs);
+      // hourly → hourly_rate × 8 paid hours.
+      const dailyRate = isFixed ? (Number(fin.monthly_rate) || 0) / 22 : (Number(fin.hourly_rate) || 0) * 8;
+      const currency = fin.currency || u?.currency || 'PHP';
+      let vlUsed = 0, slUsed = 0;
+      for (const l of ownLeaves.data || []) {
+        const d = l.half_day ? 0.5 : workingDaysBetween(l.start_date, l.end_date, u?.work_days);
+        if (l.type === 'pto' || l.type === 'vacation') vlUsed += d;
+        else if (l.type === 'sick') slUsed += d;
+      }
+      const teamOverlap = (teamLeaves.data || []).map((t: any) => ({
+        name: t.hub_users?.full_name || 'Someone', start: t.start_date, end: t.end_date,
+      }));
+      const blackout = (blackouts || []).find((b: any) =>
+        selected.start_date <= b.end_date && selected.end_date >= b.start_date) || null;
+      setModalInfo({
+        currency, dailyRate, paid: isPaidLeaveType(selected.type), estPay: dailyRate * wd,
+        vlUsed, slUsed,
+        vlLimit: Number(u?.annual_pto_days ?? 15), slLimit: Number(u?.annual_sick_days ?? 10),
+        teamOverlap, blackout, periods: payPeriodsSpanned(selected.start_date, selected.end_date),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [selected, blackouts]);
 
   const openReview = (r: HubTimeOff) => {
     setSelected(r);
@@ -598,6 +675,69 @@ export default function AdminTimeOffPage() {
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeColors[selected.type]}`}>{typeLabels[selected.type] || selected.type}</span>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColors[selected.status]}`}>{statusLabels[selected.status]}</span>
               </div>
+
+              {/* Decision context: payroll impact, balance, conflicts */}
+              {modalInfo && (
+                <div className="space-y-2">
+                  {/* Payroll impact */}
+                  <div className={`rounded-lg p-3 border ${modalInfo.paid ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-700">
+                        <i className={`mr-1 ${modalInfo.paid ? 'ri-money-dollar-circle-line text-emerald-500' : 'ri-error-warning-line text-amber-500'}`}></i>
+                        {modalInfo.paid ? 'Paid leave' : 'Unpaid leave'}
+                      </span>
+                      {modalInfo.dailyRate > 0 && (
+                        <span className={`text-xs font-bold ${modalInfo.paid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          ≈ {money(modalInfo.estPay, modalInfo.currency)} {modalInfo.paid ? 'paid' : 'deducted'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      {days(selected)} working day{days(selected) !== 1 ? 's' : ''}
+                      {modalInfo.dailyRate > 0 ? ` (≈ ${money(modalInfo.dailyRate, modalInfo.currency)}/day)` : ''}
+                      {modalInfo.paid ? ' — paid as normal, reflected automatically in payroll.' : ' — not paid; reduces pay for the period.'}
+                      {modalInfo.periods.length > 0 && ` Pay period${modalInfo.periods.length > 1 ? 's' : ''}: ${modalInfo.periods.join(', ')}.`}
+                    </p>
+                  </div>
+
+                  {/* VL / SL balance */}
+                  {(selected.type === 'pto' || selected.type === 'vacation' || selected.type === 'sick') && (() => {
+                    const isVL = selected.type !== 'sick';
+                    const used = isVL ? modalInfo.vlUsed : modalInfo.slUsed;
+                    const limit = isVL ? modalInfo.vlLimit : modalInfo.slLimit;
+                    const after = limit - used - days(selected);
+                    const over = after < 0;
+                    return (
+                      <div className={`rounded-lg p-3 border ${over ? 'bg-rose-50 border-rose-100' : 'bg-gray-50 border-gray-100'}`}>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600">{isVL ? 'Vacation (VL)' : 'Sick (SL)'} balance</span>
+                          <span className={`font-semibold ${over ? 'text-rose-700' : 'text-gray-800'}`}>
+                            {Math.max(0, limit - used)} of {limit} left → {after} after
+                          </span>
+                        </div>
+                        {over && <p className="text-[11px] text-rose-600 mt-1">Exceeds their remaining balance by {Math.abs(after)} day{Math.abs(after) !== 1 ? 's' : ''}.</p>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Blackout overlap */}
+                  {modalInfo.blackout && (
+                    <div className="rounded-lg p-3 bg-rose-50 border border-rose-100">
+                      <p className="text-xs text-rose-700"><i className="ri-calendar-close-line mr-1"></i>Overlaps a blackout period{modalInfo.blackout.reason ? `: "${modalInfo.blackout.reason}"` : ''}.</p>
+                    </div>
+                  )}
+
+                  {/* Team overlap */}
+                  {modalInfo.teamOverlap.length > 0 && (
+                    <div className="rounded-lg p-3 bg-amber-50 border border-amber-100">
+                      <p className="text-xs text-amber-700">
+                        <i className="ri-team-line mr-1"></i>
+                        {modalInfo.teamOverlap.length} other{modalInfo.teamOverlap.length > 1 ? 's' : ''} off on overlapping dates: {modalInfo.teamOverlap.slice(0, 4).map((t) => t.name).join(', ')}{modalInfo.teamOverlap.length > 4 ? '…' : ''}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {selected.reason && (
                 <div>

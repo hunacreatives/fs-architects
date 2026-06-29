@@ -185,7 +185,7 @@ async function run() {
       // Daily hours for completed days in this period (through the last completed day).
       const { data: hours } = await supabase
         .from('hub_daily_hours')
-        .select('date, hours_raw')
+        .select('date, hours_raw, is_manual')
         .eq('user_id', emp.id)
         .gte('date', start)
         .lte('date', evalDayStr)
@@ -203,8 +203,11 @@ async function run() {
       const onLeave = (dateStr: string) =>
         (leave ?? []).some((l: any) => l.start_date <= dateStr && dateStr <= l.end_date);
 
+      // A day an admin manually corrected (is_manual) is treated as reviewed and
+      // never counts toward the strike total, regardless of the hours entered.
       const undertimeDays = (hours ?? []).filter((h: any) =>
         Number(h.hours_raw) < UNDERTIME_THRESHOLD_HOURS &&
+        !h.is_manual &&
         days.has(weekday(h.date)) &&
         !onLeave(h.date),
       );

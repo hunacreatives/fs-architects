@@ -43,6 +43,7 @@ interface DayHours {
   billed: number;    // hours_capped — what they're paid for
   raw: number;       // hours_raw — actual clocked time (basis for undertime flag)
   overtime: number;  // overtime_hours
+  manual: boolean;   // is_manual — admin manually corrected this day
 }
 
 interface PayRow {
@@ -88,15 +89,17 @@ function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
   return (
     <div className="space-y-1">
       {days.map((d) => {
-        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS;
+        // A manually corrected day is treated as reviewed — not flagged undertime.
+        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS && !d.manual;
         return (
           <div
             key={d.date}
             className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-md ${undertime ? 'bg-amber-50' : 'bg-gray-50'}`}
           >
-            <span className={`font-medium ${undertime ? 'text-amber-700' : 'text-gray-600'}`}>
+            <span className={`font-medium flex items-center gap-1 ${undertime ? 'text-amber-700' : 'text-gray-600'}`}>
               {formatDayLabel(d.date)}
-              {undertime && <i className="ri-error-warning-line ml-1 text-amber-500" title={`Under ${UNDERTIME_THRESHOLD_HOURS}h clocked`}></i>}
+              {undertime && <i className="ri-error-warning-line text-amber-500" title={`Under ${UNDERTIME_THRESHOLD_HOURS}h clocked`}></i>}
+              {d.manual && <span className="text-[9px] px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded-full font-medium" title="Manually corrected by an admin"><i className="ri-pencil-line text-[9px] mr-0.5"></i>corrected</span>}
             </span>
             <span className="flex items-center gap-2 tabular-nums">
               <span className={undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h</span>
@@ -1182,6 +1185,7 @@ export default function AdminPayrollPage() {
     const hoursByDate: Record<string, Record<string, number>> = {};
     const rawHoursByDate: Record<string, Record<string, number>> = {};
     const overtimeByDate: Record<string, Record<string, number>> = {};
+    const manualByDate: Record<string, Record<string, boolean>> = {};
     const hoursMap: Record<string, { capped: number; raw: number; overtime: number; days: number }> = {};
     for (const h of mergedHoursRows) {
       // Skip hours already covered by a paid payout (on or before payment_date)
@@ -1200,6 +1204,10 @@ export default function AdminPayrollPage() {
       if (h.overtime_hours) {
         if (!overtimeByDate[h.user_id]) overtimeByDate[h.user_id] = {};
         overtimeByDate[h.user_id][h.date] = (overtimeByDate[h.user_id][h.date] || 0) + h.overtime_hours;
+      }
+      if (h.is_manual) {
+        if (!manualByDate[h.user_id]) manualByDate[h.user_id] = {};
+        manualByDate[h.user_id][h.date] = true;
       }
     }
 
@@ -1370,6 +1378,7 @@ export default function AdminPayrollPage() {
       const billedByDate = hoursByDate[c.id] || {};
       const rawByDate = rawHoursByDate[c.id] || {};
       const otByDate = overtimeByDate[c.id] || {};
+      const manualDates = manualByDate[c.id] || {};
       const dailyBreakdown: DayHours[] = Array.from(
         new Set([...Object.keys(billedByDate), ...Object.keys(rawByDate)]),
       )
@@ -1379,6 +1388,7 @@ export default function AdminPayrollPage() {
           billed: parseFloat((billedByDate[date] || 0).toFixed(2)),
           raw: parseFloat((rawByDate[date] || 0).toFixed(2)),
           overtime: parseFloat((otByDate[date] || 0).toFixed(2)),
+          manual: !!manualDates[date],
         }));
 
       return {

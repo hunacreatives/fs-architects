@@ -10,7 +10,7 @@ import { logAudit } from '@/lib/audit';
 import { getSetting, setSetting } from '@/lib/settings';
 import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 import { DEMO_PAYOUTS, DEMO_CONTRACTORS } from '@/lib/demoData';
-import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeSplitOTPayFromDates, getOTMultiplier } from '@/lib/payrollUtils';
+import { computeFixedAccrual, computeSplitFixedAccrual, isAutoPayrollUser, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeSplitOTPayFromDates, getOTMultiplier, computeLeaveHoursByDate } from '@/lib/payrollUtils';
 
 interface Contractor {
   id: string;
@@ -40,10 +40,11 @@ interface RateEntry {
 
 interface DayHours {
   date: string;
-  billed: number;    // hours_capped — what they're paid for
-  raw: number;       // hours_raw — actual clocked time (basis for undertime flag)
-  overtime: number;  // overtime_hours
-  manual: boolean;   // is_manual — admin manually corrected this day
+  billed: number;          // hours_capped — what they're paid for
+  raw: number;             // hours_raw — actual clocked time (basis for undertime flag)
+  overtime: number;        // overtime_hours
+  manual: boolean;         // is_manual — admin manually corrected this day
+  leaveType?: string;      // set when this day is paid leave (pto, sick, …)
 }
 
 interface PayRow {
@@ -80,8 +81,16 @@ function formatDayLabel(dateStr: string): string {
   return `${DAY_ABBR[d.getDay()]}, ${MONTH_ABBR[Number(m) - 1]} ${Number(day)}`;
 }
 
+// Short labels for paid-leave types shown as a badge in the daily breakdown.
+const LEAVE_TYPE_LABELS: Record<string, string> = {
+  pto: 'Vacation', vacation: 'Vacation', sick: 'Sick', birthday: 'Birthday',
+  sil: 'SIL', emergency: 'Emergency', maternity: 'Maternity', paternity: 'Paternity',
+  solo_parent: 'Solo Parent', women_special: 'Special (Women)', vawc: 'VAWC', other: 'Leave',
+};
+
 // Per-day hours breakdown shown when a payroll row is expanded. Days under the
-// 9h raw-clocked threshold are flagged amber to match the undertime alert.
+// 9h raw-clocked threshold are flagged amber to match the undertime alert; paid
+// leave days are shown in green and never flagged.
 function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
   if (days.length === 0) {
     return <p className="text-xs text-gray-400 py-2">No daily hours logged this period.</p>;
@@ -89,20 +98,24 @@ function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
   return (
     <div className="space-y-1">
       {days.map((d) => {
-        // A manually corrected day is treated as reviewed — not flagged undertime.
-        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS && !d.manual;
+        const onLeave = !!d.leaveType;
+        // Leave and manually-corrected days are treated as reviewed — not undertime.
+        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS && !d.manual && !onLeave;
+        const rowBg = onLeave ? 'bg-emerald-50' : undertime ? 'bg-amber-50' : 'bg-gray-50';
+        const labelColor = onLeave ? 'text-emerald-700' : undertime ? 'text-amber-700' : 'text-gray-600';
         return (
           <div
             key={d.date}
-            className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-md ${undertime ? 'bg-amber-50' : 'bg-gray-50'}`}
+            className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-md ${rowBg}`}
           >
-            <span className={`font-medium flex items-center gap-1 ${undertime ? 'text-amber-700' : 'text-gray-600'}`}>
+            <span className={`font-medium flex items-center gap-1 ${labelColor}`}>
               {formatDayLabel(d.date)}
               {undertime && <i className="ri-error-warning-line text-amber-500" title={`Under ${UNDERTIME_THRESHOLD_HOURS}h clocked`}></i>}
-              {d.manual && <span className="text-[9px] px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded-full font-medium" title="Manually corrected by an admin"><i className="ri-pencil-line text-[9px] mr-0.5"></i>corrected</span>}
+              {onLeave && <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium" title="Approved paid leave — credited as a paid day"><i className="ri-calendar-check-line text-[9px] mr-0.5"></i>{LEAVE_TYPE_LABELS[d.leaveType!] || 'Leave'}</span>}
+              {d.manual && !onLeave && <span className="text-[9px] px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded-full font-medium" title="Manually corrected by an admin"><i className="ri-pencil-line text-[9px] mr-0.5"></i>corrected</span>}
             </span>
             <span className="flex items-center gap-2 tabular-nums">
-              <span className={undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h</span>
+              <span className={onLeave ? 'text-emerald-700 font-semibold' : undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h{onLeave ? ' paid' : ''}</span>
               {d.overtime > 0 && <span className="text-[#1c2b3a] font-medium">+{d.overtime.toFixed(1)} OT</span>}
             </span>
           </div>
@@ -1130,7 +1143,7 @@ export default function AdminPayrollPage() {
     const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
 
     // Payroll reads from hub_daily_hours, so sync Slack punches first for the live cutoff.
-    const [slackRes, contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes] = await Promise.all([
+    const [slackRes, contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes, leaveRes] = await Promise.all([
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
@@ -1154,7 +1167,20 @@ export default function AdminPayrollPage() {
         .eq('status', 'approved')
         .gte('date', selectedPeriod.start)
         .lte('date', selectedPeriod.end),
+      supabase
+        .from('hub_time_off')
+        .select('contractor_id, type, start_date, end_date, half_day')
+        .eq('status', 'approved')
+        .lte('start_date', selectedPeriod.end)
+        .gte('end_date', selectedPeriod.start),
     ]);
+
+    // Approved paid leave per contractor, used to credit leave days as paid below.
+    const leavesByUser: Record<string, any[]> = {};
+    for (const lv of leaveRes.data || []) {
+      if (!leavesByUser[lv.contractor_id]) leavesByUser[lv.contractor_id] = [];
+      leavesByUser[lv.contractor_id].push(lv);
+    }
 
     // Map contractor_id → payment_date for already-paid payouts this period.
     // Hours on or before payment_date are already settled — exclude them from the live count.
@@ -1208,6 +1234,40 @@ export default function AdminPayrollPage() {
       if (h.is_manual) {
         if (!manualByDate[h.user_id]) manualByDate[h.user_id] = {};
         manualByDate[h.user_id][h.date] = true;
+      }
+    }
+
+    // Fold approved paid leave into the capped-hours maps so leave days are paid
+    // for both hourly (hours × rate) and fixed (earned day units) employees. A
+    // paid leave day acts as a floor of 8h (4h half-day): it tops a date up to a
+    // full paid day without double-counting hours already clocked. leaveByDate /
+    // leaveTypeByDate are kept purely for the daily-breakdown dropdown.
+    const leaveByDate: Record<string, Record<string, number>> = {};
+    const leaveTypeByDate: Record<string, Record<string, string>> = {};
+    for (const c of eligibleContractors) {
+      const leaves = leavesByUser[c.id];
+      if (!leaves || leaves.length === 0) continue;
+      const leaveHours = computeLeaveHoursByDate(leaves, selectedPeriod.start, selectedPeriod.end, c.work_days);
+      if (Object.keys(leaveHours).length === 0) continue;
+      // First leave row covering each date, for the dropdown label.
+      const typeForDate = (date: string) =>
+        (leaves.find((l: any) => l.start_date <= date && date <= l.end_date)?.type) || 'leave';
+      const paymentDate = paidPaymentDateMap[c.id];
+      for (const [date, hrs] of Object.entries(leaveHours)) {
+        if (paymentDate && date <= paymentDate) continue; // already settled
+        if (!leaveByDate[c.id]) leaveByDate[c.id] = {};
+        if (!leaveTypeByDate[c.id]) leaveTypeByDate[c.id] = {};
+        leaveByDate[c.id][date] = hrs;
+        leaveTypeByDate[c.id][date] = typeForDate(date);
+
+        if (!hoursMap[c.id]) hoursMap[c.id] = { capped: 0, raw: 0, overtime: 0, days: 0 };
+        if (!hoursByDate[c.id]) hoursByDate[c.id] = {};
+        const existing = hoursByDate[c.id][date] || 0;
+        if (hrs > existing) {
+          hoursMap[c.id].capped += hrs - existing;
+          if (existing === 0) hoursMap[c.id].days += 1; // a leave day with no clock-in still counts as a day
+          hoursByDate[c.id][date] = hrs;
+        }
       }
     }
 
@@ -1373,14 +1433,16 @@ export default function AdminPayrollPage() {
 
       const isAccruing = prorated && proratedNote?.includes('accruing');
 
-      // Per-day breakdown for the expandable row — only days with logged hours,
-      // sorted chronologically. Billed + OT shown; raw kept for the undertime flag.
+      // Per-day breakdown for the expandable row — days with logged hours OR paid
+      // leave, sorted chronologically. Billed + OT shown; raw kept for the
+      // undertime flag. billedByDate already includes credited leave hours.
       const billedByDate = hoursByDate[c.id] || {};
       const rawByDate = rawHoursByDate[c.id] || {};
       const otByDate = overtimeByDate[c.id] || {};
       const manualDates = manualByDate[c.id] || {};
+      const leaveTypes = leaveTypeByDate[c.id] || {};
       const dailyBreakdown: DayHours[] = Array.from(
-        new Set([...Object.keys(billedByDate), ...Object.keys(rawByDate)]),
+        new Set([...Object.keys(billedByDate), ...Object.keys(rawByDate), ...Object.keys(leaveTypes)]),
       )
         .sort()
         .map((date) => ({
@@ -1389,6 +1451,7 @@ export default function AdminPayrollPage() {
           raw: parseFloat((rawByDate[date] || 0).toFixed(2)),
           overtime: parseFloat((otByDate[date] || 0).toFixed(2)),
           manual: !!manualDates[date],
+          leaveType: leaveTypes[date],
         }));
 
       return {

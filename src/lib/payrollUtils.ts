@@ -214,6 +214,63 @@ function clampDayUnits(hours: number, scheduledDays: number) {
   return Math.min(hours / 8, scheduledDays);
 }
 
+// ── Paid leave → payroll ──────────────────────────────────────────────────────
+// A paid leave day counts as a full paid workday (8 hours = the daily paid hours;
+// handbook: 9 raw clocked hours = 8 paid + 1h unpaid lunch). A half-day = 4h.
+// These leave-hours are fed into the same hours maps the pay math already uses,
+// so both hourly (hours × rate) and fixed/salaried (earned day units) employees
+// are made whole for approved paid leave without any special-case pay formula.
+export const PAID_LEAVE_DAY_HOURS = 8;
+
+// Every leave type is employer-paid EXCEPT explicit unpaid leave.
+export function isPaidLeaveType(type: string | null | undefined): boolean {
+  return !!type && type !== 'unpaid';
+}
+
+function workDayNumberSet(workDays: string[] | null | undefined): Set<number> {
+  if (!workDays || workDays.length === 0) return new Set([1, 2, 3, 4, 5]); // Mon–Fri
+  const set = new Set<number>();
+  for (const d of workDays) {
+    const n = DAY_MAP[normalizeWorkDay(d)];
+    if (typeof n === 'number') set.add(n);
+  }
+  return set.size ? set : new Set([1, 2, 3, 4, 5]);
+}
+
+type LeaveRow = { type: string; start_date: string; end_date: string; half_day?: boolean | null };
+
+// Map of date → paid-leave hours for one employee's APPROVED leaves, clipped to
+// the pay period and to the employee's scheduled work days. Unpaid leave and
+// non-work days contribute nothing. Caller is responsible for passing only
+// approved rows.
+export function computeLeaveHoursByDate(
+  leaves: LeaveRow[],
+  periodStart: string,
+  periodEnd: string,
+  workDays: string[] | null | undefined,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  const scheduled = workDayNumberSet(workDays);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  for (const lv of leaves) {
+    if (!isPaidLeaveType(lv.type)) continue;
+    const from = lv.start_date > periodStart ? lv.start_date : periodStart;
+    const to = lv.end_date < periodEnd ? lv.end_date : periodEnd;
+    if (!from || !to || to < from) continue;
+    const hoursPerDay = lv.half_day ? PAID_LEAVE_DAY_HOURS / 2 : PAID_LEAVE_DAY_HOURS;
+    const cur = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+    while (cur <= end) {
+      if (scheduled.has(cur.getDay())) {
+        const ds = `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}-${pad(cur.getDate())}`;
+        result[ds] = Math.max(result[ds] || 0, hoursPerDay);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return result;
+}
+
 export function computeFixedAccrual(params: {
   periodStart: string;
   periodEnd: string;
@@ -284,7 +341,7 @@ export function computeSplitFixedAccrual(params: {
 }
 
 export async function fetchPayrollTotal(periodStart: string, periodEnd: string, usdRate = 56): Promise<number> {
-  const [contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes] = await Promise.all([
+  const [contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes, leaveRes] = await Promise.all([
     supabase
       .from('hub_users')
       .select('id, full_name, role, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days')
@@ -307,7 +364,19 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
       .eq('status', 'approved')
       .gte('date', periodStart)
       .lte('date', periodEnd),
+    supabase
+      .from('hub_time_off')
+      .select('contractor_id, type, start_date, end_date, half_day')
+      .eq('status', 'approved')
+      .lte('start_date', periodEnd)
+      .gte('end_date', periodStart),
   ]);
+
+  const leavesByUser: Record<string, LeaveRow[]> = {};
+  for (const lv of leaveRes.data || []) {
+    if (!leavesByUser[lv.contractor_id]) leavesByUser[lv.contractor_id] = [];
+    leavesByUser[lv.contractor_id].push(lv);
+  }
 
   const isRestDayByUser: Record<string, Record<string, boolean>> = {};
   for (const req of otRequestsRes.data || []) {
@@ -343,6 +412,26 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
     if (h.overtime_hours) {
       if (!overtimeByDate[h.user_id]) overtimeByDate[h.user_id] = {};
       overtimeByDate[h.user_id][h.date] = (overtimeByDate[h.user_id][h.date] || 0) + h.overtime_hours;
+    }
+  }
+
+  // Fold approved paid leave into the capped-hours maps so leave days are paid.
+  // A leave day acts as a floor of 8 paid hours (4 for a half-day): it tops a
+  // date up to a full paid day without double-counting any hours already clocked.
+  for (const c of contractors) {
+    const leaves = leavesByUser[c.id];
+    if (!leaves || leaves.length === 0) continue;
+    const leaveHours = computeLeaveHoursByDate(leaves, periodStart, periodEnd, (c as any).work_days);
+    const paymentDate = paidPaymentDateMap[c.id];
+    for (const [date, hrs] of Object.entries(leaveHours)) {
+      if (paymentDate && date <= paymentDate) continue; // already settled
+      if (!hoursByDate[c.id]) hoursByDate[c.id] = {};
+      const existing = hoursByDate[c.id][date] || 0;
+      if (hrs <= existing) continue;
+      const delta = hrs - existing;
+      hoursByDate[c.id][date] = hrs;
+      if (!hoursMap[c.id]) hoursMap[c.id] = { capped: 0, overtime: 0 };
+      hoursMap[c.id].capped += delta;
     }
   }
 

@@ -181,7 +181,7 @@ export default function ContractorTimeOffPage() {
     if (!user) return;
     setSaving(true);
     setFormError('');
-    await supabase.from('hub_time_off').insert({
+    const { error: insertError } = await supabase.from('hub_time_off').insert({
       contractor_id: user.id,
       type,
       start_date: startDate,
@@ -192,6 +192,14 @@ export default function ContractorTimeOffPage() {
       status: 'pending',
     });
     setSaving(false);
+    // Don't close the modal or notify admins if the request never saved —
+    // otherwise the employee sees "success" and HR gets an email for a request
+    // that doesn't exist in the hub.
+    if (insertError) {
+      console.error('time-off insert failed', insertError);
+      setFormError('Your request could not be submitted. Please try again or contact HR.');
+      return;
+    }
     setShowModal(false);
     const endForCalc = halfDay ? startDate : endDate;
     const days = halfDay ? 0.5 : workingDaysBetween(startDate, endForCalc, workDays);

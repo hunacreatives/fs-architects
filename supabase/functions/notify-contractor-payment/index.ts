@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background:#111827;padding:24px 36px;">
-              <img src="${logoUrl}" alt="FS Architects" height="24" style="display:block;" />
+              <img src="${logoUrl}" alt="FS Architects" height="32" style="display:block;" />
             </td>
           </tr>
 
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
                 ${!is_fully_paid ? `
                 <tr>
                   <td style="padding:5px 0;font-size:13px;color:#6b7280;">Remaining</td>
-                  <td style="padding:5px 0;font-size:13px;color:#FF6B35;font-weight:600;text-align:right;">${fmt(remaining)}</td>
+                  <td style="padding:5px 0;font-size:13px;color:#1c2b3a;font-weight:600;text-align:right;">${fmt(remaining)}</td>
                 </tr>` : ''}
               </table>
               <!-- Progress bar -->

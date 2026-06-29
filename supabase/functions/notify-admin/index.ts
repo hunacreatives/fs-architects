@@ -68,7 +68,7 @@ function baseTemplate(title: string, body: string) {
   return `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;margin:0">
 <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
   <div style="background:#111827;padding:20px 24px">
-    <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="22" style="display:block;" />
+    <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="34" style="display:block;" />
   </div>
   <div style="padding:24px">
     <h2 style="margin:0 0 12px;font-size:16px;color:#111827">${title}</h2>
@@ -99,7 +99,7 @@ serve(async (req) => {
             <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:#6b7280;font-size:13px">Dates</span><span style="font-size:13px;font-weight:600;color:#111827">${start_date}${start_date !== end_date ? ` – ${end_date}` : ''}</span></div>
             <div style="display:flex;justify-content:space-between"><span style="color:#6b7280;font-size:13px">Duration</span><span style="font-size:13px;font-weight:600;color:#111827">${days} day${days !== 1 ? 's' : ''}</span></div>
           </div>
-          <a href="https://fsarchitects.ph/hub/admin/timeoff" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/timeoff" style="display:inline-block;background:#1c2b3a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
         )
       );
       const daysText = days ? ` (${days} day${days !== 1 ? 's' : ''})` : '';
@@ -124,7 +124,7 @@ serve(async (req) => {
           <div style="background:#f9fafb;border-radius:8px;padding:14px;margin-bottom:16px">
             <p style="margin:0;font-size:13px;color:#111827;font-weight:600">${title}</p>
           </div>
-          <a href="https://fsarchitects.ph/hub/admin/requests" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/requests" style="display:inline-block;background:#1c2b3a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
         )
       );
       await pushToAdmins('New request submitted', `${contractor_name} submitted a new ${request_type} request: ${title}`, 'https://fsarchitects.ph/hub/admin/requests');
@@ -142,7 +142,7 @@ serve(async (req) => {
         baseTemplate(
           `${invoices.length} Overdue Invoice${invoices.length > 1 ? 's' : ''}`,
           `<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Invoice</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Client</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Overdue</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Balance</th></tr></thead><tbody>${rows}</tbody></table>
-          <a href="https://fsarchitects.ph/hub/admin/invoice-log" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Invoice Log →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/invoice-log" style="display:inline-block;background:#1c2b3a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Invoice Log →</a>`
         )
       );
       for (const inv of invoices) {
@@ -164,7 +164,7 @@ serve(async (req) => {
         baseTemplate(
           'Contracts Expiring Soon',
           `<table style="width:100%;border-collapse:collapse;margin-bottom:16px"><thead><tr style="background:#f9fafb"><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Contractor</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Expiry</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:#6b7280;font-weight:600">Status</th></tr></thead><tbody>${rows}</tbody></table>
-          <a href="https://fsarchitects.ph/hub/admin/employees" style="display:inline-block;background:#FF6B35;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Employees →</a>`
+          <a href="https://fsarchitects.ph/hub/admin/employees" style="display:inline-block;background:#1c2b3a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">View Employees →</a>`
         )
       );
       for (const c of contractors) {

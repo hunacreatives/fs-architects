@@ -98,7 +98,7 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
   <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
     <div style="background:#111827;padding:24px 32px;">
-      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
+      <p style="color:#1c2b3a;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
       <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">${heading}</h1>
       <p style="color:#6b7280;font-size:13px;margin:6px 0 0;">${subheading}</p>
     </div>
@@ -122,7 +122,7 @@ async function sendNotification(batch_id: string, type: 'fund_request' | 'fund_a
         <tr>
           <td style="padding:14px 16px;">
             <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.06em;">Total Amount</p>
-            <p style="margin:4px 0 0;font-size:22px;font-weight:800;color:#FF6B35;">${total}</p>
+            <p style="margin:4px 0 0;font-size:22px;font-weight:800;color:#1c2b3a;">${total}</p>
           </td>
         </tr>
       </table>

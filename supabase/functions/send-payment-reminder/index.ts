@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
             <td style="background:#111827;padding:28px 40px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td><img src="${logoUrl}" alt="FS Architects" height="26" style="display:block;" /></td>
+                  <td><img src="${logoUrl}" alt="FS Architects" height="32" style="display:block;" /></td>
                   <td style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Payment Reminder</p>
                   </td>
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
                 <table width="100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="font-size:13px;color:#92400e;">Amount due</td>
-                    <td style="font-size:24px;font-weight:800;color:#FF6B35;text-align:right;">${amount_due ? fmt(amount_due) : 'See invoice'}</td>
+                    <td style="font-size:24px;font-weight:800;color:#1c2b3a;text-align:right;">${amount_due ? fmt(amount_due) : 'See invoice'}</td>
                   </tr>
                   ${dueDateStr ? `<tr>
                     <td style="padding-top:6px;font-size:13px;color:#92400e;">Due date</td>

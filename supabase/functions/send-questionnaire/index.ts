@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
 
         <tr><td style="background:#111827;padding:24px 36px;">
-          <img src="${logoUrl}" alt="FS Architects" height="24" style="display:block;" />
+          <img src="${logoUrl}" alt="FS Architects" height="32" style="display:block;" />
         </td></tr>
 
         <tr><td style="padding:32px 36px 24px;">
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
           <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
             We've put together a short questionnaire (${question_count || 'a few'} questions) — it takes about 5 minutes to fill out.
           </p>
-          <a href="${formUrl}" style="display:inline-block;background:#FF6B35;color:#ffffff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;">
+          <a href="${formUrl}" style="display:inline-block;background:#1c2b3a;color:#ffffff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;">
             Fill out your questionnaire →
           </a>
         </td></tr>

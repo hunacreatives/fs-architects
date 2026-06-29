@@ -81,7 +81,7 @@ async function run(assignment_id: string) {
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
     <div style="background:#111827;padding:28px 36px;">
-      <p style="color:#FF6B35;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
+      <p style="color:#1c2b3a;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
       <h1 style="color:#fff;font-size:24px;font-weight:800;margin:0;">Contract Signed ✓</h1>
       <p style="color:#9ca3af;font-size:13px;margin:6px 0 0;">Your signed copy is attached to this email.</p>
     </div>
@@ -100,7 +100,7 @@ async function run(assignment_id: string) {
         ${signedHtmlAttachment
           ? 'Your signed copy is attached as an HTML file. Open it in any browser to view or print.'
           : contractLink
-            ? `You can view the original document <a href="${contractLink}" style="color:#FF6B35;">here</a>.`
+            ? `You can view the original document <a href="${contractLink}" style="color:#1c2b3a;">here</a>.`
             : 'Please keep this email for your records.'}
       </p>
     </div>

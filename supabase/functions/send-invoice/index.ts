@@ -270,7 +270,7 @@ Deno.serve(async (req) => {
                 </tr>
                 <tr>
                   <td style="padding:12px 0 0;font-size:15px;font-weight:700;color:#111827;">Amount due</td>
-                  <td style="padding:12px 0 0;font-size:18px;font-weight:800;color:${isPaid ? '#059669' : '#FF6B35'};text-align:right;white-space:nowrap;">${isPaid ? 'Paid in full' : fmt(amountDue)}</td>
+                  <td style="padding:12px 0 0;font-size:18px;font-weight:800;color:${isPaid ? '#059669' : '#1c2b3a'};text-align:right;white-space:nowrap;">${isPaid ? 'Paid in full' : fmt(amountDue)}</td>
                 </tr>
               </table>
             </td>

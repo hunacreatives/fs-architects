@@ -3,7 +3,7 @@ import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPeriods, fmtTime, fmtDate, fmtPHP, localToday } from '@/lib/formatUtils';
-import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates } from '@/lib/payrollUtils';
+import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours, computeOTPayFromDates, computeLeaveHoursByDate } from '@/lib/payrollUtils';
 import { fetchUserFinanceMap } from '@/lib/userFinance';
 
 interface DayRow {
@@ -20,6 +20,24 @@ interface RateEntry {
   payment_type: string;
   hourly_rate: number | null;
   monthly_rate: number | null;
+}
+
+// Fold approved paid-leave hours into the day rows so the employee's payslip
+// matches what payroll actually pays. A paid leave day is a floor of 8 billable
+// hours (4 for a half-day): it tops up an existing day or adds a leave-only row.
+// Keeps employee numbers identical to the admin payroll calc.
+function mergeLeaveDays(rows: DayRow[], leaveHoursByDate: Record<string, number>): DayRow[] {
+  if (!leaveHoursByDate || Object.keys(leaveHoursByDate).length === 0) return rows;
+  const byDate = new Map(rows.map((d) => [d.date, { ...d }]));
+  for (const [date, hrs] of Object.entries(leaveHoursByDate)) {
+    const existing = byDate.get(date);
+    if (existing) {
+      existing.hours_capped = Math.max(existing.hours_capped, hrs);
+    } else {
+      byDate.set(date, { date, hours_raw: 0, hours_capped: hrs, overtime_hours: 0, first_on: null, last_off: null });
+    }
+  }
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function generatePayslipHTML(opts: {
@@ -301,7 +319,7 @@ export default function ContractorPayoutsPage() {
     setLoading(true);
     try {
       const isCurrentPeriod = todayPHT >= selectedPeriod.start && todayPHT <= selectedPeriod.end;
-      const [slackRes, daysRes, payoutRes, rateRes] = await Promise.all([
+      const [slackRes, daysRes, payoutRes, rateRes, leaveRes] = await Promise.all([
         isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
         supabase
           .from('hub_daily_hours')
@@ -322,14 +340,23 @@ export default function ContractorPayoutsPage() {
           .eq('contractor_id', hubUser.id)
           .lte('effective_date', selectedPeriod.end)
           .order('effective_date', { ascending: true }),
+        supabase
+          .from('hub_time_off')
+          .select('type, start_date, end_date, half_day')
+          .eq('contractor_id', hubUser.id)
+          .eq('status', 'approved')
+          .lte('start_date', selectedPeriod.end)
+          .gte('end_date', selectedPeriod.start),
       ]);
       const payout = payoutRes.data ?? null;
-      const mergedDays = mergeLiveAttendanceIntoDailyHours(
+      const clockedDays = mergeLiveAttendanceIntoDailyHours(
         (((daysRes.data as DayRow[]) ?? []) as any[]).map((d: any) => ({ ...d, user_id: hubUser.id })),
         (slackRes as any)?.data?.attendance || [],
         [hubUser.id],
         todayPHT,
       ).map(({ user_id: _userId, ...rest }) => rest as DayRow);
+      const leaveHours = computeLeaveHoursByDate(leaveRes.data || [], selectedPeriod.start, selectedPeriod.end, workDays);
+      const mergedDays = mergeLeaveDays(clockedDays, leaveHours);
       setDays(mergedDays);
       setRateHistory((rateRes.data as RateEntry[]) ?? []);
       setExistingPayout(payout);
@@ -376,7 +403,7 @@ export default function ContractorPayoutsPage() {
         : ((hubUser as any).start_date ?? today);
       const periodStart = rawStart > today ? today : rawStart;
 
-      const [daysRes, slackRes, openReqRes] = await Promise.all([
+      const [daysRes, slackRes, openReqRes, leaveRes] = await Promise.all([
         supabase.from('hub_daily_hours')
           .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
           .eq('user_id', hubUser.id).gte('date', periodStart).lte('date', today).order('date', { ascending: true }),
@@ -385,13 +412,19 @@ export default function ContractorPayoutsPage() {
           .select('id, status, final_payout, payment_date, cutoff_start, cutoff_end')
           .eq('contractor_id', hubUser.id).in('status', ['submitted', 'hr_approved'])
           .order('cutoff_end', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('hub_time_off')
+          .select('type, start_date, end_date, half_day')
+          .eq('contractor_id', hubUser.id).eq('status', 'approved')
+          .lte('start_date', today).gte('end_date', periodStart),
       ]);
 
-      const merged = mergeLiveAttendanceIntoDailyHours(
+      const clocked = mergeLiveAttendanceIntoDailyHours(
         ((daysRes.data as DayRow[]) ?? []).map((d: any) => ({ ...d, user_id: hubUser.id })),
         (slackRes as any)?.data?.attendance || [],
         [hubUser.id], today,
       ).map(({ user_id: _uid, ...rest }) => rest as DayRow);
+      const hourlyLeave = computeLeaveHoursByDate(leaveRes.data || [], periodStart, today, ((hubUser as any)?.work_days as string[] | null | undefined) || []);
+      const merged = mergeLeaveDays(clocked, hourlyLeave);
 
       const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
       const s = new Date(periodStart + 'T12:00:00').toLocaleDateString('en-US', opts);
@@ -577,10 +610,14 @@ export default function ContractorPayoutsPage() {
       submitted_at: new Date().toISOString(),
       locked: false,
     }, { onConflict: 'contractor_id,cutoff_start' }).select('id, status, final_payout, payment_date').single();
-    if (!error && data) {
-      setExistingPayout(data);
-      await supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } });
+    if (error || !data) {
+      console.error('payslip submit failed', error);
+      alert('Your payslip could not be submitted. Please try again, or contact HR if it persists.');
+      setSubmitting(false);
+      return;
     }
+    setExistingPayout(data);
+    await supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } });
     setSubmitting(false);
   };
 
@@ -611,10 +648,14 @@ export default function ContractorPayoutsPage() {
       submitted_at: new Date().toISOString(),
       locked: false,
     }, { onConflict: 'contractor_id,cutoff_start' }).select('id, status, final_payout, cutoff_start, cutoff_end').single();
-    if (!error && data) {
-      setHourlyRequest(data);
-      supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } }).catch(console.error);
+    if (error || !data) {
+      console.error('fund transfer request failed', error);
+      alert('Your request could not be submitted. Please try again, or contact HR if it persists.');
+      setSubmitting(false);
+      return;
     }
+    setHourlyRequest(data);
+    supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } }).catch(console.error);
     setSubmitting(false);
   };
 

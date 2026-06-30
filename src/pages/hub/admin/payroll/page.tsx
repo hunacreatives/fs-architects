@@ -654,16 +654,24 @@ export default function AdminPayrollPage() {
       setWorkflowLoading(false);
       return;
     }
-    const total = approved.reduce((s, r) => {
+    // Auto-included staff (admins/HR) are paid every cutoff without per-row
+    // approval, but their pay must still be part of the transfer total + count.
+    const autoIncluded = rows.filter(r => isAutoPayrollContractor(r.contractor));
+    const rowAmount = (r: PayRow) => {
       const p = payoutsMap[r.contractor.id];
-      return s + (p?.final_payout ?? r.pay);
-    }, 0);
+      const adjs: any[] = p?.adjustments || [];
+      const adjTotal = adjs.reduce((a: number, x: any) => a + (x.amount || 0), 0);
+      return r.pay + r.overtimePay + adjTotal;
+    };
+    const approvedTotal = approved.reduce((s, r) => s + (payoutsMap[r.contractor.id]?.final_payout ?? r.pay), 0);
+    const autoTotal = autoIncluded.reduce((s, r) => s + rowAmount(r), 0);
+    const total = approvedTotal + autoTotal;
     const { data: newBatch, error: batchError } = await supabase.from('hub_payroll_batches').insert({
       period_start: selectedPeriod.start,
       period_end: selectedPeriod.end,
       period_label: selectedPeriod.label,
       total_amount: total,
-      contractor_count: approved.length,
+      contractor_count: approved.length + autoIncluded.length,
       status: 'pending_owner',
       requested_by: hubUser?.id,
     }).select('id').single();
@@ -707,6 +715,29 @@ export default function AdminPayrollPage() {
     }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} employees)` });
     supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(console.error);
+    await fetchWorkflow().catch(console.error);
+    setWorkflowLoading(false);
+  };
+
+  // Undo a fund transfer request: unlink its payouts and delete the batch so it can
+  // be re-requested. Blocked once anyone in the batch has been paid.
+  const cancelFundTransfer = async () => {
+    if (!batch || batch.status === 'closed') return;
+    const anyPaid = rows.some(r => {
+      const p = payoutsMap[r.contractor.id];
+      return p?.batch_id === batch.id && p?.status === 'paid';
+    });
+    if (anyPaid) {
+      alert('Some payments in this transfer are already marked paid — undo individual payouts first.');
+      return;
+    }
+    if (!confirm('Undo this fund transfer request? Approved payouts stay approved; only the transfer is withdrawn.')) return;
+    setWorkflowLoading(true);
+    const { error: unlinkErr } = await supabase.from('hub_payouts').update({ batch_id: null }).eq('batch_id', batch.id);
+    if (unlinkErr) { console.error('Unlink payouts failed:', unlinkErr); alert('Failed to undo: ' + unlinkErr.message); setWorkflowLoading(false); return; }
+    const { error: delErr } = await supabase.from('hub_payroll_batches').delete().eq('id', batch.id);
+    if (delErr) { console.error('Delete batch failed:', delErr); alert('Failed to undo: ' + delErr.message); setWorkflowLoading(false); return; }
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'delete', entity_type: 'payroll_batch', entity_id: batch.id, description: `Undid fund transfer request for ${batch.period_label}` });
     await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
   };
@@ -2227,7 +2258,8 @@ export default function AdminPayrollPage() {
           const approvedCount = rows.filter(r =>
             !isAutoPayrollContractor(r.contractor) && payoutsMap[r.contractor.id]?.status === 'hr_approved'
           ).length;
-          const paidCount = rows.filter(r => payoutsMap[r.contractor.id]?.status === 'paid').length;
+          // Auto-included staff need no payout row to be "paid" — count them as settled.
+          const paidCount = rows.filter(r => isAutoPayrollContractor(r.contractor) || payoutsMap[r.contractor.id]?.status === 'paid').length;
           const isClosed = batch?.status === 'closed';
 
           return (
@@ -2283,12 +2315,20 @@ export default function AdminPayrollPage() {
                         </div>
                       </div>
                       {/* CTA */}
-                      {isOwner && isPending && (
-                        <button onClick={approveBatch} disabled={workflowLoading}
-                          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-[#111827] hover:bg-gray-800 text-white text-xs font-semibold rounded-xl cursor-pointer disabled:opacity-40 transition-colors whitespace-nowrap">
-                          <i className="ri-check-line text-sm"></i> Approve Transfer
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isPending && (
+                          <button onClick={cancelFundTransfer} disabled={workflowLoading}
+                            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-500 hover:text-rose-600 hover:border-rose-200 text-xs font-medium rounded-xl cursor-pointer disabled:opacity-40 transition-colors whitespace-nowrap">
+                            <i className="ri-arrow-go-back-line text-sm"></i> Undo
+                          </button>
+                        )}
+                        {isOwner && isPending && (
+                          <button onClick={approveBatch} disabled={workflowLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-[#111827] hover:bg-gray-800 text-white text-xs font-semibold rounded-xl cursor-pointer disabled:opacity-40 transition-colors whitespace-nowrap">
+                            <i className="ri-check-line text-sm"></i> Approve Transfer
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Progress */}

@@ -433,11 +433,14 @@ export default function AdminPayrollPage() {
       contractor_id: contractorId,
       cutoff_start: selectedPeriod.start,
       cutoff_end: selectedPeriod.end,
+      base_pay: basePay,
+      approved_hours: isNaN(h) ? (existing?.approved_hours ?? null) : h,
       final_payout: finalPay,
       overtime_pay: computedOTPay,
       status: existing?.status || 'pending',
       locked: existing?.locked ?? false,
       adjustments: finalAdjItems,
+      manual_override: true,
     }, { onConflict: 'contractor_id,cutoff_start' });
 
     if (error) {
@@ -449,6 +452,20 @@ export default function AdminPayrollPage() {
     await Promise.all([fetchPayroll(), fetchWorkflow()]);
     setEditSaving(false);
     setEditRowId(null);
+  };
+
+  // Reset a row back to the live-computed figures: clear the persisted manual
+  // override so the page stops restoring the edit, then refetch.
+  const resetEditRow = async (contractorId: string) => {
+    const existing = payoutsMap[contractorId];
+    if (existing?.id) {
+      await supabase.from('hub_payouts').update({ manual_override: false }).eq('id', existing.id);
+    }
+    setRowOverrides(prev => { const n = { ...prev }; delete n[contractorId]; return n; });
+    setEditAdjItems([]);
+    setEditOTEntries([]);
+    setEditRowId(null);
+    await Promise.all([fetchPayroll(), fetchWorkflow()]);
   };
 
   const handleYearChange = (year: string) => {
@@ -469,7 +486,7 @@ export default function AdminPayrollPage() {
     const [payoutsRes, batchRes] = await Promise.all([
       supabase
         .from('hub_payouts')
-        .select('id, contractor_id, status, final_payout, payment_date, batch_id, adjustments, payslip_sent_at, overtime_pay')
+        .select('id, contractor_id, status, final_payout, payment_date, batch_id, adjustments, payslip_sent_at, overtime_pay, base_pay, approved_hours, manual_override')
         .eq('cutoff_start', selectedPeriod.start),
       supabase
         .from('hub_payroll_batches')
@@ -483,6 +500,19 @@ export default function AdminPayrollPage() {
     for (const p of payoutsRes.data || []) map[p.contractor_id] = p;
     setPayoutsMap(map);
     setBatch(batchRes.data ?? null);
+
+    // Restore persisted manual row edits (hours/pay) for this period. Replaces any
+    // stale local overrides so edits survive reloads and don't bleed across periods.
+    const restored: Record<string, { hours?: number; pay?: number }> = {};
+    for (const p of payoutsRes.data || []) {
+      if (p.manual_override) {
+        restored[p.contractor_id] = {
+          hours: p.approved_hours != null ? Number(p.approved_hours) : undefined,
+          pay: p.base_pay != null ? Number(p.base_pay) : undefined,
+        };
+      }
+    }
+    setRowOverrides(restored);
 
     // Fetch open disputes for this period's payouts
     const payoutIds = (payoutsRes.data || []).map((p: any) => p.id);
@@ -2554,7 +2584,7 @@ export default function AdminPayrollPage() {
 
               <div className="px-5 pb-4 pt-3 border-t border-gray-100 flex justify-between gap-2 flex-shrink-0">
                 <button
-                  onClick={() => { setRowOverrides(prev => { const n = { ...prev }; delete n[editRowId!]; return n; }); setEditAdjItems([]); setEditOTEntries([]); setEditRowId(null); }}
+                  onClick={() => resetEditRow(editRowId!)}
                   className="px-3 py-2 text-xs text-rose-400 hover:text-rose-600 cursor-pointer"
                 >
                   Reset all

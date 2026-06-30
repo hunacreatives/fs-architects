@@ -72,7 +72,12 @@ async function getFolderForType(type: string, meta: Record<string, string>, acce
     return year === '2025' ? FOLDERS.invoices_2025 : FOLDERS.invoices_2026;
   }
   if (type === 'payroll') {
-    return year === '2025' ? FOLDERS.payroll_2025 : FOLDERS.payroll_2026;
+    const payrollRoot = year === '2025' ? FOLDERS.payroll_2025 : FOLDERS.payroll_2026;
+    // Organise by month: Payroll / 2026 / June / ...
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const monthName = meta.month ? (MONTHS[parseInt(meta.month, 10) - 1] ?? meta.month) : null;
+    if (monthName) return createOrGetFolder(monthName, payrollRoot, accessToken);
+    return payrollRoot;
   }
   if (type === 'contractor_agreement') return FOLDERS.contractors_agreements;
   if (type === 'contractor_id')        return FOLDERS.contractors_ids;

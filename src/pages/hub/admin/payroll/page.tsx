@@ -1042,8 +1042,9 @@ export default function AdminPayrollPage() {
       const pdfBytes = await generatePayrollPdfBytes(period.label, generatedLabel);
       const b64 = uint8ToBase64(pdfBytes);
       const safeName = period.label.replace(/[^a-zA-Z0-9\s]/g, '_').replace(/\s+/g, '_');
+      const month = period.start.slice(5, 7); // "06" for June
       const { data, error } = await supabase.functions.invoke('upload-to-drive', {
-        body: { type: 'payroll', year, filename: `Payroll_${safeName}.pdf`, base64Content: b64, mimeType: 'application/pdf', meta: { year } },
+        body: { type: 'payroll', year, filename: `Payroll_${safeName}.pdf`, base64Content: b64, mimeType: 'application/pdf', meta: { year, month } },
       });
       if (error || (data as any)?.error) {
         console.error('Payroll Drive upload failed:', error?.message || (data as any)?.error);
@@ -1703,23 +1704,7 @@ export default function AdminPayrollPage() {
       }, 400);
     }
 
-    const year = String(new Date().getFullYear());
-    const pdfSummary = [
-      `Payroll Report — ${selectedPeriod.label}`,
-      `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
-      `Employees: ${rows.length}`,
-      `Total Hours: ${totalHours.toFixed(2)}h`,
-      `Total Payroll: ₱${displayTotalPay.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-    ].join('\n');
-    supabase.functions.invoke('upload-to-drive', {
-      body: {
-        filename: `Payroll-${selectedPeriod.label.replace(/[^a-z0-9]/gi, '-')}.txt`,
-        mimeType: 'text/plain',
-        base64Content: btoa(unescape(encodeURIComponent(pdfSummary))),
-        type: 'payroll',
-        meta: { year },
-      },
-    }).catch(console.error);
+    // (no text-summary upload — PDF only)
   };
 
   return (

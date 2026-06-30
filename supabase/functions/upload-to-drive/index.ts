@@ -204,7 +204,7 @@ Deno.serve(async (req) => {
     if (!uploadRes.ok) throw new Error(JSON.stringify(result));
 
     const fileId = result.id;
-    if (type === 'task_attachment' || type === 'reimbursement_receipt') {
+    if (type === 'task_attachment' || type === 'reimbursement_receipt' || type === 'payout_receipt') {
       await ensureReadablePreview(fileId, accessToken);
     }
     const url = `https://drive.google.com/file/d/${fileId}/view`;

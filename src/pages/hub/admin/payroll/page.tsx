@@ -252,6 +252,10 @@ export default function AdminPayrollPage() {
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  // Owner "approve transfer" modal with optional proof-of-transfer screenshot.
+  const [approveProofOpen, setApproveProofOpen] = useState(false);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [approvingTransfer, setApprovingTransfer] = useState(false);
 
   // Hourly contractor fund transfer requests (separate from bi-monthly payroll)
 
@@ -699,13 +703,14 @@ export default function AdminPayrollPage() {
     setWorkflowLoading(false);
   };
 
-  const approveBatch = async () => {
+  const approveBatch = async (proofUrl?: string) => {
     if (!batch) return;
     setWorkflowLoading(true);
     const { error: batchApproveErr } = await supabase.from('hub_payroll_batches').update({
       status: 'owner_approved',
       approved_by: hubUser?.id,
       approved_at: new Date().toISOString(),
+      ...(proofUrl ? { proof_url: proofUrl } : {}),
     }).eq('id', batch.id);
     if (batchApproveErr) {
       console.error('Approve batch failed:', batchApproveErr);
@@ -717,6 +722,52 @@ export default function AdminPayrollPage() {
     supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(console.error);
     await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
+  };
+
+  // Owner approves the transfer, optionally attaching a proof screenshot that's
+  // uploaded to Google Drive (Payroll / Receipts) and linked on the batch.
+  const confirmApproveTransfer = async () => {
+    if (!batch) return;
+    setApprovingTransfer(true);
+    let proofUrl: string | undefined;
+    if (proofFile) {
+      try {
+        const b64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+          reader.onerror = reject;
+          reader.readAsDataURL(proofFile);
+        });
+        const ext = (proofFile.name.split('.').pop() || 'png').toLowerCase();
+        const year = selectedPeriod.start.slice(0, 4);
+        const { data, error } = await supabase.functions.invoke('upload-to-drive', {
+          body: {
+            type: 'payout_receipt',
+            year,
+            filename: `Fund-Transfer-Proof_${selectedPeriod.label.replace(/[^a-zA-Z0-9]+/g, '-')}.${ext}`,
+            base64Content: b64,
+            mimeType: proofFile.type || 'image/png',
+            meta: { year },
+          },
+        });
+        if (error || !data?.url) {
+          console.error('Proof upload failed', error || data);
+          alert('Could not upload the proof to Drive. You can approve without it and attach later, or try again.');
+          setApprovingTransfer(false);
+          return;
+        }
+        proofUrl = data.url as string;
+      } catch (e) {
+        console.error('Proof read/upload failed', e);
+        alert('Could not process the screenshot. Try again or approve without it.');
+        setApprovingTransfer(false);
+        return;
+      }
+    }
+    await approveBatch(proofUrl);
+    setApprovingTransfer(false);
+    setApproveProofOpen(false);
+    setProofFile(null);
   };
 
   // Undo a fund transfer request: unlink its payouts and delete the batch so it can
@@ -2315,6 +2366,7 @@ export default function AdminPayrollPage() {
                           <span className="text-xs font-semibold text-gray-700">{fmt(batch.total_amount, 'PHP')}</span>
                           {batch.approved_at && <><span className="text-gray-300">·</span><span className="text-xs text-gray-400">Approved {new Date(batch.approved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></>}
                           {isBatchClosed && batch.closed_at && <><span className="text-gray-300">·</span><span className="text-xs text-gray-400">Closed {new Date(batch.closed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></>}
+                          {batch.proof_url && <><span className="text-gray-300">·</span><a href={batch.proof_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#1c2b3a] font-medium hover:underline inline-flex items-center gap-0.5"><i className="ri-image-line text-[11px]"></i>Proof of transfer</a></>}
                         </div>
                       </div>
                       {/* CTA */}
@@ -2326,7 +2378,7 @@ export default function AdminPayrollPage() {
                           </button>
                         )}
                         {isOwner && isPending && (
-                          <button onClick={approveBatch} disabled={workflowLoading}
+                          <button onClick={() => { setProofFile(null); setApproveProofOpen(true); }} disabled={workflowLoading}
                             className="flex items-center gap-1.5 px-4 py-2 bg-[#111827] hover:bg-gray-800 text-white text-xs font-semibold rounded-xl cursor-pointer disabled:opacity-40 transition-colors whitespace-nowrap">
                             <i className="ri-check-line text-sm"></i> Approve Transfer
                           </button>
@@ -2678,6 +2730,46 @@ export default function AdminPayrollPage() {
               ) : (
                 <p className="text-sm text-gray-400 text-center py-4">No bank details on file for this employee.</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve transfer + optional proof-of-transfer screenshot */}
+      {approveProofOpen && batch && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-[#111827]">Approve Fund Transfer</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{batch.period_label} · {fmt(batch.total_amount, 'PHP')} · {batch.contractor_count} employee{batch.contractor_count !== 1 ? 's' : ''}</p>
+              </div>
+              <button onClick={() => { setApproveProofOpen(false); setProofFile(null); }} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
+                <i className="ri-close-line text-lg"></i>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-700">Proof of transfer <span className="text-gray-400 font-normal">(optional)</span></label>
+                <p className="text-[11px] text-gray-400">Attach a screenshot of the bank/transfer confirmation. It's saved to Google Drive (Payroll → Receipts) and linked here.</p>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+                />
+                {proofFile && <p className="text-xs text-emerald-600 flex items-center gap-1"><i className="ri-check-line"></i>{proofFile.name}</p>}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => { setApproveProofOpen(false); setProofFile(null); }} disabled={approvingTransfer}
+                  className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer disabled:opacity-40">
+                  Cancel
+                </button>
+                <button onClick={confirmApproveTransfer} disabled={approvingTransfer}
+                  className="flex-1 py-2.5 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5">
+                  {approvingTransfer ? <><i className="ri-loader-4-line animate-spin"></i> {proofFile ? 'Uploading…' : 'Approving…'}</> : <><i className="ri-check-line"></i> Approve Transfer</>}
+                </button>
+              </div>
             </div>
           </div>
         </div>

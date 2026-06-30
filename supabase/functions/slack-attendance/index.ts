@@ -223,10 +223,12 @@ Deno.serve(async (req) => {
       let effectiveStatus = status;
 
       if (isHourly && threadHours != null) {
-        // Thread hours for hourly employees are net (already exclude lunch).
-        // Cap regular pay at 8h; anything beyond 8h is OT (approved request required).
+        // Hourly employees log total time including 1h unpaid lunch (same as fixed).
+        // No upper cap — all hours beyond lunch are billable at their hourly rate.
+        // OT (approved request required) kicks in after 9 raw hours (8 billable + lunch).
         hoursRaw = threadHours;
-        hoursCapped = Math.min(threadHours, MAX_HOURS_FIXED);
+        const lunchDeduction = hoursRaw >= 5 ? 1 : 0;
+        hoursCapped = hoursRaw - lunchDeduction; // no cap — paid for every billable hour
         effectiveStatus = 'off';
       } else if (firstOn && lastOff && lastOff.ts > firstOn.ts) {
         hoursRaw = (lastOff.ts - firstOn.ts) / 3600;
@@ -247,13 +249,11 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Compute actual OT from Slack hours vs approved OT request for this date.
-      // Fixed employees: threshold is 9 raw hours (8 billable + 1h lunch).
-      // Hourly employees: threshold is 8 net hours (thread hours exclude lunch).
+      // OT kicks in after 9 raw hours (8 billable + 1h lunch) for both fixed and hourly.
+      // Requires an approved OT request; capped at approved hours.
       const approvedOT = hubUser ? (approvedOTMap[hubUser.id]?.[shiftDate] || 0) : 0;
-      const otThreshold = isHourly ? MAX_HOURS_FIXED : 9;
       const actualOT = approvedOT > 0
-        ? parseFloat(Math.min(Math.max(0, hoursRaw - otThreshold), approvedOT).toFixed(2))
+        ? parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2))
         : 0;
 
       const workLocation = firstOn?.location ?? null;

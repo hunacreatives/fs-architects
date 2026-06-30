@@ -11,6 +11,123 @@ function fmt(val: number, currency = 'PHP') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(val);
 }
 
+// ── Google Drive helpers ──────────────────────────────────────────────────────
+const PAYROLL_ROOT_2026 = '1ap7c1LGWtvT9wm4IDfeq9C5tm4zs0GWr';
+const FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function getDriveToken(): Promise<string> {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
+      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
+      refresh_token: Deno.env.get('GOOGLE_REFRESH_TOKEN')!,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const data = await res.json();
+  if (!data.access_token) throw new Error('Drive token failed: ' + JSON.stringify(data));
+  return data.access_token;
+}
+
+async function ensureFolder(name: string, parentId: string, token: string): Promise<string> {
+  const safe = name.replace(/['"\\]/g, '');
+  const search = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='${safe}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  const sd = await search.json();
+  if (sd.files?.length > 0) return sd.files[0].id;
+  const create = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: safe, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  const cd = await create.json();
+  if (!cd.id) throw new Error(`Folder create failed "${safe}": ${JSON.stringify(cd)}`);
+  return cd.id;
+}
+
+// Saves payslip as a PDF under Payroll / {year} / {Month} / {EmployeeName} / {periodLabel}.pdf
+// Flow: upload HTML → Google Doc (free conversion) → export as PDF → save PDF → delete temp Doc.
+async function saveToDrive(html: string, employeeName: string, periodLabel: string, cutoffStart: string) {
+  const token = await getDriveToken();
+  const year = cutoffStart.slice(0, 4);
+  const monthIdx = parseInt(cutoffStart.slice(5, 7), 10) - 1;
+  const monthName = FULL_MONTHS[monthIdx] ?? cutoffStart.slice(0, 7);
+
+  // Payroll root → year → Month → EmployeeName
+  const yearRoot    = year === '2026' ? PAYROLL_ROOT_2026 : await ensureFolder(year, PAYROLL_ROOT_2026, token);
+  const monthFolder = await ensureFolder(monthName, yearRoot, token);
+  const empFolder   = await ensureFolder(employeeName, monthFolder, token);
+
+  const encoder = new TextEncoder();
+  const fileBytes = encoder.encode(html);
+  const boundary = 'payslip_boundary';
+
+  // Step 1: upload HTML → temporary Google Doc (Drive converts on import)
+  const metadata = JSON.stringify({ name: `_tmp_${periodLabel}`, mimeType: 'application/vnd.google-apps.document', parents: [empFolder] });
+  const part1 = encoder.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`);
+  const part2 = encoder.encode(`--${boundary}\r\nContent-Type: text/html\r\n\r\n`);
+  const end   = encoder.encode(`\r\n--${boundary}--`);
+  const body  = new Uint8Array(part1.length + part2.length + fileBytes.length + end.length);
+  body.set(part1, 0);
+  body.set(part2, part1.length);
+  body.set(fileBytes, part1.length + part2.length);
+  body.set(end, part1.length + part2.length + fileBytes.length);
+
+  const uploadRes = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
+    },
+  );
+  const uploaded = await uploadRes.json();
+  if (!uploadRes.ok || !uploaded.id) throw new Error('Doc upload failed: ' + JSON.stringify(uploaded));
+  const docId = uploaded.id;
+
+  try {
+    // Step 2: export Google Doc → PDF bytes
+    const exportRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!exportRes.ok) throw new Error('PDF export failed: ' + exportRes.status);
+    const pdfBytes = new Uint8Array(await exportRes.arrayBuffer());
+
+    // Step 3: upload the PDF to the employee folder
+    const pdfMeta = JSON.stringify({ name: `${periodLabel}.pdf`, parents: [empFolder] });
+    const pm1 = encoder.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${pdfMeta}\r\n`);
+    const pm2 = encoder.encode(`--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`);
+    const pdfBody = new Uint8Array(pm1.length + pm2.length + pdfBytes.length + end.length);
+    pdfBody.set(pm1, 0);
+    pdfBody.set(pm2, pm1.length);
+    pdfBody.set(pdfBytes, pm1.length + pm2.length);
+    pdfBody.set(end, pm1.length + pm2.length + pdfBytes.length);
+
+    const pdfRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body: pdfBody,
+      },
+    );
+    const pdfResult = await pdfRes.json();
+    if (!pdfRes.ok) throw new Error('PDF upload failed: ' + JSON.stringify(pdfResult));
+    console.log('Payslip PDF saved to Drive:', pdfResult.id, employeeName, periodLabel);
+  } finally {
+    // Step 4: delete the temporary Google Doc regardless of outcome
+    await fetch(`https://www.googleapis.com/drive/v3/files/${docId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {/* non-fatal */});
+  }
+}
+
 async function sendPayslip(payout_id: string) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -214,6 +331,19 @@ async function sendPayslip(payout_id: string) {
   </div>
 </body>
 </html>`;
+
+  // ── Drive copy: same HTML + PAID stamp saved as Google Doc ──────────────────
+  const driveHtml = html.replace(
+    // Insert a bold PAID banner right after the green "Payment sent" bar
+    `<div style="background:#ecfdf5;padding:12px 36px;border-bottom:1px solid #d1fae5;">`,
+    `<div style="background:#059669;padding:10px 36px;text-align:center;">
+      <p style="margin:0;font-size:13px;font-weight:800;color:#fff;letter-spacing:0.12em;text-transform:uppercase;">✓ PAID</p>
+    </div>
+    <div style="background:#ecfdf5;padding:12px 36px;border-bottom:1px solid #d1fae5;">`,
+  );
+  saveToDrive(driveHtml, contractor.full_name, periodLabel, payout.cutoff_start).catch(e =>
+    console.error('Drive payslip upload failed (non-fatal):', e),
+  );
 
   console.log('Calling Resend API...');
   const resendRes = await fetch('https://api.resend.com/emails', {

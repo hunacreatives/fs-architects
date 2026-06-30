@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
 
         <tr><td style="background:#111827;padding:24px 36px;">
-          <img src="${logoUrl}" alt="FS Architects" height="32" style="display:block;" />
+          <img src="${logoUrl}" alt="FS Architects" height="48" style="display:block;" />
         </td></tr>
 
         <tr><td style="padding:32px 36px 24px;">

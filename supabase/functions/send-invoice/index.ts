@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td valign="middle">
-                    <img src="${logoUrl}" alt="FS Architects" height="34" style="display:block;" />
+                    <img src="${logoUrl}" alt="FS Architects" height="48" style="display:block;" />
                   </td>
                   <td align="right" valign="middle" style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Invoice</p>

@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background:#111827;padding:24px 36px;">
-              <img src="${logoUrl}" alt="FS Architects" height="32" style="display:block;" />
+              <img src="${logoUrl}" alt="FS Architects" height="48" style="display:block;" />
             </td>
           </tr>
 

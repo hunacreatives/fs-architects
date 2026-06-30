@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
             <td style="background:#111827;padding:28px 40px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td><img src="${logoUrl}" alt="FS Architects" height="32" style="display:block;" /></td>
+                  <td><img src="${logoUrl}" alt="FS Architects" height="48" style="display:block;" /></td>
                   <td style="text-align:right;">
                     <p style="margin:0;color:#9ca3af;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;">Payment Reminder</p>
                   </td>

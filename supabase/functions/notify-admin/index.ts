@@ -68,7 +68,7 @@ function baseTemplate(title: string, body: string) {
   return `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;margin:0">
 <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
   <div style="background:#111827;padding:20px 24px">
-    <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="34" style="display:block;" />
+    <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;" />
   </div>
   <div style="padding:24px">
     <h2 style="margin:0 0 12px;font-size:16px;color:#111827">${title}</h2>

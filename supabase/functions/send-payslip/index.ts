@@ -123,7 +123,7 @@ async function sendPayslip(payout_id: string) {
   <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
     <div style="background:#111827;padding:28px 32px;">
-      <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="32" style="display:block;margin-bottom:16px;" />
+      <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;margin-bottom:16px;" />
       <p style="color:#fff;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.3px;">Payment Receipt</p>
       <p style="color:#6b7280;font-size:12px;margin:0;line-height:1.6;">
         ${periodLabel}<br>

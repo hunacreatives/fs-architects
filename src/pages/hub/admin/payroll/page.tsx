@@ -942,67 +942,66 @@ export default function AdminPayrollPage() {
       const adjTotal = adjs.reduce((sum, item) => sum + item.amount, 0);
       const total = getRowDisplayTotal(r);
       return `
-        <tr>
-          <td>${c.full_name}</td>
-          <td>${c.department || '—'}</td>
-          <td>${isFixed ? 'Fixed' : 'Hourly'}</td>
-          <td>${rate}</td>
-          <td>${r.days}</td>
-          <td>${r.cappedHours.toFixed(2)}h</td>
-          <td>${displayOTHours > 0 ? `${displayOTHours.toFixed(2)}h` : '—'}</td>
-          <td style="text-align:right;font-weight:700">₱${total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:11px 14px;">${c.full_name}</td>
+          <td style="padding:11px 14px;">${c.department || '—'}</td>
+          <td style="padding:11px 14px;">${isFixed ? 'Fixed' : 'Hourly'}</td>
+          <td style="padding:11px 14px;">${rate}</td>
+          <td style="padding:11px 14px;">${r.days}</td>
+          <td style="padding:11px 14px;">${r.cappedHours.toFixed(2)}h</td>
+          <td style="padding:11px 14px;">${displayOTHours > 0 ? `${displayOTHours.toFixed(2)}h` : '—'}</td>
+          <td style="padding:11px 14px;text-align:right;font-weight:700">₱${total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
       `;
     }).join('');
 
     return `
-      <div style="width:1080px;background:#ffffff;color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px 44px;">
+      <div style="width:1200px;background:#ffffff;color:#111827;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px 48px;">
         <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1c2b3a;padding-bottom:20px;margin-bottom:28px;">
-          <div style="display:flex;align-items:center;gap:14px;">
-            <img src="${logoUrl}" alt="FS Architects" style="height:46px;object-fit:contain;" />
-            <div>
-              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#9ca3af;font-weight:700;">FS Architects</div>
-              <div style="font-size:24px;font-weight:800;color:#111827;margin-top:2px;">Payroll Report</div>
-            </div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <img src="${logoUrl}" alt="FS Architects" style="height:48px;object-fit:contain;" />
+            <div style="font-size:26px;font-weight:800;color:#111827;">Payroll Report</div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:16px;font-weight:700;">${label}</div>
             <div style="font-size:12px;color:#6b7280;margin-top:4px;">${generatedLabel}</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px;">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:28px;">
           ${[
             { label: 'Total Payroll', value: fmt(displayTotalPay, 'PHP') },
             { label: 'Total Hours', value: `${totalHours.toFixed(2)}h` },
             { label: 'Employees', value: `${rows.length}` },
             { label: 'Hourly / Fixed', value: `${hourlyRows} / ${fixedRows}` },
           ].map((item) => `
-            <div style="border:1px solid #e5e7eb;border-radius:16px;background:#f9fafb;padding:14px 16px;">
+            <div style="border:1px solid #e5e7eb;border-radius:16px;background:#f9fafb;padding:16px 18px;">
               <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;font-weight:700;">${item.label}</div>
-              <div style="font-size:20px;font-weight:800;color:${item.label === 'Total Payroll' ? '#1c2b3a' : '#111827'};margin-top:6px;">${item.value}</div>
+              <div style="font-size:22px;font-weight:800;color:${item.label === 'Total Payroll' ? '#1c2b3a' : '#111827'};margin-top:6px;">${item.value}</div>
             </div>
           `).join('')}
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Employee</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Department</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Rate</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Days</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Billed Hours</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Overtime</th>
-              <th style="background:#1c2b3a;color:#ffffff;padding:11px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Pay</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Employee</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Department</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Type</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Rate</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Days</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Billed Hours</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Overtime</th>
+              <th style="background:#1c2b3a;color:#ffffff;padding:12px 14px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Pay</th>
             </tr>
           </thead>
           <tbody>
             ${tableRows}
-            <tr>
-              <td colspan="7" style="padding:12px;border-top:2px solid #111827;font-weight:800;font-size:14px;">Total</td>
-              <td style="padding:12px;border-top:2px solid #111827;text-align:right;font-weight:800;font-size:14px;">${fmt(displayTotalPay, 'PHP')}</td>
-            </tr>
           </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="7" style="padding:16px 14px 12px;border-top:2px solid #111827;font-weight:800;font-size:14px;">Total</td>
+              <td style="padding:16px 14px 12px;border-top:2px solid #111827;text-align:right;font-weight:800;font-size:14px;">${fmt(displayTotalPay, 'PHP')}</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     `;

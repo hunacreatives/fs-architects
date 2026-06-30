@@ -359,7 +359,9 @@ export default function ContractorPayoutsPage() {
         (slackRes as any)?.data?.attendance || [],
         [hubUser.id],
         todayPHT,
-      ).map(({ user_id: _userId, ...rest }) => rest as DayRow);
+      )
+        .filter((h) => h.date >= selectedPeriod.start && h.date <= selectedPeriod.end)
+        .map(({ user_id: _userId, ...rest }) => rest as DayRow);
       const leaveHours = computeLeaveHoursByDate(leaveRes.data || [], selectedPeriod.start, selectedPeriod.end, workDays);
       const mergedDays = mergeLeaveDays(clockedDays, leaveHours);
       setDays(mergedDays);

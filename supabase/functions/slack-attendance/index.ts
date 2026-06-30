@@ -223,8 +223,10 @@ Deno.serve(async (req) => {
       let effectiveStatus = status;
 
       if (isHourly && threadHours != null) {
+        // Thread hours for hourly employees are net (already exclude lunch).
+        // Cap regular pay at 8h; anything beyond 8h is OT (approved request required).
         hoursRaw = threadHours;
-        hoursCapped = threadHours;
+        hoursCapped = Math.min(threadHours, MAX_HOURS_FIXED);
         effectiveStatus = 'off';
       } else if (firstOn && lastOff && lastOff.ts > firstOn.ts) {
         hoursRaw = (lastOff.ts - firstOn.ts) / 3600;
@@ -246,10 +248,12 @@ Deno.serve(async (req) => {
       }
 
       // Compute actual OT from Slack hours vs approved OT request for this date.
-      // Requires 9+ raw hours (full shift + lunch), capped at admin-approved hours.
+      // Fixed employees: threshold is 9 raw hours (8 billable + 1h lunch).
+      // Hourly employees: threshold is 8 net hours (thread hours exclude lunch).
       const approvedOT = hubUser ? (approvedOTMap[hubUser.id]?.[shiftDate] || 0) : 0;
+      const otThreshold = isHourly ? MAX_HOURS_FIXED : 9;
       const actualOT = approvedOT > 0
-        ? parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2))
+        ? parseFloat(Math.min(Math.max(0, hoursRaw - otThreshold), approvedOT).toFixed(2))
         : 0;
 
       const workLocation = firstOn?.location ?? null;

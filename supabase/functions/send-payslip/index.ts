@@ -194,7 +194,7 @@ async function sendPayslip(payout_id: string) {
                   <p style="margin:4px 0 0;font-size:11px;color:#6b7280;">${periodLabel}</p>
                 </td>
                 <td style="vertical-align:middle;text-align:right;">
-                  <p style="margin:0;font-size:24px;font-weight:800;color:#1c2b3a;">${fmt(payout.final_payout)}</p>
+                  <p style="margin:0;font-size:24px;font-weight:800;color:#ffffff;">${fmt(payout.final_payout)}</p>
                 </td>
               </tr></table>
             </div>

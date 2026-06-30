@@ -24,6 +24,7 @@ const emptyForm = {
   shift_end: '',
   work_days: [] as string[],
   slack_id: '',
+  auto_payroll: false,
   skip_email: false,
 };
 
@@ -71,6 +72,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         shift_end: form.shift_end || null,
         work_days: form.work_days,
         slack_id: form.slack_id || null,
+        auto_payroll: form.auto_payroll,
         skip_email: form.skip_email,
       },
     });
@@ -209,6 +211,24 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
+              {(form.role === 'admin' || form.role === 'hr') && (
+                <button
+                  type="button"
+                  onClick={() => set('auto_payroll', !form.auto_payroll)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors cursor-pointer ${form.auto_payroll ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <i className={`ri-money-dollar-circle-line text-base ${form.auto_payroll ? 'text-emerald-600' : 'text-gray-400'}`}></i>
+                    <div className="text-left">
+                      <p className={`text-xs font-semibold ${form.auto_payroll ? 'text-emerald-700' : 'text-gray-700'}`}>Auto-include in payroll</p>
+                      <p className="text-[11px] text-gray-400">Payslip sent automatically when batch is approved</p>
+                    </div>
+                  </div>
+                  <div className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 ${form.auto_payroll ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                    <div className={`w-3 h-3 bg-white rounded-full mt-0.5 transition-transform ${form.auto_payroll ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 

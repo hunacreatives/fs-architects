@@ -11,7 +11,9 @@ function normalizeWorkDay(day: string) {
   return lower.charAt(0).toUpperCase() + lower.slice(1, 3);
 }
 
-export function isAutoPayrollUser(user: { full_name?: string | null; role?: string | null }) {
+export function isAutoPayrollUser(user: { full_name?: string | null; role?: string | null; auto_payroll?: boolean | null }) {
+  if (user.auto_payroll != null) return user.auto_payroll === true;
+  // Fallback for rows that predate the auto_payroll column
   const name = (user.full_name || '').trim().toLowerCase();
   const role = (user.role || '').trim().toLowerCase();
   return (role === 'admin' || role === 'hr') && !name.includes('testing');

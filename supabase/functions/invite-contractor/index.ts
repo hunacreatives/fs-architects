@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
       email, full_name, role = 'contractor', department, start_date,
       payment_type, hourly_rate, monthly_rate, project_percentage, currency = 'PHP',
       shift_start, shift_end, work_days, slack_id, employment_classification,
-      skip_email = false,
+      auto_payroll = false, skip_email = false,
     } = await req.json();
 
     if (!email || !full_name) {
@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
       work_days: work_days || [],
       slack_id: slack_id || null,
       employment_classification: employment_classification || null,
+      auto_payroll: auto_payroll === true,
     });
 
     if (insertErr) {

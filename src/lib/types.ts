@@ -36,6 +36,7 @@ export interface HubUser {
   annual_sick_days?: number;
   contract_expiry_date?: string;
   employee_id?: string;
+  auto_payroll?: boolean;
   created_at?: string;
   updated_at?: string;
 }

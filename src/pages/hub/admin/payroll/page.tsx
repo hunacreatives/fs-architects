@@ -1194,7 +1194,7 @@ export default function AdminPayrollPage() {
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
-        .select('id, full_name, role, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days, payment_method, bank_name, bank_account_name, bank_account_number, bank_account_type')
+        .select('id, full_name, role, auto_payroll, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days, payment_method, bank_name, bank_account_name, bank_account_number, bank_account_type')
         // For past closed periods include inactive/deleted users so historical rows aren't lost
         .in('status', isPastPeriod ? ['active', 'inactive'] : ['active'])
         .in('role', ['contractor', 'admin'])

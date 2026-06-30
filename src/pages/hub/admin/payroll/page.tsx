@@ -2258,6 +2258,9 @@ export default function AdminPayrollPage() {
           const approvedCount = rows.filter(r =>
             !isAutoPayrollContractor(r.contractor) && payoutsMap[r.contractor.id]?.status === 'hr_approved'
           ).length;
+          // Auto-included staff (admins/HR) are always part of the transfer.
+          const autoIncludedCount = rows.filter(r => isAutoPayrollContractor(r.contractor)).length;
+          const transferCount = approvedCount + autoIncludedCount;
           // Auto-included staff need no payout row to be "paid" — count them as settled.
           const paidCount = rows.filter(r => isAutoPayrollContractor(r.contractor) || payoutsMap[r.contractor.id]?.status === 'paid').length;
           const isClosed = batch?.status === 'closed';
@@ -2277,7 +2280,7 @@ export default function AdminPayrollPage() {
                     className="flex items-center gap-1.5 px-3 py-2 bg-[#1c2b3a] text-white text-xs font-medium rounded-lg hover:bg-[#0f1c28] cursor-pointer disabled:opacity-40 whitespace-nowrap"
                   >
                     <i className="ri-send-plane-line text-sm"></i>
-                    Request Fund Transfer ({approvedCount} employees)
+                    Request Fund Transfer ({transferCount} employees)
                   </button>
                 )}
               </div>

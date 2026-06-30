@@ -1401,8 +1401,12 @@ export default function AdminPayrollPage() {
         const monthly = effectiveRate?.monthly_rate ?? c.monthly_rate ?? 0;
         const hourly  = effectiveRate?.hourly_rate  ?? c.hourly_rate  ?? 0;
 
-        // For fixed: use explicit hourly_rate as OT rate if set, else derive from monthly
-        derivedHourlyRate = payType === 'fixed' ? (hourly || monthly / 176) : hourly;
+        // Fixed: OT rate = explicit hourly_rate if set, else monthly/176.
+        // Hourly: always fall back to c.hourly_rate if rate history gives 0
+        // (rate history rows can have hourly_rate=0 when created as fixed type).
+        derivedHourlyRate = payType === 'fixed'
+          ? (hourly || monthly / 176)
+          : (hourly || c.hourly_rate || 0);
 
         if (payType === 'hourly') {
           overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, derivedHourlyRate, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);

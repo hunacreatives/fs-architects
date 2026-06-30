@@ -41,16 +41,25 @@ Deno.serve(async (req) => {
 
     // Send email notification via Resend
     const html = `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">
-        <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin-bottom:24px">New Contact Form Submission</p>
-        <h2 style="margin:0 0 20px;font-size:20px">${name}</h2>
-        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
-          <tr><td style="padding:8px 0;color:#666;width:100px">From</td><td style="padding:8px 0">${email}</td></tr>
-          ${service ? `<tr><td style="padding:8px 0;color:#666">Service</td><td style="padding:8px 0">${service}</td></tr>` : ''}
-          ${subject ? `<tr><td style="padding:8px 0;color:#666">Subject</td><td style="padding:8px 0">${subject}</td></tr>` : ''}
-        </table>
-        <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</div>
-        <p style="margin-top:32px;font-size:11px;color:#bbb">Submitted via fsarchitects.ph — view all in the Hub</p>
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;margin:0">
+        <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
+          <div style="background:#1c2b3a;padding:20px 24px;">
+            <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="34" style="display:block;" />
+          </div>
+          <div style="padding:24px;color:#1a1a1a">
+            <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin:0 0 20px">New Contact Form Submission</p>
+            <h2 style="margin:0 0 20px;font-size:20px">${name}</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
+              <tr><td style="padding:8px 0;color:#666;width:100px">From</td><td style="padding:8px 0">${email}</td></tr>
+              ${service ? `<tr><td style="padding:8px 0;color:#666">Service</td><td style="padding:8px 0">${service}</td></tr>` : ''}
+              ${subject ? `<tr><td style="padding:8px 0;color:#666">Subject</td><td style="padding:8px 0">${subject}</td></tr>` : ''}
+            </table>
+            <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</div>
+          </div>
+          <div style="padding:16px 24px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af">
+            Submitted via <a href="https://fsarchitects.ph" style="color:#9ca3af;text-decoration:none">fsarchitects.ph</a> · © ${new Date().getFullYear()} FS Architects
+          </div>
+        </div>
       </div>
     `;
 

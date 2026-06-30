@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
           <!-- Header -->
           <tr>
-            <td class="email-header" style="background:#334049;padding:28px 40px">
+            <td class="email-header" style="background:#1c2b3a;padding:28px 40px">
               <img src="${LOGO_URL}"
                    alt="FS Architects"
                    class="logo-img"
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
                 <tr>
                   <td style="padding:8px 0 4px">
                     <a href="https://calendly.com/fsarchitects/30min"
-                       style="display:inline-block;background:#334049;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:14px 32px;border-radius:3px;text-decoration:none">
+                       style="display:inline-block;background:#1c2b3a;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:14px 32px;border-radius:3px;text-decoration:none">
                       Book a Call &rarr;
                     </a>
                   </td>
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
 
           <!-- Footer -->
           <tr>
-            <td class="email-footer" style="background:#334049;padding:24px 40px">
+            <td class="email-footer" style="background:#1c2b3a;padding:24px 40px">
               <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                 <tr>
                   <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;color:#ffffff;letter-spacing:0.08em;text-transform:uppercase">

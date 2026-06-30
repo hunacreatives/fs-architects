@@ -68,7 +68,7 @@ async function run(doc_request_id: string) {
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-    <div style="background:#334049;padding:24px 32px;">
+    <div style="background:#1c2b3a;padding:24px 32px;">
       <p style="color:#a8b9c9;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">FS Architects</p>
       <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">Document Ready for Pickup</h1>
       <p style="color:#a8b9c9;font-size:13px;margin:6px 0 0;">Your requested document is available at the office</p>
@@ -89,7 +89,7 @@ async function run(doc_request_id: string) {
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#374151;">Pickup Location</p>
         <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
           FS Architects Office<br />Cebu City, Philippines<br />
-          <a href="mailto:info@fsarchitects.ph" style="color:#334049;">info@fsarchitects.ph</a>
+          <a href="mailto:info@fsarchitects.ph" style="color:#1c2b3a;">info@fsarchitects.ph</a>
         </p>
       </div>
       <p style="font-size:12px;color:#9ca3af;margin:0;">Please bring a valid ID when claiming your document.</p>

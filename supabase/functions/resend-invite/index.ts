@@ -30,7 +30,7 @@ function emailHtml(firstName: string, linkUrl: string, isReset: boolean) {
 
           <!-- Header -->
           <tr>
-            <td style="background:#334049;padding:24px 32px;">
+            <td style="background:#1c2b3a;padding:24px 32px;">
               <table cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="vertical-align:middle;">

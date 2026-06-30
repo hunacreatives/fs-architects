@@ -141,7 +141,7 @@ async function sendPayslip(payout_id: string) {
 
   const { data: contractor, error: contractorErr } = await supabase
     .from('hub_users')
-    .select('id, full_name, email, payment_type, hourly_rate, monthly_rate, department, currency, slack_id')
+    .select('id, full_name, email, payment_type, hourly_rate, monthly_rate, department, currency, slack_id, employee_id')
     .eq('id', payout.contractor_id)
     .single();
 
@@ -152,7 +152,7 @@ async function sendPayslip(payout_id: string) {
 
   const { data: dailyHours } = await supabase
     .from('hub_daily_hours')
-    .select('date, hours_capped, overtime_hours')
+    .select('date, hours_capped, overtime_hours, first_on')
     .eq('user_id', contractor.id)
     .gte('date', payout.cutoff_start)
     .lte('date', payout.cutoff_end)
@@ -185,7 +185,7 @@ async function sendPayslip(payout_id: string) {
   const issuedDate = new Date(payout.payment_date || payout.approved_at || new Date());
   const issuedLabel = `${shortMonths[issuedDate.getMonth()]} ${issuedDate.getDate()}, ${issuedDate.getFullYear()}`;
 
-  const invoiceNo = `INV-${(payout.cutoff_start || '').replace(/-/g,'').slice(0,8)}-${String(payout_id).slice(-4).toUpperCase()}`;
+  const invoiceNo = `PAY-${(payout.cutoff_start || '').replace(/-/g,'').slice(0,8)}-${String(payout_id).slice(-4).toUpperCase()}`;
 
   const rateLabel = isFixed
     ? `₱${(contractor.monthly_rate || 0).toLocaleString()}/month`
@@ -204,9 +204,13 @@ async function sendPayslip(payout_id: string) {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
     const dateFmt = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const h = (d.hours_capped || 0).toFixed(2);
-    const ot = (d.overtime_hours || 0) > 0 ? ` <span style="color:#7c3aed;font-size:11px;">+${Number(d.overtime_hours).toFixed(2)}h OT</span>` : '';
+    const ot = (d.overtime_hours || 0) > 0 ? ` <span style="color:#ea580c;font-size:11px;">+${Number(d.overtime_hours).toFixed(2)}h OT</span>` : '';
+    const checkIn = d.first_on
+      ? new Date(d.first_on).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true })
+      : null;
+    const checkInLabel = checkIn ? `<span style="font-size:10px;color:#d1d5db;margin-left:6px;">· in ${checkIn}</span>` : '';
     return `<tr>
-      <td style="padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;">${dayName}, ${dateFmt}</td>
+      <td style="padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:12px;color:#6b7280;">${dayName}, ${dateFmt}${checkInLabel}</td>
       <td style="padding:7px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-size:12px;color:#374151;font-weight:500;">${h}h${ot}</td>
     </tr>`;
   }).join('');
@@ -228,7 +232,7 @@ async function sendPayslip(payout_id: string) {
         <p style="margin:0;font-size:13px;color:#374151;">Overtime Pay</p>
         <p style="margin:2px 0 0;font-size:11px;color:#9ca3af;">${totalOT.toFixed(2)} hours overtime</p>
       </td>
-      <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;font-weight:600;color:#7c3aed;">
+      <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;font-weight:600;color:#ea580c;">
         ${fmt(otPay)}
       </td>
     </tr>` : '';
@@ -257,7 +261,7 @@ async function sendPayslip(payout_id: string) {
 
     <div style="padding:28px 36px;border-bottom:1px solid #f3f4f6;">
       <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">Issued To</p>
-      <p style="font-size:20px;font-weight:700;color:#111827;margin:0 0 4px;">${contractor.full_name}</p>
+      <p style="font-size:20px;font-weight:700;color:#111827;margin:0 0 4px;">${contractor.full_name}${contractor.employee_id ? `<span style="font-size:12px;font-weight:500;color:#9ca3af;margin-left:10px;font-family:monospace;">${contractor.employee_id}</span>` : ''}</p>
       <p style="font-size:13px;color:#6b7280;margin:0 0 2px;">${contractor.department || 'FS Architects'}</p>
       <p style="font-size:13px;color:#6b7280;margin:0;">${contractType} · ${rateLabel}</p>
     </div>
@@ -277,7 +281,7 @@ async function sendPayslip(payout_id: string) {
         </td>
         ${totalOT > 0 ? `<td style="vertical-align:top;">
           <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">Overtime</p>
-          <p style="font-size:22px;font-weight:800;color:#7c3aed;margin:0;">+${totalOT.toFixed(2)}</p>
+          <p style="font-size:22px;font-weight:800;color:#ea580c;margin:0;">+${totalOT.toFixed(2)}</p>
           <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">hours</p>
         </td>` : ''}
       </tr></table>

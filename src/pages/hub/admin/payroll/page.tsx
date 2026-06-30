@@ -706,10 +706,12 @@ export default function AdminPayrollPage() {
   const approveBatch = async (proofUrl?: string) => {
     if (!batch) return;
     setWorkflowLoading(true);
+    const now = new Date().toISOString();
+    const today = now.slice(0, 10);
     const { error: batchApproveErr } = await supabase.from('hub_payroll_batches').update({
       status: 'owner_approved',
       approved_by: hubUser?.id,
-      approved_at: new Date().toISOString(),
+      approved_at: now,
       ...(proofUrl ? { proof_url: proofUrl } : {}),
     }).eq('id', batch.id);
     if (batchApproveErr) {
@@ -720,6 +722,43 @@ export default function AdminPayrollPage() {
     }
     logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'approve', entity_type: 'payroll_batch', entity_id: batch.id, description: `Approved fund transfer of ${fmt(batch.total_amount)} for ${batch.period_label} (${batch.contractor_count} employees)` });
     supabase.functions.invoke('notify-owner', { body: { batch_id: batch.id, type: 'fund_approved' } }).catch(console.error);
+
+    // Auto-included employees (admins/HR) never go through the normal approve → markPaid
+    // flow, so they never get a payout row or a payslip email. Create their payout rows
+    // as 'paid' now (owner approval = payment confirmed) and fire send-payslip for each.
+    const autoIncluded = rows.filter(r => isAutoPayrollContractor(r.contractor));
+    for (const r of autoIncluded) {
+      const existingPayout = payoutsMap[r.contractor.id];
+      const finalPay = r.pay + r.overtimePay;
+      let payoutId: string | null = existingPayout?.id ?? null;
+      if (!payoutId) {
+        const { data: inserted } = await supabase.from('hub_payouts').insert({
+          contractor_id: r.contractor.id,
+          cutoff_start: selectedPeriod.start,
+          cutoff_end: selectedPeriod.end,
+          final_payout: finalPay,
+          approved_hours: r.cappedHours,
+          status: 'paid',
+          approved_at: now,
+          payment_date: today,
+          paid_at: now,
+          batch_id: batch.id,
+        }).select('id').single();
+        payoutId = inserted?.id ?? null;
+      } else {
+        await supabase.from('hub_payouts').update({
+          status: 'paid',
+          final_payout: finalPay,
+          payment_date: today,
+          paid_at: now,
+          batch_id: batch.id,
+        }).eq('id', payoutId);
+      }
+      if (payoutId) {
+        supabase.functions.invoke('send-payslip', { body: { payout_id: payoutId } }).catch(console.error);
+      }
+    }
+
     await fetchWorkflow().catch(console.error);
     setWorkflowLoading(false);
   };

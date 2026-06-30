@@ -286,18 +286,12 @@ export default function ContractorPayoutsPage() {
   // Approved OT requests for the period — carry per-date rest-day flags so OT pay
   // uses the same DOLE multipliers (1.25× weekday / 1.30× rest day) as admin payroll.
   const [otRequests, setOtRequests] = useState<{ date: string; is_rest_day: boolean | null }[]>([]);
-  const [hourlyOtRequests, setHourlyOtRequests] = useState<{ date: string; is_rest_day: boolean | null }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [disputeModal, setDisputeModal] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [disputeSaving, setDisputeSaving] = useState(false);
   const [existingDispute, setExistingDispute] = useState<any>(null);
 
-  // Hourly-only: ad-hoc fund transfer request state
-  const [hourlyPeriod, setHourlyPeriod] = useState<{ start: string; end: string; label: string } | null>(null);
-  const [hourlyDays, setHourlyDays] = useState<DayRow[]>([]);
-  const [hourlyRequest, setHourlyRequest] = useState<any>(null);
-  const [hourlyLoading, setHourlyLoading] = useState(false);
 
   useEffect(() => {
     if (!periods.length) {
@@ -400,66 +394,6 @@ export default function ContractorPayoutsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hubUser?.id, selectedPeriod?.start]);
 
-  // Hourly contractors use a separate ad-hoc period (not bi-monthly)
-  const fetchHourlyData = async () => {
-    if (!hubUser) return;
-    setHourlyLoading(true);
-    try {
-      const today = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      // Last paid payout determines the start of the new period
-      const { data: lastPaid } = await supabase
-        .from('hub_payouts').select('cutoff_end').eq('contractor_id', hubUser.id).eq('status', 'paid')
-        .order('cutoff_end', { ascending: false }).limit(1).maybeSingle();
-      const rawStart = lastPaid
-        ? (() => { const d = new Date(lastPaid.cutoff_end + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })()
-        : ((hubUser as any).start_date ?? today);
-      const periodStart = rawStart > today ? today : rawStart;
-
-      const [daysRes, slackRes, openReqRes, leaveRes, otReqRes] = await Promise.all([
-        supabase.from('hub_daily_hours')
-          .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
-          .eq('user_id', hubUser.id).gte('date', periodStart).lte('date', today).order('date', { ascending: true }),
-        supabase.functions.invoke('slack-attendance'),
-        supabase.from('hub_payouts')
-          .select('id, status, final_payout, payment_date, cutoff_start, cutoff_end')
-          .eq('contractor_id', hubUser.id).in('status', ['submitted', 'hr_approved'])
-          .order('cutoff_end', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('hub_time_off')
-          .select('type, start_date, end_date, half_day')
-          .eq('contractor_id', hubUser.id).eq('status', 'approved')
-          .lte('start_date', today).gte('end_date', periodStart),
-        supabase.from('hub_overtime_requests')
-          .select('date, is_rest_day')
-          .eq('contractor_id', hubUser.id).eq('status', 'approved')
-          .gte('date', periodStart).lte('date', today),
-      ]);
-
-      const clocked = mergeLiveAttendanceIntoDailyHours(
-        ((daysRes.data as DayRow[]) ?? []).map((d: any) => ({ ...d, user_id: hubUser.id })),
-        (slackRes as any)?.data?.attendance || [],
-        [hubUser.id], today,
-      ).map(({ user_id: _uid, ...rest }) => rest as DayRow);
-      const hourlyLeave = computeLeaveHoursByDate(leaveRes.data || [], periodStart, today, ((hubUser as any)?.work_days as string[] | null | undefined) || []);
-      const merged = mergeLeaveDays(clocked, hourlyLeave);
-
-      const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-      const s = new Date(periodStart + 'T12:00:00').toLocaleDateString('en-US', opts);
-      const e = new Date(today + 'T12:00:00').toLocaleDateString('en-US', opts);
-      setHourlyPeriod({ start: periodStart, end: today, label: `${s} – ${e}` });
-      setHourlyDays(merged);
-      setHourlyOtRequests((otReqRes.data as { date: string; is_rest_day: boolean | null }[]) ?? []);
-      setHourlyRequest(openReqRes.data ?? null);
-    } catch (err) {
-      console.error('Hourly data fetch failed:', err);
-    } finally {
-      setHourlyLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if ((hubUser as any)?.payment_type === 'hourly' && hubUser?.id) fetchHourlyData();
-  }, [hubUser]);
-
   // Own pay rate is served through the finance RPC (direct column read revoked).
   const [selfRate, setSelfRate] = useState<{ hourly_rate: number | null; monthly_rate: number | null } | null>(null);
   useEffect(() => {
@@ -495,19 +429,6 @@ export default function ContractorPayoutsPage() {
     trackedDates.add(r.date);
     if (r.is_rest_day != null) isRestDayMap[r.date] = r.is_rest_day;
   }
-  // Same maps for the hourly flow (separate period/data).
-  const hourlyRawHoursByDate: Record<string, number> = {};
-  for (const d of hourlyDays) hourlyRawHoursByDate[d.date] = (hourlyRawHoursByDate[d.date] || 0) + d.hours_raw;
-  const hourlyIsRestDayMap: Record<string, boolean> = {};
-  const hourlyTracked = new Set<string>();
-  for (const r of hourlyOtRequests) {
-    hourlyTracked.add(r.date);
-    if (r.is_rest_day != null) hourlyIsRestDayMap[r.date] = r.is_rest_day;
-  }
-  const hourlyOtByDate: Record<string, number> = {};
-  for (const d of hourlyDays) { if (d.overtime_hours) hourlyOtByDate[d.date] = (hourlyOtByDate[d.date] || 0) + d.overtime_hours; }
-  const hourlyOtRate = Number(selfRate?.hourly_rate ?? (hubUser as any)?.hourly_rate ?? 0);
-  const hourlyOvertimePay = computeOTPayFromDates(hourlyOtByDate, hourlyOtRate, hourlyRawHoursByDate, hourlyIsRestDayMap, hourlyTracked);
 
   // Prorated pay calculation using rate history (same logic as admin payroll page)
   const activePeriod = selectedPeriod ?? periods[periods.length - 1] ?? null;
@@ -669,38 +590,6 @@ export default function ContractorPayoutsPage() {
     ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val)
     : fmtPHP(val);
 
-  const handleHourlyRequest = async () => {
-    if (!hubUser || !hourlyPeriod || submitting) return;
-    const totalHoursBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
-    const rate = Number(selfRate?.hourly_rate ?? (hubUser as any).hourly_rate ?? 0);
-    const basePay = totalHoursBillable * rate;
-    const overtimePay = hourlyOvertimePay;
-    const totalPay = basePay + overtimePay;
-    setSubmitting(true);
-    const { data, error } = await supabase.from('hub_payouts').upsert({
-      contractor_id: hubUser.id,
-      cutoff_start: hourlyPeriod.start,
-      cutoff_end: hourlyPeriod.end,
-      approved_hours: totalHoursBillable,
-      hourly_rate: rate,
-      base_pay: basePay,
-      overtime_pay: overtimePay,
-      final_payout: totalPay,
-      status: 'submitted',
-      submitted_at: new Date().toISOString(),
-      locked: false,
-    }, { onConflict: 'contractor_id,cutoff_start' }).select('id, status, final_payout, cutoff_start, cutoff_end').single();
-    if (error || !data) {
-      console.error('fund transfer request failed', error);
-      alert('Your request could not be submitted. Please try again, or contact HR if it persists.');
-      setSubmitting(false);
-      return;
-    }
-    setHourlyRequest(data);
-    supabase.functions.invoke('notify-payslip-submitted', { body: { payout_id: data.id } }).catch(console.error);
-    setSubmitting(false);
-  };
-
   const submitDispute = async () => {
     if (!hubUser || !existingPayout || !disputeReason.trim()) return;
     setDisputeSaving(true);
@@ -769,150 +658,6 @@ export default function ContractorPayoutsPage() {
       }, 400);
     }
   };
-
-  // Hourly contractors get a completely separate, simpler payout flow
-  if (paymentType === 'hourly') {
-    const hBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
-    const hOvertime = hourlyDays.reduce((s, d) => s + (d.overtime_hours || 0), 0);
-    const hRaw = hourlyDays.reduce((s, d) => s + d.hours_raw, 0);
-    const hRate = Number(selfRate?.hourly_rate ?? (hubUser as any).hourly_rate ?? 0);
-    const hBase = hBillable * hRate;
-    // DOLE-multiplied OT (matches what's submitted/paid), not a flat rate × hours.
-    const hOT = hourlyOvertimePay;
-    const hTotal = hBase + hOT;
-    const fmtH = (v: number) => isUSD ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v) : fmtPHP(v);
-
-    return (
-      <ContractorLayout title="My Payouts">
-        <div className="max-w-2xl space-y-5">
-          {hourlyLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
-            </div>
-          ) : (
-            <>
-              {/* Period info */}
-              <div className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Current Pay Period</p>
-                  <p className="text-sm font-semibold text-gray-900">{hourlyPeriod?.label ?? 'Computing…'}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400 mb-0.5">Rate</p>
-                  <p className="text-sm font-semibold text-gray-900">{isUSD ? '$' : '₱'}{hRate}/hr</p>
-                </div>
-              </div>
-
-              {/* Payslip card */}
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="bg-[#111827] px-6 py-5 flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src="/images/fs-architects-icon-white.png" alt="FS Architects" className="w-8 h-8 object-contain flex-shrink-0" />
-                    <div>
-                      <p className="text-white font-bold text-base">FS Architects</p>
-                      <p className="text-white/40 text-xs mt-0.5">Fund Transfer Request</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[#a8b9c9] font-bold text-sm tracking-widest">HOURLY</p>
-                    <p className="text-white font-semibold text-sm mt-0.5">{isUSD ? '$' : '₱'}{hRate}/hr</p>
-                    <p className="text-white/40 text-xs mt-0.5">{hourlyPeriod?.label ?? '—'}</p>
-                  </div>
-                </div>
-
-                <div className="px-6 py-4 border-b border-gray-50 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                  {[
-                    { label: 'Days Worked', value: hourlyDays.length, color: 'text-gray-900' },
-                    { label: 'Hours Logged', value: `${hRaw.toFixed(1)}h`, color: 'text-gray-900' },
-                    { label: 'Billable Hours', value: `${hBillable.toFixed(1)}h`, color: 'text-sky-700' },
-                    { label: 'Overtime', value: hOvertime > 0 ? `+${hOvertime}h` : '—', color: hOvertime > 0 ? 'text-purple-700' : 'text-gray-400' },
-                  ].map(s => (
-                    <div key={s.label} className="bg-gray-50 rounded-xl py-3">
-                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {hourlyDays.length > 0 ? (
-                  <div className="px-6 py-4 border-b border-gray-50">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Attendance Log</p>
-                    <div className="space-y-1.5">
-                      {hourlyDays.map(d => (
-                        <div key={d.date} className="flex items-center gap-2 text-sm py-1.5 border-b border-gray-50 last:border-0">
-                          <span className="text-gray-500 w-24 flex-shrink-0 text-xs">{fmtDate(d.date)}</span>
-                          <span className="text-gray-400 text-xs flex-shrink-0 hidden sm:block">{fmtTime(d.first_on)}<i className="ri-arrow-right-line text-gray-300 mx-1"></i>{fmtTime(d.last_off)}</span>
-                          <span className="flex-1 text-right">
-                            <span className="font-medium text-gray-800 text-sm">{d.hours_capped.toFixed(2)}h</span>
-                            {d.hours_raw > d.hours_capped && <span className="text-xs text-amber-500 ml-1">↑{d.hours_raw.toFixed(1)}h</span>}
-                          </span>
-                          {d.overtime_hours > 0 && <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium flex-shrink-0">+{d.overtime_hours}h OT</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="px-6 py-8 text-center border-b border-gray-50">
-                    <i className="ri-calendar-line text-2xl text-gray-200 block mb-2"></i>
-                    <p className="text-sm text-gray-400">No hours logged in this period yet</p>
-                  </div>
-                )}
-
-                <div className="px-6 py-4">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Earnings</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Base pay ({hBillable.toFixed(2)}h × {isUSD ? '$' : '₱'}{hRate}/hr)</span>
-                      <span className="text-sm font-medium text-gray-800">{fmtH(hBase)}</span>
-                    </div>
-                    {hOT > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-purple-600">Overtime ({hOvertime}h × {isUSD ? '$' : '₱'}{hRate}/hr)</span>
-                        <span className="text-sm font-medium text-purple-700">+{fmtH(hOT)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
-                      <span className="font-semibold text-gray-900">Total Payout</span>
-                      <span className="text-xl font-bold text-[#1c2b3a]">{fmtH(hTotal)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status / Action */}
-              {hourlyRequest ? (
-                <div className={`rounded-xl px-4 py-3.5 flex items-center gap-3 ${
-                  hourlyRequest.status === 'hr_approved' ? 'bg-sky-50 border border-sky-100' : 'bg-amber-50 border border-amber-100'
-                }`}>
-                  <i className={`text-lg ${hourlyRequest.status === 'hr_approved' ? 'ri-shield-check-fill text-sky-500' : 'ri-time-fill text-amber-500'}`}></i>
-                  <div className="flex-1">
-                    <p className={`text-sm font-semibold ${hourlyRequest.status === 'hr_approved' ? 'text-sky-800' : 'text-amber-800'}`}>
-                      {hourlyRequest.status === 'hr_approved' ? 'Approved — payment incoming' : 'Submitted — awaiting HR review'}
-                    </p>
-                    <p className={`text-xs mt-0.5 ${hourlyRequest.status === 'hr_approved' ? 'text-sky-600' : 'text-amber-600'}`}>
-                      {hourlyRequest.status === 'hr_approved' ? 'Payment will be sent once the fund transfer is processed.' : 'Your request is under review.'}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-gray-800">{fmtH(hourlyRequest.final_payout)}</span>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <button
-                    onClick={handleHourlyRequest}
-                    disabled={submitting || hourlyDays.length === 0 || hTotal === 0}
-                    className="w-full flex items-center justify-center gap-2 bg-[#1c2b3a] hover:bg-[#0f1c28] disabled:opacity-40 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
-                  >
-                    {submitting ? <><i className="ri-loader-4-line animate-spin"></i> Submitting…</> : <><i className="ri-exchange-dollar-line"></i> Request Fund Transfer</>}
-                  </button>
-                  {hourlyDays.length === 0 && <p className="text-xs text-center text-gray-400">No hours logged yet — log attendance first.</p>}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </ContractorLayout>
-    );
-  }
 
   return (
     <ContractorLayout title="My Payouts">

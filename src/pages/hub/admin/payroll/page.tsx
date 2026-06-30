@@ -273,7 +273,7 @@ export default function AdminPayrollPage() {
   const [editOTNewDate, setEditOTNewDate] = useState('');
   const [editOTNewHours, setEditOTNewHours] = useState('');
   const [editOTNewRestDay, setEditOTNewRestDay] = useState(false);
-  const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number }>>({});
+  const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }>>({});
   const [editAdjItems, setEditAdjItems] = useState<{ label: string; amount: number; type: string }[]>([]);
   const [editAdjLabel, setEditAdjLabel] = useState('');
   const [editAdjAmount, setEditAdjAmount] = useState('');
@@ -490,7 +490,7 @@ export default function AdminPayrollPage() {
     const [payoutsRes, batchRes] = await Promise.all([
       supabase
         .from('hub_payouts')
-        .select('id, contractor_id, status, final_payout, payment_date, batch_id, adjustments, payslip_sent_at, overtime_pay, base_pay, approved_hours, manual_override')
+        .select('id, contractor_id, status, final_payout, payment_date, batch_id, adjustments, payslip_sent_at, overtime_pay, base_pay, approved_hours, approved_days, overtime_hours, prorated_note, manual_override')
         .eq('cutoff_start', selectedPeriod.start),
       supabase
         .from('hub_payroll_batches')
@@ -505,14 +505,20 @@ export default function AdminPayrollPage() {
     setPayoutsMap(map);
     setBatch(batchRes.data ?? null);
 
-    // Restore persisted manual row edits (hours/pay) for this period. Replaces any
-    // stale local overrides so edits survive reloads and don't bleed across periods.
-    const restored: Record<string, { hours?: number; pay?: number }> = {};
+    // Restore persisted row overrides for this period.
+    // - Past closed periods: restore approved_hours for ALL payouts so the Hours
+    //   column shows what was actually paid, not a live recompute (which may be 0).
+    // - Current period: only restore rows where admin explicitly edited (manual_override).
+    const isPastPeriod = localToday() > selectedPeriod.end;
+    const restored: Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }> = {};
     for (const p of payoutsRes.data || []) {
-      if (p.manual_override) {
+      if (isPastPeriod || p.manual_override) {
         restored[p.contractor_id] = {
           hours: p.approved_hours != null ? Number(p.approved_hours) : undefined,
           pay: p.base_pay != null ? Number(p.base_pay) : undefined,
+          days: p.approved_days != null ? Number(p.approved_days) : undefined,
+          overtimeHours: p.overtime_hours != null ? Number(p.overtime_hours) : undefined,
+          proratedNote: p.prorated_note ?? undefined,
         };
       }
     }
@@ -876,6 +882,9 @@ export default function AdminPayrollPage() {
       payment_date: new Date().toISOString().slice(0, 10),
       paid_at: new Date().toISOString(),
       approved_hours: row?.cappedHours ?? existing.approved_hours ?? 0,
+      approved_days: row?.days ?? null,
+      overtime_hours: row?.overtimeHours ?? null,
+      prorated_note: row?.proratedNote ?? null,
     }).eq('id', existing.id);
     if (paidErr) {
       console.error('Mark paid failed:', paidErr);
@@ -1945,12 +1954,14 @@ export default function AdminPayrollPage() {
               const override = rowOverrides[c.id];
               const displayPay = override?.pay !== undefined ? override.pay : r.pay;
               const displayHours = override?.hours !== undefined ? override.hours : r.cappedHours;
+              const displayDays = override?.days !== undefined ? override.days : r.days;
+              const displayOTHours = override?.overtimeHours !== undefined ? override.overtimeHours : r.overtimeHours;
+              const displayProratedNote = override?.proratedNote !== undefined ? override.proratedNote : r.proratedNote;
               const p = payoutsMap[c.id];
               // If already paid but new hours exist (post-payment), reset to pending so admin can approve the new hours
               const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
               const adjs: { label: string; amount: number }[] = p?.adjustments || [];
               const adjTotal = adjs.reduce((s, i) => s + i.amount, 0);
-              const displayOTHours = r.overtimeHours;
               const displayOTPay = r.overtimePay;
               const total = getRowDisplayTotal(r);
               const dispute = p ? disputesMap[p.id] : null;
@@ -2005,7 +2016,7 @@ export default function AdminPayrollPage() {
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
                       <p className="text-[10px] text-gray-400 mb-0.5">Billed</p>
                       <p className="text-sm font-semibold text-gray-900">{displayHours.toFixed(1)}h</p>
-                      <p className="text-[10px] text-gray-400">{r.days}d{hoursExceeded ? <span className="text-amber-500 ml-0.5">⚠</span> : ''}</p>
+                      <p className="text-[10px] text-gray-400">{displayDays}d{hoursExceeded ? <span className="text-amber-500 ml-0.5">⚠</span> : ''}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg px-3 py-2">
                       <p className="text-[10px] text-gray-400 mb-0.5">Overtime</p>
@@ -2144,11 +2155,13 @@ export default function AdminPayrollPage() {
                     const override = rowOverrides[c.id];
                     const displayPay = override?.pay !== undefined ? override.pay : r.pay;
                     const displayHours = override?.hours !== undefined ? override.hours : r.cappedHours;
+                    const displayDays = override?.days !== undefined ? override.days : r.days;
+                    const displayOTHours = override?.overtimeHours !== undefined ? override.overtimeHours : r.overtimeHours;
+                    const displayProratedNote = override?.proratedNote !== undefined ? override.proratedNote : r.proratedNote;
                     const p = payoutsMap[c.id];
                     const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
                     const adjs: { label: string; amount: number }[] = p?.adjustments || [];
                     const adjTotal = adjs.reduce((s: number, i: { label: string; amount: number }) => s + i.amount, 0);
-                    const displayOTHours = r.overtimeHours;
                     const displayOTPay = r.overtimePay;
                     const total = getRowDisplayTotal(r);
                     const dispute = p ? disputesMap[p.id] : null;
@@ -2184,7 +2197,7 @@ export default function AdminPayrollPage() {
                         <td className="px-5 py-4">
                           <div>
                             <p className="text-sm font-semibold text-gray-900">{displayHours.toFixed(2)}h</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{r.days} day{r.days !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{displayDays} day{displayDays !== 1 ? 's' : ''}</p>
                             {hoursExceeded && (
                               <p className="text-[10px] text-amber-500 mt-0.5 flex items-center gap-0.5">
                                 <i className="ri-error-warning-line"></i> Raw {r.hours.toFixed(2)}h capped
@@ -2222,10 +2235,10 @@ export default function AdminPayrollPage() {
                             {(() => {
                               const parts: string[] = [];
                               if (r.accruing) parts.push('accruing');
-                              else if (r.prorated && r.proratedNote) parts.push(r.proratedNote);
+                              else if (r.prorated && displayProratedNote) parts.push(displayProratedNote);
                               if (isUSD && r.payOriginalCurrency !== undefined) parts.push(`$${r.payOriginalCurrency.toFixed(2)} × ₱${usdRate.toFixed(2)}`);
                               if (r.accruing && r.accrualTotal !== undefined) parts.push(`full ${fmt(r.accrualTotal, 'PHP')}`);
-                              if (isFixed && r.days === 0 && !r.prorated) parts.push('no attendance');
+                              if (isFixed && displayDays === 0 && !r.prorated) parts.push('no attendance');
                               if (parts.length === 0) return null;
                               return <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">{parts.join(' · ')}</p>;
                             })()}

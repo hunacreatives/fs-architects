@@ -1927,6 +1927,12 @@ export default function AdminPayrollPage() {
                           {c.payment_type === 'fixed' ? 'Fixed' : c.payment_type === 'fixed_flexible' ? 'Flex' : 'Hourly'}
                         </span>
                         <span className="text-xs text-gray-400">{rateLabel}</span>
+                        <span className="text-gray-200">·</span>
+                        <span className="text-xs text-gray-400">
+                          {isUSD
+                            ? `$${(r.derivedHourlyRate * 1.25).toFixed(2)}/$${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`
+                            : `₱${(r.derivedHourlyRate * 1.25).toFixed(2)}/₱${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`}
+                        </span>
                         {c.department && <><span className="text-gray-200">·</span><span className="text-xs text-gray-400">{c.department}</span></>}
                       </div>
                     </div>

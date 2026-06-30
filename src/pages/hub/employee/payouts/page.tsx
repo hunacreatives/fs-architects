@@ -283,6 +283,10 @@ export default function ContractorPayoutsPage() {
   const [loadError, setLoadError] = useState('');
   const [existingPayout, setExistingPayout] = useState<any>(null);
   const [rateHistory, setRateHistory] = useState<RateEntry[]>([]);
+  // Approved OT requests for the period — carry per-date rest-day flags so OT pay
+  // uses the same DOLE multipliers (1.25× weekday / 1.30× rest day) as admin payroll.
+  const [otRequests, setOtRequests] = useState<{ date: string; is_rest_day: boolean | null }[]>([]);
+  const [hourlyOtRequests, setHourlyOtRequests] = useState<{ date: string; is_rest_day: boolean | null }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [disputeModal, setDisputeModal] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
@@ -319,7 +323,7 @@ export default function ContractorPayoutsPage() {
     setLoading(true);
     try {
       const isCurrentPeriod = todayPHT >= selectedPeriod.start && todayPHT <= selectedPeriod.end;
-      const [slackRes, daysRes, payoutRes, rateRes, leaveRes] = await Promise.all([
+      const [slackRes, daysRes, payoutRes, rateRes, leaveRes, otReqRes] = await Promise.all([
         isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
         supabase
           .from('hub_daily_hours')
@@ -347,6 +351,13 @@ export default function ContractorPayoutsPage() {
           .eq('status', 'approved')
           .lte('start_date', selectedPeriod.end)
           .gte('end_date', selectedPeriod.start),
+        supabase
+          .from('hub_overtime_requests')
+          .select('date, is_rest_day')
+          .eq('contractor_id', hubUser.id)
+          .eq('status', 'approved')
+          .gte('date', selectedPeriod.start)
+          .lte('date', selectedPeriod.end),
       ]);
       const payout = payoutRes.data ?? null;
       const clockedDays = mergeLiveAttendanceIntoDailyHours(
@@ -358,6 +369,7 @@ export default function ContractorPayoutsPage() {
       const leaveHours = computeLeaveHoursByDate(leaveRes.data || [], selectedPeriod.start, selectedPeriod.end, workDays);
       const mergedDays = mergeLeaveDays(clockedDays, leaveHours);
       setDays(mergedDays);
+      setOtRequests((otReqRes.data as { date: string; is_rest_day: boolean | null }[]) ?? []);
       setRateHistory((rateRes.data as RateEntry[]) ?? []);
       setExistingPayout(payout);
 
@@ -403,7 +415,7 @@ export default function ContractorPayoutsPage() {
         : ((hubUser as any).start_date ?? today);
       const periodStart = rawStart > today ? today : rawStart;
 
-      const [daysRes, slackRes, openReqRes, leaveRes] = await Promise.all([
+      const [daysRes, slackRes, openReqRes, leaveRes, otReqRes] = await Promise.all([
         supabase.from('hub_daily_hours')
           .select('date, hours_raw, hours_capped, overtime_hours, first_on, last_off')
           .eq('user_id', hubUser.id).gte('date', periodStart).lte('date', today).order('date', { ascending: true }),
@@ -416,6 +428,10 @@ export default function ContractorPayoutsPage() {
           .select('type, start_date, end_date, half_day')
           .eq('contractor_id', hubUser.id).eq('status', 'approved')
           .lte('start_date', today).gte('end_date', periodStart),
+        supabase.from('hub_overtime_requests')
+          .select('date, is_rest_day')
+          .eq('contractor_id', hubUser.id).eq('status', 'approved')
+          .gte('date', periodStart).lte('date', today),
       ]);
 
       const clocked = mergeLiveAttendanceIntoDailyHours(
@@ -431,6 +447,7 @@ export default function ContractorPayoutsPage() {
       const e = new Date(today + 'T12:00:00').toLocaleDateString('en-US', opts);
       setHourlyPeriod({ start: periodStart, end: today, label: `${s} – ${e}` });
       setHourlyDays(merged);
+      setHourlyOtRequests((otReqRes.data as { date: string; is_rest_day: boolean | null }[]) ?? []);
       setHourlyRequest(openReqRes.data ?? null);
     } catch (err) {
       console.error('Hourly data fetch failed:', err);
@@ -465,9 +482,32 @@ export default function ContractorPayoutsPage() {
   const totalHoursBillable = days.reduce((s, d) => s + d.hours_capped, 0);
   const totalOvertime = days.reduce((s, d) => s + (d.overtime_hours || 0), 0);
   const otByDate: Record<string, number> = {};
+  const rawHoursByDate: Record<string, number> = {};
   for (const d of days) {
     if (d.overtime_hours) otByDate[d.date] = (otByDate[d.date] || 0) + d.overtime_hours;
+    rawHoursByDate[d.date] = (rawHoursByDate[d.date] || 0) + d.hours_raw;
   }
+  // Per-date rest-day flags + the set of admin-confirmed OT dates, mirroring the
+  // admin payroll calc so OT pay (DOLE 1.25×/1.30×) is identical here.
+  const isRestDayMap: Record<string, boolean> = {};
+  const trackedDates = new Set<string>();
+  for (const r of otRequests) {
+    trackedDates.add(r.date);
+    if (r.is_rest_day != null) isRestDayMap[r.date] = r.is_rest_day;
+  }
+  // Same maps for the hourly flow (separate period/data).
+  const hourlyRawHoursByDate: Record<string, number> = {};
+  for (const d of hourlyDays) hourlyRawHoursByDate[d.date] = (hourlyRawHoursByDate[d.date] || 0) + d.hours_raw;
+  const hourlyIsRestDayMap: Record<string, boolean> = {};
+  const hourlyTracked = new Set<string>();
+  for (const r of hourlyOtRequests) {
+    hourlyTracked.add(r.date);
+    if (r.is_rest_day != null) hourlyIsRestDayMap[r.date] = r.is_rest_day;
+  }
+  const hourlyOtByDate: Record<string, number> = {};
+  for (const d of hourlyDays) { if (d.overtime_hours) hourlyOtByDate[d.date] = (hourlyOtByDate[d.date] || 0) + d.overtime_hours; }
+  const hourlyOtRate = Number(selfRate?.hourly_rate ?? (hubUser as any)?.hourly_rate ?? 0);
+  const hourlyOvertimePay = computeOTPayFromDates(hourlyOtByDate, hourlyOtRate, hourlyRawHoursByDate, hourlyIsRestDayMap, hourlyTracked);
 
   // Prorated pay calculation using rate history (same logic as admin payroll page)
   const activePeriod = selectedPeriod ?? periods[periods.length - 1] ?? null;
@@ -520,10 +560,10 @@ export default function ContractorPayoutsPage() {
       const newOT = newHourly || newMonthly / 176;
       overtimePay = computeOTPayFromDates(
         Object.fromEntries(Object.entries(otByDate).filter(([d]) => d < changeInPeriod.effective_date)),
-        oldOT
+        oldOT, rawHoursByDate, isRestDayMap, trackedDates
       ) + computeOTPayFromDates(
         Object.fromEntries(Object.entries(otByDate).filter(([d]) => d >= changeInPeriod.effective_date)),
-        newOT
+        newOT, rawHoursByDate, isRestDayMap, trackedDates
       );
       otRate = newOT;
       proratedLabel = `${splitAccrual.oldEarnedDayUnits.toFixed(2)}/${splitAccrual.oldScheduledDays} earned days @ ₱${oldMonthly.toLocaleString()}/mo · ${splitAccrual.newEarnedDayUnits.toFixed(2)}/${splitAccrual.newScheduledDays} earned days @ ₱${newMonthly.toLocaleString()}/mo${isStillAccruing ? ' · accruing' : ''}`;
@@ -535,7 +575,7 @@ export default function ContractorPayoutsPage() {
       }
       basePay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
       otRate = newHourly;
-      overtimePay = computeOTPayFromDates(otByDate, newHourly);
+      overtimePay = computeOTPayFromDates(otByDate, newHourly, rawHoursByDate, isRestDayMap, trackedDates);
     }
   } else {
     const eff = rateAtStart;
@@ -564,7 +604,7 @@ export default function ContractorPayoutsPage() {
       basePay = totalHoursBillable * hourly;
       otRate = hourly;
     }
-    overtimePay = computeOTPayFromDates(otByDate, otRate);
+    overtimePay = computeOTPayFromDates(otByDate, otRate, rawHoursByDate, isRestDayMap, trackedDates);
   }
   const totalPay = basePay + overtimePay;
   const payoutAdjustments = (() => {
@@ -630,9 +670,7 @@ export default function ContractorPayoutsPage() {
     const totalHoursBillable = hourlyDays.reduce((s, d) => s + d.hours_capped, 0);
     const rate = Number(selfRate?.hourly_rate ?? (hubUser as any).hourly_rate ?? 0);
     const basePay = totalHoursBillable * rate;
-    const hourlyOtByDate: Record<string, number> = {};
-    for (const d of hourlyDays) { if (d.overtime_hours) hourlyOtByDate[d.date] = (hourlyOtByDate[d.date] || 0) + d.overtime_hours; }
-    const overtimePay = computeOTPayFromDates(hourlyOtByDate, rate);
+    const overtimePay = hourlyOvertimePay;
     const totalPay = basePay + overtimePay;
     setSubmitting(true);
     const { data, error } = await supabase.from('hub_payouts').upsert({
@@ -735,7 +773,8 @@ export default function ContractorPayoutsPage() {
     const hRaw = hourlyDays.reduce((s, d) => s + d.hours_raw, 0);
     const hRate = Number(selfRate?.hourly_rate ?? (hubUser as any).hourly_rate ?? 0);
     const hBase = hBillable * hRate;
-    const hOT = hOvertime * hRate;
+    // DOLE-multiplied OT (matches what's submitted/paid), not a flat rate × hours.
+    const hOT = hourlyOvertimePay;
     const hTotal = hBase + hOT;
     const fmtH = (v: number) => isUSD ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v) : fmtPHP(v);
 

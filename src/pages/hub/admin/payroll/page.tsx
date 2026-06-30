@@ -1180,12 +1180,14 @@ export default function AdminPayrollPage() {
     const isCurrentPeriod = today >= selectedPeriod.start && today <= selectedPeriod.end;
 
     // Payroll reads from hub_daily_hours, so sync Slack punches first for the live cutoff.
+    const isPastPeriod = today > selectedPeriod.end;
     const [slackRes, contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes, leaveRes] = await Promise.all([
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
         .select('id, full_name, role, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days, payment_method, bank_name, bank_account_name, bank_account_number, bank_account_type')
-        .eq('status', 'active')
+        // For past closed periods include inactive/deleted users so historical rows aren't lost
+        .in('status', isPastPeriod ? ['active', 'inactive'] : ['active'])
         .in('role', ['contractor', 'admin'])
         .neq('is_developer', true),
       supabase

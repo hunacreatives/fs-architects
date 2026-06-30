@@ -621,13 +621,17 @@ export default function ContractorPayoutsPage() {
       - Number(existingPayout.penalties || 0);
     return arrayTotal || legacyTotal;
   })();
-  const persistedBasePay = existingPayout?.base_pay != null ? Number(existingPayout.base_pay) : null;
-  const persistedOvertimePay = existingPayout?.overtime_pay != null ? Number(existingPayout.overtime_pay) : null;
+  // A 'pending' row is one HR pre-created (e.g. to attach a reimbursement) before
+  // the employee submitted — treat it as not-yet-submitted so the Submit button
+  // still shows and the live computed figures are used (not the placeholder zeros).
+  const submittedPayout = existingPayout && existingPayout.status !== 'pending' ? existingPayout : null;
+  const persistedBasePay = submittedPayout?.base_pay != null ? Number(submittedPayout.base_pay) : null;
+  const persistedOvertimePay = submittedPayout?.overtime_pay != null ? Number(submittedPayout.overtime_pay) : null;
   const displayBasePay = persistedBasePay ?? basePay;
   const displayOvertimePay = persistedOvertimePay ?? overtimePay;
-  const displayTotalPay = existingPayout?.final_payout != null
-    ? Number(existingPayout.final_payout)
-    : totalPay;
+  const displayTotalPay = submittedPayout?.final_payout != null
+    ? Number(submittedPayout.final_payout)
+    : totalPay + payoutAdjustments;
 
   const handleSubmit = async () => {
     if (!hubUser || submitting) return;
@@ -645,7 +649,7 @@ export default function ContractorPayoutsPage() {
       deductions: 0,
       advances: 0,
       penalties: 0,
-      final_payout: totalPay,
+      final_payout: totalPay + payoutAdjustments,
       status: 'submitted',
       submitted_at: new Date().toISOString(),
       locked: false,
@@ -1081,7 +1085,7 @@ export default function ContractorPayoutsPage() {
             </div>
 
             {/* Status + actions */}
-            {existingPayout ? (
+            {submittedPayout ? (
               <div className="space-y-3">
                 <div className={`rounded-xl px-4 py-3.5 flex items-center gap-3 ${
                   existingPayout.status === 'paid' ? 'bg-emerald-50 border border-emerald-100' :

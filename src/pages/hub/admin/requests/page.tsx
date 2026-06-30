@@ -5,6 +5,7 @@ import { HubRequest, HubUser } from '@/lib/types';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_REQUESTS } from '@/lib/demoData';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
+import { getPeriods, localToday } from '@/lib/formatUtils';
 
 const typeLabels: Record<string, string> = {
   reimbursement: 'Reimbursement', account_access: 'Account Access',
@@ -45,29 +46,61 @@ export default function RequestsPage() {
 
   const updateStatus = async (id: number, status: string) => {
     setUpdating(true);
-    await supabase.from('hub_requests').update({ status, admin_notes: adminNotes, updated_at: new Date().toISOString() }).eq('id', id);
+    // Confirm the status actually persisted — surface RLS/column failures instead
+    // of silently leaving the request unchanged.
+    const { data: updated, error: statusErr } = await supabase
+      .from('hub_requests')
+      .update({ status, admin_notes: adminNotes, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id');
+    if (statusErr || !updated || updated.length === 0) {
+      console.error('request status update failed', statusErr);
+      alert(statusErr
+        ? `Could not update this request: ${statusErr.message}`
+        : 'Could not update this request — it may already be locked or you may not have permission.');
+      setUpdating(false);
+      return;
+    }
 
+    // Resolving a reimbursement adds it to the contractor's CURRENT-period payout
+    // as an adjustment (creating a pending payout row if none exists yet). The old
+    // logic looked for a batch with status 'active' — a status that never exists —
+    // so reimbursements were never actually applied to payroll.
     if (status === 'resolved' && selected?.type === 'reimbursement' && selected?.amount) {
-      const { data: batches } = await supabase
-        .from('hub_payroll_batches')
-        .select('id')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const activeBatch = batches?.[0];
-      if (activeBatch) {
+      try {
+        const today = localToday();
+        const periods = getPeriods();
+        const period = periods.find((p) => p.start <= today && today <= p.end) ?? periods[periods.length - 1];
+        const newAdj = { label: `Reimbursement: ${selected.title}`, amount: Number(selected.amount), type: 'reimbursement' };
         const { data: payout } = await supabase
           .from('hub_payouts')
-          .select('id, adjustments')
+          .select('id, adjustments, status')
           .eq('contractor_id', selected.contractor_id)
-          .eq('batch_id', activeBatch.id)
+          .eq('cutoff_start', period.start)
           .maybeSingle();
-        if (payout) {
-          const newAdj = { label: `Reimbursement: ${selected.title}`, amount: selected.amount, type: 'reimbursement' };
-          await supabase.from('hub_payouts')
-            .update({ adjustments: [...(payout.adjustments || []), newAdj] })
-            .eq('id', payout.id);
+        if (payout && payout.status !== 'paid') {
+          const already = (payout.adjustments || []).some((a: any) => a.label === newAdj.label && a.amount === newAdj.amount);
+          if (!already) {
+            const { error: adjErr } = await supabase.from('hub_payouts')
+              .update({ adjustments: [...(payout.adjustments || []), newAdj] })
+              .eq('id', payout.id);
+            if (adjErr) throw adjErr;
+          }
+        } else if (!payout) {
+          const { error: insErr } = await supabase.from('hub_payouts').insert({
+            contractor_id: selected.contractor_id,
+            cutoff_start: period.start,
+            cutoff_end: period.end,
+            status: 'pending',
+            adjustments: [newAdj],
+          });
+          if (insErr) throw insErr;
+        } else {
+          alert(`Status saved. Note: ${(selected.hub_users as HubUser)?.full_name ?? 'this contractor'}'s payout for ${period.label} is already paid — add this ₱${Number(selected.amount).toLocaleString()} reimbursement to the next period manually.`);
         }
+      } catch (e: any) {
+        console.error('reimbursement → payroll failed', e);
+        alert('Status saved, but adding the reimbursement to payroll failed. Please add it as a manual adjustment on the Payroll page.');
       }
     }
 

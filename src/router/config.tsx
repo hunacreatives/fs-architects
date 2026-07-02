@@ -63,8 +63,9 @@ const HubAdminProjectRedirect = lazy(() => import('../pages/hub/admin/project-re
 // const HubDemoPage = lazy(() => import('../pages/hub/demo/page'));
 const PublicPaymentPage = lazy(() => import('../pages/pay/page'));
 
-// Site password gate disabled — SiteGate component kept in place in case it's needed again.
-const withSiteGate = (element: ReactNode) => element;
+const withSiteGate = (element: ReactNode) => (
+  <SiteGate>{element}</SiteGate>
+);
 
 const withAdminGate = (element: ReactNode) => (
   <HubRouteGate allowedRoles={['owner', 'admin', 'hr']}>{element}</HubRouteGate>
@@ -79,7 +80,7 @@ const S = ({ children }: { children: ReactNode }) => (
 );
 
 const routes: RouteObject[] = [
-  // Marketing site
+  // Marketing site — homepage is public, all other pages are password-gated
   { path: "/", element: <Home /> },
   { path: "/projects", element: withSiteGate(<Projects />) },
   { path: "/projects/:slug", element: withSiteGate(<ProjectDetail />) },

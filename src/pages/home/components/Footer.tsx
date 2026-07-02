@@ -213,6 +213,15 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="w-full px-4 md:px-16 lg:px-24 py-3 lg:py-4 flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-1 sm:gap-2">
+        <a
+          href="https://hunacreatives.com"
+          target="_blank"
+          rel="nofollow noopener noreferrer"
+          className="text-white/20 text-[11px] hover:text-white/45 transition-colors duration-300 cursor-pointer whitespace-nowrap"
+          style={{ fontFamily: 'Geist, sans-serif', letterSpacing: '0.06em' }}
+        >
+          {t('footer_website_by')} Huna Creatives
+        </a>
         <div className="flex items-center gap-4">
           <a
             href="/privacy"

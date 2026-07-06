@@ -214,8 +214,8 @@ export default function ContractorAttendancePage() {
           <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
             {[
               { label: 'Days Present', value: daysPresent, icon: 'ri-calendar-check-line', color: 'text-emerald-600' },
-              { label: 'Total Hours', value: `${totalHours.toFixed(1)}h`, icon: 'ri-time-line', color: 'text-blue-600' },
-              { label: 'Overtime', value: `${totalOvertime.toFixed(1)}h`, icon: 'ri-time-fill', color: 'text-purple-600' },
+              { label: 'Total Hours', value: `${Number(totalHours.toFixed(2))}h`, icon: 'ri-time-line', color: 'text-blue-600' },
+              { label: 'Overtime', value: `${Number(totalOvertime.toFixed(2))}h`, icon: 'ri-time-fill', color: 'text-purple-600' },
             ].map(s => (
               <div key={s.label} className="p-4 text-center">
                 <i className={`${s.icon} ${s.color} text-lg mb-1 block`}></i>

@@ -158,16 +158,16 @@ function generatePayslipHTML(opts: {
         <div style="font-size:9px;color:#9ca3af;margin-top:2px;text-transform:uppercase;letter-spacing:0.1em;">Days Worked</div>
       </td>
       <td style="padding:10px 16px;text-align:center;border-right:1px solid #e5e7eb;">
-        <div style="font-size:20px;font-weight:800;color:#1c2b3a;">${totalHoursRaw.toFixed(1)}</div>
+        <div style="font-size:20px;font-weight:800;color:#1c2b3a;">${Number(totalHoursRaw.toFixed(2))}</div>
         <div style="font-size:9px;color:#9ca3af;margin-top:2px;text-transform:uppercase;letter-spacing:0.1em;">Hours Logged</div>
       </td>
       <td style="padding:10px 16px;text-align:center;${totalOvertime > 0 ? 'border-right:1px solid #e5e7eb;' : ''}">
-        <div style="font-size:20px;font-weight:800;color:#1c2b3a;">${totalHoursBillable.toFixed(1)}</div>
+        <div style="font-size:20px;font-weight:800;color:#1c2b3a;">${Number(totalHoursBillable.toFixed(2))}</div>
         <div style="font-size:9px;color:#9ca3af;margin-top:2px;text-transform:uppercase;letter-spacing:0.1em;">Billable Hours</div>
       </td>
       ${totalOvertime > 0 ? `
       <td style="padding:10px 16px;text-align:center;background:#f8f7ff;">
-        <div style="font-size:20px;font-weight:800;color:#1c2b3a;">+${totalOvertime}</div>
+        <div style="font-size:20px;font-weight:800;color:#1c2b3a;">+${Number(totalOvertime.toFixed(2))}</div>
         <div style="font-size:9px;color:#9ca3af;margin-top:2px;text-transform:uppercase;letter-spacing:0.1em;">Overtime Hrs</div>
       </td>` : ''}
     </tr>
@@ -209,7 +209,7 @@ function generatePayslipHTML(opts: {
         </tr>`}
         ${totalOvertime > 0 ? `
         <tr>
-          <td style="padding:10px 14px;color:#374151;border-bottom:1px solid #f0f0f0;font-size:12px;">Overtime Compensation <span style="color:#9ca3af;font-size:11px;margin-left:6px;">${totalOvertime} hrs × ${isUSD ? '$' : '₱'}${hourlyRate}/hr</span></td>
+          <td style="padding:10px 14px;color:#374151;border-bottom:1px solid #f0f0f0;font-size:12px;">Overtime Compensation <span style="color:#9ca3af;font-size:11px;margin-left:6px;">${Number(totalOvertime.toFixed(2))} hrs × ${isUSD ? '$' : '₱'}${hourlyRate}/hr</span></td>
           <td style="padding:10px 14px;text-align:right;font-weight:600;color:#374151;border-bottom:1px solid #f0f0f0;font-size:12px;">+ ${fmt(overtimePay)}</td>
         </tr>` : ''}
         <tr style="background:#1c2b3a;">
@@ -754,9 +754,9 @@ export default function ContractorPayoutsPage() {
               <div className="px-6 py-4 border-b border-gray-50 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 {[
                   { label: 'Days Worked', value: totalDaysWorked, color: 'text-gray-900' },
-                  { label: 'Hours Logged', value: `${totalHoursRaw.toFixed(1)}h`, color: 'text-gray-900' },
-                  { label: 'Billable Hours', value: `${totalHoursBillable.toFixed(1)}h`, color: 'text-sky-700' },
-                  { label: 'Overtime', value: totalOvertime > 0 ? `+${totalOvertime}h` : '—', color: totalOvertime > 0 ? 'text-purple-700' : 'text-gray-400' },
+                  { label: 'Hours Logged', value: `${Number(totalHoursRaw.toFixed(2))}h`, color: 'text-gray-900' },
+                  { label: 'Billable Hours', value: `${Number(totalHoursBillable.toFixed(2))}h`, color: 'text-sky-700' },
+                  { label: 'Overtime', value: totalOvertime > 0 ? `+${Number(totalOvertime.toFixed(2))}h` : '—', color: totalOvertime > 0 ? 'text-purple-700' : 'text-gray-400' },
                 ].map(s => (
                   <div key={s.label} className="bg-gray-50 rounded-xl py-3">
                     <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>

@@ -762,7 +762,7 @@ export default function AdminAttendancePage() {
                                 {r.overtime_hours != null && r.overtime_hours > 0 && (
                                   <>
                                     {r.department && <span className="text-gray-200 text-xs">·</span>}
-                                    <span className="text-xs text-purple-500 font-medium">+{r.overtime_hours.toFixed(1)}h OT</span>
+                                    <span className="text-xs text-purple-500 font-medium">+{Number(r.overtime_hours.toFixed(2))}h OT</span>
                                   </>
                                 )}
                               </div>

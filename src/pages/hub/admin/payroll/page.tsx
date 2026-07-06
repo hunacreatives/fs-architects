@@ -116,7 +116,7 @@ function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
             </span>
             <span className="flex items-center gap-2 tabular-nums">
               <span className={onLeave ? 'text-emerald-700 font-semibold' : undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h{onLeave ? ' paid' : ''}</span>
-              {d.overtime > 0 && <span className="text-amber-600 font-medium">+{d.overtime.toFixed(1)} OT</span>}
+              {d.overtime > 0 && <span className="text-amber-600 font-medium">+{Number(d.overtime.toFixed(2))} OT</span>}
             </span>
           </div>
         );

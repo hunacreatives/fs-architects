@@ -7,3 +7,13 @@
 @keyframes kb-1 { from { transform: scale(1.02) translate(-0.8%,-0.8%); } to { transform: scale(1.06) translate(-0.6%,0.6%); } }
 @keyframes kb-2 { from { transform: scale(1.06) translate(-0.6%,0.6%); }  to { transform: scale(1.02) translate(0.6%,-0.6%); } }
 @keyframes kb-3 { from { transform: scale(1.02) translate(0.6%,-0.6%); }  to { transform: scale(1.06) translate(0.8%,0.8%); } }
+
+/* Collapsed-sidebar hover label (macOS Dock style) — pops out beside the icon */
+@keyframes sidebar-tip-in {
+  from { opacity: 0; transform: translateY(-50%) translateX(-6px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
+}
+.sidebar-tip {
+  transform: translateY(-50%);
+  animation: sidebar-tip-in 0.14s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}

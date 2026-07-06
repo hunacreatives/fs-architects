@@ -938,7 +938,7 @@ export default function AdminPayrollPage() {
       const isUSD = c.currency === 'USD';
       const rate = isFixed
         ? isUSD ? `$${(c.monthly_rate || 0).toLocaleString()}/mo` : `PHP ${(c.monthly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/mo`
-        : isUSD ? `$${c.hourly_rate}/hr` : `PHP ${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/hr`;
+        : isUSD ? `$${c.hourly_rate}/hr` : `PHP ${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 })}/hr`;
       const override = rowOverrides[c.id];
       const basePay = override?.pay !== undefined ? override.pay : r.pay;
       const displayOTHours = r.overtimeHours;
@@ -1940,7 +1940,7 @@ export default function AdminPayrollPage() {
               const isUSD = c.currency === 'USD';
               const rateLabel = isFixed
                 ? isUSD ? `$${(c.monthly_rate || 0).toLocaleString()}/mo` : `₱${(c.monthly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/mo`
-                : isUSD ? `$${c.hourly_rate}/hr` : `₱${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/hr`;
+                : isUSD ? `$${c.hourly_rate}/hr` : `₱${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 })}/hr`;
               const override = rowOverrides[c.id];
               const displayPay = override?.pay !== undefined ? override.pay : r.pay;
               const displayHours = override?.hours !== undefined ? override.hours : r.cappedHours;
@@ -2135,7 +2135,7 @@ export default function AdminPayrollPage() {
                         : `₱${(c.monthly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/mo`
                       : isUSD
                         ? `$${c.hourly_rate}/hr`
-                        : `₱${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/hr`;
+                        : `₱${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 })}/hr`;
                     const otRateLabel = r.derivedHourlyRate > 0
                       ? isUSD
                         ? `$${(r.derivedHourlyRate * 1.25).toFixed(2)}/$${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`

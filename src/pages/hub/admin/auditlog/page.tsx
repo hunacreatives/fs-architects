@@ -112,6 +112,13 @@ export default function AuditLogPage() {
     timeoff: 'bg-sky-100 text-sky-700',
     payroll_approved: 'bg-emerald-100 text-emerald-700',
     undertime_alert: 'bg-amber-100 text-amber-700',
+    time_off: 'bg-sky-100 text-sky-700',
+    overtime: 'bg-amber-100 text-amber-700',
+    credential_request: 'bg-sky-100 text-sky-700',
+    doc_request: 'bg-sky-100 text-sky-700',
+    contract_signed: 'bg-slate-100 text-[#1c2b3a]',
+    payment_verified: 'bg-emerald-100 text-emerald-700',
+    request_submitted: 'bg-sky-100 text-sky-700',
   };
   const monthLabel = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const notifGroups: { month: string; items: any[] }[] = [];

@@ -451,6 +451,13 @@ export default function NotificationBell() {
       payroll_approved:      { icon: 'ri-money-dollar-circle-line',iconBg: 'bg-emerald-50',iconColor: 'text-emerald-500' },
       announcement:          { icon: 'ri-megaphone-line',          iconBg: 'bg-slate-50',  iconColor: 'text-[#1c2b3a]/70' },
       attendance:            { icon: 'ri-time-line',               iconBg: 'bg-sky-50',     iconColor: 'text-sky-600' },
+      time_off:              { icon: 'ri-plant-line',              iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500' },
+      overtime:              { icon: 'ri-timer-flash-line',        iconBg: 'bg-amber-50',   iconColor: 'text-amber-500' },
+      credential_request:    { icon: 'ri-key-2-line',              iconBg: 'bg-sky-50',     iconColor: 'text-sky-500' },
+      doc_request:           { icon: 'ri-file-text-line',          iconBg: 'bg-sky-50',     iconColor: 'text-sky-500' },
+      contract_signed:       { icon: 'ri-quill-pen-line',          iconBg: 'bg-slate-50',   iconColor: 'text-[#1c2b3a]/70' },
+      payment_verified:      { icon: 'ri-checkbox-circle-line',    iconBg: 'bg-emerald-50', iconColor: 'text-emerald-500' },
+      request_submitted:     { icon: 'ri-inbox-line',              iconBg: 'bg-sky-50',     iconColor: 'text-sky-500' },
       default:               { icon: 'ri-notification-3-line',    iconBg: 'bg-gray-50',    iconColor: 'text-gray-400' },
     };
 

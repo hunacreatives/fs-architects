@@ -25,18 +25,35 @@ async function slackDm(userId: string, text: string) {
   });
 }
 
-async function pushToHubAdmins(title: string, body: string, url: string) {
+// Writes the in-app hub_notifications row (bell + Audit Log archive) for every
+// active owner/admin/hr user, then pushes to each via send-push. Previously
+// this only sent a raw push notification with no DB row, so request
+// submissions never showed up in the bell or Audit Log Notifications tab.
+async function notifyHubAdmins(notifType: string, title: string, body: string, path: string) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
   const usersRes = await fetch(`${SUPABASE_URL}/rest/v1/hub_users?select=id&status=eq.active&role=in.(owner,admin,hr)`, {
     headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
   }).catch(() => null);
-  const users = usersRes?.ok ? await usersRes.json().catch(() => []) : [];
+  const users: { id: string }[] = usersRes?.ok ? await usersRes.json().catch(() => []) : [];
+  if (!users.length) return;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/hub_notifications`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(users.map((u) => ({ user_id: u.id, type: notifType, title, body, link: path, read: false }))),
+  }).catch(() => {});
+
   await Promise.all(
-    (users ?? []).map((user: { id: string }) =>
+    users.map((user) =>
       fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, title, body, url }),
+        body: JSON.stringify({ user_id: user.id, title, body, url: path }),
       }).catch(() => {})
     )
   );
@@ -52,15 +69,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing fields' }), { status: 200, headers: cors });
     }
 
-    const typeMap: Record<string, { emoji: string; label: string; url: string }> = {
-      doc_request:        { emoji: '📄', label: 'Document Request',          url: 'https://fsarchitects.ph/hub/admin/docrequests' },
-      credential_request: { emoji: '🔑', label: 'Credential Access Request', url: 'https://fsarchitects.ph/hub/admin/credentials' },
-      contract_signed:    { emoji: '✍️', label: 'Contract Signed',           url: 'https://fsarchitects.ph/hub/admin/documents' },
-      time_off:           { emoji: '🌴', label: 'Time Off Request',          url: 'https://fsarchitects.ph/hub/admin/timeoff' },
-      overtime:           { emoji: '⏰', label: 'Overtime Request',          url: 'https://fsarchitects.ph/hub/admin/overtime' },
-      payment_verified:   { emoji: '✅', label: 'Payment Verified',          url: 'https://fsarchitects.ph/hub/admin/invoice-log' },
+    const typeMap: Record<string, { emoji: string; label: string; path: string }> = {
+      doc_request:        { emoji: '📄', label: 'Document Request',          path: '/hub/admin/docrequests' },
+      credential_request: { emoji: '🔑', label: 'Credential Access Request', path: '/hub/admin/credentials' },
+      contract_signed:    { emoji: '✍️', label: 'Contract Signed',           path: '/hub/admin/documents' },
+      time_off:           { emoji: '🌴', label: 'Time Off Request',          path: '/hub/admin/timeoff' },
+      overtime:           { emoji: '⏰', label: 'Overtime Request',          path: '/hub/admin/overtime' },
+      payment_verified:   { emoji: '✅', label: 'Payment Verified',          path: '/hub/admin/invoice-log' },
     };
-    const { emoji, label, url } = typeMap[type] ?? { emoji: '📋', label: type, url: 'https://fsarchitects.ph/hub/admin' };
+    const { emoji, label, path } = typeMap[type] ?? { emoji: '📋', label: type, path: '/hub/admin' };
 
     const text = `${emoji} *${label}* from *${contractor_name}*${detail ? `\n${detail}` : ''}${notes ? `\n_${notes}_` : ''}`;
     const pushBody = detail ? `${contractor_name}: ${detail}` : `${contractor_name} sent a ${label.toLowerCase()}.`;
@@ -81,7 +98,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    await pushToHubAdmins(label, pushBody, url);
+    await notifyHubAdmins(type, label, pushBody, path);
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

@@ -46,6 +46,23 @@ async function pushToAdmins(title: string, body: string, url?: string) {
   ));
 }
 
+// Same as pushToAdmins, but also writes the in-app hub_notifications row so
+// the event shows up in the bell + Audit Log archive, not just as a push.
+async function notifyAdmins(notifType: string, title: string, body: string, path: string) {
+  const { data: admins } = await supabase.from('hub_users').select('id').in('role', ['admin', 'owner']).eq('status', 'active');
+  if (!admins?.length) return;
+  await supabase.from('hub_notifications').insert(
+    admins.map((a: any) => ({ user_id: a.id, type: notifType, title, body, link: path, read: false }))
+  );
+  await Promise.all(admins.map((a: any) =>
+    fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: a.id, title, body, url: `https://fsarchitects.ph${path}` }),
+    }).catch(() => {})
+  ));
+}
+
 async function getAdminEmails(): Promise<string[]> {
   const { data } = await supabase
     .from('hub_users')
@@ -127,7 +144,7 @@ serve(async (req) => {
           <a href="https://fsarchitects.ph/hub/admin/requests" style="display:inline-block;background:#1c2b3a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">Review Request →</a>`
         )
       );
-      await pushToAdmins('New request submitted', `${contractor_name} submitted a new ${request_type} request: ${title}`, 'https://fsarchitects.ph/hub/admin/requests');
+      await notifyAdmins('request_submitted', 'New request submitted', `${contractor_name} submitted a new ${request_type} request: ${title}`, '/hub/admin/requests');
     }
 
     if (type === 'invoice_overdue') {

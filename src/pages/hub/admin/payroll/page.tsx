@@ -116,7 +116,7 @@ function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
             </span>
             <span className="flex items-center gap-2 tabular-nums">
               <span className={onLeave ? 'text-emerald-700 font-semibold' : undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h{onLeave ? ' paid' : ''}</span>
-              {d.overtime > 0 && <span className="text-[#1c2b3a] font-medium">+{d.overtime.toFixed(1)} OT</span>}
+              {d.overtime > 0 && <span className="text-amber-600 font-medium">+{d.overtime.toFixed(1)} OT</span>}
             </span>
           </div>
         );
@@ -2012,8 +2012,8 @@ export default function AdminPayrollPage() {
                       <p className="text-[10px] text-gray-400 mb-0.5">Overtime</p>
                       {displayOTHours > 0 ? (
                         <>
-                          <p className="text-sm font-semibold text-[#1c2b3a]">+{displayOTHours}h</p>
-                          <p className="text-[10px] text-gray-400">{fmt(displayOTPay, 'PHP')}</p>
+                          <p className="text-sm font-semibold text-amber-600">+{displayOTHours}h</p>
+                          <p className="text-[10px] text-amber-600">{fmt(displayOTPay, 'PHP')}</p>
                         </>
                       ) : (
                         <p className="text-sm text-gray-300">—</p>
@@ -2136,7 +2136,7 @@ export default function AdminPayrollPage() {
                       : isUSD
                         ? `$${c.hourly_rate}/hr`
                         : `₱${(c.hourly_rate || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}/hr`;
-                    const otRateLabel = isFixed
+                    const otRateLabel = r.derivedHourlyRate > 0
                       ? isUSD
                         ? `$${(r.derivedHourlyRate * 1.25).toFixed(2)}/$${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`
                         : `₱${(r.derivedHourlyRate * 1.25).toFixed(2)}/₱${(r.derivedHourlyRate * 1.30).toFixed(2)} OT`
@@ -2203,10 +2203,10 @@ export default function AdminPayrollPage() {
                         <td className="px-5 py-4">
                           {displayOTHours > 0 ? (
                             <div>
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1c2b3a] bg-slate-50 px-2 py-0.5 rounded-full">
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                                 +{displayOTHours}h OT
                               </span>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-amber-600 mt-1">
                                 {isUSD
                                   ? `$${(displayOTHours * (c.hourly_rate || 0)).toFixed(2)} → ${fmt(displayOTPay, 'PHP')}`
                                   : fmt(displayOTPay, 'PHP')}

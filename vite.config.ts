@@ -73,6 +73,7 @@ export default defineConfig({
         description: 'Architecture & Interior Design — Mindanao, Philippines',
         theme_color: '#1c2b3a',
         background_color: '#ffffff',
+        id: '/hub/login',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/hub/login',

@@ -271,8 +271,11 @@ export default function AdminLayout({ children, title, actions }: Props) {
         </div>
       )}
 
-      {/* Main content */}
-      <div className="relative z-10 flex-1 min-w-0 overflow-hidden lg:px-4 lg:pb-4 lg:pt-5 md:px-5 md:pb-5">
+      {/* Main content — z-[45] (not z-10): its backdrop-filter child below creates a
+          stacking context, which traps every in-page modal/panel's z-index inside it.
+          Without this, those modals can never outrank the mobile BottomNav's z-40
+          (a sibling outside this subtree), so they render underneath it on mobile. */}
+      <div className="relative z-[45] flex-1 min-w-0 overflow-hidden lg:px-4 lg:pb-4 lg:pt-5 md:px-5 md:pb-5">
         <div className="flex h-full flex-col lg:rounded-[34px] overflow-hidden lg:shadow-xl lg:shadow-slate-200/50"
           style={{ background: 'rgba(255,255,255,0.60)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.75)' }}
         >

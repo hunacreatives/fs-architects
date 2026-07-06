@@ -3167,7 +3167,7 @@ ${project.notes ? `<p style="font-size:12px;color:#6b7280;font-style:italic;marg
                     <i className="ri-close-line"></i>
                   </button>
                 </div>
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-2">
                     {(internalProject ? [

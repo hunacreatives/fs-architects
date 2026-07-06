@@ -1925,7 +1925,7 @@ export default function TaskDetailPanel({
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         {(editing || isNew || hasUnsavedChanges) && (
-          <div className="border-t border-gray-100 px-5 py-4 flex items-center gap-3 bg-white flex-shrink-0">
+          <div className="border-t border-gray-100 px-5 pt-4 flex items-center gap-3 bg-white flex-shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px) + 1rem)' }}>
             {!isNew && !confirmDelete && (
               <div className="flex items-center gap-3">
                 <button onClick={handleArchive}

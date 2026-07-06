@@ -86,8 +86,9 @@ export default function ContractorsPage() {
       body: { user_id: c.id },
     });
     if (error || data?.error) {
-      // Fallback: delete from hub_users directly
-      await supabase.from('hub_users').delete().eq('id', c.id);
+      // Fallback: mark inactive directly. Never hard-delete hub_users — it
+      // cascades and wipes payroll/attendance/task history tied to this row.
+      await supabase.from('hub_users').update({ status: 'inactive' }).eq('id', c.id);
     }
     setActionLoading(false);
     setConfirm(null);
@@ -448,7 +449,7 @@ export default function ContractorsPage() {
               </h3>
               <p className="text-sm text-gray-500">
                 {confirm.type === 'delete'
-                  ? <>This will permanently delete <strong>{confirm.contractor.full_name}</strong> and all their data. This cannot be undone.</>
+                  ? <>This will remove <strong>{confirm.contractor.full_name}</strong> and revoke their login. Payroll, attendance, and task history are kept so past pay periods stay accurate.</>
                   : confirm.type === 'resend-invite'
                   ? <>A fresh invite link will be sent to <strong>{confirm.contractor.email}</strong>. Any previous link will no longer work.</>
                   : confirm.type === 'reset-password'

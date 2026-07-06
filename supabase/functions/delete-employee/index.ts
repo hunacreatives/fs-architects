@@ -11,11 +11,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'user_id required' }), { status: 400, headers: corsHeaders(req) });
     }
 
-    // Delete auth user — cascades to hub_users
+    // Don't hard-delete the auth user — it cascades and destroys the hub_users
+    // row, which wipes payroll/attendance/task history tied to it via FK. Instead,
+    // revoke login access and mark them inactive so historical records (incl.
+    // archived payroll periods) still show them.
     const supabase = serviceClient();
-    const { error } = await supabase.auth.admin.deleteUser(user_id);
-    if (error) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders(req) });
+    const { error: banError } = await supabase.auth.admin.updateUserById(user_id, { ban_duration: '876000h' });
+    if (banError) {
+      return new Response(JSON.stringify({ error: banError.message }), { status: 400, headers: corsHeaders(req) });
+    }
+    const { error: statusError } = await supabase.from('hub_users').update({ status: 'inactive' }).eq('id', user_id);
+    if (statusError) {
+      return new Response(JSON.stringify({ error: statusError.message }), { status: 400, headers: corsHeaders(req) });
     }
 
     return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders(req) });

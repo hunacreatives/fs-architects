@@ -67,13 +67,19 @@ export default function AdminOvertimePage() {
     if (!selected || !hubUser) return;
     setUpdating(true);
 
-    await supabase.from('hub_overtime_requests').update({
+    const { error: statusErr } = await supabase.from('hub_overtime_requests').update({
       status,
       is_rest_day: restDay,
       reviewed_by: hubUser.id,
       admin_notes: adminNotes || null,
       updated_at: new Date().toISOString(),
     }).eq('id', selected.id);
+    if (statusErr) {
+      console.error('OT status update failed', statusErr);
+      alert('Failed to save the decision: ' + statusErr.message);
+      setUpdating(false);
+      return;
+    }
 
     // Recompute the date's total approved OT from scratch (the new status is
     // already persisted above). This credits hours on approval AND removes them
@@ -87,12 +93,18 @@ export default function AdminOvertimePage() {
 
     const totalApproved = (approvedForDate ?? []).reduce((s: number, r: any) => s + (r.hours || 0), 0);
 
-    await supabase.from('hub_daily_hours').upsert({
+    // This sync is what payroll and the employee's payouts page actually read —
+    // if it fails (e.g. RLS), the OT is "approved" but never credited anywhere.
+    const { error: syncErr } = await supabase.from('hub_daily_hours').upsert({
       user_id: selected.contractor_id,
       date: selected.date,
       overtime_hours: totalApproved,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,date' });
+    if (syncErr) {
+      console.error('hub_daily_hours OT sync failed', syncErr);
+      alert(`Decision saved, but crediting the overtime hours failed: ${syncErr.message}\n\nThe hours will NOT appear in payroll until this is fixed — please report this error.`);
+    }
 
     supabase.functions.invoke('notify-contractor', {
       body: { type: 'overtime_decision', contractor_id: selected.contractor_id, date: selected.date, hours: selected.hours, status, admin_notes: adminNotes || undefined },

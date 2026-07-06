@@ -566,6 +566,7 @@ export default function ContractorPayoutsPage() {
       approved_hours: totalHoursBillable,
       hourly_rate: paymentType === 'hourly' ? displayHourlyRate : displayMonthlyRate / 176,
       base_pay: basePay,
+      overtime_pay: overtimePay,
       bonus: 0,
       incentives: 0,
       reimbursements: 0,

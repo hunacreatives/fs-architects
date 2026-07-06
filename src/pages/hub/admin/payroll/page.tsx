@@ -561,12 +561,13 @@ export default function AdminPayrollPage() {
     const existing = payoutsMap[contractorId];
     const contractorName = rows.find(r => r.contractor.id === contractorId)?.contractor.full_name ?? contractorId;
     const { error: approveErr } = existing
-      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay }).eq('id', existing.id)
+      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay, overtime_pay: otPay }).eq('id', existing.id)
       : await supabase.from('hub_payouts').insert({
           contractor_id: contractorId,
           cutoff_start: selectedPeriod.start,
           cutoff_end: selectedPeriod.end,
           final_payout: finalPay,
+          overtime_pay: otPay,
           status: 'hr_approved',
           approved_at: new Date().toISOString(),
         });
@@ -616,12 +617,13 @@ export default function AdminPayrollPage() {
       const finalPay = basePay + otPay + adjTotal;
       const existing = payoutsMap[r.contractor.id];
       const { error } = existing
-        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay }).eq('id', existing.id)
+        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay, overtime_pay: otPay }).eq('id', existing.id)
         : await supabase.from('hub_payouts').insert({
             contractor_id: r.contractor.id,
             cutoff_start: selectedPeriod.start,
             cutoff_end: selectedPeriod.end,
             final_payout: finalPay,
+            overtime_pay: otPay,
             status: 'hr_approved',
             approved_at: now,
           });
@@ -743,6 +745,7 @@ export default function AdminPayrollPage() {
           cutoff_start: selectedPeriod.start,
           cutoff_end: selectedPeriod.end,
           final_payout: finalPay,
+          overtime_pay: r.overtimePay,
           approved_hours: r.cappedHours,
           status: 'paid',
           approved_at: now,
@@ -755,6 +758,7 @@ export default function AdminPayrollPage() {
         await supabase.from('hub_payouts').update({
           status: 'paid',
           final_payout: finalPay,
+          overtime_pay: r.overtimePay,
           payment_date: today,
           paid_at: now,
           batch_id: batch.id,
@@ -884,6 +888,8 @@ export default function AdminPayrollPage() {
       approved_hours: row?.cappedHours ?? existing.approved_hours ?? 0,
       approved_days: row?.days ?? null,
       overtime_hours: row?.overtimeHours ?? null,
+      // Manual edits already persisted the exact OT pay — don't clobber them
+      overtime_pay: existing.manual_override ? (existing.overtime_pay ?? 0) : (row?.overtimePay ?? existing.overtime_pay ?? 0),
       prorated_note: row?.proratedNote ?? null,
     }).eq('id', existing.id);
     if (paidErr) {

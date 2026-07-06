@@ -145,6 +145,21 @@ export default function ContractorLayout({ children, title, titleContent, action
     });
   };
 
+  // Auto-collapse the desktop sidebar after 10s idle. Hovering it holds it open;
+  // leaving restarts the countdown. Doesn't touch localStorage — only an explicit
+  // toggle changes the user's persisted preference.
+  const sidebarIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearSidebarIdleTimer = () => { if (sidebarIdleTimer.current) clearTimeout(sidebarIdleTimer.current); };
+  const startSidebarIdleTimer = () => {
+    clearSidebarIdleTimer();
+    sidebarIdleTimer.current = setTimeout(() => setCollapsed(true), 10000);
+  };
+  useEffect(() => {
+    if (collapsed) return;
+    startSidebarIdleTimer();
+    return clearSidebarIdleTimer;
+  }, [collapsed]);
+
   useEffect(() => {
     if (!isDemo && !loading && !session) {
       navigate('/hub/login', { replace: true });
@@ -191,7 +206,7 @@ export default function ContractorLayout({ children, title, titleContent, action
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block relative z-10">
+      <div className="hidden lg:block relative z-10" onMouseEnter={clearSidebarIdleTimer} onMouseLeave={() => { if (!collapsed) startSidebarIdleTimer(); }}>
         <ContractorSidebar collapsed={collapsed} onToggle={toggleCollapsed} />
       </div>
 

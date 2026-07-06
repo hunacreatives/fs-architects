@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { HubAuditLog, HubUser } from '@/lib/types';
 import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
+import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 
 const actionColors: Record<string, string> = {
   create: 'bg-emerald-100 text-emerald-700',
@@ -26,6 +27,7 @@ const actionIcons: Record<string, string> = {
 
 export default function AuditLogPage() {
   const { isDemo } = useDemo();
+  const { hubUser } = useAuth();
 
   const [logs, setLogs] = useState<HubAuditLog[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -35,7 +37,8 @@ export default function AuditLogPage() {
   const [page, setPage] = useState(0);
   const perPage = 30;
 
-  // Notifications archive (admin/owner/HR recipients) — a retained, monthly view.
+  // Notifications archive — a retained, monthly view of the CURRENT user's own
+  // notifications only (not a shared feed of every admin/owner/HR recipient).
   const [view, setView] = useState<'activity' | 'notifications'>('activity');
   const [notifs, setNotifs] = useState<any[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
@@ -43,14 +46,12 @@ export default function AuditLogPage() {
   const [notifTotal, setNotifTotal] = useState(0);
 
   const fetchNotifications = async () => {
+    if (!hubUser?.id) { setNotifs([]); setNotifTotal(0); return; }
     setNotifLoading(true);
-    const { data: staff } = await supabase.from('hub_users').select('id').in('role', ['admin', 'owner', 'hr']);
-    const ids = (staff || []).map((u: any) => u.id);
-    if (ids.length === 0) { setNotifs([]); setNotifTotal(0); setNotifLoading(false); return; }
     let q = supabase
       .from('hub_notifications')
-      .select('*, hub_users!user_id(full_name, avatar_url, role)', { count: 'exact' })
-      .in('user_id', ids)
+      .select('*', { count: 'exact' })
+      .eq('user_id', hubUser.id)
       .order('created_at', { ascending: false })
       .range(notifPage * perPage, (notifPage + 1) * perPage - 1);
     const term = search.trim();
@@ -91,7 +92,7 @@ export default function AuditLogPage() {
   };
 
   useEffect(() => { if (view === 'activity') fetchLogs(); }, [actionFilter, page, view]);
-  useEffect(() => { if (view === 'notifications') fetchNotifications(); }, [notifPage, view]);
+  useEffect(() => { if (view === 'notifications') fetchNotifications(); }, [notifPage, view, hubUser?.id]);
 
   // Debounce search and reset to the first page when the term changes.
   useEffect(() => {
@@ -193,25 +194,19 @@ export default function AuditLogPage() {
                   </div>
                   <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
                     <div className="divide-y divide-gray-50">
-                      {group.items.map((n) => {
-                        const u = n.hub_users as HubUser;
-                        return (
-                          <div key={n.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
-                            <HubAvatar fullName={u?.full_name ?? '?'} avatarUrl={u?.avatar_url ?? null} size="w-7 h-7" />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-[#111827]">{u?.full_name}</span>
-                                {u?.role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 capitalize">{u.role}</span>}
-                                {n.type && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${notifTypeColors[n.type] || 'bg-slate-100 text-slate-600'}`}>{String(n.type).replace(/_/g, ' ')}</span>}
-                                {!n.read && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-600 font-medium">unread</span>}
-                              </div>
-                              <p className="text-sm text-gray-800 mt-0.5">{n.title}</p>
-                              {n.body && <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>}
+                      {group.items.map((n) => (
+                        <div key={n.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {n.type && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${notifTypeColors[n.type] || 'bg-slate-100 text-slate-600'}`}>{String(n.type).replace(/_/g, ' ')}</span>}
+                              {!n.read && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-600 font-medium">unread</span>}
                             </div>
-                            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                            <p className="text-sm text-gray-800 mt-0.5">{n.title}</p>
+                            {n.body && <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>}
                           </div>
-                        );
-                      })}
+                          <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

@@ -205,11 +205,12 @@ export default function ContractorLayout({ children, title, titleContent, action
         </div>
       )}
 
-      {/* Main content — z-[45] (not z-10): its backdrop-filter child below creates a
-          stacking context, which traps every in-page modal/panel's z-index inside it.
-          Without this, those modals can never outrank the mobile BottomNav's z-40
-          (a sibling outside this subtree), so they render underneath it on mobile. */}
-      <div className="relative z-[45] flex-1 min-w-0 overflow-hidden lg:px-4 lg:pb-4 lg:pt-5 md:px-5 md:pb-5">
+      {/* Main content. The mobile bottom tab bar lives INSIDE this wrapper (not as a
+          sibling): the backdrop-filter glass panel creates a stacking context that traps
+          every in-page modal's z-index, so a sibling nav with any z-index would either
+          cover those modals or be covered by the whole panel. Sharing the wrapper's
+          context lets the nav (z-40) sit above page content but below modals (z-50). */}
+      <div className="relative z-10 flex-1 min-w-0 overflow-hidden lg:px-4 lg:pb-4 lg:pt-5 md:px-5 md:pb-5">
         <div className="flex h-full flex-col lg:rounded-[34px] overflow-hidden lg:shadow-xl lg:shadow-slate-200/50"
           style={{ background: 'rgba(255,255,255,0.60)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.75)' }}
         >
@@ -385,35 +386,39 @@ export default function ContractorLayout({ children, title, titleContent, action
               {children}
             </div>
           </main>
+
+          {/* Mobile bottom tab bar — inside the glass panel (the backdrop-filter
+              stacking context that in-page modals are trapped in) so modals (z-50)
+              render above it. The panel is also its containing block, but on mobile
+              the panel is full-viewport so fixed bottom-0 still hugs the screen edge. */}
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
+          style={{
+            background: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(0,0,0,0.06)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}>
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex px-2 py-2 gap-1" style={{ minWidth: 'max-content' }}>
+              {EMPLOYEE_BOTTOM_NAV.map(item => (
+                <NavLink key={item.to} to={item.to}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all cursor-pointer min-w-[68px] ${
+                      isActive
+                        ? 'bg-[#1c2b3a]/10 text-[#1c2b3a]'
+                        : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100/60'
+                    }`
+                  }>
+                  <i className={`${item.icon} text-[26px] leading-none`}></i>
+                  <span className="text-[11px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </nav>
         </div>
       </div>
-      {/* Mobile bottom tab bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
-        style={{
-          background: 'rgba(255,255,255,0.85)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(0,0,0,0.06)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}>
-        <div className="overflow-x-auto scrollbar-hide">
-          <div className="flex px-2 py-2 gap-1" style={{ minWidth: 'max-content' }}>
-            {EMPLOYEE_BOTTOM_NAV.map(item => (
-              <NavLink key={item.to} to={item.to}
-                className={({ isActive }) =>
-                  `flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all cursor-pointer min-w-[68px] ${
-                    isActive
-                      ? 'bg-[#1c2b3a]/10 text-[#1c2b3a]'
-                      : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100/60'
-                  }`
-                }>
-                <i className={`${item.icon} text-[26px] leading-none`}></i>
-                <span className="text-[11px] font-medium leading-none whitespace-nowrap">{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
-        </div>
-      </nav>
 
       <DevToolbar />
     </div>

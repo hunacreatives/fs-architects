@@ -9,7 +9,7 @@ const navItems = [
   { divider: true, label: 'People' },
   { to: '/hub/admin/employees', label: 'Employees', icon: 'ri-team-line' },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },
-  { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line', devOnly: true },
+  { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line' },
   { divider: true, label: 'Inbound' },
   { to: '/hub/admin/applications', label: 'Applications', icon: 'ri-user-search-line' },
   { to: '/hub/admin/contact', label: 'Contact Inbox', icon: 'ri-mail-line' },

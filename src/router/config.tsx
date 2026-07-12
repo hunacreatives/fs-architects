@@ -48,6 +48,7 @@ const HubContractorPayouts = lazy(() => import('../pages/hub/employee/payouts/pa
 const HubContractorDocuments = lazy(() => import('../pages/hub/employee/documents/page'));
 const HubContractorCredentials = lazy(() => import('../pages/hub/employee/credentials/page'));
 const HubContractorOvertime = lazy(() => import('../pages/hub/employee/overtime/page'));
+const HubContractorPerformance = lazy(() => import('../pages/hub/employee/performance/page'));
 const HubContractorOnboarding = lazy(() => import('../pages/hub/employee/onboarding/page'));
 const HubContractorClients = lazy(() => import('../pages/hub/employee/clients/page'));
 // const HubContractorProjects = lazy(() => import('../pages/hub/employee/projects/page'));
@@ -136,6 +137,7 @@ const routes: RouteObject[] = [
   { path: '/hub/employee/overtime', element: <S>{withContractorGate(<HubContractorOvertime />)}</S> },
   { path: '/hub/employee/sop', element: <S>{withContractorGate(<HubContractorSop />)}</S> },
   { path: '/hub/employee/announcements', element: <S>{withContractorGate(<HubContractorAnnouncements />)}</S> },
+  { path: '/hub/employee/performance', element: <S>{withContractorGate(<HubContractorPerformance />)}</S> },
   { path: '/hub/employee/profile', element: <S>{withContractorGate(<HubContractorProfile />)}</S> },
   { path: '/hub/admin/profile', element: <S>{withAdminGate(<HubContractorProfile />)}</S> },
   { path: '/hub/employee/payouts', element: <S>{withContractorGate(<HubContractorPayouts />)}</S> },

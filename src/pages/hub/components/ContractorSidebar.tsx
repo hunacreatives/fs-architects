@@ -17,6 +17,7 @@ const baseNavItems = [
   { divider: true, label: 'Resources' },
   { to: '/hub/employee/sop', label: 'SOP Library', icon: 'ri-book-open-line' },
   { to: '/hub/employee/announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
+  { to: '/hub/employee/performance', label: 'My Performance', icon: 'ri-medal-line' },
   { to: '/hub/employee/profile', label: 'My Profile', icon: 'ri-user-line' },
 ];
 

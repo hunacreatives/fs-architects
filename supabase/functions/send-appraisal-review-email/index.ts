@@ -4,6 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // employee acknowledges their performance appraisal. Emails both Fretz and
 // the employee a summary plus the 1-on-1 discussion date he scheduled when
 // he sent the review, so the conversation actually happens on that date.
+// Styled to match the existing payslip email (send-payslip) so transactional
+// emails read as one system.
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -46,7 +48,7 @@ async function sendEmail(to: string[], subject: string, html: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify({ from: `FS Architects <${FROM_EMAIL}>`, to, subject, html }),
   });
   if (!res.ok) throw new Error(`Resend error: ${JSON.stringify(await res.json())}`);
 }
@@ -65,41 +67,100 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: appraisal, error } = await supabase
       .from('hub_appraisals')
-      .select('*, employee:hub_users!employee_id(full_name, email), rater:hub_users!rater_id(full_name)')
+      .select('*, employee:hub_users!employee_id(full_name, email, department, employee_id), rater:hub_users!rater_id(full_name)')
       .eq('id', appraisal_id)
       .single();
 
     if (error || !appraisal) throw new Error(`Appraisal not found: ${error?.message}`);
 
-    const employee = appraisal.employee as { full_name: string; email: string };
+    const employee = appraisal.employee as { full_name: string; email: string; department: string | null; employee_id: string | null } | null;
     const rater = appraisal.rater as { full_name: string } | null;
 
     const factorRows = Object.entries(FACTOR_LABELS).map(([key, label]) => {
       const score = factorScore(appraisal.ratings?.[key]?.levels);
-      return `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee;">${label}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${score != null ? score.toFixed(2) : '—'}</td></tr>`;
+      return `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+          <p style="margin:0;font-size:13px;color:#374151;">${label}</p>
+        </td>
+        <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;text-align:right;font-size:13px;font-weight:600;color:${score != null && score < 3 ? '#ef4444' : '#111827'};">
+          ${score != null ? score.toFixed(2) + ' / 5' : '—'}
+        </td>
+      </tr>`;
     }).join('');
 
-    const html = `
-      <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#111827;">
-        <h2 style="color:#1c2b3a;">Performance Appraisal Acknowledged</h2>
-        <p><strong>${employee?.full_name ?? 'Employee'}</strong> has read their appraisal for <strong>${appraisal.month_appraised}</strong> (period: ${appraisal.period_covered}) and submitted their comments.</p>
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
-        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-          <tr><td style="padding:6px 12px;background:#f9fafb;font-weight:600;">Final Rating</td><td style="padding:6px 12px;background:#f9fafb;text-align:right;font-weight:700;">${appraisal.final_rating_pct != null ? Number(appraisal.final_rating_pct).toFixed(1) + '%' : '—'}</td></tr>
-          <tr><td style="padding:6px 12px;background:#f9fafb;font-weight:600;">Performance Level</td><td style="padding:6px 12px;background:#f9fafb;text-align:right;font-weight:700;">${appraisal.performance_level != null ? Number(appraisal.performance_level).toFixed(1) : '—'}</td></tr>
-          ${factorRows}
-        </table>
+    <div style="background:#111827;padding:28px 32px;">
+      <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;margin-bottom:16px;" />
+      <p style="color:#fff;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.3px;">Appraisal Acknowledged</p>
+      <p style="color:#6b7280;font-size:12px;margin:0;line-height:1.6;">
+        ${appraisal.month_appraised}<br>
+        <span style="color:#9ca3af;">Period: ${appraisal.period_covered}</span>
+      </p>
+    </div>
 
-        ${appraisal.employee_comments ? `<p><strong>Employee's comments:</strong><br/>${appraisal.employee_comments}</p>` : ''}
+    <div style="background:#eff6ff;padding:12px 36px;border-bottom:1px solid #bfdbfe;">
+      <table style="border-collapse:collapse;"><tr>
+        <td style="vertical-align:middle;padding-right:10px;"><span style="display:inline-block;width:8px;height:8px;background:#2563eb;border-radius:50%;"></span></td>
+        <td style="vertical-align:middle;"><p style="margin:0;font-size:13px;color:#1e3a8a;font-weight:600;">${employee?.full_name ?? 'The employee'} has read their appraisal and submitted their comments.</p></td>
+      </tr></table>
+    </div>
 
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 16px;margin:20px 0;">
-          <p style="margin:0;font-weight:700;color:#1c2b3a;">1-on-1 Discussion Scheduled</p>
-          <p style="margin:4px 0 0;">${fmtDateTime(appraisal.one_on_one_at)}</p>
-        </div>
+    <div style="padding:28px 36px;border-bottom:1px solid #f3f4f6;">
+      <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">Employee</p>
+      <p style="font-size:20px;font-weight:700;color:#111827;margin:0 0 4px;">${employee?.full_name ?? ''}${employee?.employee_id ? `<span style="font-size:12px;font-weight:500;color:#9ca3af;margin-left:10px;font-family:monospace;">${employee.employee_id}</span>` : ''}</p>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 2px;">${employee?.department || 'FS Architects'}</p>
+      <p style="font-size:13px;color:#6b7280;margin:0;">Rated by ${rater?.full_name ?? 'the immediate head'}</p>
+    </div>
 
-        <p>Rated by ${rater?.full_name ?? 'the immediate head'}. Review the full appraisal and complete the HR sign-off at <a href="${HUB_BASE_URL}/hub/admin/performance">${HUB_BASE_URL}/hub/admin/performance</a>.</p>
+    <div style="padding:24px 36px;background:#fafafa;border-bottom:1px solid #f3f4f6;">
+      <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 16px;">Performance Summary</p>
+      <table style="border-collapse:collapse;"><tr>
+        <td style="vertical-align:top;padding-right:32px;">
+          <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">Final Rating</p>
+          <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">${appraisal.final_rating_pct != null ? Number(appraisal.final_rating_pct).toFixed(1) : '—'}</p>
+          <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">percent</p>
+        </td>
+        <td style="vertical-align:top;">
+          <p style="font-size:11px;color:#9ca3af;margin:0 0 4px;">Performance Level</p>
+          <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">${appraisal.performance_level != null ? Number(appraisal.performance_level).toFixed(1) : '—'}</p>
+          <p style="font-size:11px;color:#9ca3af;margin:2px 0 0;">out of 5</p>
+        </td>
+      </tr></table>
+    </div>
+
+    <div style="padding:28px 36px;border-bottom:1px solid #f3f4f6;">
+      <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 16px;">Factor Scores</p>
+      <table style="width:100%;border-collapse:collapse;">${factorRows}</table>
+    </div>
+
+    ${appraisal.employee_comments ? `
+    <div style="padding:24px 36px;border-bottom:1px solid #f3f4f6;">
+      <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 10px;">Employee's Comments</p>
+      <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">${appraisal.employee_comments}</p>
+    </div>` : ''}
+
+    <div style="padding:24px 36px 32px;">
+      <div style="background:#111827;border-radius:10px;padding:16px 20px;">
+        <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;">1-on-1 Discussion Scheduled</p>
+        <p style="margin:6px 0 0;font-size:17px;font-weight:700;color:#ffffff;">${fmtDateTime(appraisal.one_on_one_at)}</p>
       </div>
-    `;
+    </div>
+
+    <div style="padding:20px 36px;background:#f9fafb;border-top:1px solid #f3f4f6;">
+      <p style="font-size:12px;color:#9ca3af;margin:0 0 6px;line-height:1.6;">
+        Review the full appraisal and complete the HR sign-off at <a href="${HUB_BASE_URL}/hub/admin/performance" style="color:#6b7280;">${HUB_BASE_URL}/hub/admin/performance</a>.
+      </p>
+      <p style="font-size:11px;color:#d1d5db;margin:0;">© ${new Date().getFullYear()} FS Architects · <a href="mailto:${FROM_EMAIL}" style="color:#d1d5db;text-decoration:none;">${FROM_EMAIL}</a></p>
+    </div>
+
+  </div>
+</body>
+</html>`;
 
     const recipients = [OWNER_EMAIL];
     if (employee?.email) recipients.push(employee.email);

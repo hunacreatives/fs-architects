@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { logAudit } from '@/lib/audit';
 import {
   APPRAISAL_FACTORS, PERFORMANCE_LEVEL_BANDS, APPRAISAL_STATUS_META,
-  Appraisal, AppraisalRatings, emptyRatings, factorScore, computeScores, belowSatisfactoryFactors,
+  Appraisal, AppraisalRatings, emptyRatings, factorScore, computeScores, belowSatisfactoryFactors, bandForLevel,
 } from '@/lib/appraisalForm';
 import { printAppraisal } from '@/lib/appraisalPrint';
 
@@ -29,6 +29,7 @@ const emptyForm = {
   month_appraised: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
   ratings: emptyRatings(),
   comments_recommendations: '',
+  one_on_one_at: '',
   decision: '' as '' | 'regularization' | 'end_of_contract',
   below_satisfactory_action: '' as '' | 'monitoring' | 'pip',
 };
@@ -46,6 +47,10 @@ function ScoreChip({ a }: { a: Appraisal }) {
 
 export default function AdminPerformancePage() {
   const { hubUser } = useAuth();
+  // Only the owner (Fretz) rates and sends appraisals; HR (Francis Yu) only
+  // completes the HR-review step; a plain admin can view and print, nothing else.
+  const isOwner = hubUser?.role === 'owner';
+  const isHr = hubUser?.role === 'hr';
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [appraisals, setAppraisals] = useState<Appraisal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +103,10 @@ export default function AdminPerformancePage() {
       alert('One or more factors are below satisfactory — choose Monitoring or a Performance Improvement Plan first.');
       return;
     }
+    if (send && !form.one_on_one_at) {
+      alert('Schedule a 1-on-1 discussion date before sending this appraisal to the employee.');
+      return;
+    }
     setSaving(true);
 
     const payload = {
@@ -112,6 +121,7 @@ export default function AdminPerformancePage() {
       final_rating_pct: scores.finalPct,
       performance_level: scores.performanceLevel,
       comments_recommendations: form.comments_recommendations.trim() || null,
+      one_on_one_at: form.one_on_one_at ? new Date(form.one_on_one_at).toISOString() : null,
       decision: form.decision || null,
       below_satisfactory_action: belowSat.length > 0 ? (form.below_satisfactory_action || null) : null,
       updated_at: new Date().toISOString(),
@@ -159,6 +169,7 @@ export default function AdminPerformancePage() {
       month_appraised: a.month_appraised,
       ratings,
       comments_recommendations: a.comments_recommendations ?? '',
+      one_on_one_at: a.one_on_one_at ? new Date(a.one_on_one_at).toISOString().slice(0, 16) : '',
       decision: a.decision ?? '',
       below_satisfactory_action: a.below_satisfactory_action ?? '',
     });
@@ -219,13 +230,15 @@ export default function AdminPerformancePage() {
             </select>
             <span className="text-xs text-gray-400">{filtered.length} appraisal{filtered.length !== 1 ? 's' : ''}</span>
           </div>
-          <button
-            onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1c2b3a] text-white rounded-xl text-sm font-medium hover:bg-[#0f1c28] cursor-pointer transition-colors"
-          >
-            <i className="ri-add-line"></i>
-            New Appraisal
-          </button>
+          {isOwner && (
+            <button
+              onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1c2b3a] text-white rounded-xl text-sm font-medium hover:bg-[#0f1c28] cursor-pointer transition-colors"
+            >
+              <i className="ri-add-line"></i>
+              New Appraisal
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -267,7 +280,7 @@ export default function AdminPerformancePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{a.rater?.full_name || '—'}</td>
                       <td className="px-4 py-3">
-                        {a.status === 'draft' && (
+                        {isOwner && a.status === 'draft' && (
                           <button onClick={e => { e.stopPropagation(); startEdit(a); }}
                             className="text-gray-300 hover:text-[#1c2b3a] transition-colors cursor-pointer">
                             <i className="ri-pencil-line text-sm"></i>
@@ -355,7 +368,7 @@ export default function AdminPerformancePage() {
                       <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50">
                         <p className="text-sm font-semibold text-[#111827]">{f.label}</p>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${score == null ? 'bg-gray-100 text-gray-400' : score < 3 ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                          {score == null ? '—' : score.toFixed(2)}
+                          {score == null ? '—' : `Avg ${score.toFixed(2)} / 5`}
                         </span>
                       </div>
                       <div className="divide-y divide-gray-50">
@@ -364,7 +377,7 @@ export default function AdminPerformancePage() {
                             <p className="text-xs text-gray-600 flex-1">{c}</p>
                             <div className="flex gap-1.5 shrink-0">
                               {[1, 2, 3, 4, 5].map(lv => (
-                                <button key={lv} type="button" onClick={() => setLevel(f.key, i, lv)}
+                                <button key={lv} type="button" onClick={() => setLevel(f.key, i, lv)} title={`${lv} — ${PERFORMANCE_LEVEL_BANDS.find(b => b.level === lv)?.label ?? ''}`}
                                   className={`w-8 h-8 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${form.ratings[f.key].levels[i] === lv ? LEVEL_COLORS[lv] : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}>
                                   {lv}
                                 </button>
@@ -395,9 +408,16 @@ export default function AdminPerformancePage() {
                 </div>
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-white/50">Performance Level</p>
-                  <p className="text-lg font-bold">{scores.performanceLevel != null ? `${scores.performanceLevel.toFixed(1)} · ${scores.band?.label}` : '—'}</p>
+                  <p className="text-lg font-bold">{scores.performanceLevel != null ? `${scores.performanceLevel.toFixed(1)} / 5 · ${scores.band?.label}` : '—'}</p>
                 </div>
                 {!scores.complete && <p className="text-xs text-white/60 w-full">Rate all 24 criteria to finalize the score.</p>}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Schedule 1-on-1 Discussion *</label>
+                <input type="datetime-local" required value={form.one_on_one_at} onChange={e => setF({ one_on_one_at: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                <p className="text-[11px] text-gray-400">Required before sending — the employee will see this date, and you'll both get an email once they acknowledge.</p>
               </div>
 
               <div className="space-y-1">
@@ -492,11 +512,12 @@ export default function AdminPerformancePage() {
                 </div>
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-white/50">Performance Level</p>
-                  <p className="text-lg font-bold">{selected.performance_level != null ? Number(selected.performance_level).toFixed(1) : '—'}</p>
+                  <p className="text-lg font-bold">{selected.performance_level != null ? `${Number(selected.performance_level).toFixed(1)} / 5 · ${bandForLevel(Number(selected.performance_level)).label}` : '—'}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
+                <p className="text-[11px] text-gray-400">Each factor below is scored by averaging its 3 criteria, rated 1 (poor) to 5 (excellent).</p>
                 {APPRAISAL_FACTORS.map(f => {
                   const r = selected.ratings?.[f.key];
                   const score = factorScore(r);
@@ -505,12 +526,13 @@ export default function AdminPerformancePage() {
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-[#111827]">{f.label}</p>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${score == null ? 'bg-gray-100 text-gray-400' : score < 3 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                          {score == null ? '—' : score.toFixed(2)}
+                          {score == null ? '—' : `Avg ${score.toFixed(2)} / 5`}
                         </span>
                       </div>
-                      <div className="flex gap-1.5 mt-1.5">
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className="text-[10px] text-gray-400 mr-0.5">Criteria:</span>
                         {(r?.levels ?? []).map((lv, i) => (
-                          <span key={i} className={`w-6 h-6 rounded flex items-center justify-center text-[11px] font-semibold ${lv != null ? LEVEL_COLORS[lv] : 'bg-gray-100 text-gray-300'}`}>{lv ?? '·'}</span>
+                          <span key={i} title={f.criteria[i]} className={`w-6 h-6 rounded flex items-center justify-center text-[11px] font-semibold ${lv != null ? LEVEL_COLORS[lv] : 'bg-gray-100 text-gray-300'}`}>{lv ?? '·'}</span>
                         ))}
                       </div>
                       {r?.remarks && <p className="text-xs text-gray-500 mt-1.5">{r.remarks}</p>}
@@ -518,6 +540,16 @@ export default function AdminPerformancePage() {
                   );
                 })}
               </div>
+
+              {selected.one_on_one_at && (
+                <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 flex items-center gap-2.5">
+                  <i className="ri-calendar-event-line text-sky-600"></i>
+                  <div>
+                    <p className="text-xs font-semibold text-sky-800">1-on-1 Discussion Scheduled</p>
+                    <p className="text-xs text-sky-600">{new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                  </div>
+                </div>
+              )}
 
               {selected.comments_recommendations && (
                 <div>
@@ -548,7 +580,7 @@ export default function AdminPerformancePage() {
                 </div>
               )}
 
-              {selected.status === 'awaiting_hr' && (
+              {selected.status === 'awaiting_hr' && isHr && (
                 <div className="border border-amber-200 bg-amber-50 rounded-xl p-4 space-y-3">
                   <p className="text-sm font-semibold text-amber-800"><i className="ri-shield-check-line mr-1"></i>HR Review</p>
                   <textarea value={hrComments} onChange={e => setHrComments(e.target.value)} rows={3}
@@ -558,6 +590,11 @@ export default function AdminPerformancePage() {
                     className="w-full py-2.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-60 cursor-pointer font-medium">
                     {saving ? 'Saving…' : 'Complete HR Review'}
                   </button>
+                </div>
+              )}
+              {selected.status === 'awaiting_hr' && !isHr && (
+                <div className="bg-amber-50 rounded-xl p-4">
+                  <p className="text-sm font-medium text-amber-800"><i className="ri-shield-check-line mr-1"></i>Awaiting HR review</p>
                 </div>
               )}
 
@@ -575,13 +612,13 @@ export default function AdminPerformancePage() {
                   className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5">
                   <i className="ri-printer-line text-sm"></i> Print Form
                 </button>
-                {selected.status === 'draft' && (
+                {isOwner && selected.status === 'draft' && (
                   <button onClick={() => startEdit(selected)}
                     className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5">
                     <i className="ri-pencil-line text-sm"></i> Edit
                   </button>
                 )}
-                {selected.status !== 'completed' && (
+                {isOwner && selected.status !== 'completed' && (
                   <button onClick={() => handleDelete(selected)}
                     className="flex-1 py-2.5 text-sm border border-rose-200 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer flex items-center justify-center gap-1.5">
                     <i className="ri-delete-bin-line text-sm"></i> Delete

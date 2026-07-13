@@ -171,6 +171,16 @@ export default function EmployeePerformancePage() {
                 })}
               </div>
 
+              {selected.one_on_one_at && (
+                <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 flex items-center gap-2.5">
+                  <i className="ri-calendar-event-line text-sky-600"></i>
+                  <div>
+                    <p className="text-xs font-semibold text-sky-800">1-on-1 Discussion Scheduled</p>
+                    <p className="text-xs text-sky-600">{new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                  </div>
+                </div>
+              )}
+
               {selected.comments_recommendations && (
                 <div>
                   <p className="text-xs font-medium text-gray-700 mb-1">Comments and Recommendations</p>
@@ -194,7 +204,10 @@ export default function EmployeePerformancePage() {
               {selected.status === 'awaiting_employee' ? (
                 <div className="border border-sky-200 bg-sky-50 rounded-xl p-4 space-y-3">
                   <p className="text-xs text-sky-900">
-                    I hereby testify that my Performance Evaluation was discussed thoroughly by my immediate head and I have read the comments and ratings.
+                    I acknowledge that I have read this Performance Evaluation and reviewed my ratings and comments.
+                    {selected.one_on_one_at
+                      ? ` This will be discussed further with my immediate head on ${new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}.`
+                      : ' This will be discussed further with my immediate head in a follow-up 1-on-1.'}
                   </p>
                   <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3}
                     placeholder="Your comments or concerns (optional)"

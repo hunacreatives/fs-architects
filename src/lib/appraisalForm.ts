@@ -150,6 +150,7 @@ export interface Appraisal {
   final_rating_pct: number | null;
   performance_level: number | null;
   comments_recommendations: string | null;
+  one_on_one_at: string | null;
   decision: 'regularization' | 'end_of_contract' | null;
   below_satisfactory_action: 'monitoring' | 'pip' | null;
   employee_comments: string | null;

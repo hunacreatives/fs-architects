@@ -12,6 +12,9 @@ const box = (checked: boolean) => `(&nbsp;${checked ? '✓' : '&nbsp;&nbsp;'}&nb
 const fmtDate = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleDateString('en-US', { month: 'long' , day: 'numeric', year: 'numeric' }) : '';
 
+const fmtDateTime = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+
 export function printAppraisal(a: Appraisal) {
   const { totalScore, finalPct, performanceLevel, band } = computeScores(a.ratings);
 
@@ -100,6 +103,8 @@ export function printAppraisal(a: Appraisal) {
     <span class="pl-circle">${performanceLevel != null ? performanceLevel.toFixed(1) : ''}</span>
     <span style="margin-left:8px">PL${band ? ' — ' + esc(band.label) : ''}</span>
   </p>
+
+  ${a.one_on_one_at ? `<p><strong>1-on-1 Discussion Scheduled:</strong> ${fmtDateTime(a.one_on_one_at)}</p>` : ''}
 
   <h2>Comments and Recommendations</h2>
   <div class="lines">${esc(a.comments_recommendations)}</div>

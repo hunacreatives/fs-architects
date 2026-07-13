@@ -37,13 +37,6 @@ function factorScore(levels: (number | null)[] | undefined): number | null {
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
-function fmtDateTime(iso: string | null): string {
-  if (!iso) return 'Not yet scheduled';
-  return new Date(iso).toLocaleString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
-  });
-}
-
 async function sendEmail(to: string[], subject: string, html: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -143,13 +136,6 @@ Deno.serve(async (req) => {
       <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 10px;">Employee's Comments</p>
       <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">${appraisal.employee_comments}</p>
     </div>` : ''}
-
-    <div style="padding:24px 36px 32px;">
-      <div style="background:#111827;border-radius:10px;padding:16px 20px;">
-        <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;">1-on-1 Discussion Scheduled</p>
-        <p style="margin:6px 0 0;font-size:17px;font-weight:700;color:#ffffff;">${fmtDateTime(appraisal.one_on_one_at)}</p>
-      </div>
-    </div>
 
     <div style="padding:20px 36px;background:#f9fafb;border-top:1px solid #f3f4f6;">
       <p style="font-size:12px;color:#9ca3af;margin:0 0 6px;line-height:1.6;">

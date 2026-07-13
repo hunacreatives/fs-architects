@@ -22,11 +22,41 @@ const LEVEL_COLORS: Record<number, string> = {
   5: 'bg-emerald-600 text-white border-emerald-600',
 };
 
+const QUARTER_DEFS = [
+  { value: 'Q1', range: 'Jan–Mar' },
+  { value: 'Q2', range: 'Apr–Jun' },
+  { value: 'Q3', range: 'Jul–Sep' },
+  { value: 'Q4', range: 'Oct–Dec' },
+];
+const CURRENT_YEAR = new Date().getFullYear();
+const PERIOD_YEARS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR - 1 + i);
+
+function currentQuarter(): string {
+  return QUARTER_DEFS[Math.floor(new Date().getMonth() / 3)].value;
+}
+function buildPeriodLabel(year: string, quarter: string): string {
+  const q = QUARTER_DEFS.find(qd => qd.value === quarter);
+  return q && year ? `${quarter} ${year} (${q.range})` : '';
+}
+function parsePeriodLabel(label: string): { year: string; quarter: string } | null {
+  const m = label.match(/^(Q[1-4])\s+(\d{4})/);
+  return m ? { quarter: m[1], year: m[2] } : null;
+}
+function toDateInputValue(display: string): string {
+  const d = new Date(display);
+  return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
+}
+function formatMonthAppraised(dateStr: string): string {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
 const emptyForm = {
   employee_id: '',
   job_title: '',
-  period_covered: '',
-  month_appraised: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+  period_year: String(CURRENT_YEAR),
+  period_quarter: currentQuarter(),
+  period_covered: buildPeriodLabel(String(CURRENT_YEAR), currentQuarter()),
+  month_appraised: new Date().toISOString().slice(0, 10),
   ratings: emptyRatings(),
   comments_recommendations: '',
   one_on_one_at: '',
@@ -82,6 +112,13 @@ export default function AdminPerformancePage() {
 
   const setF = (v: Partial<typeof emptyForm>) => setForm(prev => ({ ...prev, ...v }));
 
+  // Sourced from employees' actual departments so the dropdown reflects real
+  // titles in use; includes the form's current value too, in case it's an
+  // older custom title that isn't (or is no longer) any employee's department.
+  const jobTitleOptions = Array.from(
+    new Set([...(employees.map(e => e.department).filter(Boolean) as string[]), ...(form.job_title ? [form.job_title] : [])])
+  ).sort();
+
   const setLevel = (factorKey: string, idx: number, level: number) => {
     setForm(prev => {
       const ratings: AppraisalRatings = { ...prev.ratings, [factorKey]: { ...prev.ratings[factorKey], levels: [...prev.ratings[factorKey].levels] } };
@@ -109,7 +146,7 @@ export default function AdminPerformancePage() {
       rater_id: hubUser?.id,
       job_title: form.job_title.trim() || null,
       period_covered: form.period_covered.trim(),
-      month_appraised: form.month_appraised.trim(),
+      month_appraised: formatMonthAppraised(form.month_appraised),
       status: editingId ? editingStatus : 'draft',
       ratings: form.ratings,
       total_score: scores.totalScore,
@@ -195,11 +232,14 @@ export default function AdminPerformancePage() {
     for (const f of APPRAISAL_FACTORS) {
       if (a.ratings?.[f.key]) ratings[f.key] = { levels: f.criteria.map((_, i) => a.ratings[f.key].levels?.[i] ?? null), remarks: a.ratings[f.key].remarks ?? '' };
     }
+    const parsedPeriod = parsePeriodLabel(a.period_covered);
     setForm({
       employee_id: a.employee_id,
       job_title: a.job_title ?? '',
+      period_year: parsedPeriod?.year ?? String(CURRENT_YEAR),
+      period_quarter: parsedPeriod?.quarter ?? currentQuarter(),
       period_covered: a.period_covered,
-      month_appraised: a.month_appraised,
+      month_appraised: toDateInputValue(a.month_appraised),
       ratings,
       comments_recommendations: a.comments_recommendations ?? '',
       one_on_one_at: a.one_on_one_at ? new Date(a.one_on_one_at).toISOString().slice(0, 16) : '',
@@ -348,7 +388,10 @@ export default function AdminPerformancePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Employee *</label>
-                  <select required value={form.employee_id} onChange={e => setF({ employee_id: e.target.value })}
+                  <select required value={form.employee_id} onChange={e => {
+                    const emp = employees.find(c => c.id === e.target.value);
+                    setF({ employee_id: e.target.value, job_title: emp?.department ?? form.job_title });
+                  }}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                     <option value="">Select employee...</option>
                     {employees.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
@@ -356,20 +399,34 @@ export default function AdminPerformancePage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Job Title</label>
-                  <input type="text" value={form.job_title} onChange={e => setF({ job_title: e.target.value })}
-                    placeholder="e.g. Junior Architect"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                  <select value={form.job_title} onChange={e => setF({ job_title: e.target.value })}
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                    <option value="">Select job title...</option>
+                    {jobTitleOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Period Covered *</label>
-                  <input type="text" required value={form.period_covered} onChange={e => setF({ period_covered: e.target.value })}
-                    placeholder="e.g. January – June 2026"
-                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                  <div className="flex gap-2">
+                    <select required value={form.period_quarter} onChange={e => {
+                      const quarter = e.target.value;
+                      setF({ period_quarter: quarter, period_covered: buildPeriodLabel(form.period_year, quarter) });
+                    }}
+                      className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                      {QUARTER_DEFS.map(q => <option key={q.value} value={q.value}>{q.value} ({q.range})</option>)}
+                    </select>
+                    <select required value={form.period_year} onChange={e => {
+                      const year = e.target.value;
+                      setF({ period_year: year, period_covered: buildPeriodLabel(year, form.period_quarter) });
+                    }}
+                      className="w-28 px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                      {PERIOD_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Month Appraised *</label>
-                  <input type="text" required value={form.month_appraised} onChange={e => setF({ month_appraised: e.target.value })}
-                    placeholder="e.g. July 2026"
+                  <input type="date" required value={form.month_appraised} onChange={e => setF({ month_appraised: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>

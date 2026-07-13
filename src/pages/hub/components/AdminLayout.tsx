@@ -216,6 +216,16 @@ export default function AdminLayout({ children, title, actions }: Props) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const bottomNavScrollRef = useRef<HTMLDivElement>(null);
+
+  // AdminLayout remounts on every route change (each page wraps itself in the
+  // layout), so the horizontally-scrollable bottom nav loses its scroll
+  // position and snaps back to the far left instead of keeping the active tab
+  // in view. Re-center on the active tab right after mount.
+  useEffect(() => {
+    bottomNavScrollRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
+  }, []);
+
   const toggleCollapsed = () => setCollapsed(prev => {
     const next = !prev;
     localStorage.setItem('sidebar-collapsed', String(next));
@@ -339,7 +349,7 @@ export default function AdminLayout({ children, title, actions }: Props) {
             borderTop: '1px solid rgba(0,0,0,0.06)',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           }}>
-          <div className="overflow-x-auto scrollbar-hide">
+          <div ref={bottomNavScrollRef} className="overflow-x-auto scrollbar-hide">
             <div className="flex px-2 py-2 gap-1" style={{ minWidth: 'max-content' }}>
               {ADMIN_BOTTOM_NAV.map(item => (
                 <NavLink key={item.to} to={item.to}

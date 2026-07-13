@@ -110,6 +110,28 @@ export default function AdminOvertimePage() {
       body: { type: 'overtime_decision', contractor_id: selected.contractor_id, date: selected.date, hours: selected.hours, status, admin_notes: adminNotes || undefined },
     }).catch(console.error);
 
+    // Log approved/rejected overtime to the running Google Sheet archive —
+    // fire-and-forget so a Drive hiccup never blocks the decision itself.
+    const requester = selected.hub_users as { full_name?: string; department?: string } | undefined;
+    supabase.functions.invoke('log-to-sheet', {
+      body: {
+        logType: 'overtime',
+        row: [
+          new Date(selected.created_at).toLocaleDateString('en-US'),
+          requester?.full_name ?? '',
+          requester?.department ?? '',
+          new Date(selected.date + 'T12:00:00').toLocaleDateString('en-US'),
+          selected.hours,
+          selected.reason ?? '',
+          restDay ? '30% rest day' : '25% weekday',
+          status,
+          hubUser?.full_name ?? '',
+          new Date().toLocaleDateString('en-US'),
+          adminNotes ?? '',
+        ],
+      },
+    }).catch(console.error);
+
     setUpdating(false);
     setSelected(null);
     fetchRequests();
@@ -122,11 +144,11 @@ export default function AdminOvertimePage() {
       <div className="space-y-4">
 
         {/* Filters */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit max-w-full overflow-x-auto scrollbar-hide">
             {filterTabs.map((s) => (
               <button key={s} onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap capitalize ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap capitalize flex-shrink-0 ${
                   statusFilter === s ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'
                 }`}>
                 {s === 'all' ? 'All' : statusLabels[s]}
@@ -144,7 +166,46 @@ export default function AdminOvertimePage() {
             <p className="text-sm text-gray-400">No {statusFilter !== 'all' ? statusFilter : ''} overtime requests</p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <>
+          {/* Mobile cards — the desktop table's columns (Employee, Date, Hours,
+              Reason, Status, Filed) don't fit a phone width even with
+              horizontal scroll, so requests get their own key facts up top. */}
+          <div className="md:hidden space-y-3">
+            {requests.map((r) => {
+              const u = r.hub_users;
+              return (
+                <div key={r.id} onClick={() => openReview(r)}
+                  className="bg-white border border-gray-100 rounded-xl p-4 cursor-pointer hover:border-gray-200 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-[#1c2b3a]/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[#1c2b3a] text-xs font-bold">{u?.full_name?.charAt(0) || '?'}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#111827] truncate">{u?.full_name}</p>
+                        <p className="text-xs text-gray-400">
+                          {u?.department ? `${u.department} · ` : ''}{new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-purple-600 flex-shrink-0">+{r.hours}h</span>
+                  </div>
+                  {r.reason && <p className="text-xs text-gray-500 mt-2 line-clamp-2">{r.reason}</p>}
+                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-50">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[r.status]}`}>
+                      {statusLabels[r.status] || r.status}
+                    </span>
+                    <span className="text-xs text-gray-500 font-medium">
+                      {r.status === 'pending' ? 'Review' : 'View'} <i className="ri-arrow-right-s-line"></i>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white border border-gray-100 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -200,6 +261,7 @@ export default function AdminOvertimePage() {
             </table>
             </div>
           </div>
+          </>
         )}
       </div>
 

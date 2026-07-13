@@ -104,6 +104,29 @@ export default function RequestsPage() {
       }
     }
 
+    // Log resolved/closed requests to the running Google Sheet archive — the
+    // terminal states, mirroring the paper trail admins want to keep outside
+    // the hub. Fire-and-forget: a Drive hiccup shouldn't block the status save.
+    if (status === 'resolved' || status === 'closed') {
+      const requester = selected?.hub_users as HubUser | undefined;
+      supabase.functions.invoke('log-to-sheet', {
+        body: {
+          logType: 'requests',
+          row: [
+            selected?.created_at ? new Date(selected.created_at).toLocaleDateString('en-US') : '',
+            requester?.full_name ?? '',
+            selected?.type ? (typeLabels[selected.type] || selected.type) : '',
+            selected?.title ?? '',
+            selected?.description ?? '',
+            selected?.amount != null ? Number(selected.amount).toFixed(2) : '',
+            status,
+            new Date().toLocaleDateString('en-US'),
+            adminNotes ?? '',
+          ],
+        },
+      }).catch(console.error);
+    }
+
     setUpdating(false);
     setSelected(null);
     fetch();
@@ -112,11 +135,11 @@ export default function RequestsPage() {
   return (
     <AdminLayout title="Request Center">
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit max-w-full overflow-x-auto scrollbar-hide">
             {['all', 'open', 'in_review', 'resolved', 'closed'].map((s) => (
               <button key={s} onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap capitalize ${statusFilter === s ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap capitalize flex-shrink-0 ${statusFilter === s ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                 {s === 'all' ? 'All' : s.replace('_', ' ')}
               </button>
             ))}

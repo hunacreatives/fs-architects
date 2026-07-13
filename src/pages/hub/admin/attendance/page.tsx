@@ -563,9 +563,11 @@ export default function AdminAttendancePage() {
             )}
           </div>
 
-          {/* Bottom row: export + action buttons */}
-          <div className="flex items-center justify-between gap-3 pt-4 border-t border-white/10">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Bottom row: export + action buttons. Stacked on mobile so the PDF
+              buttons form an even grid instead of wrapping into a ragged pair
+              of rows with the refresh/sync button floating oddly beside them. */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-white/10">
+            <div className="grid grid-cols-3 sm:flex sm:items-center gap-1.5">
               {[
                 { label: 'Week', range: () => getWeekRange(selectedDate), rangeLabel: 'Week' },
                 { label: 'Month', range: () => getMonthRange(selectedDate), rangeLabel: 'Month' },
@@ -574,7 +576,7 @@ export default function AdminAttendancePage() {
                 <button
                   key={btn.label}
                   onClick={() => { const [s, e] = btn.range(); generateAttendancePDF(s, e, btn.rangeLabel); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer"
+                  className="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer"
                 >
                   <i className="ri-file-pdf-line text-sm"></i>
                   {btn.label}
@@ -586,7 +588,7 @@ export default function AdminAttendancePage() {
                 <button
                   onClick={() => fetchLive(true)}
                   disabled={refreshing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
                 >
                   <i className={`ri-refresh-line text-sm ${refreshing ? 'animate-spin' : ''}`}></i>
                   Refresh
@@ -600,7 +602,7 @@ export default function AdminAttendancePage() {
                     setSyncing(false);
                   }}
                   disabled={syncing}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 border border-white/10 text-white/70 hover:bg-white/15 hover:text-white transition-colors cursor-pointer disabled:opacity-40"
                 >
                   <i className={`ri-slack-line text-sm ${syncing ? 'animate-pulse' : ''}`}></i>
                   {syncing ? 'Syncing…' : 'Sync Slack'}

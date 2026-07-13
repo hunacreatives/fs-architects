@@ -1753,54 +1753,60 @@ export default function AdminPayrollPage() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             {/* Left: period selector + KPIs */}
             <div className="flex-1 min-w-0">
-              {/* Period controls */}
-              <div className="flex items-center gap-2 flex-wrap mb-5">
-                <select
-                  value={selectedYear}
-                  onChange={e => handleYearChange(e.target.value)}
-                  className="bg-white/10 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer appearance-none"
-                >
-                  {years.map(y => <option key={y} value={y} className="text-gray-900 bg-white">{y}</option>)}
-                </select>
-                <select
-                  value={selectedMonth}
-                  onChange={e => handleMonthChange(e.target.value)}
-                  className="bg-white/10 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer appearance-none"
-                >
-                  {monthsInYear.map(m => (
-                    <option key={m} value={m} className="text-gray-900 bg-white">{FULL_MONTHS[parseInt(m.slice(5, 7)) - 1]}</option>
-                  ))}
-                </select>
-                <select
-                  value={selectedPeriod.start}
-                  onChange={e => {
-                    const picked = periodsInMonth.find(p => p.start === e.target.value);
-                    if (picked) setSelectedPeriod(picked);
-                  }}
-                  className="min-w-[220px] bg-white/10 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer appearance-none"
-                >
-                  {openPeriodsInMonth.map((p) => (
-                    <option key={p.start} value={p.start} className="text-gray-900 bg-white">
-                      {p.label}
-                    </option>
-                  ))}
-                  {archivedPeriodsInMonth.length > 0 && (
-                    <option disabled className="text-gray-500 bg-white">────────</option>
-                  )}
-                  {archivedPeriodsInMonth.map((p) => (
-                    <option key={p.start} value={p.start} className="text-gray-900 bg-white">
-                      {p.label} (Archived)
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={refreshPayrollPage}
-                  disabled={refreshing || loading || workflowLoading}
-                  title="Refresh payroll data and submission statuses"
-                  className="bg-white/10 border border-white/10 text-white/60 hover:text-white hover:bg-white/20 text-xs rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <i className={`${refreshing ? 'ri-loader-4-line animate-spin' : 'ri-refresh-line'}`}></i>
-                </button>
+              {/* Period controls — explicit two-row layout on mobile (year/month
+                  as an even pair, period+refresh below) instead of relying on
+                  flex-wrap, which broke unpredictably across widths. */}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mb-5">
+                <div className="grid grid-cols-2 sm:flex gap-2">
+                  <select
+                    value={selectedYear}
+                    onChange={e => handleYearChange(e.target.value)}
+                    className="bg-white/10 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer appearance-none"
+                  >
+                    {years.map(y => <option key={y} value={y} className="text-gray-900 bg-white">{y}</option>)}
+                  </select>
+                  <select
+                    value={selectedMonth}
+                    onChange={e => handleMonthChange(e.target.value)}
+                    className="bg-white/10 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer appearance-none"
+                  >
+                    {monthsInYear.map(m => (
+                      <option key={m} value={m} className="text-gray-900 bg-white">{FULL_MONTHS[parseInt(m.slice(5, 7)) - 1]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedPeriod.start}
+                    onChange={e => {
+                      const picked = periodsInMonth.find(p => p.start === e.target.value);
+                      if (picked) setSelectedPeriod(picked);
+                    }}
+                    className="flex-1 sm:flex-initial sm:min-w-[220px] min-w-0 bg-white/10 border border-white/10 text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer appearance-none"
+                  >
+                    {openPeriodsInMonth.map((p) => (
+                      <option key={p.start} value={p.start} className="text-gray-900 bg-white">
+                        {p.label}
+                      </option>
+                    ))}
+                    {archivedPeriodsInMonth.length > 0 && (
+                      <option disabled className="text-gray-500 bg-white">────────</option>
+                    )}
+                    {archivedPeriodsInMonth.map((p) => (
+                      <option key={p.start} value={p.start} className="text-gray-900 bg-white">
+                        {p.label} (Archived)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={refreshPayrollPage}
+                    disabled={refreshing || loading || workflowLoading}
+                    title="Refresh payroll data and submission statuses"
+                    className="flex-shrink-0 bg-white/10 border border-white/10 text-white/60 hover:text-white hover:bg-white/20 text-xs rounded-lg px-2.5 py-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <i className={`${refreshing ? 'ri-loader-4-line animate-spin' : 'ri-refresh-line'}`}></i>
+                  </button>
+                </div>
               </div>
 
               {/* KPIs inline */}
@@ -1821,7 +1827,7 @@ export default function AdminPayrollPage() {
 
             {/* Right: export + USD rate */}
             <div className="flex flex-col gap-3 sm:items-end flex-shrink-0">
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => {
                     const headers = ['Employee', 'Department', 'Type', 'Rate', 'Days', 'Raw Hours', 'Billed Hours', 'Overtime Hours', 'Overtime Pay (PHP)', 'Pay (PHP)'];
@@ -1859,7 +1865,7 @@ export default function AdminPayrollPage() {
                     }).catch(console.error);
                   }}
                   disabled={loading || rows.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   <i className="ri-file-excel-line text-sm"></i>
                   CSV
@@ -1867,7 +1873,7 @@ export default function AdminPayrollPage() {
                 <button
                   onClick={downloadPDF}
                   disabled={loading || rows.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1c2b3a] text-white hover:bg-[#0f1c28] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1c2b3a] text-white hover:bg-[#0f1c28] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   <i className="ri-file-pdf-line text-sm"></i>
                   PDF
@@ -1876,7 +1882,7 @@ export default function AdminPayrollPage() {
                   <button
                     onClick={savePayrollToDrive}
                     disabled={loading || rows.length === 0 || savingToDrive}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                    className={`col-span-2 sm:col-auto flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap ${
                       isPdfSavedToDrive
                         ? 'bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/20 hover:text-white'
                         : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'

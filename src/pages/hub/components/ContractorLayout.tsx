@@ -63,6 +63,15 @@ export default function ContractorLayout({ children, title, titleContent, action
   const [liveLoading, setLiveLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const bottomNavScrollRef = useRef<HTMLDivElement>(null);
+
+  // AdminLayout/ContractorLayout remount on every route change (each page wraps
+  // itself in the layout), so the horizontally-scrollable bottom nav loses its
+  // scroll position and snaps back to the far left instead of keeping the
+  // active tab in view. Re-center on the active tab right after mount.
+  useEffect(() => {
+    bottomNavScrollRef.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
+  }, []);
 
   const q = globalSearch.trim().toLowerCase();
 
@@ -414,7 +423,7 @@ export default function ContractorLayout({ children, title, titleContent, action
             borderTop: '1px solid rgba(0,0,0,0.06)',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           }}>
-          <div className="overflow-x-auto scrollbar-hide">
+          <div ref={bottomNavScrollRef} className="overflow-x-auto scrollbar-hide">
             <div className="flex px-2 py-2 gap-1" style={{ minWidth: 'max-content' }}>
               {EMPLOYEE_BOTTOM_NAV.map(item => (
                 <NavLink key={item.to} to={item.to}

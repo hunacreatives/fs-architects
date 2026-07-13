@@ -155,17 +155,19 @@ export default function ContractorsPage() {
           <button
             onClick={handleSyncSlackIds}
             disabled={syncing}
-            className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
+            title="Sync Slack IDs"
+            className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-2.5 sm:px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
           >
             <i className={`ri-slack-line text-sm ${syncing ? 'animate-spin' : ''}`}></i>
-            {syncing ? 'Syncing…' : 'Sync Slack IDs'}
+            <span className="hidden sm:inline">{syncing ? 'Syncing…' : 'Sync Slack IDs'}</span>
           </button>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 bg-[#1c2b3a] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap"
+            title="Add Employee"
+            className="flex items-center gap-1.5 bg-[#1c2b3a] text-white text-sm px-2.5 sm:px-3 py-2 rounded-lg hover:bg-[#0f1c28] transition-colors cursor-pointer whitespace-nowrap"
           >
             <i className="ri-user-add-line text-sm"></i>
-            Add Employee
+            <span className="hidden sm:inline">Add Employee</span>
           </button>
         </div>
       }
@@ -424,7 +426,7 @@ export default function ContractorsPage() {
       )}
 
       {/* Toast notifications */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-24 lg:bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => (
           <div key={t.id} className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white pointer-events-auto transition-all ${t.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
             <i className={t.type === 'success' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'}></i>

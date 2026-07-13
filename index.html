@@ -41,8 +41,19 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
-    <!-- Remix Icon -->
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
+    <!-- Remix Icon — non-blocking: a slow CDN must not delay first paint -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" /></noscript>
+
+    <script>
+      // Installed app saved on the install guide (older iOS uses the saved
+      // page, not the manifest start_url) — leave BEFORE the app boots so
+      // the guide never flashes on launch.
+      if (location.pathname === '/hub/install' && (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true)) {
+        location.replace('/hub/login');
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

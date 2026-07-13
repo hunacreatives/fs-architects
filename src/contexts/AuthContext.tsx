@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Single source of truth — onAuthStateChange fires INITIAL_SESSION on subscribe,
     // so we don't need a separate getSession() call (which would race with INITIAL_SESSION).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mountedRef.current) return;
 
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
@@ -123,9 +123,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // INITIAL_SESSION or SIGNED_IN
-      await hydrateSession(s);
-      clearTimeout(timeout);
+      // INITIAL_SESSION or SIGNED_IN.
+      // CRITICAL: defer to the next tick — supabase-js holds an internal auth
+      // lock while this callback runs, so awaiting a DB query here deadlocks
+      // against that lock until loadHubUser's 10s timeout fires, making every
+      // cold start feel stuck on the loading screen for ~10 seconds.
+      setTimeout(() => {
+        if (!mountedRef.current) return;
+        void hydrateSession(s).then(() => clearTimeout(timeout));
+      }, 0);
     });
 
     return () => {

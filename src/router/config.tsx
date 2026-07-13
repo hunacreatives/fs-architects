@@ -18,6 +18,7 @@ const HubLoginPage = lazy(() => import('../pages/hub/login/page'));
 const HubSignupPage = lazy(() => import('../pages/hub/signup/page'));
 const HubForgotPasswordPage = lazy(() => import('../pages/hub/forgot-password/page'));
 const HubResetPasswordPage = lazy(() => import('../pages/hub/reset-password/page'));
+const HubInstallPage = lazy(() => import('../pages/hub/install/page'));
 const HubAdminDashboard = lazy(() => import('../pages/hub/admin/dashboard/page'));
 const HubAdminContractors = lazy(() => import('../pages/hub/admin/contractors/page'));
 const HubAdminContractorDetail = lazy(() => import('../pages/hub/admin/contractors/detail/page'));
@@ -77,7 +78,7 @@ const withContractorGate = (element: ReactNode) => (
 );
 
 const S = ({ children }: { children: ReactNode }) => (
-  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-6 h-6 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" /></div>}>{children}</Suspense>
+  <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><div className="w-6 h-6 border-2 border-gray-200 border-t-[#1c2b3a] rounded-full animate-spin" /></div>}>{children}</Suspense>
 );
 
 const routes: RouteObject[] = [
@@ -96,6 +97,7 @@ const routes: RouteObject[] = [
   { path: '/hub/login', element: <S><HubLoginPage /></S> },
   { path: '/hub/signup', element: <S><HubSignupPage /></S> },
   { path: '/hub/forgot-password', element: <S><HubForgotPasswordPage /></S> },
+  { path: '/hub/install', element: <S><HubInstallPage /></S> },
   { path: '/hub/reset-password', element: <S><HubResetPasswordPage /></S> },
 
   // Hub — admin

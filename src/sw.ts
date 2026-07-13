@@ -1,12 +1,20 @@
 /// <reference lib="webworker" />
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
 
 declare const self: ServiceWorkerGlobalScope;
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST ?? []);
 
-self.addEventListener('install', () => self.skipWaiting());
+// Serve all navigations from the precached app shell — the installed app
+// opens instantly instead of refetching index.html over the network.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
+
+// Deliberately no skipWaiting() on install: an updated SW waits until every
+// tab from the old build closes. Activating mid-session used to delete the
+// old precache while open tabs still needed its lazy chunks, which showed up
+// as a black/stuck screen until a manual reload.
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event: PushEvent) => {

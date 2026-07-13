@@ -57,6 +57,10 @@ export default function AdminPerformancePage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Preserves the row's current status across a save — Fretz may now edit an
+  // appraisal that's already been sent (e.g. live-adjusting it mid-meeting),
+  // and saving must not silently revert it back to draft.
+  const [editingStatus, setEditingStatus] = useState<Appraisal['status']>('draft');
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<Appraisal | null>(null);
   const [filterEmployee, setFilterEmployee] = useState('');
@@ -93,20 +97,11 @@ export default function AdminPerformancePage() {
   const scores = computeScores(form.ratings);
   const belowSat = belowSatisfactoryFactors(form.ratings);
 
-  const save = async (send: boolean) => {
+  // Only ever writes status: 'draft' — the employee never sees anything at
+  // this stage. Sending happens later, as its own explicit action, only
+  // after Fretz has actually held the 1-on-1 discussion in person.
+  const save = async () => {
     if (!form.employee_id || !form.period_covered.trim() || !form.month_appraised.trim()) return;
-    if (send && !scores.complete) {
-      alert('All 24 criteria need a rating before sending to the employee.');
-      return;
-    }
-    if (send && belowSat.length > 0 && !form.below_satisfactory_action) {
-      alert('One or more factors are below satisfactory — choose Monitoring or a Performance Improvement Plan first.');
-      return;
-    }
-    if (send && !form.one_on_one_at) {
-      alert('Schedule a 1-on-1 discussion date before sending this appraisal to the employee.');
-      return;
-    }
     setSaving(true);
 
     const payload = {
@@ -115,7 +110,7 @@ export default function AdminPerformancePage() {
       job_title: form.job_title.trim() || null,
       period_covered: form.period_covered.trim(),
       month_appraised: form.month_appraised.trim(),
-      status: send ? 'awaiting_employee' : 'draft',
+      status: editingId ? editingStatus : 'draft',
       ratings: form.ratings,
       total_score: scores.totalScore,
       final_rating_pct: scores.finalPct,
@@ -138,22 +133,60 @@ export default function AdminPerformancePage() {
     }
 
     const name = employees.find(e => e.id === form.employee_id)?.full_name || 'employee';
-    if (send) {
-      await supabase.from('hub_notifications').insert({
-        user_id: form.employee_id,
-        type: 'appraisal',
-        title: 'Performance appraisal ready for your review',
-        body: `Your appraisal for ${form.month_appraised.trim()} is ready. Please read it, add any comments, and acknowledge.`,
-        link: '/hub/employee/performance',
-        read: false,
-      });
-    }
-    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: editingId ? 'update' : 'create', entity_type: 'appraisal', description: `${send ? 'Sent' : editingId ? 'Updated' : 'Drafted'} appraisal for ${name} — ${form.month_appraised.trim()}` });
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: editingId ? 'update' : 'create', entity_type: 'appraisal', description: `${editingId ? 'Updated' : 'Drafted'} appraisal for ${name} — ${form.month_appraised.trim()}` });
 
     setSaving(false);
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
+    fetchAll();
+  };
+
+  // Fretz's step 4: after actually holding the 1-on-1 discussion in person,
+  // he confirms it here — this is what finally makes the appraisal visible
+  // to the employee (in-app + email, the latter fired by a DB trigger on the
+  // status change) and moves it into their acknowledgment queue.
+  const confirmDiscussedAndSend = async (a: Appraisal) => {
+    const aScores = computeScores(a.ratings);
+    const aBelowSat = belowSatisfactoryFactors(a.ratings);
+    if (!aScores.complete) {
+      alert('All 24 criteria need a rating before this can be sent — edit the draft first.');
+      return;
+    }
+    if (aBelowSat.length > 0 && !a.below_satisfactory_action) {
+      alert('One or more factors are below satisfactory — edit the draft and choose Monitoring or a Performance Improvement Plan first.');
+      return;
+    }
+    if (!a.one_on_one_at) {
+      alert('Schedule a 1-on-1 discussion date first — edit the draft to set it.');
+      return;
+    }
+    if (!window.confirm(`Confirm you've discussed this appraisal with ${a.employee?.full_name} in person? This sends it to them to acknowledge.`)) return;
+
+    setSaving(true);
+    const { error } = await supabase.from('hub_appraisals').update({
+      status: 'awaiting_employee',
+      updated_at: new Date().toISOString(),
+    }).eq('id', a.id).eq('status', 'draft');
+
+    if (error) {
+      alert(`Could not send appraisal: ${error.message}`);
+      setSaving(false);
+      return;
+    }
+
+    await supabase.from('hub_notifications').insert({
+      user_id: a.employee_id,
+      type: 'appraisal',
+      title: 'Performance appraisal ready for your review',
+      body: `Your appraisal for ${a.month_appraised} is ready. Please read it, add any comments, and acknowledge.`,
+      link: '/hub/employee/performance',
+      read: false,
+    });
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'appraisal', description: `Confirmed 1-on-1 discussed and sent appraisal for ${a.employee?.full_name} — ${a.month_appraised}` });
+
+    setSaving(false);
+    setSelected(null);
     fetchAll();
   };
 
@@ -174,6 +207,7 @@ export default function AdminPerformancePage() {
       below_satisfactory_action: a.below_satisfactory_action ?? '',
     });
     setEditingId(a.id);
+    setEditingStatus(a.status);
     setSelected(null);
     setShowForm(true);
   };
@@ -232,7 +266,7 @@ export default function AdminPerformancePage() {
           </div>
           {isOwner && (
             <button
-              onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}
+              onClick={() => { setForm(emptyForm); setEditingId(null); setEditingStatus('draft'); setShowForm(true); }}
               className="flex items-center gap-2 px-4 py-2 bg-[#1c2b3a] text-white rounded-xl text-sm font-medium hover:bg-[#0f1c28] cursor-pointer transition-colors"
             >
               <i className="ri-add-line"></i>
@@ -280,7 +314,7 @@ export default function AdminPerformancePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{a.rater?.full_name || '—'}</td>
                       <td className="px-4 py-3">
-                        {isOwner && a.status === 'draft' && (
+                        {isOwner && (a.status === 'draft' || a.status === 'awaiting_employee') && (
                           <button onClick={e => { e.stopPropagation(); startEdit(a); }}
                             className="text-gray-300 hover:text-[#1c2b3a] transition-colors cursor-pointer">
                             <i className="ri-pencil-line text-sm"></i>
@@ -415,9 +449,9 @@ export default function AdminPerformancePage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Schedule 1-on-1 Discussion *</label>
-                <input type="datetime-local" required value={form.one_on_one_at} onChange={e => setF({ one_on_one_at: e.target.value })}
+                <input type="datetime-local" value={form.one_on_one_at} onChange={e => setF({ one_on_one_at: e.target.value })}
                   className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
-                <p className="text-[11px] text-gray-400">Required before sending — the employee will see this date, and you'll both get an email once they acknowledge.</p>
+                <p className="text-[11px] text-gray-400">The employee won't see any of this until you confirm the discussion happened. Set a date so you both know when to meet.</p>
               </div>
 
               <div className="space-y-1">
@@ -466,13 +500,9 @@ export default function AdminPerformancePage() {
                   className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer">
                   Cancel
                 </button>
-                <button type="button" disabled={saving} onClick={() => save(false)}
-                  className="flex-1 py-2.5 text-sm border border-[#1c2b3a] rounded-lg text-[#1c2b3a] hover:bg-slate-50 disabled:opacity-60 cursor-pointer font-medium">
-                  {saving ? 'Saving…' : 'Save Draft'}
-                </button>
-                <button type="button" disabled={saving} onClick={() => save(true)}
+                <button type="button" disabled={saving} onClick={() => save()}
                   className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer font-medium">
-                  {saving ? 'Saving…' : 'Send to Employee'}
+                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Draft'}
                 </button>
               </div>
             </div>
@@ -607,12 +637,20 @@ export default function AdminPerformancePage() {
                 </div>
               )}
 
+              {isOwner && selected.status === 'draft' && (
+                <button disabled={saving} onClick={() => confirmDiscussedAndSend(selected)}
+                  className="w-full py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer font-medium flex items-center justify-center gap-1.5">
+                  <i className="ri-checkbox-circle-line text-sm"></i>
+                  {saving ? 'Sending…' : "Confirm Discussed & Send to Employee"}
+                </button>
+              )}
+
               <div className="flex flex-wrap gap-3 pt-1">
                 <button onClick={() => printAppraisal(selected)}
                   className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5">
                   <i className="ri-printer-line text-sm"></i> Print Form
                 </button>
-                {isOwner && selected.status === 'draft' && (
+                {isOwner && (selected.status === 'draft' || selected.status === 'awaiting_employee') && (
                   <button onClick={() => startEdit(selected)}
                     className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5">
                     <i className="ri-pencil-line text-sm"></i> Edit

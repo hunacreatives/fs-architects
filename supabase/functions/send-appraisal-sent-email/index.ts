@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     <div style="background:#eff6ff;padding:12px 36px;border-bottom:1px solid #bfdbfe;">
       <table style="border-collapse:collapse;"><tr>
         <td style="vertical-align:middle;padding-right:10px;"><span style="display:inline-block;width:8px;height:8px;background:#2563eb;border-radius:50%;"></span></td>
-        <td style="vertical-align:middle;"><p style="margin:0;font-size:13px;color:#1e3a8a;font-weight:600;">Your performance appraisal is ready for you to review.</p></td>
+        <td style="vertical-align:middle;"><p style="margin:0;font-size:13px;color:#1e3a8a;font-weight:600;">Your performance appraisal has been discussed with you and is ready to review and acknowledge.</p></td>
       </tr></table>
     </div>
 
@@ -85,10 +85,10 @@ Deno.serve(async (req) => {
     <div style="padding:24px 36px;background:#fafafa;border-bottom:1px solid #f3f4f6;">
       <p style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;">1-on-1 Discussion</p>
       <div style="background:#111827;border-radius:10px;padding:16px 20px;">
-        <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;">Scheduled For</p>
+        <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;">Discussed On</p>
         <p style="margin:6px 0 0;font-size:17px;font-weight:700;color:#ffffff;">${oneOnOne}</p>
       </div>
-      <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;line-height:1.6;">Please read your appraisal and submit any comments before this discussion.</p>
+      <p style="font-size:12px;color:#9ca3af;margin:12px 0 0;line-height:1.6;">Please read your appraisal and submit any comments, then acknowledge it in the hub.</p>
     </div>` : ''}
 
     <div style="padding:32px 36px;text-align:center;">

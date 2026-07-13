@@ -204,10 +204,11 @@ export default function EmployeePerformancePage() {
               {selected.status === 'awaiting_employee' ? (
                 <div className="border border-sky-200 bg-sky-50 rounded-xl p-4 space-y-3">
                   <p className="text-xs text-sky-900">
-                    I acknowledge that I have read this Performance Evaluation and reviewed my ratings and comments.
+                    I acknowledge that this Performance Evaluation
                     {selected.one_on_one_at
-                      ? ` This will be discussed further with my immediate head on ${new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}.`
-                      : ' This will be discussed further with my immediate head in a follow-up 1-on-1.'}
+                      ? ` was discussed with me by my immediate head on ${new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })},`
+                      : ' was discussed with me by my immediate head,'}
+                    {' '}and I have read the comments and ratings.
                   </p>
                   <textarea value={comments} onChange={e => setComments(e.target.value)} rows={3}
                     placeholder="Your comments or concerns (optional)"

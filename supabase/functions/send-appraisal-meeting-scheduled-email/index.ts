@@ -23,6 +23,23 @@ function fmtDateTime(iso: string): string {
   });
 }
 
+// Google Calendar's "quick add" link needs no OAuth/API key — just a URL
+// with the event encoded in it. Defaults to a 1-hour block.
+function toGCalStamp(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+function buildGoogleCalendarUrl(startIso: string, title: string, details: string): string {
+  const start = new Date(startIso);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${toGCalStamp(start)}/${toGCalStamp(end)}`,
+    details,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -37,7 +54,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: appraisal, error } = await supabase
       .from('hub_appraisals')
-      .select('one_on_one_at, employee_id, employee:hub_users!employee_id(full_name, email), rater:hub_users!rater_id(full_name)')
+      .select('one_on_one_at, period_covered, employee_id, employee:hub_users!employee_id(full_name, email), rater:hub_users!rater_id(full_name)')
       .eq('id', appraisal_id)
       .single();
 
@@ -48,6 +65,11 @@ Deno.serve(async (req) => {
     const rater = appraisal.rater as { full_name: string } | null;
     const when = fmtDateTime(appraisal.one_on_one_at);
     const raterName = rater?.full_name ?? 'your immediate head';
+    const gcalUrl = buildGoogleCalendarUrl(
+      appraisal.one_on_one_at,
+      'Performance 1-on-1 Discussion — FS Architects',
+      `1-on-1 performance discussion with ${raterName}.`,
+    );
 
     if (employee?.email) {
       const html = `<!DOCTYPE html>
@@ -59,7 +81,7 @@ Deno.serve(async (req) => {
     <div style="background:#111827;padding:28px 32px;">
       <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;margin-bottom:16px;" />
       <p style="color:#fff;font-size:22px;font-weight:800;margin:0 0 6px;letter-spacing:-0.3px;">1-on-1 Discussion Scheduled</p>
-      <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.6;">Performance review meeting</p>
+      <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.6;">${appraisal.period_covered ? `${appraisal.period_covered} ` : ''}Performance Review Meeting</p>
     </div>
 
     <div style="background:#eff6ff;padding:12px 36px;border-bottom:1px solid #bfdbfe;">
@@ -75,6 +97,9 @@ Deno.serve(async (req) => {
         <p style="margin:0;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;">Scheduled For</p>
         <p style="margin:6px 0 0;font-size:17px;font-weight:700;color:#ffffff;">${when}</p>
       </div>
+      <p style="text-align:center;margin:20px 0 0;">
+        <a href="${gcalUrl}" style="background:#ffffff;color:#111827;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:600;font-size:13px;display:inline-block;border:1px solid #d1d5db;">📅 Add to Google Calendar</a>
+      </p>
     </div>
 
     <div style="padding:20px 36px;background:#f9fafb;border-top:1px solid #f3f4f6;">

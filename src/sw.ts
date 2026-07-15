@@ -34,15 +34,34 @@ self.addEventListener('push', (event: PushEvent) => {
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close();
-  const path = (event.notification.data?.url as string) ?? '/hub/admin/dashboard';
-  const target = path.startsWith('http') ? path : `${self.location.origin}${path}`;
+  const raw = (event.notification.data?.url as string) ?? '/hub/admin/dashboard';
+  // Push payloads may carry absolute URLs (sometimes on a different subdomain,
+  // e.g. apex vs www.). Normalize onto this worker's origin — an origin
+  // mismatch kicks the click out of the installed app's scope, landing in a
+  // browser tab with no stored session (login prompt).
+  let target: URL;
+  try {
+    target = new URL(raw, self.location.origin);
+  } catch {
+    target = new URL('/hub/admin/dashboard', self.location.origin);
+  }
+  const absoluteUrl = `${self.location.origin}${target.pathname}${target.search}${target.hash}`;
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      const existing = clients.find(c => c.url.startsWith(self.location.origin));
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients.find((c) => c.url.startsWith(self.location.origin + '/hub'))
+        ?? clients.find((c) => c.url.startsWith(self.location.origin));
       if (existing) {
-        return existing.navigate(target).then(c => c?.focus() ?? existing.focus());
+        const focused = await existing.focus().catch(() => existing);
+        try {
+          await (focused ?? existing).navigate(absoluteUrl);
+        } catch {
+          // Uncontrolled clients can't be navigated from the SW —
+          // hand the URL to the app and let it route itself.
+          (focused ?? existing).postMessage({ type: 'push-navigate', url: absoluteUrl });
+        }
+        return;
       }
-      return self.clients.openWindow(target);
-    })
+      await self.clients.openWindow(absoluteUrl);
+    }),
   );
 });

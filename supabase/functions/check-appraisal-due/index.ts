@@ -38,14 +38,13 @@ function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-function milestoneLabel(months: number): string {
-  if (months % 12 === 0) {
-    const years = months / 12;
-    return years === 1 ? '1st year' : `${years}${years === 2 ? 'nd' : years === 3 ? 'rd' : 'th'} year`;
-  }
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = months % 100;
-  return `${months}${s[(v - 20) % 10] || s[v] || s[0]} month`;
+// Natural tenure phrasing: "3 months", "1 year", "1 year and 3 months", "2 years"
+function tenureLabel(months: number): string {
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  const y = years > 0 ? `${years} year${years > 1 ? 's' : ''}` : '';
+  const m = rem > 0 ? `${rem} month${rem > 1 ? 's' : ''}` : '';
+  return y && m ? `${y} and ${m}` : y || m;
 }
 
 function prettyDate(d: Date): string {
@@ -102,10 +101,12 @@ async function run() {
         .insert({ user_id: emp.id, milestone_date: milestoneDate, months, stage });
       if (claimError) continue;
 
-      const label = milestoneLabel(months);
+      const label = tenureLabel(months);
       const when = daysUntil === 0 ? 'today' : `on ${prettyDate(milestone)} (in ${LEAD_DAYS} days)`;
-      const title = daysUntil === 0 ? `Appraisal due today — ${emp.full_name}` : `Appraisal coming up — ${emp.full_name}`;
-      const body = `${emp.full_name} reaches their ${label} ${when}. Prepare the appraisal and schedule the 1-on-1.`;
+      const title = daysUntil === 0
+        ? `Quarterly appraisal due today — ${emp.full_name}`
+        : `Quarterly appraisal coming up — ${emp.full_name}`;
+      const body = `${emp.full_name}'s quarterly appraisal is due ${when} — that marks ${label} at FS Architects. Prepare the appraisal and schedule the 1-on-1.`;
 
       // In-app notifications for all active admins/owner/HR
       const rows = (admins ?? []).map((a) => ({

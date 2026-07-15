@@ -76,7 +76,7 @@ export default function AnnouncementsPage() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setShowModal(true); };
   const openEdit = (a: HubAnnouncement) => {
     setEditing(a);
-    setForm({ title: a.title, body: a.body, priority: a.priority, category: a.category, published: a.published, scheduled_at: (a as any).scheduled_at ? new Date((a as any).scheduled_at).toISOString().slice(0, 16) : '', slack_channels: ['announcements'] });
+    setForm({ title: a.title, body: a.body, priority: a.priority, category: a.category, published: a.published, scheduled_at: (a as any).scheduled_at ? new Date((a as any).scheduled_at).toISOString().slice(0, 16) : '', slack_channels: [(a as any).slack_channel ?? 'announcements'] });
     setShowModal(true);
   };
 
@@ -91,6 +91,7 @@ export default function AnnouncementsPage() {
         title: form.title, body: form.body, priority: form.priority,
         category: form.category, published: form.published,
         scheduled_at: isScheduled ? new Date(form.scheduled_at).toISOString() : null,
+        slack_channel: form.slack_channels[0] ?? 'announcements',
       };
       if (editing) {
         ({ error } = await supabase.from('hub_announcements').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id));
@@ -231,7 +232,7 @@ export default function AnnouncementsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-700">Post to Slack channels</label>
+                <label className="text-xs font-medium text-gray-700">Post to Slack channel</label>
                 <div className="flex gap-2">
                   {SLACK_CHANNELS.map(ch => {
                     const active = form.slack_channels.includes(ch.key);
@@ -239,12 +240,7 @@ export default function AnnouncementsPage() {
                       <button
                         key={ch.key}
                         type="button"
-                        onClick={() => {
-                          const next = active
-                            ? form.slack_channels.filter(c => c !== ch.key)
-                            : [...form.slack_channels, ch.key];
-                          setForm({ ...form, slack_channels: next });
-                        }}
+                        onClick={() => setForm({ ...form, slack_channels: [ch.key] })}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
                           active ? 'bg-[#111827] text-white border-[#111827]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                         }`}

@@ -3,7 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-const CHANNELS = ['C0BB58W8R1U', 'C0BBA4Q18Q0'];
+const CHANNEL_MAP: Record<string, string> = {
+  announcements: 'C0BB58W8R1U',
+  attendance: 'C0BBA4Q18Q0',
+};
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -78,10 +81,11 @@ Deno.serve(async (req) => {
     if (rows.length > 0) await supabase.from('hub_notifications').insert(rows);
   }
 
-  // Post each to Slack
+  // Post each to its chosen Slack channel
   for (const a of due) {
     const posterName = (a.hub_users as any)?.full_name;
-    await Promise.all(CHANNELS.map(ch => postToSlack(ch, a.title, a.body, a.priority, a.category, posterName)));
+    const channel = CHANNEL_MAP[a.slack_channel as string] ?? CHANNEL_MAP.announcements;
+    await postToSlack(channel, a.title, a.body, a.priority, a.category, posterName);
   }
 
   return new Response(JSON.stringify({ ok: true, published: due.length }), { headers: cors });

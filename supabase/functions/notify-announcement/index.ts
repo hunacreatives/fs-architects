@@ -35,12 +35,12 @@ async function postToSlack(channel: string, title: string, body: string, priorit
     },
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: body },
+      text: { type: 'mrkdwn', text: `<!channel>\n\n${body}` },
     },
     {
       type: 'context',
       elements: [
-        { type: 'mrkdwn', text: posterName ? `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}* · Posted by *${posterName}*` : `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}*` },
+        { type: 'mrkdwn', text: posterName ? `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}* · Posted by *${posterName}* via Sentro Hub` : `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}* · Posted via Sentro Hub` },
       ],
     },
   ];

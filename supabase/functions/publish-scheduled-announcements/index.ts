@@ -17,7 +17,7 @@ const categoryEmoji: Record<string, string> = { payroll: '💰', meeting: '📅'
 async function postToSlack(channel: string, title: string, body: string, priority: string, category: string, posterName?: string) {
   const pEmoji = priorityEmoji[priority] ?? '📢';
   const cEmoji = categoryEmoji[category] ?? '📌';
-  const postedBy = posterName ? `Posted by *${posterName}*` : 'Posted via Sentro Hub';
+  const postedBy = posterName ? `Posted by *${posterName}* via Sentro Hub` : 'Posted via Sentro Hub';
   await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
@@ -26,7 +26,7 @@ async function postToSlack(channel: string, title: string, body: string, priorit
       text: `${pEmoji} ${title}`,
       blocks: [
         { type: 'header', text: { type: 'plain_text', text: `${pEmoji} ${title}`, emoji: true } },
-        { type: 'section', text: { type: 'mrkdwn', text: body } },
+        { type: 'section', text: { type: 'mrkdwn', text: `<!channel>\n\n${body}` } },
         { type: 'context', elements: [{ type: 'mrkdwn', text: `${cEmoji} *${category.charAt(0).toUpperCase() + category.slice(1)}* · ${postedBy}` }] },
       ],
     }),

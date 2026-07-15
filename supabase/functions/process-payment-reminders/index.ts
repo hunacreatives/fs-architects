@@ -5,47 +5,11 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-import { dmAdmins } from '../_shared/slack.ts';
-
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json',
 };
-
-const fmt = (n: number) =>
-  '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-async function slackPost(path: string, body: object) {
-  const res = await fetch(`https://slack.com/api/${path}`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
-
-async function notifySlack(client_name: string, project_name: string, amount_due: number | null) {
-  const amountStr = amount_due ? ` · *${fmt(amount_due)}* due` : '';
-  const text = `📧 *Payment reminder sent* to *${client_name}* for *${project_name}*${amountStr}.`;
-  await dmAdmins(SLACK_BOT_TOKEN, {
-    text,
-    blocks: [
-      { type: 'section', text: { type: 'mrkdwn', text } },
-      {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: { type: 'plain_text', text: 'View Projects →', emoji: true },
-            url: 'https://fsarchitects.ph/hub/admin/projects',
-          },
-        ],
-      },
-    ],
-  });
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -109,11 +73,6 @@ Deno.serve(async (req) => {
         .from('hub_payment_reminders')
         .update({ status: 'sent', sent_at: new Date().toISOString() })
         .eq('id', reminder.id);
-
-      // Notify Abigail and Francis on Slack
-      try {
-        await notifySlack(project.client_name, project.project_name, reminder.amount_due);
-      } catch (_) { /* non-fatal */ }
 
       results.push({ id: reminder.id, ok: true });
     } else {

@@ -5,38 +5,6 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
-import { dmAdmins } from '../_shared/slack.ts';
-
-async function slackPost(path: string, body: object) {
-  const res = await fetch(`https://slack.com/api/${path}`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
-
-async function notifySlack(clientName: string, projectName: string, channel: string, amount: number | null) {
-  const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const text = `💳 *Payment Proof Submitted*\n*${clientName}* sent proof for *${projectName}*${amount ? `\n> ${fmt(amount)} via ${channel}` : `\n> via ${channel}`}`;
-  await dmAdmins(SLACK_BOT_TOKEN, {
-    text,
-    blocks: [
-      { type: 'section', text: { type: 'mrkdwn', text } },
-      {
-        type: 'actions',
-        elements: [{
-          type: 'button',
-          text: { type: 'plain_text', text: 'Review Proof →', emoji: true },
-          url: 'https://fsarchitects.ph/hub/admin/invoice-log',
-          style: 'primary',
-        }],
-      },
-    ],
-  });
-}
-
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -112,8 +80,6 @@ Deno.serve(async (req) => {
       .from('hub_invoice_payment_links')
       .update({ status: 'submitted', submitted_at: new Date().toISOString() })
       .eq('id', link.id);
-
-    notifySlack(link.client_name, link.project_name, paymentChannel, Number.isFinite(amount as number) ? amount : null).catch(() => {});
 
     return new Response(JSON.stringify({ ok: true, proof_url: publicUrlData.publicUrl }), { headers: cors });
   } catch (err) {

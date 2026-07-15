@@ -4,6 +4,7 @@ import { dmAdmins } from '../_shared/slack.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const SLACK_BOT_TOKEN = Deno.env.get('SLACK_BOT_TOKEN')!;
+const SLACK_CHANNEL = Deno.env.get('SLACK_ANNOUNCEMENTS_CHANNEL_ID') ?? 'C0BB58W8R1U';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -80,7 +81,7 @@ async function sendNotification(batchId: string, closedByName?: string | null) {
     `Payroll closed\n` +
     `Period: ${batch.period_label}\n` +
     `Total: ${total}\n` +
-    `Contractors: ${contractorCount}\n` +
+    `Employees: ${contractorCount}\n` +
     `Closed by: ${closer}`;
 
   // In-app push to active owners
@@ -96,6 +97,26 @@ async function sendNotification(batchId: string, closedByName?: string | null) {
 
   // Slack DM to FS admin (Francis Yu) + owner (Fretz)
   await dmAdmins(SLACK_BOT_TOKEN, { text: message });
+
+  // Team-wide "pay has been sent" post in #fs-announcements. No amounts here —
+  // payroll totals stay in the admin DMs.
+  await slackPost('chat.postMessage', {
+    channel: SLACK_CHANNEL,
+    text: `💸 Pay has been sent for ${batch.period_label} — please check your accounts.`,
+    blocks: [
+      { type: 'header', text: { type: 'plain_text', text: '💸 Pay Has Been Sent', emoji: true } },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `<!channel>\n\nHi everyone! Salaries for *${batch.period_label}* have been sent out. 💸\n\nPlease check your accounts and let HR know if anything looks off. Thank you for all your hard work this period — enjoy payday! 🧡`,
+        },
+      },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: '*FS Architects* — via Sentro Hub' }] },
+    ],
+  }).catch((error) => {
+    console.error('notify-payroll-closed: announcements post failed', error);
+  });
 }
 
 Deno.serve(async (req) => {

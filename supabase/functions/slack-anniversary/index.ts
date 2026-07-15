@@ -17,29 +17,6 @@ const ORDINAL = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
-const CUSTOM_COPY: Record<string, (years: number) => { headline: string; body: string }> = {
-  'angelalouiseando@gmail.com': (y) => ({
-    headline: `${ORDINAL(y)} Work Anniversary, Angela! 🎉`,
-    body: `${y} year${y > 1 ? 's' : ''} of creativity, dedication, and making every project better. Angela, FS Architects wouldn't be the same without you. Here's to many more! 🧡`,
-  }),
-  'claudettemaytahil@gmail.com': (y) => ({
-    headline: `${ORDINAL(y)} Work Anniversary, Claudette! 🎊`,
-    body: `${y} year${y > 1 ? 's' : ''} of keeping our clients happy and our operations smooth. Claudette, your patience and professionalism are the backbone of this team. Thank you! 🧡`,
-  }),
-  'janreesepj@gmail.com': (y) => ({
-    headline: `${ORDINAL(y)} Work Anniversary, Reese! 🙌`,
-    body: `${y} year${y > 1 ? 's' : ''} of fresh ideas and quiet dedication. Reese, we're so glad you're part of the team — here's to another great year ahead! 🧡`,
-  }),
-  'duterteabigaile@gmail.com': (y) => ({
-    headline: `${ORDINAL(y)} Work Anniversary, Abigail! 🎈`,
-    body: `${y} year${y > 1 ? 's' : ''} of showing up, holding things together, and making the whole team better. Abby, you're irreplaceable — thank you for everything! 🧡`,
-  }),
-  'nellaskatleen@gmail.com': (y) => ({
-    headline: `${ORDINAL(y)} Work Anniversary, Katleen! 🌟`,
-    body: `${y} year${y > 1 ? 's' : ''} of reliability and hard work. Katleen, your consistency is something we deeply appreciate — here's to celebrating you today! 🧡`,
-  }),
-};
-
 const FALLBACK_COPY = (name: string, years: number) => ({
   headline: `${ORDINAL(years)} Work Anniversary, ${name}! 🎉`,
   body: `${years} year${years > 1 ? 's' : ''} at FS Architects — thank you for your hard work, dedication, and everything you bring to the team. Here's to many more! 🧡`,
@@ -78,9 +55,7 @@ async function checkAndPost() {
     const years = todayYear - startYear;
     const firstName = person.full_name.split(' ')[0];
 
-    const copy = CUSTOM_COPY[person.email]
-      ? CUSTOM_COPY[person.email](years)
-      : FALLBACK_COPY(firstName, years);
+    const copy = FALLBACK_COPY(firstName, years);
 
     const blocks = [
       {

@@ -11,26 +11,6 @@ const cors = {
   'Content-Type': 'application/json',
 };
 
-// Custom copy per team member — keyed by email
-const CUSTOM_COPY: Record<string, { headline: string; body: string }> = {
-  'angelalouiseando@gmail.com': {
-    headline: 'Happy Birthday, Angela! 🎉',
-    body: "Today we celebrate the creative force behind some of our best work. Angela, your eye for detail and boundless energy make every project better. Wishing you a day as bright as your ideas — you deserve every bit of it. Here's to you! 🧡",
-  },
-  'claudettemaytahil@gmail.com': {
-    headline: 'Happy Birthday, Claudette! 🎂',
-    body: "Claudette, you're the reason our clients feel so well taken care of. Your patience, professionalism, and warmth are what make FS Architects special behind the scenes. Today is all about you — relax, celebrate, and know that the whole team is rooting for you. 🎉",
-  },
-  'janreesepj@gmail.com': {
-    headline: 'Happy Birthday, Reese! 🎊',
-    body: "Reese, your work ethic and creativity never go unnoticed. You bring fresh ideas and a quiet dedication that lifts the whole team. We hope today is filled with good food, great company, and zero deadlines. Happy birthday — you've earned it! 🙌",
-  },
-  'duterteabigaile@gmail.com': {
-    headline: 'Happy Birthday, Abigail! 🎈',
-    body: "Abby, the team genuinely could not function without you. You keep everything running smoothly, you're always the first to show up for the team, and you do it all with a smile. Today it's your turn to be celebrated — wishing you all the joy you give to everyone else. 🧡",
-  },
-};
-
 const BIRTHDAY_GIFS = [
   'https://media.giphy.com/media/g5R9dok94mrIvplmZd/giphy.gif',
   'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif',
@@ -72,7 +52,7 @@ async function checkAndPost(): Promise<any> {
   }
 
   for (const person of celebrants) {
-    const copy = CUSTOM_COPY[person.email] ?? FALLBACK_COPY(person.first_name || person.full_name.split(' ')[0]);
+    const copy = FALLBACK_COPY(person.first_name || person.full_name.split(' ')[0]);
     const gif = BIRTHDAY_GIFS[Math.floor(Math.random() * BIRTHDAY_GIFS.length)];
     const firstName = person.full_name.split(' ')[0];
 
@@ -159,8 +139,8 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
 
   if (body.update_ts) {
-    const firstName = 'Abigail';
-    const copy = CUSTOM_COPY['duterteabigaile@gmail.com'];
+    const firstName = String(body.first_name ?? 'there');
+    const copy = FALLBACK_COPY(firstName);
     const gif = BIRTHDAY_GIFS[Math.floor(Math.random() * BIRTHDAY_GIFS.length)];
     const avatarUrl = body.avatar_url;
 

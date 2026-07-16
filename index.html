@@ -2,8 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-    <link rel="apple-touch-icon" href="/favicon.jpg" />
+    <!-- Theme-aware favicon: dark tile + skyblue mark in light UI, skyblue tile + navy mark in dark UI -->
+    <link rel="icon" type="image/png" href="/favicon-light.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" href="/favicon-light.png" id="favicon-fallback" />
+    <script>
+      // Safari/Chrome ignore `media` on <link rel="icon"> — swap the fallback href by hand
+      (function () {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        var link = document.getElementById('favicon-fallback');
+        function apply() { link.href = mq.matches ? '/favicon-dark.png' : '/favicon-light.png'; }
+        apply();
+        mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

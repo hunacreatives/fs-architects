@@ -32,9 +32,9 @@ const SLIDES: Slide[] = [
 ];
 
 const TAGLINES = [
-  'Guided by Intent.',
-  'Defined by Form.',
-  'Shaped by Space.',
+  'Guided by intent.',
+  'Defined by form.',
+  'Shaped by space.',
 ];
 
 // Chained cycle: each entry's `to` equals the next entry's `from`.
@@ -79,10 +79,13 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     setTaglineVisible(true);
     const interval = setInterval(() => {
       setTaglineVisible(false);
+      // Swap the text only after the fade-out (450ms) is guaranteed done —
+      // the ~250ms buffer absorbs transition start-up delay and timer drift,
+      // so the new tagline never appears while the old one is still visible.
       setTimeout(() => {
         setTaglineIndex(prev => (prev + 1) % TAGLINES.length);
         setTaglineVisible(true);
-      }, 600);
+      }, 700);
     }, 3800);
     return () => clearInterval(interval);
   }, [showContent]);
@@ -204,40 +207,32 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         {/* ── MOBILE layout ── */}
         <div className="flex flex-col gap-4 md:hidden">
           {/* Row 1: tagline (left) | project title (right) — bottom aligned */}
-          <div className="flex items-end justify-between">
+          <div className="flex items-center justify-between">
             <h1
               style={{
-                fontSize: '1.15rem',
-                lineHeight: '1.4',
+                fontFamily: 'Marcellus, serif',
+                fontWeight: 400,
+                fontSize: '1.35rem',
+                lineHeight: '1.3',
+                letterSpacing: '0.01em',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-                color: 'rgba(255,255,255,0.88)',
+                color: 'rgba(255,255,255,0.95)',
                 opacity: taglineVisible ? 1 : 0,
-                transition: 'opacity 0.6s ease',
+                transition: 'opacity 0.45s ease',
                 margin: 0,
-                transform: 'translateY(5px)',
               }}
             >
-              {(() => {
-                const words = TAGLINES[taglineIndex].split(' ');
-                const prefix = words.slice(0, 2).join(' ') + ' ';
-                const suffix = words.slice(2).join(' ');
-                return (
-                  <>
-                    <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
-                    <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: '1.35rem' }}>{suffix}</span>
-                  </>
-                );
-              })()}
+              {TAGLINES[taglineIndex]}
             </h1>
             <div
               className={`flex flex-col items-end gap-0.5 transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
-              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '15px', fontWeight: 400, letterSpacing: '0.01em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.4, margin: 0 }}>
                 {SLIDES[activeSlide].title}
               </p>
-              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, margin: 0 }}>
-                {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.04em', color: 'rgba(255,255,255,0.85)', lineHeight: 1.4, margin: 0 }}>
+                {SLIDES[activeSlide].location} • {SLIDES[activeSlide].year}
               </p>
             </div>
           </div>
@@ -253,8 +248,8 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               >
                 <div style={{
                   width: '100%',
-                  height: '2px',
-                  backgroundColor: i === activeSlide ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)',
+                  height: '1px',
+                  backgroundColor: i === activeSlide ? '#ffffff' : 'rgba(255,255,255,0.55)',
                   transition: 'background-color 500ms',
                 }} />
               </button>
@@ -265,7 +260,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
           <div className={`flex justify-end transition-all duration-1000 delay-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
             <button
               onClick={() => navigate('/projects')}
-              className="px-5 py-2 border border-white/80 rounded-full text-white text-xs cursor-pointer transition-all duration-500 hover:bg-white/10 whitespace-nowrap"
+              className="px-5 py-2 border border-white/80 rounded-full text-white text-xs uppercase cursor-pointer transition-all duration-500 hover:bg-white/10 whitespace-nowrap"
               style={{ letterSpacing: '0.1em', fontFamily: 'Geist, sans-serif' }}
             >
               {t('hero_cta')}
@@ -276,42 +271,34 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         {/* ── DESKTOP layout ── */}
         <div className="hidden md:flex flex-col gap-4">
 
-          {/* Row 1: tagline (left) bottom-aligned with address (bottom of right column) */}
-          <div className="flex items-end justify-between">
+          {/* Row 1: tagline (left) centered against project title + address (right) */}
+          <div className="flex items-center justify-between">
             <h1
               style={{
-                fontSize: 'clamp(1.1rem, 1.9vw, 1.75rem)',
-                lineHeight: '1.5',
+                fontFamily: 'Marcellus, serif',
+                fontWeight: 400,
+                fontSize: 'clamp(1.5rem, 2.6vw, 2.4rem)',
+                lineHeight: '1.3',
+                letterSpacing: '0.01em',
                 textShadow: '0 4px 32px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.3)',
-                color: 'rgba(255,255,255,0.88)',
+                color: 'rgba(255,255,255,0.95)',
                 opacity: taglineVisible ? 1 : 0,
-                transition: 'opacity 0.6s ease',
+                transition: 'opacity 0.45s ease',
                 margin: 0,
-                transform: 'translateY(10px)',
               }}
             >
-              {(() => {
-                const words = TAGLINES[taglineIndex].split(' ');
-                const prefix = words.slice(0, 2).join(' ') + ' ';
-                const suffix = words.slice(2).join(' ');
-                return (
-                  <>
-                    <span style={{ fontFamily: 'Geist, sans-serif', fontWeight: 100, letterSpacing: '0.04em' }}>{prefix}</span>
-                    <span style={{ fontFamily: 'Marcellus, serif', fontStyle: 'italic', fontWeight: 400, letterSpacing: '0.01em', fontSize: 'clamp(1.4rem, 2.4vw, 2.2rem)' }}>{suffix}</span>
-                  </>
-                );
-              })()}
+              {TAGLINES[taglineIndex]}
             </h1>
-            {/* Right — project title + address stacked; bottom of address aligns with tagline bottom */}
+            {/* Right — project title + address stacked */}
             <div
               className={`flex flex-col items-end gap-1 transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
-              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.02em', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, margin: 0 }}>
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(1.25rem, 2vw, 1.85rem)', fontWeight: 400, letterSpacing: '0.01em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.3, margin: 0 }}>
                 {SLIDES[activeSlide].title}
               </p>
-              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, margin: 0 }}>
-                {SLIDES[activeSlide].location} · {SLIDES[activeSlide].year}
+              <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '14px', letterSpacing: '0.02em', color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, margin: 0 }}>
+                {SLIDES[activeSlide].location} • {SLIDES[activeSlide].year}
               </p>
             </div>
           </div>
@@ -327,8 +314,8 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               >
                 <div style={{
                   width: '100%',
-                  height: '2px',
-                  backgroundColor: i === activeSlide ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)',
+                  height: '1px',
+                  backgroundColor: i === activeSlide ? '#ffffff' : 'rgba(255,255,255,0.55)',
                   transition: 'background-color 500ms',
                 }} />
               </button>
@@ -339,7 +326,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
           <div className={`flex justify-end transition-all duration-1000 delay-500 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <button
               onClick={() => navigate('/projects')}
-              className="group px-7 py-2.5 border border-white/80 rounded-full text-white text-xs tracking-wide transition-all duration-500 hover:bg-white/10 hover:border-white whitespace-nowrap cursor-pointer"
+              className="group px-7 py-2.5 border border-white/80 rounded-full text-white text-xs uppercase tracking-wide transition-all duration-500 hover:bg-white/10 hover:border-white whitespace-nowrap cursor-pointer"
               style={{ letterSpacing: '0.1em' }}
             >
               {t('hero_cta')}

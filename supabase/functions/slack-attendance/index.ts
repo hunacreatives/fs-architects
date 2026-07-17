@@ -20,6 +20,38 @@ async function slackGet(path: string) {
   return res.json();
 }
 
+// Fires 1 min after the first weekend "on" punch of the day, once per day
+// (unique(date) on hub_weekend_ot_reminders is the guard against duplicates
+// from Slack retries or multiple people punching in within the same minute).
+async function maybeSendWeekendOTReminder(
+  supabase: ReturnType<typeof createClient>,
+  eventTsSeconds: number,
+) {
+  const phDate = new Date(eventTsSeconds * 1000 + 8 * 60 * 60 * 1000);
+  const dow = phDate.getUTCDay(); // 0 = Sun, 6 = Sat, read via UTC getters after PH shift
+  if (dow !== 0 && dow !== 6) return;
+  const dateStr = phDate.toISOString().split('T')[0];
+
+  const { error: insErr } = await supabase
+    .from('hub_weekend_ot_reminders')
+    .insert({ date: dateStr });
+  if (insErr) {
+    if ((insErr as any).code !== '23505') console.error('weekend OT reminder insert failed', insErr);
+    return;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 60 * 1000));
+
+  await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SLACK_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      channel: CHANNEL_ID,
+      text: `:alarm_clock: Heads up — since today's a weekend, any hours you log count as rest-day overtime rather than a regular shift. Please file an overtime request in the Sentro hub before your shift ends so these hours get approved and paid correctly. Thanks for putting in the extra work today! :raised_hands:`,
+    }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -44,6 +76,17 @@ Deno.serve(async (req) => {
           const validPunches = ['on', 'on/site', 'on/wfh', 'off'];
           if (!validPunches.includes(slackEventText)) {
             return new Response(JSON.stringify({ ok: true }), { headers: cors });
+          }
+
+          const isOnPunch = slackEventText !== 'off';
+          const eventTs = parseFloat(body?.event?.ts);
+          if (isOnPunch && !isNaN(eventTs)) {
+            // @ts-ignore EdgeRuntime is provided by Supabase
+            EdgeRuntime.waitUntil(
+              maybeSendWeekendOTReminder(supabase, eventTs).catch((e) =>
+                console.error('weekend OT reminder failed', e)
+              )
+            );
           }
         }
 

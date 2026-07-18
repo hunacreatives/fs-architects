@@ -263,6 +263,7 @@ Deno.serve(async (req) => {
 
       let hoursRaw = 0;
       let hoursCapped = 0;
+      let lunchDeduction = 0;
       let effectiveStatus = status;
 
       if (isHourly && threadHours != null) {
@@ -270,16 +271,17 @@ Deno.serve(async (req) => {
         // No upper cap — all hours beyond lunch are billable at their hourly rate.
         // OT (approved request required) kicks in after 9 raw hours (8 billable + lunch).
         hoursRaw = threadHours;
-        const lunchDeduction = hoursRaw >= 5 ? 1 : 0;
+        lunchDeduction = hoursRaw >= 5 ? 1 : 0;
         hoursCapped = hoursRaw - lunchDeduction; // no cap — paid for every billable hour
         effectiveStatus = 'off';
       } else if (firstOn && lastOff && lastOff.ts > firstOn.ts) {
         hoursRaw = (lastOff.ts - firstOn.ts) / 3600;
         // Deduct 1h unpaid lunch if shift is 5+ raw hours (lunch at 4h mark per handbook)
-        const lunchDeduction = hoursRaw >= 5 ? 1 : 0;
+        lunchDeduction = hoursRaw >= 5 ? 1 : 0;
         hoursCapped = Math.min(hoursRaw - lunchDeduction, MAX_HOURS_FIXED);
       } else if (!isHourly && threadHours != null && firstOn) {
         hoursRaw = threadHours;
+        lunchDeduction = 0;
         hoursCapped = Math.min(threadHours, MAX_HOURS_FIXED);
         effectiveStatus = 'off';
       }
@@ -297,11 +299,15 @@ Deno.serve(async (req) => {
         }
       }
 
-      // OT kicks in after 9 raw hours (8 billable + 1h lunch) for both fixed and hourly.
-      // Requires an approved OT request; capped at approved hours.
+      // Weekdays: OT kicks in after 9 raw hours (8 billable + 1h lunch already
+      // paid as regular time) — actual clocked time still caps the payout.
+      // Weekends: regular pay is zeroed out entirely (see payroll aggregation),
+      // so an approved OT request IS the day's entire pay, not just a ceiling
+      // reconciled against exact clock-out timing — once approved, the
+      // requested hours are what pays out.
       const approvedOT = hubUser ? (approvedOTMap[hubUser.id]?.[shiftDate] || 0) : 0;
       const actualOT = approvedOT > 0
-        ? parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2))
+        ? (isShiftWeekend ? approvedOT : parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2)))
         : 0;
 
       const workLocation = firstOn?.location ?? null;

@@ -406,11 +406,16 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
   for (const h of consolidateDailyHoursByUserDate((hoursRes.data || []) as DailyHoursRow[])) {
     const paymentDate = paidPaymentDateMap[h.user_id];
     if (paymentDate && h.date <= paymentDate) continue;
+    // Weekend clock-ins never earn regular pay — only an approved OT request
+    // for that date credits pay (see overtimeByDate below).
+    const weekendDay = new Date(h.date + 'T12:00:00').getDay();
+    const isWeekend = weekendDay === 0 || weekendDay === 6;
+
     if (!hoursMap[h.user_id]) hoursMap[h.user_id] = { capped: 0, overtime: 0 };
-    hoursMap[h.user_id].capped += h.hours_capped;
+    if (!isWeekend) hoursMap[h.user_id].capped += h.hours_capped;
     hoursMap[h.user_id].overtime += h.overtime_hours || 0;
     if (!hoursByDate[h.user_id]) hoursByDate[h.user_id] = {};
-    hoursByDate[h.user_id][h.date] = (hoursByDate[h.user_id][h.date] || 0) + h.hours_capped;
+    if (!isWeekend) hoursByDate[h.user_id][h.date] = (hoursByDate[h.user_id][h.date] || 0) + h.hours_capped;
     if (h.overtime_hours) {
       if (!overtimeByDate[h.user_id]) overtimeByDate[h.user_id] = {};
       overtimeByDate[h.user_id][h.date] = (overtimeByDate[h.user_id][h.date] || 0) + h.overtime_hours;

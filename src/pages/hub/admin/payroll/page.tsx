@@ -1277,13 +1277,22 @@ export default function AdminPayrollPage() {
       const paymentDate = paidPaymentDateMap[h.user_id];
       if (paymentDate && h.date <= paymentDate) continue;
 
+      // Weekend clock-ins never earn regular pay — Sat/Sun hours only count
+      // toward pay once an OT request for that date is approved (overtimeByDate).
+      const weekendDay = new Date(h.date + 'T12:00:00').getDay();
+      const isWeekend = weekendDay === 0 || weekendDay === 6;
+
       if (!hoursMap[h.user_id]) hoursMap[h.user_id] = { capped: 0, raw: 0, overtime: 0, days: 0 };
-      hoursMap[h.user_id].capped += h.hours_capped || 0;
+      if (!isWeekend) {
+        hoursMap[h.user_id].capped += h.hours_capped || 0;
+        hoursMap[h.user_id].days += 1;
+      }
       hoursMap[h.user_id].raw += h.hours_raw || 0;
       hoursMap[h.user_id].overtime += h.overtime_hours || 0;
-      hoursMap[h.user_id].days += 1;
       if (!hoursByDate[h.user_id]) hoursByDate[h.user_id] = {};
-      hoursByDate[h.user_id][h.date] = (hoursByDate[h.user_id][h.date] || 0) + (h.hours_capped || 0);
+      if (!isWeekend) {
+        hoursByDate[h.user_id][h.date] = (hoursByDate[h.user_id][h.date] || 0) + (h.hours_capped || 0);
+      }
       if (!rawHoursByDate[h.user_id]) rawHoursByDate[h.user_id] = {};
       rawHoursByDate[h.user_id][h.date] = (rawHoursByDate[h.user_id][h.date] || 0) + (h.hours_raw || 0);
       if (h.overtime_hours) {

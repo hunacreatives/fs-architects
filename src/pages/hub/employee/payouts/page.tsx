@@ -361,7 +361,13 @@ export default function ContractorPayoutsPage() {
         todayPHT,
       )
         .filter((h) => h.date >= selectedPeriod.start && h.date <= selectedPeriod.end)
-        .map(({ user_id: _userId, ...rest }) => rest as DayRow);
+        .map(({ user_id: _userId, ...rest }) => rest as DayRow)
+        // Weekend clock-ins never earn regular pay — only an approved OT
+        // request for that date credits pay (overtime_hours is untouched).
+        .map((d) => {
+          const day = new Date(d.date + 'T12:00:00').getDay();
+          return (day === 0 || day === 6) ? { ...d, hours_capped: 0 } : d;
+        });
       const leaveHours = computeLeaveHoursByDate(leaveRes.data || [], selectedPeriod.start, selectedPeriod.end, workDays);
       const mergedDays = mergeLeaveDays(clockedDays, leaveHours);
       setDays(mergedDays);

@@ -284,8 +284,13 @@ Deno.serve(async (req) => {
         effectiveStatus = 'off';
       }
 
-      // Handbook rule: clock-in at/after 12 PM (noon) PHT → max half day (4 hrs)
-      if (firstOn) {
+      // Handbook rule: clock-in at/after 12 PM (noon) PHT → max half day (4 hrs).
+      // Weekends aren't a scheduled workday at all (regular pay is zeroed out
+      // for Sat/Sun regardless — see payroll aggregation), so the half-day cap
+      // has nothing to apply to there.
+      const shiftDay = new Date(shiftDate + 'T12:00:00').getDay();
+      const isShiftWeekend = shiftDay === 0 || shiftDay === 6;
+      if (firstOn && !isShiftWeekend) {
         const firstOnHour = parseInt(new Date(firstOn.ts * 1000).toLocaleString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', hour12: false }));
         if (firstOnHour >= 12) {
           hoursCapped = Math.min(hoursCapped, 4);

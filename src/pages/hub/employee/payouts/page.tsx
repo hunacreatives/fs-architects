@@ -781,8 +781,10 @@ export default function ContractorPayoutsPage() {
                         <span className="text-gray-500 min-w-0 w-24 flex-shrink-0 text-xs">{fmtDate(d.date)}</span>
                         <span className="text-gray-400 text-xs flex-shrink-0 hidden sm:block">{fmtTime(d.first_on)}<i className="ri-arrow-right-line text-gray-300 mx-1"></i>{fmtTime(d.last_off)}</span>
                         <span className="flex-1 text-right">
-                          <span className="font-medium text-gray-800 text-sm">{d.hours_capped.toFixed(2)}h</span>
-                          {d.hours_raw > d.hours_capped && (
+                          {(d.hours_capped > 0 || d.overtime_hours === 0) && (
+                            <span className="font-medium text-gray-800 text-sm">{d.hours_capped.toFixed(2)}h</span>
+                          )}
+                          {d.hours_capped > 0 && d.hours_raw > d.hours_capped && (
                             <span className="text-xs text-amber-500 ml-1" title="Capped at 8h">↑{d.hours_raw.toFixed(1)}h</span>
                           )}
                         </span>

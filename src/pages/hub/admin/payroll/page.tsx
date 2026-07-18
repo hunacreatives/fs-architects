@@ -45,6 +45,7 @@ interface DayHours {
   overtime: number;        // overtime_hours
   manual: boolean;         // is_manual — admin manually corrected this day
   leaveType?: string;      // set when this day is paid leave (pto, sick, …)
+  isRestDay: boolean;      // Sat/Sun (or explicit is_rest_day override) — 30% OT premium, no regular pay
 }
 
 interface PayRow {
@@ -91,7 +92,7 @@ const LEAVE_TYPE_LABELS: Record<string, string> = {
 // Per-day hours breakdown shown when a payroll row is expanded. Days under the
 // 9h raw-clocked threshold are flagged amber to match the undertime alert; paid
 // leave days are shown in green and never flagged.
-function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
+function DailyBreakdownPanel({ days, otRate }: { days: DayHours[]; otRate: number }) {
   if (days.length === 0) {
     return <p className="text-xs text-gray-400 py-2">No daily hours logged this period.</p>;
   }
@@ -99,10 +100,16 @@ function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
     <div className="space-y-1">
       {days.map((d) => {
         const onLeave = !!d.leaveType;
-        // Leave and manually-corrected days are treated as reviewed — not undertime.
-        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS && !d.manual && !onLeave;
+        // Leave, manually-corrected, and rest days are treated as reviewed —
+        // never flagged undertime (a rest day isn't a scheduled workday at all).
+        const undertime = d.raw < UNDERTIME_THRESHOLD_HOURS && !d.manual && !onLeave && !d.isRestDay;
         const rowBg = onLeave ? 'bg-emerald-50' : undertime ? 'bg-amber-50' : 'bg-gray-50';
         const labelColor = onLeave ? 'text-emerald-700' : undertime ? 'text-amber-700' : 'text-gray-600';
+        const otMultiplier = d.isRestDay ? 1.30 : 1.25;
+        const otHourlyRate = otRate * otMultiplier;
+        // Hide the redundant "0.0h" when there's an OT figure right next to it —
+        // rest-day base pay is always 0, the OT amount already says everything.
+        const showBilled = d.billed > 0 || d.overtime === 0;
         return (
           <div
             key={d.date}
@@ -115,8 +122,20 @@ function DailyBreakdownPanel({ days }: { days: DayHours[] }) {
               {d.manual && !onLeave && <span className="text-[9px] px-1.5 py-0.5 bg-sky-50 text-sky-600 rounded-full font-medium" title="Manually corrected by an admin"><i className="ri-pencil-line text-[9px] mr-0.5"></i>corrected</span>}
             </span>
             <span className="flex items-center gap-2 tabular-nums">
-              <span className={onLeave ? 'text-emerald-700 font-semibold' : undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h{onLeave ? ' paid' : ''}</span>
-              {d.overtime > 0 && <span className="text-amber-600 font-medium">+{Number(d.overtime.toFixed(2))} OT</span>}
+              {showBilled && (
+                <span className={onLeave ? 'text-emerald-700 font-semibold' : undertime ? 'text-amber-700 font-semibold' : 'text-gray-700'}>{d.billed.toFixed(1)}h{onLeave ? ' paid' : ''}</span>
+              )}
+              {d.overtime > 0 && (
+                <span
+                  className="text-amber-600 font-medium flex items-center gap-1"
+                  title={`${d.isRestDay ? '30% rest-day' : '25% weekday'} OT premium — ₱${otHourlyRate.toFixed(2)}/hr`}
+                >
+                  +{Number(d.overtime.toFixed(2))} OT
+                  <span className="text-[9px] px-1 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+                    {d.isRestDay ? '+30%' : '+25%'} · ₱{otHourlyRate.toFixed(2)}/hr
+                  </span>
+                </span>
+              )}
             </span>
           </div>
         );
@@ -1524,6 +1543,7 @@ export default function AdminPayrollPage() {
           overtime: parseFloat((otByDate[date] || 0).toFixed(2)),
           manual: !!manualDates[date],
           leaveType: leaveTypes[date],
+          isRestDay: getOTMultiplier(date, isRestDayByUser[c.id]?.[date]) === 1.30,
         }));
 
       return {
@@ -2012,7 +2032,7 @@ export default function AdminPayrollPage() {
                   {expandedRows.has(c.id) && (
                     <div className="mb-3 pb-3 border-b border-gray-50">
                       <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">Daily hours · {selectedPeriod.label}</p>
-                      <DailyBreakdownPanel days={r.dailyBreakdown} />
+                      <DailyBreakdownPanel days={r.dailyBreakdown} otRate={r.derivedHourlyRate} />
                     </div>
                   )}
 
@@ -2346,7 +2366,7 @@ export default function AdminPayrollPage() {
                           <td colSpan={5} className="px-5 pb-4 pt-0">
                             <div className="pl-11 max-w-xl">
                               <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">Daily hours · {selectedPeriod.label}</p>
-                              <DailyBreakdownPanel days={r.dailyBreakdown} />
+                              <DailyBreakdownPanel days={r.dailyBreakdown} otRate={r.derivedHourlyRate} />
                             </div>
                           </td>
                         </tr>

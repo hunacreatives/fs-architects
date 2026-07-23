@@ -46,6 +46,12 @@ function toDateInputValue(display: string): string {
   const d = new Date(display);
   return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
 }
+function toLocalDateTimeInputValue(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 function formatMonthAppraised(dateStr: string): string {
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
@@ -242,7 +248,7 @@ export default function AdminPerformancePage() {
       month_appraised: toDateInputValue(a.month_appraised),
       ratings,
       comments_recommendations: a.comments_recommendations ?? '',
-      one_on_one_at: a.one_on_one_at ? new Date(a.one_on_one_at).toISOString().slice(0, 16) : '',
+      one_on_one_at: a.one_on_one_at ? toLocalDateTimeInputValue(a.one_on_one_at) : '',
       decision: a.decision ?? '',
       below_satisfactory_action: a.below_satisfactory_action ?? '',
     });

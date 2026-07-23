@@ -41,10 +41,17 @@ Deno.serve(async (req) => {
 
     // Send email notification via Resend
     const html = `
+      <style>
+        .logo-dark { display: none; }
+        @media (prefers-color-scheme: dark) { .logo-light { display: none !important; } .logo-dark { display: block !important; } }
+        [data-ogsc] .logo-light { display: none !important; }
+        [data-ogsc] .logo-dark { display: block !important; }
+      </style>
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;margin:0">
         <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
           <div style="background:#1c2b3a;padding:20px 24px;">
-            <img src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;" />
+            <img class="logo-light" src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;" />
+            <img class="logo-dark" src="https://fsarchitects.ph/images/fs-architects-logo-horizontal.png" alt="FS Architects" height="48" style="display:none;" />
           </div>
           <div style="padding:24px;color:#1a1a1a">
             <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin:0 0 20px">New Contact Form Submission</p>

@@ -35,6 +35,7 @@ function renderCommentBody(body: string): { html: string; isHtml: boolean } {
   }
   const html = body
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>')
     .replace(/(https?:\/\/[^\s<>"]+|(?<![/\w])www\.[a-zA-Z0-9][^\s<>"]*)/g, (match) => {
       const href = match.startsWith('http') ? match : `https://${match}`;
       return `<a href="${href}" ${LINK_ATTRS}>${match}</a>`;

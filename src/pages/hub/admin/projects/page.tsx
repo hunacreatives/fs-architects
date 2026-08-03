@@ -503,7 +503,7 @@ export default function AdminProjectsPage() {
         .select('*, hub_project_contractors(id, project_role, hub_users(id, full_name, avatar_url, email))')
         .order('created_at', { ascending: false }),
       supabase.from('hub_users').select('id, full_name, avatar_url, department')
-        .eq('status', 'active').order('full_name'),
+        .eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
     setProjects((pRes.data as Project[]) ?? []);
     setContractors((cRes.data as Contractor[]) ?? []);

@@ -557,6 +557,7 @@ export default function ContractorProjectsPage() {
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [teamMap, setTeamMap] = useState<Record<number, TeamMember[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [workspaceRow, setWorkspaceRow] = useState<ProjectRow | null>(null);
   const [taskFilter, setTaskFilter] = useState<'all' | 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done' | 'overdue'>('all');
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
@@ -987,6 +988,7 @@ export default function ContractorProjectsPage() {
     }
 
     (async () => {
+      setLoadError(null);
       try {
         // Every project and workspace is visible to the whole team — fs-architects
         // doesn't restrict visibility by assignment the way some client hubs do.
@@ -1026,6 +1028,7 @@ export default function ContractorProjectsPage() {
         }
       } catch (err) {
         console.error('Projects load error:', err);
+        setLoadError((err instanceof Error ? err.message : (err as any)?.message) || 'Failed to load projects.');
       } finally {
         setLoading(false);
       }
@@ -2054,13 +2057,25 @@ export default function ContractorProjectsPage() {
         <div className="flex justify-center py-24">
           <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
         </div>
+      ) : loadError ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-14 h-14 bg-rose-50 rounded-3xl flex items-center justify-center">
+            <i className="ri-error-warning-line text-rose-400 text-2xl"></i>
+          </div>
+          <p className="text-sm font-semibold text-gray-500">Couldn't load projects</p>
+          <p className="text-xs text-gray-400 max-w-sm text-center">{loadError}</p>
+          <button onClick={() => setProjectRefreshKey(k => k + 1)}
+            className="mt-1 px-4 py-2 rounded-xl text-sm font-medium bg-[#1c2b3a] text-white hover:bg-gray-800 cursor-pointer transition-colors">
+            Retry
+          </button>
+        </div>
       ) : rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <div className="w-14 h-14 bg-gray-100 rounded-3xl flex items-center justify-center">
             <i className="ri-folder-open-line text-gray-400 text-2xl"></i>
           </div>
-          <p className="text-sm font-semibold text-gray-500">No projects assigned yet</p>
-          <p className="text-xs text-gray-400">Your admin will assign you when a project starts.</p>
+          <p className="text-sm font-semibold text-gray-500">No projects yet</p>
+          <p className="text-xs text-gray-400">Projects will show up here once they're created.</p>
         </div>
       ) : (
         /* ── Main dashboard layout ── */

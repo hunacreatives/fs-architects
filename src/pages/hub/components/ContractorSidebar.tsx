@@ -36,11 +36,10 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
   const filteredBase = isProjectBased
     ? baseNavItems.filter(i => !['My Attendance', 'Time-Off', 'Overtime', 'Requests'].includes((i as any).label))
     : baseNavItems;
-  const dividerIdx = filteredBase.findIndex(i => (i as any).divider);
   const navItems = [
-    ...filteredBase.slice(0, dividerIdx),
+    filteredBase[0],
     { to: '/hub/employee/projects', label: 'My Projects', icon: 'ri-folder-line' },
-    ...filteredBase.slice(dividerIdx),
+    ...filteredBase.slice(1),
   ];
   const { bind: tipFor, tipEl, clearTip } = useSidebarTip(collapsed);
 

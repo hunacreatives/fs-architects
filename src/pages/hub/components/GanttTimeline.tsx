@@ -193,6 +193,10 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
         if (!t.due_date && !t.start_date) return false;
         const ts = t.start_date ?? t.due_date!;
         const te = t.due_date ?? t.start_date!;
+        // In 'dots' mode, lanes are reserved for tasks that actually span multiple
+        // days (rendered as continuous bars) — single-day tasks are listed as
+        // title chips underneath instead of eating into the 3 lane slots.
+        if (mode === 'dots' && !(t.start_date && t.due_date && t.start_date !== t.due_date)) return false;
         return ts <= weekEnd && te >= weekStart;
       })
       .sort((a, b) => {
@@ -318,29 +322,63 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                     </span>
                   </div>
 
-                  {mode === 'dots' ? (
-                    /* Real event-style title chips, like Google Calendar's month
-                       view — a max of 2 per day plus a "+N more" overflow, since
-                       a consolidated calendar showing every unrelated project's
-                       tasks needs a cap somewhere. */
-                    <div className="flex flex-col gap-0.5 px-1 pb-1 flex-1 min-h-0">
-                      {cellDate && (tasksByDate[cellDate] ?? []).slice(0, 3).map(t => (
-                        <button key={t.id} type="button" title={t.title}
-                          onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
-                          style={chipStyle(t)}
-                          className={`w-full text-left px-1.5 py-[3px] rounded text-[10px] leading-tight truncate cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)}`}>
-                          {t.title}
-                        </button>
-                      ))}
-                      {cellDate && (tasksByDate[cellDate]?.length ?? 0) > 3 && (
-                        <button type="button"
-                          onClick={e => { e.stopPropagation(); setSelectedDate(cellDate); }}
-                          className="text-[9px] text-gray-400 hover:text-gray-600 leading-none px-1.5 text-left cursor-pointer">
-                          +{(tasksByDate[cellDate]?.length ?? 0) - 3} more
-                        </button>
-                      )}
-                    </div>
-                  ) : (
+                  {mode === 'dots' ? (() => {
+                    // Multi-day tasks render as one continuous bar spanning their
+                    // date range (rounded only at the true start/end, like Google
+                    // Calendar's month view) instead of a separate cut-off chip
+                    // repeated on every day. Single-day tasks still list below as
+                    // title chips, capped with a "+N more" overflow.
+                    const singleDayTasks = cellDate
+                      ? (tasksByDate[cellDate] ?? []).filter(t => !(t.start_date && t.due_date && t.start_date !== t.due_date))
+                      : [];
+                    return (
+                      <>
+                        {week.lanes.length > 0 && (
+                          <div className="flex flex-col gap-px">
+                            {slots.map((slot, laneIdx) => {
+                              if (!slot || !cellDate) return <div key={laneIdx} className="h-5" />;
+                              const t = slot.task;
+                              const ts = t.start_date ?? t.due_date ?? '';
+                              const te = t.due_date ?? t.start_date ?? '';
+                              const isActualStart = cellDate === ts;
+                              const isActualEnd = cellDate === te;
+                              const showLabel = isActualStart || (!slot.spanStart && cellDate === weekFirstDay);
+                              const rl = (slot.spanStart && isActualStart) ? 'rounded-l-md ml-1' : '-ml-px';
+                              const rr = (slot.spanEnd && isActualEnd) ? 'rounded-r-md mr-1' : '-mr-px';
+                              return (
+                                <button key={laneIdx} type="button" title={t.title}
+                                  onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
+                                  style={chipStyle(t)}
+                                  className={`h-5 flex items-center text-[10px] font-medium overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)} ${rl} ${rr}`}>
+                                  {showLabel && <span className="truncate flex-1 pl-1.5 leading-none">{t.title}</span>}
+                                </button>
+                              );
+                            })}
+                            {overflow > 0 && (
+                              <div className="text-[9px] text-gray-400 px-1.5">+{overflow} more</div>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-0.5 px-1 pb-1 flex-1 min-h-0">
+                          {singleDayTasks.slice(0, 3).map(t => (
+                            <button key={t.id} type="button" title={t.title}
+                              onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
+                              style={chipStyle(t)}
+                              className={`w-full text-left px-1.5 py-[3px] rounded text-[10px] leading-tight truncate cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)}`}>
+                              {t.title}
+                            </button>
+                          ))}
+                          {singleDayTasks.length > 3 && (
+                            <button type="button"
+                              onClick={e => { e.stopPropagation(); cellDate && setSelectedDate(cellDate); }}
+                              className="text-[9px] text-gray-400 hover:text-gray-600 leading-none px-1.5 text-left cursor-pointer">
+                              +{singleDayTasks.length - 3} more
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })() : (
                   <div className="flex flex-col gap-px pb-1">
                     {slots.map((slot, laneIdx) => {
                       if (!slot || !cellDate) {

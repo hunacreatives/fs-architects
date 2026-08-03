@@ -482,7 +482,7 @@ function ProjectCard({ row, projectTasks, onClick }: {
       className="w-full text-left rounded-3xl overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
       style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 2px 20px rgba(0,0,0,0.06)' }}>
 
-      <div className="p-3.5 space-y-2.5">
+      <div className="p-4 space-y-3">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -2075,7 +2075,7 @@ export default function ContractorProjectsPage() {
         <div className="flex gap-6 min-h-full">
 
           {/* ── LEFT: projects ── */}
-          <div className="flex-1 min-w-0 space-y-4">
+          <div className="flex-1 min-w-0 space-y-6">
 
             {/* Greeting */}
             <div>
@@ -2108,10 +2108,21 @@ export default function ContractorProjectsPage() {
 
             {/* Project cards: urgency call-outs first, then grouped by stage
                 (not status — nearly every project just sits at "ongoing," so
-                status alone isn't useful for browsing; stage is). */}
+                status alone isn't useful for browsing; stage is).
+                Overdue/Due This Week are keyed off the employee's OWN tasks,
+                not the project's deadline — a project the employee has no
+                tasks in yet shouldn't show up as an urgent call-out for them,
+                even if the project itself is behind schedule company-wide. */}
             {(() => {
-              const overdue  = sortedRows.filter(r => r.hub_projects?.deadline && r.hub_projects.deadline < today && r.hub_projects.status !== 'completed');
-              const dueSoon  = sortedRows.filter(r => { const p = r.hub_projects; if (!p || overdue.includes(r)) return false; const d = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000) : null; return p.status === 'ongoing' && d !== null && d <= 7; });
+              const myOverdueProjectIds = new Set(overdueTasks.map(t => t.project_id));
+              const myDueSoonProjectIds = new Set(
+                myTasks
+                  .filter(t => t.status !== 'done' && t.due_date && t.due_date >= today)
+                  .filter(t => Math.ceil((new Date(t.due_date! + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000) <= 7)
+                  .map(t => t.project_id)
+              );
+              const overdue  = sortedRows.filter(r => r.hub_projects && myOverdueProjectIds.has(r.hub_projects.id) && r.hub_projects.status !== 'completed');
+              const dueSoon  = sortedRows.filter(r => r.hub_projects && !overdue.includes(r) && myDueSoonProjectIds.has(r.hub_projects.id) && r.hub_projects.status === 'ongoing');
               const ongoing  = sortedRows.filter(r => r.hub_projects?.status === 'ongoing' && !overdue.includes(r) && !dueSoon.includes(r));
               const paused   = sortedRows.filter(r => r.hub_projects?.status === 'paused');
               const done     = sortedRows.filter(r => r.hub_projects?.status === 'completed');
@@ -2120,12 +2131,12 @@ export default function ContractorProjectsPage() {
                 .filter(g => g.rows.length > 0);
 
               const Section = ({ label, rows: sRows, dot }: { label: string; rows: typeof sortedRows; dot: string }) => sRows.length === 0 ? null : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`}></span>
                     <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label} <span className="text-gray-300 font-normal">({sRows.length})</span></p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     {sRows.map((r) => (
                       <ProjectCard key={r.id} row={r}
                         projectTasks={myTasks.filter(t => t.project_id === r.hub_projects?.id)}

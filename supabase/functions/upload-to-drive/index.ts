@@ -1,4 +1,5 @@
 import { corsHeaders, guardUser } from '../_shared/auth.ts';
+import { createOrGetSharedFolder, driveServiceClient, getOrCreateProjectFolderId } from '../_shared/drive.ts';
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -88,7 +89,18 @@ async function getFolderForType(type: string, meta: Record<string, string>, acce
   // ── New types routed through Drive ─────────────────────────────────────────
 
   if (type === 'task_attachment') {
-    // Sentro Root / Task Attachments / {project_name}
+    // Projects/{client}/{project}/Task Attachments — the project's own real Drive
+    // folder, created if it doesn't have one yet. Falls back to the old generic
+    // tree only if no project_id was passed (defensive, shouldn't happen).
+    const projectId = meta.project_id ? Number(meta.project_id) : null;
+    if (projectId) {
+      const supabase = driveServiceClient();
+      const { data: project } = await supabase.from('hub_projects').select('client_name, project_name').eq('id', projectId).maybeSingle();
+      if (project) {
+        const { folderId } = await getOrCreateProjectFolderId(supabase, accessToken, projectId, project.client_name ?? null, project.project_name);
+        return createOrGetSharedFolder('Task Attachments', folderId, accessToken);
+      }
+    }
     const projectName = meta.project_name || 'General';
     const rootFolder = await createOrGetFolder('Task Attachments', SENTRO_ROOT, accessToken);
     return createOrGetFolder(projectName, rootFolder, accessToken);

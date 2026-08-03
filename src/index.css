@@ -17,3 +17,31 @@
   transform: translateY(-50%);
   animation: sidebar-tip-in 0.14s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
+
+/* Tiptap comment editor (task panel) */
+.comment-editor .ProseMirror {
+  outline: none;
+  min-height: var(--ce-min-h, 60px);
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.comment-editor .ProseMirror p { margin: 0; }
+.comment-editor .ProseMirror p + p { margin-top: 0.4em; }
+.comment-editor .ProseMirror ul { list-style: disc; padding-left: 1.25rem; margin: 0.2em 0; }
+.comment-editor .ProseMirror ol { list-style: decimal; padding-left: 1.25rem; margin: 0.2em 0; }
+.comment-editor .ProseMirror a { color: #1d4ed8; text-decoration: underline; }
+.comment-editor .ProseMirror code {
+  background: #f3f4f6; border-radius: 4px; padding: 0.1em 0.35em;
+  font-size: 0.85em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.comment-editor .ProseMirror .mention { color: #1c2b3a; font-weight: 500; }
+.comment-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

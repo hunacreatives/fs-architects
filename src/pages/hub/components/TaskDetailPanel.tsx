@@ -1,12 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import HubAvatar from '@/pages/hub/components/HubAvatar';
-import { supabase, supabaseUrl_, supabaseAnonKey_ } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { uploadFileToDrive } from '@/lib/driveUpload';
 import { createTaskAttachment } from '@/lib/taskAttachments';
-import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeChecklistItems, normalizeTaskAssigneePayload, sameAssigneeIds } from '@/lib/taskAssignments';
+import { getTaskAssigneeIds, normalizeChecklistItems, normalizeTaskAssigneePayload, sameAssigneeIds } from '@/lib/taskAssignments';
+import { useDemo } from '@/contexts/DemoContext';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
+import CommentEditor, { type CommentEditorHandle } from '@/pages/hub/components/CommentEditor';
+
+function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; size?: number }) {
+  return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '😮', '🔥', '👀', '✅', '🙏', '👏', '💯', '😢'];
 
 const LINK_STYLE = 'color:#1d4ed8;text-decoration:underline';
 const LINK_ATTRS = `target="_blank" rel="noopener noreferrer" style="${LINK_STYLE}"`;
@@ -22,12 +30,38 @@ function autoLinkUrls(text: string): string {
   );
 }
 
-function renderCommentBody(body: string): { html: string; isHtml: boolean } {
+function commentEditableToBody(html: string): string {
+  return html
+    .replace(/&nbsp;/g, ' ')
+    .replace(/<\/(div|p)>/gi, '\n')
+    .replace(/<(div|p)[^>]*>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Stored bodies are newline-delimited text (possibly with inline tags); Tiptap
+// needs paragraph-wrapped HTML to seed the edit-in-place editor.
+function bodyToEditorHTML(body: string): string {
+  const normalized = /<\/?(div|p)[^>]*>/i.test(body) ? commentEditableToBody(body) : body;
+  return `<p>${normalized.replace(/\n/g, '<br>')}</p>`;
+}
+
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<\/?(iframe|object|embed|base|meta|link|form|input|textarea|select)[^>]*>/gi, '')
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>'"]+)/gi, '')
+    .replace(/(href|src|action)\s*=\s*(?:"(?:javascript|data):[^"]*"|'(?:javascript|data):[^']*'|(?:javascript|data):\S*)/gi, '$1="#"');
+}
+
+function renderCommentBody(rawBody: string): { html: string; isHtml: boolean } {
+  // Older comments may have stray <div>/<p> wrappers left over from a contentEditable
+  // save-path bug; normalize those to real newlines before deciding how to render.
+  const body = /<\/?(div|p)[^>]*>/i.test(rawBody) ? commentEditableToBody(rawBody) : rawBody;
   const hasHtml = /<[a-z][\s\S]*?>/i.test(body);
   if (hasHtml) {
-    const safe = body
-      .replace(/\s+on\w+\s*=\s*(["'])[^"']*\1/gi, '')
-      .replace(/href\s*=\s*(["'])javascript:[^"']*\1/gi, 'href="#"');
+    const safe = sanitizeHtml(body).replace(/\n/g, '<br/>');
     return {
       html: autoLinkUrls(safe).replace(/(@[\w]+)/g, '<span style="color:#1c2b3a;font-weight:500">$1</span>'),
       isHtml: true,
@@ -50,11 +84,7 @@ function renderCommentBody(body: string): { html: string; isHtml: boolean } {
 function renderDescription(body: string): string {
   const hasHtml = /<[a-z][\s\S]*?>/i.test(body);
   if (hasHtml) {
-    const safe = body
-      .replace(/\s+on\w+\s*=\s*(["'])[^"']*\1/gi, '')
-      .replace(/href\s*=\s*(["'])javascript:[^"']*\1/gi, 'href="#"')
-      // Ensure existing <a> tags open in a new tab
-      .replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
+    const safe = sanitizeHtml(body).replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
     return autoLinkUrls(safe);
   }
   return body
@@ -82,6 +112,7 @@ export interface TaskDetailTask {
   start_date: string | null;
   checklist?: ChecklistItem[] | null;
   color?: string | null;
+  meta?: { custom_fields?: { id: string; label: string; value: string }[]; blocked_reason?: string | null } | null;
   hub_users?: { id: string; full_name: string; avatar_url: string | null } | null;
 }
 
@@ -105,7 +136,16 @@ interface Comment {
   attachment_name: string | null;
   attachment_size: number | null;
   attachment_mime: string | null;
+  attachments: CommentAttachment[] | null;
   reactions: Record<string, string[]>;
+  seen_by: string[];
+}
+
+interface CommentAttachment {
+  url: string;
+  name: string;
+  size: number | null;
+  mime: string | null;
 }
 
 interface Attachment {
@@ -143,6 +183,7 @@ interface Props {
   onActivityChange?: () => void;
   projectId: number;
   projectName?: string;
+  initialDueDate?: string | null;
   teamMembers: TeamMember[];
   canEdit: boolean;
   currentUserId: string;
@@ -241,9 +282,6 @@ function renderAttachmentPreview(att: Attachment) {
   );
 }
 
-function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; size?: number }) {
-  return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
-}
 
 function nanoid() {
   return Math.random().toString(36).slice(2, 10);
@@ -252,7 +290,42 @@ function nanoid() {
 function normalizeRichText(value: string | null | undefined) {
   const trimmed = value?.trim() ?? '';
   if (!trimmed || trimmed === '<br>') return null;
-  return trimmed;
+  return trimmed.replace(/&nbsp;/g, ' ');
+}
+
+type TaskDraftSource = Pick<TaskDetailTask, 'title' | 'description' | 'status' | 'priority' | 'due_date' | 'start_date'> & {
+  assigned_to?: string | null;
+  assignee_id?: string | null;
+  assignee_ids?: string[] | null;
+  checklist?: ChecklistItem[] | null;
+  color?: string | null;
+  meta?: { custom_fields?: { id: string; label: string; value: string }[]; blocked_reason?: string | null } | null;
+};
+
+function buildTaskMetaPayload(
+  customFields: { id: string; label: string; value: string }[],
+  status: TaskDetailTask['status'],
+  blockedReason: string,
+) {
+  const meta: { custom_fields?: typeof customFields; blocked_reason?: string } = {};
+  if (customFields.length) meta.custom_fields = customFields;
+  if (status === 'blocked' && blockedReason.trim()) meta.blocked_reason = blockedReason.trim();
+  return Object.keys(meta).length ? meta : null;
+}
+
+function buildTaskDraftSnapshot(task: TaskDraftSource) {
+  return {
+    title: task.title.trim(),
+    description: normalizeRichText(task.description),
+    status: task.status,
+    priority: task.priority,
+    ...normalizeTaskAssigneePayload(getTaskAssigneeIds(task)),
+    due_date: task.due_date ?? null,
+    start_date: task.start_date ?? null,
+    checklist: normalizeChecklistItems(task.checklist),
+    color: task.color ?? null,
+    meta: buildTaskMetaPayload(task.meta?.custom_fields ?? [], task.status, task.meta?.blocked_reason ?? ''),
+  };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -267,6 +340,7 @@ export default function TaskDetailPanel({
   onActivityChange,
   projectId,
   projectName = 'General',
+  initialDueDate = null,
   teamMembers,
   canEdit,
   currentUserId,
@@ -274,6 +348,7 @@ export default function TaskDetailPanel({
   currentUserAvatarUrl,
 }: Props) {
   const isNew = !task;
+  const { isDemo } = useDemo();
 
   // Form state
   const [title, setTitle]           = useState('');
@@ -287,7 +362,9 @@ export default function TaskDetailPanel({
   const [newCheckItem, setNewCheckItem] = useState('');
   const [expandedCheckItems, setExpandedCheckItems] = useState<Set<string>>(new Set());
   const [taskColor, setTaskColor] = useState<string>('');
+  const [blockedReason, setBlockedReason] = useState('');
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   // Remote data
   const [comments, setComments]     = useState<Comment[]>([]);
@@ -299,7 +376,6 @@ export default function TaskDetailPanel({
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [activity, setActivity]     = useState<ActivityItem[]>([]);
-  const [watchers, setWatchers]     = useState<string[]>([]);
 
   // Checklist drag state
   const [dragCheckId, setDragCheckId] = useState<string | null>(null);
@@ -313,7 +389,7 @@ export default function TaskDetailPanel({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPosting] = useState(false);
-  const [commentFile, setCommentFile] = useState<File | null>(null);
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
   const [commentFileError, setCommentFileError] = useState<string | null>(null);
   const commentFileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading]   = useState(false);
@@ -323,12 +399,21 @@ export default function TaskDetailPanel({
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [commentPreview, setCommentPreview] = useState<{ url: string; name: string; mime: string | null } | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<File | null>(null);
-  const [mentionOpen, setMentionOpen] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [mentionStart, setMentionStart] = useState(0);
-  const commentRef = useRef<HTMLDivElement>(null);
+  const commentEditorRef = useRef<CommentEditorHandle>(null);
+  const editEditorRef = useRef<CommentEditorHandle>(null);
+  const [reactionPickerFor, setReactionPickerFor] = useState<number | null>(null);
+  const [showActivity, setShowActivity] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Task currently shown in the panel — a fetch response for any other task
+  // must be discarded, or it overwrites the form the user is looking at.
+  const activeTaskIdRef = useRef<number | null>(null);
+  // Snapshot of the data last loaded from the DB for the open task. This is
+  // the baseline for "did the user change anything" — comparing against the
+  // task prop instead can flag stale list data as user edits and silently
+  // save them on close, attributed to a user who touched nothing.
+  const baselineDraftRef = useRef<{ taskId: number; json: string } | null>(null);
+  const lastFetchedTaskRef = useRef<({ id: number } & Partial<TaskDetailTask>) | null>(null);
 
   const taskDraft = useCallback(() => ({
     title: title.trim(),
@@ -340,22 +425,11 @@ export default function TaskDetailPanel({
     start_date: startDate || null,
     checklist: normalizeChecklistItems(checklist),
     color: taskColor || null,
-    meta: customFields.length ? { custom_fields: customFields } : null,
-  }), [title, description, status, priority, assigneeIds, dueDate, startDate, checklist, taskColor, customFields]);
+    meta: buildTaskMetaPayload(customFields, status, blockedReason),
+  }), [title, description, status, priority, assigneeIds, dueDate, startDate, checklist, taskColor, customFields, blockedReason]);
 
   const initialDraft = task
-    ? {
-        title: task.title.trim(),
-        description: normalizeRichText(task.description),
-        status: task.status,
-        priority: task.priority,
-        ...normalizeTaskAssigneePayload(getTaskAssigneeIds(task)),
-        due_date: task.due_date ?? null,
-        start_date: task.start_date ?? null,
-        checklist: normalizeChecklistItems(task.checklist),
-        color: task.color ?? null,
-        meta: (task as any).meta?.custom_fields?.length ? { custom_fields: (task as any).meta.custom_fields } : null,
-      }
+    ? buildTaskDraftSnapshot(task)
     : {
         title: '',
         description: null,
@@ -369,12 +443,18 @@ export default function TaskDetailPanel({
         meta: null,
       };
 
-  const hasUnsavedChanges = JSON.stringify(taskDraft()) !== JSON.stringify(initialDraft);
+  const baselineJson = task && baselineDraftRef.current?.taskId === task.id
+    ? baselineDraftRef.current.json
+    : JSON.stringify(initialDraft);
+  const hasUnsavedChanges = JSON.stringify(taskDraft()) !== baselineJson;
 
   // Populate form when task changes
   useEffect(() => {
+    activeTaskIdRef.current = open && task ? task.id : null;
     if (!open) return;
     if (task) {
+      baselineDraftRef.current = { taskId: task.id, json: JSON.stringify(buildTaskDraftSnapshot(task)) };
+      lastFetchedTaskRef.current = null;
       setTitle(task.title);
       setDesc(task.description ?? '');
       // Sync contenteditable div on next tick
@@ -387,6 +467,7 @@ export default function TaskDetailPanel({
       setChecklist(normalizeChecklistItems(task.checklist));
       setTaskColor(task.color ?? '');
       setCustomFields((task as any).meta?.custom_fields ?? []);
+      setBlockedReason((task as any).meta?.blocked_reason ?? '');
       setShowAddField(false);
       setPendingAttachment(null);
       setEditing(false);
@@ -395,9 +476,21 @@ export default function TaskDetailPanel({
       setShowColorPicker(false);
       fetchTaskData(task.id);
     } else {
+      baselineDraftRef.current = null;
+      lastFetchedTaskRef.current = null;
       setTitle(''); setDesc(''); setStatus('todo'); setPriority('medium');
-      setAssigneeIds([]); setDueDate(''); setStartDate(''); setChecklist([]);
-      setComments([]); setAttachments([]); setActivity([]); setWatchers([]);
+      setAssigneeIds([]); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
+      setComments([]); setAttachments([]); setActivity([]);
+      // Clear the contenteditable DOM too — taskDraft() reads from it, so a
+      // stale innerHTML would copy the previous task's description into the new one.
+      setTimeout(() => { if (descRef.current) descRef.current.innerHTML = ''; }, 0);
+      setTaskColor('');
+      setCustomFields([]);
+      setBlockedReason('');
+      setShowAddField(false);
+      setShowColorPicker(false);
+      setExpandedCheckItems(new Set());
+      setConfirmDelete(false);
       setPendingAttachment(null);
       setEditing(true);
     }
@@ -422,6 +515,7 @@ export default function TaskDetailPanel({
           return [...prev, {
             ...row,
             reactions: row.reactions ?? {},
+            seen_by: row.seen_by ?? [],
             hub_users: teamMembers.find(m => m.id === row.user_id)
               ? { full_name: teamMembers.find(m => m.id === row.user_id)!.full_name, avatar_url: teamMembers.find(m => m.id === row.user_id)!.avatar_url ?? null }
               : null,
@@ -436,6 +530,31 @@ export default function TaskDetailPanel({
     if (!open || !editing || !descRef.current) return;
     descRef.current.innerHTML = description || '';
   }, [editing, open, task?.id]);
+
+  // Read receipts: viewing the panel marks others' comments as seen by you.
+  const markingSeenRef = useRef(false);
+  useEffect(() => {
+    if (!open || isDemo || !currentUserId) return;
+    const unseen = comments.filter(c => c.user_id !== currentUserId && !(c.seen_by ?? []).includes(currentUserId));
+    if (unseen.length === 0 || markingSeenRef.current) return;
+    markingSeenRef.current = true;
+    (async () => {
+      try {
+        await Promise.all(unseen.map(c =>
+          supabase.from('hub_project_task_comments')
+            .update({ seen_by: [...(c.seen_by ?? []), currentUserId] })
+            .eq('id', c.id)
+        ));
+        setComments(prev => prev.map(c =>
+          c.user_id !== currentUserId && !(c.seen_by ?? []).includes(currentUserId)
+            ? { ...c, seen_by: [...(c.seen_by ?? []), currentUserId] }
+            : c
+        ));
+      } finally {
+        markingSeenRef.current = false;
+      }
+    })();
+  }, [open, comments, currentUserId, isDemo]);
 
   const resetDescriptionEditor = useCallback(() => {
     const originalDescription = task?.description ?? '';
@@ -463,24 +582,41 @@ export default function TaskDetailPanel({
     syncDescriptionEditor();
   }, [focusDescriptionEditor, syncDescriptionEditor]);
 
+  // execCommand fontSize only accepts 1–7, so apply the magic value 7 and then
+  // rewrite the resulting <font> tags to an exact pixel size.
+  const applyDescriptionFontSize = useCallback((px: number) => {
+    focusDescriptionEditor();
+    document.execCommand('fontSize', false, '7');
+    descRef.current?.querySelectorAll('font[size="7"]').forEach(f => {
+      f.removeAttribute('size');
+      (f as HTMLElement).style.fontSize = `${px}px`;
+    });
+    syncDescriptionEditor();
+  }, [focusDescriptionEditor, syncDescriptionEditor]);
+
   const fetchTaskData = useCallback(async (taskId: number) => {
-    const [taskRes, commRes, attRes, actRes, watchRes] = await Promise.all([
+    if (isDemo) return;
+    const [taskRes, commRes, attRes, actRes] = await Promise.all([
       supabase.from('hub_project_tasks')
-        .select('title, description, status, priority, assigned_to, assignee_ids, due_date, start_date, checklist, color, meta')
+        .select('title, description, status, priority, assigned_to, assignee_ids, due_date, start_date, checklist, color, meta, updated_at')
         .eq('id', taskId)
         .single(),
       supabase.from('hub_project_task_comments')
-        .select('id, user_id, body, created_at, author_name, author_avatar_url, attachment_url, attachment_name, attachment_size, attachment_mime, reactions')
+        .select('id, user_id, body, created_at, author_name, author_avatar_url, attachment_url, attachment_name, attachment_size, attachment_mime, attachments, reactions, seen_by')
         .eq('task_id', taskId).order('created_at', { ascending: true }),
       supabase.from('hub_project_task_attachments')
         .select('*').eq('task_id', taskId).order('created_at', { ascending: false }),
       supabase.from('hub_project_task_activity')
         .select('id, actor_name, type, description, created_at')
         .eq('task_id', taskId).order('created_at', { ascending: false }).limit(30),
-      supabase.from('hub_project_task_watchers')
-        .select('user_id').eq('task_id', taskId),
     ]);
+    // A slow response for a task the user has since navigated away from must
+    // not touch the form — the close-time auto-save would write this task's
+    // content into whichever task is open now.
+    if (activeTaskIdRef.current !== taskId) return;
     if (taskRes.data) {
+      lastFetchedTaskRef.current = { id: taskId, ...taskRes.data };
+      baselineDraftRef.current = { taskId, json: JSON.stringify(buildTaskDraftSnapshot(taskRes.data)) };
       setTitle(taskRes.data.title);
       setDesc(taskRes.data.description ?? '');
       if (descRef.current) descRef.current.innerHTML = taskRes.data.description ?? '';
@@ -492,19 +628,20 @@ export default function TaskDetailPanel({
       setChecklist(normalizeChecklistItems(taskRes.data.checklist));
       setTaskColor(taskRes.data.color ?? '');
       setCustomFields((taskRes.data as any).meta?.custom_fields ?? []);
+      setBlockedReason((taskRes.data as any).meta?.blocked_reason ?? '');
     }
     if (commRes.data) {
       // Build user map from teamMembers (already loaded, no RLS issues for contractors)
       const userMap: Record<string, { full_name: string; avatar_url: string | null }> = {};
       for (const m of teamMembers) userMap[m.id] = { full_name: m.full_name, avatar_url: m.avatar_url ?? null };
-      setComments(commRes.data.map((c: any) => ({ ...c, reactions: c.reactions ?? {}, hub_users: userMap[c.user_id] ?? null })));
+      setComments(commRes.data.map((c: any) => ({ ...c, reactions: c.reactions ?? {}, seen_by: c.seen_by ?? [], hub_users: userMap[c.user_id] ?? null })));
     }
     if (attRes.data)  setAttachments(attRes.data);
     if (actRes.data)  setActivity(actRes.data);
-    if (watchRes.data) setWatchers(watchRes.data.map((w: any) => w.user_id));
   }, []);
 
   const logActivity = useCallback(async (taskId: number, type: string, description: string) => {
+    if (isDemo) return;
     await supabase.from('hub_project_task_activity').insert({
       task_id: taskId, actor_id: currentUserId, actor_name: currentUserName, type, description,
     });
@@ -519,6 +656,21 @@ export default function TaskDetailPanel({
     setSaveError(null);
     try {
       const payload = taskDraft();
+
+      if (isDemo) {
+        // Demo mode: apply the change locally so the flow feels real,
+        // but never touch the database.
+        const demoAssignee = teamMembers.find(m => m.id === (getTaskAssigneeIds(payload)[0] ?? '')) ?? null;
+        const demoHubUsers = demoAssignee ? { id: demoAssignee.id, full_name: demoAssignee.full_name, avatar_url: demoAssignee.avatar_url ?? null } : null;
+        if (isNew) {
+          onSaved({ id: Date.now(), project_id: projectId, ...payload, hub_users: demoHubUsers } as TaskDetailTask);
+          onClose();
+        } else {
+          onSaved({ ...task!, ...payload, hub_users: demoHubUsers } as TaskDetailTask);
+          if (closeAfterSave) onClose(); else setEditing(false);
+        }
+        return;
+      }
 
       const nextAssigneeIds = getTaskAssigneeIds(payload);
       const assigneeMember = teamMembers.find(m => m.id === (nextAssigneeIds[0] ?? '')) ?? null;
@@ -538,6 +690,7 @@ export default function TaskDetailPanel({
             taskId: data.id,
             file: pendingAttachment,
             uploadedBy: currentUserId,
+            projectId,
             projectName,
           });
           if (attachment) {
@@ -561,20 +714,42 @@ export default function TaskDetailPanel({
         }
         onClose();
       } else {
-        const prev = task!;
-        const { data, error } = await supabase
+        // Diff against the freshly fetched row when available — the list prop
+        // can be stale, which would log changes this user never made.
+        const fetched = lastFetchedTaskRef.current;
+        const prev = fetched && fetched.id === task!.id ? { ...task!, ...fetched } : task!;
+        // Optimistic-concurrency guard: only overwrite the row if it still
+        // matches the version we loaded — otherwise someone changed it while
+        // this panel was open and a blind write would destroy their edit.
+        const fetchedUpdatedAt = fetched && fetched.id === task!.id ? (fetched as any).updated_at ?? null : null;
+        // done_at is maintained by a DB trigger when status flips to/from done
+        let updateQuery = supabase
           .from('hub_project_tasks')
-          .update(payload)
-          .eq('id', prev.id)
-          .select('*')
-          .single();
+          .update({ ...payload, updated_at: new Date().toISOString() })
+          .eq('id', prev.id);
+        if (fetchedUpdatedAt) updateQuery = updateQuery.eq('updated_at', fetchedUpdatedAt);
+        const { data: updatedRows, error } = await updateQuery.select('*');
         if (error) throw error;
+        const data = updatedRows?.[0];
+        if (!data) {
+          // Row changed since we loaded it. Keep the user's edits in the form,
+          // refresh our version marker, and let them decide to save again.
+          const { data: freshRow } = await supabase
+            .from('hub_project_tasks')
+            .select('title, description, status, priority, assigned_to, assignee_ids, due_date, start_date, checklist, color, meta, updated_at')
+            .eq('id', prev.id)
+            .maybeSingle();
+          if (freshRow) lastFetchedTaskRef.current = { id: prev.id, ...freshRow };
+          throw new Error('Someone updated this task while you had it open. Your edits are kept here — press Save again to apply them over the latest version, or close without saving to discard.');
+        }
 
         // Log meaningful changes
-        if (prev.status !== status)
+        const statusChanged = prev.status !== status;
+        if (statusChanged)
           await logActivity(prev.id, 'status_change', `changed status from ${prev.status.replace('_', ' ')} to ${status.replace('_', ' ')}`);
         const previousAssigneeIds = getTaskAssigneeIds(prev);
-        if (!sameAssigneeIds(previousAssigneeIds, nextAssigneeIds)) {
+        const assigneesChanged = !sameAssigneeIds(previousAssigneeIds, nextAssigneeIds);
+        if (assigneesChanged) {
           const assigneeNames = nextAssigneeIds
             .map(id => teamMembers.find(m => m.id === id)?.full_name)
             .filter(Boolean);
@@ -592,6 +767,24 @@ export default function TaskDetailPanel({
               },
             }).catch(console.error);
           }
+        }
+
+        // Notify assignees + admins when task is meaningfully changed
+        if (statusChanged || assigneesChanged) {
+          const notifBody = statusChanged
+            ? `${currentUserName} marked "${title}" as ${status.replace('_', ' ')}`
+            : `${currentUserName} updated assignments on "${title}"`;
+          supabase.functions.invoke('notify-task-updated', {
+            body: {
+              task_id: prev.id,
+              project_id: prev.project_id,
+              task_title: title,
+              project_name: projectName,
+              updated_by_id: currentUserId,
+              updated_by_name: currentUserName,
+              change_description: notifBody,
+            },
+          }).catch(console.error);
         }
 
         setChecklist(normalizeChecklistItems(data.checklist));
@@ -613,7 +806,14 @@ export default function TaskDetailPanel({
   const handleDelete = async () => {
     if (!task) return;
     setDeleting(true);
-    await supabase.from('hub_project_tasks').delete().eq('id', task.id);
+    if (isDemo) {
+      onDeleted(task.id);
+      onClose();
+      setDeleting(false);
+      return;
+    }
+    // Soft delete — lands in the workspace trash, restorable for 30 days
+    await supabase.from('hub_project_tasks').update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', task.id);
     onDeleted(task.id);
     onClose();
     setDeleting(false);
@@ -622,6 +822,11 @@ export default function TaskDetailPanel({
   const handleArchive = async () => {
     if (!task) return;
     const archived_at = new Date().toISOString();
+    if (isDemo) {
+      onArchived?.(task.id);
+      onClose();
+      return;
+    }
     await supabase.from('hub_project_tasks').update({ archived: true, archived_at }).eq('id', task.id);
     onArchived?.(task.id);
     onClose();
@@ -660,6 +865,7 @@ export default function TaskDetailPanel({
 
   const saveChecklist = async (updated: ChecklistItem[]) => {
     if (!task) return;
+    if (isDemo) { onSaved({ ...task, checklist: normalizeChecklistItems(updated) }); return; }
     const { data, error } = await supabase
       .from('hub_project_tasks')
       .update({ checklist: normalizeChecklistItems(updated) })
@@ -716,26 +922,37 @@ export default function TaskDetailPanel({
   // ── Comments ───────────────────────────────────────────────────────────────
 
   const postComment = async () => {
-    const body = commentRef.current?.innerHTML?.trim() || newComment.trim();
-    if ((!body || body === '<br>') && !commentFile || !task) return;
+    const editor = commentEditorRef.current;
+    const body = editor && !editor.isEmpty() ? commentEditableToBody(editor.getHTML()) : '';
+    if ((!body && commentFiles.length === 0) || !task) return;
     setPosting(true);
     setCommentFileError(null);
 
-    let attachmentUrl: string | null = null;
-    let attachmentName: string | null = null;
-    let attachmentSize: number | null = null;
-    let attachmentMime: string | null = null;
+    if (isDemo) {
+      setComments(prev => [...prev, {
+        id: Date.now(), user_id: currentUserId, body, created_at: new Date().toISOString(),
+        author_name: currentUserName, author_avatar_url: currentUserAvatarUrl ?? null,
+        attachment_url: null, attachment_name: null, attachment_size: null, attachment_mime: null, attachments: null,
+        reactions: {}, seen_by: [], hub_users: { full_name: currentUserName, avatar_url: currentUserAvatarUrl ?? null },
+      } as Comment]);
+      setNewComment('');
+      editor?.clear();
+      setPosting(false);
+      return;
+    }
 
-    if (commentFile) {
+    const uploaded: CommentAttachment[] = [];
+
+    if (commentFiles.length > 0) {
       try {
         setUploadProgress(5);
         uploadProgressTimer.current = setInterval(() => {
           setUploadProgress(p => (p !== null && p < 88) ? p + 2 : p);
         }, 250);
-        attachmentUrl = await uploadFileToDrive(commentFile, 'task_attachment', { project_name: projectName });
-        attachmentName = commentFile.name;
-        attachmentSize = commentFile.size;
-        attachmentMime = commentFile.type || null;
+        for (const f of commentFiles) {
+          const url = await uploadFileToDrive(f, 'task_attachment', { project_id: String(task.project_id), project_name: projectName });
+          uploaded.push({ url, name: f.name, size: f.size, mime: f.type || null });
+        }
         if (uploadProgressTimer.current) clearInterval(uploadProgressTimer.current);
         setUploadProgress(100);
         await new Promise(r => setTimeout(r, 400));
@@ -749,38 +966,52 @@ export default function TaskDetailPanel({
       }
     }
 
+    // Legacy single-attachment columns mirror the first file so older readers keep working.
+    const first = uploaded[0] ?? null;
     const { data } = await supabase
       .from('hub_project_task_comments')
       .insert({
         task_id: task.id,
         user_id: currentUserId,
-        body: (commentRef.current?.innerHTML?.trim() || newComment).replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi,'\n').trim(),
+        body,
         author_name: currentUserName,
         author_avatar_url: currentUserAvatarUrl ?? null,
-        attachment_url: attachmentUrl,
-        attachment_name: attachmentName,
-        attachment_size: attachmentSize,
-        attachment_mime: attachmentMime,
+        attachment_url: first?.url ?? null,
+        attachment_name: first?.name ?? null,
+        attachment_size: first?.size ?? null,
+        attachment_mime: first?.mime ?? null,
+        attachments: uploaded.length > 0 ? uploaded : null,
       })
-      .select('id, user_id, body, created_at, author_name, author_avatar_url, attachment_url, attachment_name, attachment_size, attachment_mime')
+      .select('id, user_id, body, created_at, author_name, author_avatar_url, attachment_url, attachment_name, attachment_size, attachment_mime, attachments, seen_by')
       .single();
     if (data) {
       const { data: commenter } = await supabase.from('hub_users').select('full_name, avatar_url').eq('id', currentUserId).single();
-      const norm = { ...data, reactions: {}, hub_users: commenter ? { full_name: commenter.full_name, avatar_url: commenter.avatar_url ?? null } : { full_name: currentUserName, avatar_url: null } };
+      const norm = { ...data, reactions: {}, seen_by: (data as any).seen_by ?? [], hub_users: commenter ? { full_name: commenter.full_name, avatar_url: commenter.avatar_url ?? null } : { full_name: currentUserName, avatar_url: null } };
       setComments(prev => [...prev, norm]);
       await logActivity(task.id, 'comment_added', 'added a comment');
+      // Notify all assignees + admins about the comment
+      supabase.functions.invoke('notify-task-updated', {
+        body: {
+          task_id: task.id,
+          project_id: task.project_id,
+          task_title: task.title,
+          project_name: projectName,
+          updated_by_id: currentUserId,
+          updated_by_name: currentUserName,
+          change_description: `${currentUserName} commented on "${task.title}"`,
+          notification_type: 'task_comment',
+        },
+      }).catch(console.error);
       if (newComment.includes('@')) {
-        fetch(`${supabaseUrl_}/functions/v1/notify-task-mention`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${supabaseAnonKey_}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ comment_id: data.id, task_id: task.id, author_id: currentUserId, author_name: currentUserName, body: newComment.trim(), project_id: task.project_id }),
+        supabase.functions.invoke('notify-task-mention', {
+          body: { comment_id: data.id, task_id: task.id, author_id: currentUserId, author_name: currentUserName, body: newComment.trim(), project_id: task.project_id },
         }).catch(console.error);
       }
     }
     setNewComment('');
-    setCommentFile(null);
+    setCommentFiles([]);
     if (commentFileRef.current) commentFileRef.current.value = '';
-    if (commentRef.current) commentRef.current.innerHTML = '';
+    editor?.clear();
     setPosting(false);
   };
 
@@ -789,12 +1020,24 @@ export default function TaskDetailPanel({
     return m ? m[1] : null;
   };
 
+  const saveEditedComment = async (commentId: number) => {
+    const editor = editEditorRef.current;
+    if (!editor || editor.isEmpty()) return;
+    const body = commentEditableToBody(editor.getHTML());
+    setComments(prev => prev.map(x => x.id === commentId ? { ...x, body } : x));
+    setEditingCommentId(null);
+    if (isDemo) return;
+    await supabase.from('hub_project_task_comments').update({ body }).eq('id', commentId);
+  };
+
   const deleteComment = async (commentId: number) => {
+    if (isDemo) { setComments(prev => prev.filter(c => c.id !== commentId)); return; }
     const comment = comments.find(c => c.id === commentId);
     await supabase.from('hub_project_task_comments').delete().eq('id', commentId);
     setComments(prev => prev.filter(c => c.id !== commentId));
-    if (comment?.attachment_url) {
-      const fileId = driveFileIdFromUrl(comment.attachment_url);
+    const urls = comment?.attachments?.length ? comment.attachments.map(a => a.url) : (comment?.attachment_url ? [comment.attachment_url] : []);
+    for (const url of urls) {
+      const fileId = driveFileIdFromUrl(url);
       if (fileId) supabase.functions.invoke('delete-from-drive', { body: { fileId } }).catch(console.error);
     }
   };
@@ -811,60 +1054,9 @@ export default function TaskDetailPanel({
     const newReactions = { ...comment.reactions, [emoji]: updated };
     if (updated.length === 0) delete newReactions[emoji];
     setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: newReactions } : c));
+    if (isDemo) return;
     await supabase.from('hub_project_task_comments').update({ reactions: newReactions }).eq('id', commentId);
   };
-
-  // @mention handling
-  const handleCommentInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setNewComment(val);
-    const cursor = e.target.selectionStart;
-    const before = val.slice(0, cursor);
-    const atIdx = before.lastIndexOf('@');
-    if (atIdx >= 0 && !before.slice(atIdx).includes(' ')) {
-      setMentionQuery(before.slice(atIdx + 1).toLowerCase());
-      setMentionStart(atIdx);
-      setMentionOpen(true);
-    } else {
-      setMentionOpen(false);
-    }
-  };
-
-  const insertMention = (member: TeamMember) => {
-    const div = commentRef.current;
-    if (!div) { setMentionOpen(false); return; }
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      // Go back to find the @ character and replace query with mention
-      const node = range.startContainer;
-      const offset = range.startOffset;
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent ?? '';
-        const atIdx = text.lastIndexOf('@', offset - 1);
-        if (atIdx >= 0) {
-          const newRange = document.createRange();
-          newRange.setStart(node, atIdx);
-          newRange.setEnd(node, offset);
-          newRange.deleteContents();
-          const mention = document.createTextNode(`@${member.full_name.split(' ')[0]} `);
-          newRange.insertNode(mention);
-          const after = document.createRange();
-          after.setStartAfter(mention);
-          after.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(after);
-        }
-      }
-    }
-    setNewComment(div.innerText);
-    setMentionOpen(false);
-    div.focus();
-  };
-
-  const mentionMatches = teamMembers.filter(m =>
-    m.full_name.toLowerCase().includes(mentionQuery) && m.id !== currentUserId
-  );
 
   // ── Attachments ────────────────────────────────────────────────────────────
 
@@ -880,7 +1072,7 @@ export default function TaskDetailPanel({
     setUploading(true);
     setUploadError(null);
     try {
-      const url = await uploadFileToDrive(file, 'task_attachment', { project_name: projectName });
+      const url = await uploadFileToDrive(file, 'task_attachment', { project_id: String(task.project_id), project_name: projectName });
       const { data, error: insertErr } = await supabase
         .from('hub_project_task_attachments')
         .insert({ task_id: task.id, uploaded_by: currentUserId, name: file.name, url, size: file.size, mime_type: file.type })
@@ -907,18 +1099,6 @@ export default function TaskDetailPanel({
     setAttachments(prev => prev.filter(a => a.id !== att.id));
   };
 
-  // ── Watchers ───────────────────────────────────────────────────────────────
-
-  const toggleWatcher = async (userId: string) => {
-    if (!task) return;
-    if (watchers.includes(userId)) {
-      await supabase.from('hub_project_task_watchers').delete().eq('task_id', task.id).eq('user_id', userId);
-      setWatchers(prev => prev.filter(w => w !== userId));
-    } else {
-      await supabase.from('hub_project_task_watchers').insert({ task_id: task.id, user_id: userId });
-      setWatchers(prev => [...prev, userId]);
-    }
-  };
 
   // ── Checklist progress ─────────────────────────────────────────────────────
   const checkDone = checklist.filter(i => i.done).length;
@@ -941,42 +1121,20 @@ export default function TaskDetailPanel({
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-[520px] bg-white z-50 flex flex-col shadow-2xl overflow-x-hidden">
+      <div className="fixed right-0 top-0 h-full w-full max-w-[680px] bg-white z-50 flex flex-col shadow-2xl overflow-x-hidden">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="px-5 py-4 flex-shrink-0" style={{ background: taskColor || '#111827' }}>
-          <div className="flex items-start gap-3">
-            <div className="flex-1 min-w-0">
-              {editing ? (
-                <input
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  placeholder="Task title"
-                  className="w-full bg-white/10 text-white placeholder-white/40 rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/50"
-                  autoFocus={isNew}
-                />
-              ) : (
-                <h2 className="text-white font-bold text-base leading-snug">{title}</h2>
-              )}
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${sc.bg} ${sc.text}`}>
-                  <i className={`${sc.icon} text-[11px]`}></i>
-                  {sc.label}
-                </span>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${pc.cls}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`}></span>
-                  {pc.label}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+        {taskColor && <div className="h-1 flex-shrink-0" style={{ background: taskColor }} />}
+        <div className="px-8 pt-4 pb-2 flex-shrink-0 bg-white">
+          {/* Toolbar row — quiet ghost buttons, right-aligned */}
+          <div className="flex items-center justify-end gap-1 mb-1 -mr-2">
               {/* Color picker */}
               {(canEdit || isNew) && (
                 <div className="relative">
                   <button onClick={() => setShowColorPicker(p => !p)}
-                    className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
+                    className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                     title="Pick task color">
-                    <i className="ri-palette-line text-sm"></i>
+                    <i className="ri-palette-line text-base"></i>
                   </button>
                   {showColorPicker && (
                     <div className="absolute right-0 top-10 z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 p-3 w-[200px]">
@@ -1016,14 +1174,41 @@ export default function TaskDetailPanel({
                     if (editing) resetDescriptionEditor();
                     setEditing(e => !e);
                   }}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${editing ? 'bg-[#1c2b3a] text-white' : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'}`}>
-                  <i className="ri-edit-line text-sm"></i>
+                  title={editing ? 'Done editing' : 'Edit task'}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${editing ? 'bg-[#1c2b3a] text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}>
+                  <i className="ri-edit-line text-base"></i>
                 </button>
               )}
-              <button onClick={() => { void requestClose(); }} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer">
-                <i className="ri-close-line text-base"></i>
+              <button onClick={() => { void requestClose(); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
+                <i className="ri-close-line text-lg"></i>
               </button>
-            </div>
+          </div>
+
+          {/* Title + meta */}
+          {editing ? (
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Task title"
+              className="w-full text-xl font-semibold text-gray-900 placeholder-gray-300 focus:outline-none leading-snug"
+              autoFocus={isNew}
+            />
+          ) : (
+            <h2 className="text-xl font-semibold text-gray-900 leading-snug">{title}</h2>
+          )}
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap pb-2">
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${sc.bg} ${sc.text}`}>
+              <i className={`${sc.icon} text-[11px]`}></i>{sc.label}
+            </span>
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${pc.cls}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`}></span>{pc.label}
+            </span>
+            {!isNew && (() => {
+              const creator = activity.find(a => a.type === 'created');
+              return creator ? (
+                <span className="text-gray-400 text-xs">by {creator.actor_name.split(' ')[0]}</span>
+              ) : null;
+            })()}
           </div>
         </div>
 
@@ -1031,210 +1216,200 @@ export default function TaskDetailPanel({
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
 
           {/* Properties */}
-          <div className="p-5 space-y-4 border-b border-gray-100">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="px-8 py-4 space-y-1.5 border-b border-gray-100/80">
 
-              {/* Status */}
-              <div>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Status</p>
-                {editing ? (
-                  <select value={status} onChange={e => setStatus(e.target.value as TaskDetailTask['status'])}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white">
-                    {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
-                ) : (
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold ${sc.bg} ${sc.text}`}>
-                    <i className={`${sc.icon} text-xs`}></i>{sc.label}
-                  </span>
-                )}
-              </div>
-
-              {/* Priority */}
-              <div>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Priority</p>
-                {editing ? (
-                  <select value={priority} onChange={e => setPriority(e.target.value as TaskDetailTask['priority'])}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white">
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                ) : (
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${pc.cls}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`}></span>{pc.label}
-                  </span>
-                )}
-              </div>
-
-              {/* Assignee */}
-              <div>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Assignees</p>
-                {editing ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setAssigneeIds([])}
-                      className={`px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer ${assigneeIds.length === 0 ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}
-                    >
-                      Unassigned
-                    </button>
-                    {teamMembers.map((member) => {
-                      const selected = assigneeIds.includes(member.id);
-                      return (
-                        <button
-                          key={member.id}
-                          type="button"
-                          onClick={() => setAssigneeIds((prev) => selected ? prev.filter((id) => id !== member.id) : [...prev, member.id])}
-                          className={`flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full border transition-all cursor-pointer ${selected ? 'border-[#1c2b3a]/50 bg-slate-50' : 'border-gray-200 hover:border-gray-300'}`}
-                        >
-                          <Avatar name={member.full_name} url={member.avatar_url} size={4} />
-                          <span className={`text-xs font-medium ${selected ? 'text-[#1c2b3a]' : 'text-gray-600'}`}>{member.full_name.split(' ')[0]}</span>
+            {/* Status — only show in body when editing (header already shows it in view mode) */}
+            {editing && (
+              <div className="flex items-center h-8 gap-3">
+                <span className="text-xs text-gray-400 w-24 flex-shrink-0">Status</span>
+                <div className="relative">
+                  <button type="button"
+                    onClick={() => setShowStatusDropdown(v => !v)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer hover:opacity-80 ${sc.bg} ${sc.text}`}>
+                    <i className={`${sc.icon} text-xs`}></i>
+                    {sc.label}
+                    <i className="ri-arrow-down-s-line text-xs ml-0.5 opacity-60"></i>
+                  </button>
+                  {showStatusDropdown && (
+                    <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-xl shadow-xl z-20 py-1.5 min-w-[160px]">
+                      {Object.entries(STATUS_CFG).map(([k, v]) => (
+                        <button key={k} type="button"
+                          onClick={() => { setStatus(k as TaskDetailTask['status']); setShowStatusDropdown(false); }}
+                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-gray-50 transition-colors cursor-pointer ${status === k ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
+                          <span className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${v.bg}`}>
+                            <i className={`${v.icon} ${v.text} text-xs`}></i>
+                          </span>
+                          {v.label}
+                          {status === k && <i className="ri-check-line ml-auto text-[#1c2b3a]"></i>}
                         </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  selectedAssignees.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {selectedAssignees.map((member) => (
-                        <div key={member.id} className="flex items-center gap-1.5 rounded-full bg-gray-50 px-2 py-1">
-                          <Avatar name={member.full_name} url={member.avatar_url} size={5} />
-                          <span className="text-xs font-medium text-gray-700">{member.full_name.split(' ')[0]}</span>
-                        </div>
                       ))}
                     </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">Unassigned</span>
-                  )
-                )}
+                  )}
+                </div>
               </div>
-
-              {/* Due date */}
-              <div>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Due Date</p>
-                {editing ? (
-                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white" />
-                ) : (
-                  <span className="text-xs text-gray-700">{dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : <span className="text-gray-400">—</span>}</span>
-                )}
+            )}
+            {editing && status === 'blocked' && (
+              <div className="flex items-center h-8 gap-3">
+                <span className="text-xs text-gray-400 w-24 flex-shrink-0">Blocked by</span>
+                <input
+                  value={blockedReason}
+                  onChange={e => setBlockedReason(e.target.value)}
+                  placeholder="What's blocking this? e.g. waiting on client assets"
+                  className="flex-1 px-2.5 py-1.5 text-xs border border-rose-200 bg-rose-50/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-300"
+                />
               </div>
+            )}
+            {!editing && status === 'blocked' && blockedReason.trim() && (
+              <div className="flex items-start gap-2 px-3 py-2 my-1 bg-rose-50 border border-rose-100 rounded-xl">
+                <i className="ri-indeterminate-circle-line text-rose-500 text-sm flex-shrink-0 mt-px"></i>
+                <p className="text-xs text-rose-700 leading-snug"><span className="font-semibold">Blocked:</span> {blockedReason}</p>
+              </div>
+            )}
 
-              {/* Start date */}
-              <div>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Start Date</p>
-                {editing ? (
+            {/* Priority — only show in body when editing */}
+            {editing && (
+              <div className="flex items-center h-8 gap-3">
+                <span className="text-xs text-gray-400 w-24 flex-shrink-0">Priority</span>
+                <div className="flex gap-1.5">
+                  {([['high','High','bg-rose-100 text-rose-600','bg-rose-400'],['medium','Medium','bg-amber-100 text-amber-700','bg-amber-400'],['low','Low','bg-gray-100 text-gray-500','bg-gray-300']] as const).map(([k, label, cls, dot]) => {
+                    const active = priority === k;
+                    return (
+                      <button key={k} type="button"
+                        onClick={() => setPriority(k as TaskDetailTask['priority'])}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${active ? cls : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? dot : 'bg-gray-300'}`}></span>{label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Assignees */}
+            <div className="flex items-start gap-3 py-1">
+              <span className="text-xs text-gray-400 w-24 flex-shrink-0 pt-1">Assignees</span>
+              {editing ? (
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => setAssigneeIds([])}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-all cursor-pointer ${assigneeIds.length === 0 ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
+                    None
+                  </button>
+                  {teamMembers.map((member) => {
+                    const selected = assigneeIds.includes(member.id);
+                    return (
+                      <button key={member.id} type="button"
+                        onClick={() => setAssigneeIds((prev) => selected ? prev.filter((id) => id !== member.id) : [...prev, member.id])}
+                        className={`flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-lg border transition-all cursor-pointer ${selected ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <Avatar name={member.full_name} url={member.avatar_url} size={4} />
+                        <span className={`text-[11px] font-medium ${selected ? 'text-indigo-700' : 'text-gray-600'}`}>{member.full_name.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : selectedAssignees.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {selectedAssignees.map((member) => (
+                    <div key={member.id} className="flex items-center gap-1.5 rounded-md hover:bg-gray-100 pl-0.5 pr-2 py-0.5 transition-colors">
+                      <Avatar name={member.full_name} url={member.avatar_url} size={5} />
+                      <span className="text-[13px] text-gray-700">{member.full_name.split(' ')[0]}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <span className="text-[13px] text-gray-300 pt-1">Empty</span>}
+            </div>
+
+            {/* Dates */}
+            <div className="flex items-center h-8 gap-3">
+              <span className="text-xs text-gray-400 w-24 flex-shrink-0">Dates</span>
+              {editing ? (
+                <div className="flex items-center gap-2 flex-1">
                   <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white" />
-                ) : (
-                  <span className="text-xs text-gray-700">{startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : <span className="text-gray-400">—</span>}</span>
-                )}
-              </div>
-
-              {/* Watchers */}
-              {!isNew && (
-                <div className="col-span-2">
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Watchers</p>
-                  <div className="flex items-center flex-wrap gap-1.5">
-                    {teamMembers.map(m => {
-                      const watching = watchers.includes(m.id);
-                      return (
-                        <button key={m.id} onClick={() => toggleWatcher(m.id)}
-                          title={m.full_name}
-                          className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer ${watching ? 'bg-[#1c2b3a] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                          <Avatar name={m.full_name} url={m.avatar_url} size={4} />
-                          {m.full_name.split(' ')[0]}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white" />
+                  <i className="ri-arrow-right-line text-gray-300 text-xs flex-shrink-0"></i>
+                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-[13px]">
+                  {startDate
+                    ? <span className="text-gray-700 hover:bg-gray-100 rounded-md px-1.5 py-0.5 -mx-0.5 transition-colors">{new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    : <span className="text-gray-300">Empty</span>}
+                  <i className="ri-arrow-right-line text-gray-300 text-[11px]"></i>
+                  {dueDate
+                    ? <span className={`rounded-md px-1.5 py-0.5 font-medium transition-colors ${dueDate < new Date().toISOString().split('T')[0] ? 'bg-rose-50 text-rose-600' : 'text-gray-700 hover:bg-gray-100'}`}>
+                        {new Date(dueDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    : <span className="text-gray-300">Empty</span>}
                 </div>
               )}
             </div>
+
           </div>
 
           {/* Description */}
-          <div className="p-5 border-b border-gray-100">
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">Description</p>
+          <div className="px-8 py-5">
+            <p className="text-xs font-medium text-gray-400 mb-2">Description</p>
             {editing ? (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-2 py-2">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('bold'); }}
-                    className="px-2.5 py-1 text-xs font-semibold text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('italic'); }}
-                    className="px-2.5 py-1 text-xs italic text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('underline'); }}
-                    className="px-2.5 py-1 text-xs underline text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    U
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('insertUnorderedList'); }}
-                    className="px-2.5 py-1 text-xs text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    List
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('fontName', 'Georgia'); }}
-                    className="px-2.5 py-1 text-xs text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    Serif
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('fontName', 'Arial'); }}
-                    className="px-2.5 py-1 text-xs text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    Sans
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('fontSize', '2'); }}
-                    className="px-2 py-1 text-[11px] text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    Small
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionBlock('p'); }}
-                    className="px-2 py-1 text-xs text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('fontSize', '5'); }}
-                    className="px-2 py-1 text-xs text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    Large
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionBlock('h2'); }}
-                    className="px-2 py-1 text-xs text-gray-600 rounded-lg bg-white border border-gray-200 hover:border-gray-300 cursor-pointer"
-                  >
-                    Title
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('removeFormat'); }}
-                    className="ml-auto px-2.5 py-1 text-xs text-gray-500 rounded-lg hover:text-gray-700 cursor-pointer"
-                  >
-                    Clear
+              <div className="rounded-xl border border-gray-200 overflow-hidden">
+                {/* Toolbar */}
+                <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
+                  {/* Format group */}
+                  <div className="flex items-center">
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('bold'); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors font-bold text-xs">B</button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('italic'); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors italic text-xs">I</button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('underline'); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors underline text-xs">U</button>
+                  </div>
+
+                  <div className="w-px h-4 bg-gray-200 mx-1" />
+
+                  {/* Block group */}
+                  <div className="flex items-center gap-0.5">
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionBlock('h2'); }}
+                      className="h-7 px-2 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors text-[11px] font-semibold">H</button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionBlock('p'); }}
+                      className="h-7 px-2 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors text-[11px]">¶</button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('insertUnorderedList'); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors">
+                      <i className="ri-list-unordered text-sm"></i>
+                    </button>
+                  </div>
+
+                  <div className="w-px h-4 bg-gray-200 mx-1" />
+
+                  {/* Size group — numeric px sizes */}
+                  <select
+                    defaultValue=""
+                    onMouseDown={e => e.stopPropagation()}
+                    onChange={e => {
+                      const px = Number(e.target.value);
+                      if (px) applyDescriptionFontSize(px);
+                      e.target.value = '';
+                    }}
+                    title="Font size"
+                    className="h-7 px-1 rounded-md text-[11px] text-gray-500 bg-transparent hover:bg-gray-200 cursor-pointer focus:outline-none transition-colors">
+                    <option value="" disabled>Size</option>
+                    {[12, 13, 14, 16, 18, 20, 24, 28, 32].map(px => (
+                      <option key={px} value={px}>{px}px</option>
+                    ))}
+                  </select>
+
+                  <div className="w-px h-4 bg-gray-200 mx-1" />
+
+                  {/* Font group */}
+                  <div className="flex items-center gap-0.5">
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('fontName', 'Georgia'); }}
+                      className="h-7 px-2 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors text-[11px]" style={{ fontFamily: 'Georgia' }}>Serif</button>
+                    <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('fontName', 'Arial'); }}
+                      className="h-7 px-2 flex items-center justify-center rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-800 cursor-pointer transition-colors text-[11px]">Sans</button>
+                  </div>
+
+                  {/* Clear — pushed right */}
+                  <button type="button" onMouseDown={(e) => { e.preventDefault(); applyDescriptionCommand('removeFormat'); }}
+                    className="ml-auto h-7 px-2 flex items-center justify-center rounded-md text-gray-400 hover:text-rose-500 hover:bg-rose-50 cursor-pointer transition-colors text-[11px]">
+                    <i className="ri-eraser-line text-sm"></i>
                   </button>
                 </div>
                 <div
@@ -1286,39 +1461,42 @@ export default function TaskDetailPanel({
                       });
                     }
                   }}
-                  data-placeholder="Add a description… (paste images directly)"
-                  className="w-full text-sm text-gray-700 border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white min-h-[120px] empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                  data-placeholder="Describe the scope, specs, or notes for this task — paste images directly"
+                  className="w-full text-sm text-gray-700 px-3 py-3 focus:outline-none bg-white min-h-[120px] empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1"
                 />
               </div>
             ) : (
-              <div className="text-sm text-gray-600 leading-relaxed [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-gray-100 [&_img]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1">
+              <div
+                onClick={() => { if (canEdit && !isNew) setEditing(true); }}
+                title={canEdit && !isNew ? 'Click to edit' : undefined}
+                className={`text-sm text-gray-600 leading-relaxed rounded-lg -mx-2 px-2 py-1 transition-colors ${canEdit && !isNew ? 'cursor-text hover:bg-gray-50' : ''} [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-gray-100 [&_img]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1`}>
                 {description
                   ? <div dangerouslySetInnerHTML={{ __html: renderDescription(description) }} />
-                  : <span className="text-gray-400 italic">No description</span>}
+                  : <span className="text-gray-300">Describe the scope, specs, or notes for this task…</span>}
               </div>
             )}
           </div>
 
           {/* Checklist */}
-          <div className="p-5 border-b border-gray-100">
+          <div className="px-8 py-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Checklist</p>
+                <p className="text-xs font-medium text-gray-400">Checklist</p>
                 {checklist.length > 0 && (
-                  <span className="text-[10px] text-gray-400">{checkDone}/{checklist.length} · {checkPct}%</span>
+                  <span className="text-[10px] bg-gray-100 text-gray-500 font-medium px-1.5 py-0.5 rounded-full">{checkDone}/{checklist.length}</span>
                 )}
               </div>
             </div>
             {checklist.length > 0 && (
               <div className="mb-3">
                 <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-3">
-                  <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${checkPct}%` }} />
+                  <div className={`h-full rounded-full transition-all ${checkPct === 100 ? 'bg-emerald-400' : 'bg-[#1c2b3a]'}`} style={{ width: `${checkPct}%` }} />
                 </div>
                 <div className="space-y-1.5">
                   {checklist.map(item => (
                     <div
                       key={item.id}
-                      className={`group rounded transition-colors ${dragOverCheckId === item.id && dragCheckId !== item.id ? 'bg-slate-50 ring-1 ring-[#1c2b3a]/30' : ''}`}
+                      className={`group rounded transition-colors ${dragOverCheckId === item.id && dragCheckId !== item.id ? 'bg-orange-50 ring-1 ring-[#1c2b3a]/30' : ''}`}
                       draggable={!!(editing || canEdit)}
                       onDragStart={() => { setDragCheckId(item.id); setDragOverCheckId(null); }}
                       onDragOver={e => { e.preventDefault(); setDragOverCheckId(item.id); }}
@@ -1335,13 +1513,13 @@ export default function TaskDetailPanel({
                         </button>
                         <span className={`flex-1 text-sm ${item.done ? 'line-through text-gray-400' : 'text-gray-700'}`}>{item.text}</span>
                         {item.assignee_id && (
-                          <div className="flex items-center gap-1 rounded-full bg-slate-50 px-1.5 py-1">
+                          <div className="flex items-center gap-1 rounded-full bg-indigo-50 px-1.5 py-1">
                             <Avatar
                               name={teamMembers.find((member) => member.id === item.assignee_id)?.full_name ?? '?'}
                               url={teamMembers.find((member) => member.id === item.assignee_id)?.avatar_url}
                               size={4}
                             />
-                            <span className="text-[10px] font-medium text-[#1c2b3a]">
+                            <span className="text-[10px] font-medium text-indigo-700">
                               {(teamMembers.find((member) => member.id === item.assignee_id)?.full_name ?? '').split(' ')[0] || 'Assigned'}
                             </span>
                           </div>
@@ -1374,7 +1552,7 @@ export default function TaskDetailPanel({
                             }}
                             className="mb-2 w-full text-xs text-gray-600 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1c2b3a]/30"
                           >
-                            <option value="">No contractor assigned</option>
+                            <option value="">No employee assigned</option>
                             {teamMembers.map((member) => (
                               <option key={member.id} value={member.id}>{member.full_name}</option>
                             ))}
@@ -1408,29 +1586,36 @@ export default function TaskDetailPanel({
               </div>
             )}
             {(canEdit || isNew) && (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-gray-50 focus-within:bg-gray-50 transition-colors">
+                <i className="ri-add-line text-gray-300 text-base flex-shrink-0"></i>
                 <input
                   value={newCheckItem}
                   onChange={e => setNewCheckItem(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCheckItem(); } }}
-                  placeholder="Add item…"
-                  className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white"
+                  placeholder="Add an item…"
+                  className="flex-1 text-sm bg-transparent focus:outline-none text-gray-700 placeholder-gray-400"
                 />
-                <button onClick={addCheckItem}
-                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 transition-colors cursor-pointer">
-                  Add
-                </button>
+                {newCheckItem.trim() && (
+                  <button onClick={addCheckItem}
+                    className="flex-shrink-0 w-6 h-6 bg-[#1c2b3a] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#e55a25] transition-colors">
+                    <i className="ri-arrow-right-line text-white text-xs"></i>
+                  </button>
+                )}
               </div>
             )}
           </div>
 
-          {/* Attachments */}
           {/* Custom Fields */}
           {(canEdit || customFields.length > 0) && (
-          <div className="p-5 border-b border-gray-100">
+          <div className="px-8 py-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Custom Fields</p>
-              {canEdit && <button onClick={() => setShowAddField(v => !v)} className="text-[11px] text-[#1c2b3a] hover:underline cursor-pointer">+ Add field</button>}
+              <p className="text-xs font-medium text-gray-400">Custom Fields</p>
+              {canEdit && (
+                <button onClick={() => setShowAddField(v => !v)}
+                  className="flex items-center gap-1 text-[11px] text-[#1c2b3a] hover:text-[#e55a25] cursor-pointer font-medium transition-colors">
+                  <i className="ri-add-line text-xs"></i>Add field
+                </button>
+              )}
             </div>
             <div className="space-y-2">
               {customFields.map(f => {
@@ -1439,7 +1624,7 @@ export default function TaskDetailPanel({
                 const isEditing = editingFieldId === f.id;
                 const saveField = () => {
                   setEditingFieldId(null);
-                  if (task?.id) supabase.from('hub_project_tasks').update({ meta: { custom_fields: customFields } }).eq('id', task.id)
+                  if (task?.id) supabase.from('hub_project_tasks').update({ meta: buildTaskMetaPayload(customFields, status, blockedReason) }).eq('id', task.id)
                     .select('*').single().then(({ data }) => { if (data) onSaved({ ...task, ...data } as TaskDetailTask); });
                 };
                 return (
@@ -1449,7 +1634,8 @@ export default function TaskDetailPanel({
                       <div className="flex-1 flex gap-1">
                         <input autoFocus value={f.value} onChange={e => setCustomFields(customFields.map(x => x.id === f.id ? { ...x, value: e.target.value } : x))}
                           onKeyDown={e => { if (e.key === 'Enter') saveField(); if (e.key === 'Escape') setEditingFieldId(null); }}
-                          className="flex-1 text-xs border border-[#1c2b3a]/50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1c2b3a]/30" />
+                          placeholder="Add link here…"
+                          className="flex-1 text-xs border border-[#1c2b3a]/50 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1c2b3a]/30 placeholder-gray-400" />
                         <button onClick={saveField} className="px-2 py-1 bg-[#1c2b3a] text-white text-[10px] rounded-lg cursor-pointer">Save</button>
                       </div>
                     ) : (
@@ -1473,7 +1659,7 @@ export default function TaskDetailPanel({
                       <button onClick={() => {
                         const updated = customFields.filter(x => x.id !== f.id);
                         setCustomFields(updated);
-                        if (task?.id) supabase.from('hub_project_tasks').update({ meta: { custom_fields: updated } }).eq('id', task.id)
+                        if (task?.id) supabase.from('hub_project_tasks').update({ meta: buildTaskMetaPayload(updated, status, blockedReason) }).eq('id', task.id)
                         .select('*').single().then(({ data }) => { if (data) onSaved({ ...task, ...data } as TaskDetailTask); });
                       }} className="text-gray-300 hover:text-rose-500 cursor-pointer transition-all flex-shrink-0">
                         <i className="ri-delete-bin-line text-[10px]"></i>
@@ -1491,7 +1677,7 @@ export default function TaskDetailPanel({
                       setCustomFields(updated);
                       setNewFieldLabel(''); setShowAddField(false);
                       setEditingFieldId(id); // immediately open for editing
-                      if (task?.id) supabase.from('hub_project_tasks').update({ meta: { custom_fields: updated } }).eq('id', task.id)
+                      if (task?.id) supabase.from('hub_project_tasks').update({ meta: buildTaskMetaPayload(updated, status, blockedReason) }).eq('id', task.id)
                         .select('*').single().then(({ data }) => { if (data) onSaved({ ...task, ...data } as TaskDetailTask); });
                     }}}
                     className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#1c2b3a]/30" autoFocus />
@@ -1502,7 +1688,7 @@ export default function TaskDetailPanel({
                     setCustomFields(updated);
                     setNewFieldLabel(''); setShowAddField(false);
                     setEditingFieldId(id);
-                    if (task?.id) supabase.from('hub_project_tasks').update({ meta: { custom_fields: updated } }).eq('id', task.id)
+                    if (task?.id) supabase.from('hub_project_tasks').update({ meta: buildTaskMetaPayload(updated, status, blockedReason) }).eq('id', task.id)
                         .select('*').single().then(({ data }) => { if (data) onSaved({ ...task, ...data } as TaskDetailTask); });
                   }} className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs cursor-pointer">Add</button>
                 </div>
@@ -1511,13 +1697,18 @@ export default function TaskDetailPanel({
           </div>
           )}
 
-          <div className="p-5 border-b border-gray-100">
+          <div className="px-8 py-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Attachments</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-gray-400">Attachments</p>
+                {attachments.length > 0 && (
+                  <span className="text-[10px] bg-gray-100 text-gray-500 font-medium px-1.5 py-0.5 rounded-full">{attachments.length}</span>
+                )}
+              </div>
               {(canEdit || isNew) && (
                 <button onClick={() => fileRef.current?.click()}
                   disabled={uploading}
-                  className="flex items-center gap-1 text-[11px] text-[#1c2b3a] hover:underline disabled:opacity-40 cursor-pointer">
+                  className="flex items-center gap-1 text-[11px] text-[#1c2b3a] hover:text-[#e55a25] disabled:opacity-40 cursor-pointer font-medium transition-colors">
                   <i className="ri-upload-2-line text-xs"></i>
                   {isNew ? (pendingAttachment ? 'Change file' : 'Add file') : (uploading ? 'Uploading…' : 'Upload')}
                 </button>
@@ -1535,62 +1726,53 @@ export default function TaskDetailPanel({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-gray-700 truncate">{pendingAttachment.name}</p>
-                    <p className="text-[10px] text-gray-400">{fmtBytes(pendingAttachment.size)} · Uploads when the task is created</p>
+                    <p className="text-[10px] text-gray-400">{fmtBytes(pendingAttachment.size)} · Uploads when task is created</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={clearPendingAttachment}
-                    className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer"
-                  >
+                  <button type="button" onClick={clearPendingAttachment}
+                    className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer">
                     <i className="ri-delete-bin-line text-sm"></i>
                   </button>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic">Optional. Add a file now and it will upload when the task is created.</p>
+                <button onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-[#1c2b3a] transition-colors cursor-pointer">
+                  <i className="ri-upload-cloud-2-line text-sm"></i>
+                  Attach a file
+                </button>
               )
             ) : attachments.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No attachments yet</p>
+              <button onClick={() => (canEdit || isNew) && fileRef.current?.click()}
+                className="w-full flex flex-col items-center gap-1.5 py-6 border border-dashed border-gray-200 rounded-xl text-gray-400 hover:border-[#1c2b3a]/40 hover:text-[#1c2b3a] hover:bg-orange-50/30 transition-all cursor-pointer">
+                <i className="ri-upload-cloud-2-line text-xl"></i>
+                <span className="text-xs">Click to upload a file</span>
+              </button>
             ) : (
               <div className="space-y-2">
                 {attachments.map(att => {
                   const isImg = isImageAttachment(att);
                   const canPreview = canInlinePreview(att);
+                  const openAtt = () => canPreview ? setPreviewAttachment(att) : window.open(att.url, '_blank');
                   return (
-                    <div key={att.id} className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl group">
-                      <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div key={att.id}
+                      onClick={openAtt}
+                      className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl group cursor-pointer hover:bg-gray-100 transition-colors">
+                      <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {isImg && getAttachmentThumbnailUrl(att)
                           ? <img src={getAttachmentThumbnailUrl(att)!} alt={att.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
-                          : <i className={`${isImg ? 'ri-image-line text-sky-500' : 'ri-file-line text-gray-500'} text-sm`}></i>}
+                          : <i className={`${isImg ? 'ri-image-line text-sky-500' : 'ri-file-3-line text-gray-500'} text-lg`}></i>}
                       </div>
                       <div className="flex-1 min-w-0">
-                        {canPreview ? (
-                          <button
-                            type="button"
-                            onClick={() => setPreviewAttachment(att)}
-                            className="text-xs font-medium text-gray-700 hover:text-[#1c2b3a] truncate block cursor-pointer"
-                          >
-                            {att.name}
-                          </button>
-                        ) : (
-                          <a href={att.url} target="_blank" rel="noopener noreferrer"
-                            className="text-xs font-medium text-gray-700 hover:text-[#1c2b3a] truncate block">{att.name}</a>
-                        )}
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-sm font-medium text-gray-800 truncate">{att.name}</p>
+                        <p className="text-xs text-gray-400">
                           {att.size ? `${fmtBytes(att.size)} · ` : ''}
                           {new Date(att.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
                           {new Date(att.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         </p>
                       </div>
                       {canPreview && (
-                        <button
-                          type="button"
-                          onClick={() => setPreviewAttachment(att)}
-                          className="text-[10px] text-sky-600 hover:text-sky-700 cursor-pointer whitespace-nowrap"
-                        >
-                          Preview
-                        </button>
+                        <span className="text-xs text-sky-600 group-hover:text-sky-700 whitespace-nowrap">Preview</span>
                       )}
-                      <button onClick={() => deleteAttachment(att)}
+                      <button onClick={e => { e.stopPropagation(); deleteAttachment(att); }}
                         className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-rose-500 transition-all cursor-pointer">
                         <i className="ri-delete-bin-line text-sm"></i>
                       </button>
@@ -1679,12 +1861,15 @@ export default function TaskDetailPanel({
 
           {/* Comments */}
           {!isNew && (
-            <div className="p-5 border-b border-gray-100">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-3">
-                Comments {comments.length > 0 && <span className="text-gray-300">· {comments.length}</span>}
-              </p>
+            <div className="px-8 py-5 border-t border-gray-100/80">
+              <div className="flex items-center gap-2 mb-4">
+                <p className="text-xs font-medium text-gray-400">Comments</p>
+                {comments.length > 0 && <span className="text-[10px] bg-gray-100 text-gray-500 font-medium px-1.5 py-0.5 rounded-full">{comments.length}</span>}
+              </div>
               <div className="space-y-4 mb-4">
-                {comments.length === 0 && <p className="text-xs text-gray-400 italic">No comments yet</p>}
+                {comments.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-3">No comments yet — be the first</p>
+                )}
                 {comments.map(c => (
                   <div key={c.id} className="flex gap-2.5 group">
                     <Avatar name={c.hub_users?.full_name ?? c.author_name ?? '?'} url={c.hub_users?.avatar_url ?? c.author_avatar_url} size={7} />
@@ -1692,9 +1877,16 @@ export default function TaskDetailPanel({
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-semibold text-gray-800">{c.hub_users?.full_name ?? c.author_name ?? 'Unknown'}</span>
                         <span className="text-[10px] text-gray-400">{timeAgo(c.created_at)}</span>
+                        {(c.seen_by ?? []).length > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-[10px] text-gray-300"
+                            title={`Seen by ${(c.seen_by ?? []).map(id => teamMembers.find(m => m.id === id)?.full_name.split(' ')[0] ?? 'someone').join(', ')}`}>
+                            <i className="ri-eye-line"></i>{(c.seen_by ?? []).length}
+                          </span>
+                        )}
                         {c.user_id === currentUserId && (
                           <div className="ml-auto flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                            <button onClick={() => { setEditingCommentId(c.id); setEditingCommentBody(c.body); }}
+                            <button onClick={() => { setEditingCommentId(c.id); setEditingCommentBody(bodyToEditorHTML(c.body)); }}
                               className="text-gray-300 hover:text-sky-500 text-xs cursor-pointer"><i className="ri-pencil-line"></i></button>
                             <button onClick={() => deleteComment(c.id)}
                               className="text-gray-300 hover:text-rose-500 text-xs cursor-pointer"><i className="ri-delete-bin-line"></i></button>
@@ -1703,14 +1895,18 @@ export default function TaskDetailPanel({
                       </div>
                       {editingCommentId === c.id ? (
                         <div className="space-y-1.5">
-                          <textarea value={editingCommentBody} onChange={e => setEditingCommentBody(e.target.value)} rows={2}
-                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#1c2b3a]/30 resize-none" />
+                          <CommentEditor
+                            ref={editEditorRef}
+                            users={teamMembers.filter(m => m.id !== currentUserId)}
+                            initialHTML={editingCommentBody}
+                            autoFocus
+                            minHeight={40}
+                            onSubmit={() => saveEditedComment(c.id)}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 bg-white focus-within:ring-1 focus-within:ring-[#1c2b3a]/30 transition-shadow"
+                          />
                           <div className="flex gap-2">
-                            <button onClick={async () => {
-                              await supabase.from('hub_project_task_comments').update({ body: editingCommentBody }).eq('id', c.id);
-                              setComments(prev => prev.map(x => x.id === c.id ? { ...x, body: editingCommentBody } : x));
-                              setEditingCommentId(null);
-                            }} className="px-3 py-1 text-xs bg-[#111827] text-white rounded-lg cursor-pointer">Save</button>
+                            <button onClick={() => saveEditedComment(c.id)}
+                              className="px-3 py-1 text-xs bg-[#111827] text-white rounded-lg cursor-pointer">Save</button>
                             <button onClick={() => setEditingCommentId(null)} className="px-3 py-1 text-xs text-gray-400 hover:text-gray-600 cursor-pointer">Cancel</button>
                           </div>
                         </div>
@@ -1720,68 +1916,100 @@ export default function TaskDetailPanel({
                           className={`text-sm text-gray-700 leading-relaxed ${renderCommentBody(c.body).isHtml ? '[&_a]:text-blue-600 [&_a]:underline [&_ul]:list-disc [&_ul]:ml-5 [&_ol]:list-decimal [&_ol]:ml-5 [&_li]:my-0.5' : 'whitespace-pre-wrap'}`}
                           dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body).html }}
                         />}
-                        {c.attachment_url && (() => {
-                          const fid = driveFileIdFromUrl(c.attachment_url);
-                          const isImage = c.attachment_mime?.startsWith('image/');
-                          const thumbUrl = fid ? `https://drive.google.com/thumbnail?id=${fid}&sz=w400` : null;
-                          const downloadUrl = fid ? `https://drive.google.com/uc?export=download&id=${fid}` : c.attachment_url;
+                        {(() => {
+                          const atts: CommentAttachment[] = c.attachments?.length
+                            ? c.attachments
+                            : c.attachment_url
+                              ? [{ url: c.attachment_url, name: c.attachment_name ?? 'File', size: c.attachment_size, mime: c.attachment_mime }]
+                              : [];
+                          if (atts.length === 0) return null;
+                          const images = atts.filter(a => a.mime?.startsWith('image/'));
+                          const files = atts.filter(a => !a.mime?.startsWith('image/'));
                           return (
-                            <div className="mt-1.5 space-y-1">
-                              {isImage && thumbUrl && (
-                                <button onClick={() => setCommentPreview({ url: c.attachment_url!, name: c.attachment_name ?? 'Image', mime: c.attachment_mime ?? null })}
-                                  className="block rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity max-w-[220px]">
-                                  <img src={thumbUrl} alt={c.attachment_name ?? ''} className="w-full object-cover" />
-                                </button>
+                            <div className="mt-1.5 space-y-1.5">
+                              {images.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {images.map((a, i) => {
+                                    const fid = driveFileIdFromUrl(a.url);
+                                    const thumbUrl = fid ? `https://drive.google.com/thumbnail?id=${fid}&sz=w400` : a.url;
+                                    const downloadUrl = fid ? `https://drive.google.com/uc?export=download&id=${fid}` : a.url;
+                                    return (
+                                      <div key={i} className="relative group/att">
+                                        <button onClick={() => setCommentPreview({ url: a.url, name: a.name, mime: a.mime })}
+                                          className={`block rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity cursor-pointer ${images.length === 1 ? 'max-w-[220px]' : 'w-[106px] h-[106px]'}`}>
+                                          <img src={thumbUrl} alt={a.name} className={`w-full object-cover ${images.length === 1 ? '' : 'h-full'}`} />
+                                        </button>
+                                        <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download title="Download"
+                                          onClick={e => e.stopPropagation()}
+                                          className="absolute top-1 right-1 w-6 h-6 rounded-md bg-black/50 text-white flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity">
+                                          <i className="ri-download-line text-xs"></i>
+                                        </a>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               )}
-                              <div className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 max-w-xs">
-                                <i className={`${isImage ? 'ri-image-line' : 'ri-file-line'} text-gray-400 text-sm flex-shrink-0`}></i>
-                                <span className="text-xs text-gray-700 truncate flex-1">{c.attachment_name}</span>
-                                {c.attachment_size && <span className="text-[10px] text-gray-400 flex-shrink-0">{(c.attachment_size / 1024).toFixed(0)} KB</span>}
-                                <button onClick={() => setCommentPreview({ url: c.attachment_url!, name: c.attachment_name ?? 'File', mime: c.attachment_mime ?? null })}
-                                  title="Preview" className="ml-1 text-gray-400 hover:text-sky-500 transition-colors cursor-pointer flex-shrink-0">
-                                  <i className="ri-eye-line text-xs"></i>
-                                </button>
-                                <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download
-                                  title="Download" className="text-gray-400 hover:text-emerald-500 transition-colors flex-shrink-0">
-                                  <i className="ri-download-line text-xs"></i>
-                                </a>
-                              </div>
+                              {files.map((a, i) => {
+                                const fid = driveFileIdFromUrl(a.url);
+                                const downloadUrl = fid ? `https://drive.google.com/uc?export=download&id=${fid}` : a.url;
+                                return (
+                                  <div key={i} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 max-w-xs mr-1.5">
+                                    <i className="ri-file-line text-gray-400 text-sm flex-shrink-0"></i>
+                                    <span className="text-xs text-gray-700 truncate flex-1">{a.name}</span>
+                                    {a.size != null && <span className="text-[10px] text-gray-400 flex-shrink-0">{(a.size / 1024).toFixed(0)} KB</span>}
+                                    <button onClick={() => setCommentPreview({ url: a.url, name: a.name, mime: a.mime })}
+                                      title="Preview" className="ml-1 text-gray-400 hover:text-sky-500 transition-colors cursor-pointer flex-shrink-0">
+                                      <i className="ri-eye-line text-xs"></i>
+                                    </button>
+                                    <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download
+                                      title="Download" className="text-gray-400 hover:text-emerald-500 transition-colors flex-shrink-0">
+                                      <i className="ri-download-line text-xs"></i>
+                                    </a>
+                                  </div>
+                                );
+                              })}
                             </div>
                           );
                         })()}
                         {/* Reactions */}
                         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                          {(['❤️', '👍', '😂'] as const).map(emoji => {
-                            const reactors = c.reactions[emoji] ?? [];
+                          {Object.entries(c.reactions).map(([emoji, reactors]) => {
+                            if (!reactors || reactors.length === 0) return null;
                             const hasReacted = reactors.includes(currentUserId ?? '');
-                            if (reactors.length === 0 && !hasReacted) return null;
                             return (
                               <button
                                 key={emoji}
                                 onClick={() => toggleReaction(c.id, emoji)}
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-all cursor-pointer ${hasReacted ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-all cursor-pointer ${hasReacted ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'}`}
                               >
                                 <span>{emoji}</span>
                                 <span className="font-medium">{reactors.length}</span>
                               </button>
                             );
                           })}
-                          {/* Add reaction button */}
-                          <div className="relative group/react">
-                            <button className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] border border-dashed border-gray-200 text-gray-300 hover:border-gray-300 hover:text-gray-500 transition-all cursor-pointer">
+                          {/* Add reaction button — click to open, stays open until you pick or dismiss */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setReactionPickerFor(p => p === c.id ? null : c.id)}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] border transition-all cursor-pointer ${reactionPickerFor === c.id ? 'border-gray-300 text-gray-500 bg-gray-50' : 'border-dashed border-gray-200 text-gray-300 hover:border-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100'} ${Object.values(c.reactions).some(r => r && r.length > 0) ? '!opacity-100' : ''}`}>
                               <i className="ri-emotion-line text-xs"></i>
                             </button>
-                            <div className="absolute bottom-full mb-1 left-0 hidden group-hover/react:flex bg-white border border-gray-200 rounded-xl shadow-lg z-10 p-1.5 gap-0.5">
-                              {(['❤️', '👍', '😂'] as const).map(emoji => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => toggleReaction(c.id, emoji)}
-                                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-base cursor-pointer transition-colors"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
+                            {reactionPickerFor === c.id && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setReactionPickerFor(null)} />
+                                <div className="absolute bottom-full mb-1.5 left-0 z-20 w-max bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 grid grid-cols-6 gap-0.5">
+                                  {QUICK_REACTIONS.map(emoji => (
+                                    <button
+                                      key={emoji}
+                                      onClick={() => { toggleReaction(c.id, emoji); setReactionPickerFor(null); }}
+                                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-base cursor-pointer transition-colors hover:scale-110"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       </>
@@ -1794,119 +2022,86 @@ export default function TaskDetailPanel({
               <div className="flex gap-2.5 relative">
                 <Avatar name={currentUserName} url={currentUserAvatarUrl} size={7} />
                 <div className="flex-1 relative">
-                  {mentionOpen && mentionMatches.length > 0 && (
-                    <div className="absolute bottom-full mb-1 left-0 bg-white border border-gray-200 rounded-xl shadow-lg z-10 min-w-[160px] overflow-hidden">
-                      {mentionMatches.map(m => (
-                        <button key={m.id} onClick={() => insertMention(m)}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer">
-                          <Avatar name={m.full_name} url={m.avatar_url} size={5} />
-                          {m.full_name.split(' ')[0]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div
-                    ref={commentRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onInput={e => {
-                      const text = (e.target as HTMLDivElement).innerText;
-                      setNewComment(text);
-                      // @mention detection
-                      const sel = window.getSelection();
-                      if (sel && sel.rangeCount > 0) {
-                        const range = sel.getRangeAt(0);
-                        const textBefore = range.startContainer.textContent?.slice(0, range.startOffset) ?? '';
-                        const atIdx = textBefore.lastIndexOf('@');
-                        if (atIdx >= 0 && !textBefore.slice(atIdx + 1).includes(' ')) {
-                          setMentionOpen(true);
-                          setMentionQuery(textBefore.slice(atIdx + 1));
-                          setMentionStart(atIdx);
-                        } else {
-                          setMentionOpen(false);
-                        }
-                      }
-                    }}
-                    onPaste={e => {
-                      e.preventDefault();
-                      const text = e.clipboardData.getData('text/plain');
-                      document.execCommand('insertText', false, text);
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey && !mentionOpen) {
-                        e.preventDefault();
-                        postComment();
-                      }
-                      if (e.key === 'Escape') setMentionOpen(false);
-                    }}
-                    data-placeholder="Add a comment… (@mention)"
-                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white min-h-[60px] break-all empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400"
+                  <CommentEditor
+                    ref={commentEditorRef}
+                    users={teamMembers.filter(m => m.id !== currentUserId)}
+                    placeholder="Leave a note for the team… (@ to mention someone)"
+                    onSubmit={postComment}
+                    onTextChange={setNewComment}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-[#1c2b3a]/30 transition-shadow"
                   />
-                  {/* Selected file preview */}
-                  {commentFile && (
+                  {/* Selected files preview */}
+                  {commentFiles.length > 0 && (
                     <div className="mt-1.5 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="flex items-center gap-2 px-2.5 py-1.5">
-                        <i className={`${commentFile.type.startsWith('image/') ? 'ri-image-line' : 'ri-file-line'} text-gray-400 text-sm flex-shrink-0`}></i>
-                        <span className="text-xs text-gray-600 truncate flex-1">{commentFile.name}</span>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">{(commentFile.size / 1024).toFixed(0)} KB</span>
-                        {uploadProgress !== null
-                          ? <span className="text-[10px] text-[#1c2b3a] flex-shrink-0 font-medium">{uploadProgress}%</span>
-                          : <button type="button" onClick={() => { setCommentFile(null); setCommentFileError(null); if (commentFileRef.current) commentFileRef.current.value = ''; }}
+                      {commentFiles.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 border-b border-gray-100 last:border-b-0">
+                          <i className={`${f.type.startsWith('image/') ? 'ri-image-line' : 'ri-file-line'} text-gray-400 text-sm flex-shrink-0`}></i>
+                          <span className="text-xs text-gray-600 truncate flex-1">{f.name}</span>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                          {uploadProgress === null && (
+                            <button type="button" onClick={() => { setCommentFiles(prev => prev.filter((_, j) => j !== i)); setCommentFileError(null); if (commentFileRef.current) commentFileRef.current.value = ''; }}
                               className="text-gray-300 hover:text-red-400 flex-shrink-0 cursor-pointer">
                               <i className="ri-close-line text-sm"></i>
                             </button>
-                        }
-                      </div>
-                      {uploadProgress !== null && (
-                        <div className="h-0.5 bg-gray-200">
-                          <div className="h-full bg-[#1c2b3a] transition-all duration-300 ease-out"
-                            style={{ width: `${uploadProgress}%` }} />
+                          )}
                         </div>
+                      ))}
+                      {uploadProgress !== null && (
+                        <>
+                          <div className="px-2.5 py-1 text-right">
+                            <span className="text-[10px] text-[#1c2b3a] font-medium">{uploadProgress}%</span>
+                          </div>
+                          <div className="h-0.5 bg-gray-200">
+                            <div className="h-full bg-[#1c2b3a] transition-all duration-300 ease-out"
+                              style={{ width: `${uploadProgress}%` }} />
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
                   {commentFileError && <p className="text-xs text-red-500 mt-1">{commentFileError}</p>}
-                  {/* Color dots + attach + send button */}
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    {['#e53935','#1e88e5','#43a047','#fb8c00','#8e24aa','#111827'].map(col => (
-                      <button key={col} type="button" title="Color selected text"
-                        onMouseDown={e => {
-                          e.preventDefault();
-                          document.execCommand('foreColor', false, col);
-                          commentRef.current?.focus();
-                        }}
-                        className="w-4 h-4 rounded-full cursor-pointer hover:scale-125 transition-transform flex-shrink-0 border border-gray-100"
-                        style={{ background: col }} />
-                    ))}
+                  {/* Toolbar row */}
+                  <div className="flex items-center gap-1 mt-1.5">
                     <button type="button" title="Attach file" onClick={() => commentFileRef.current?.click()}
-                      className="ml-auto text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors">
-                      <i className="ri-attachment-2 text-base"></i>
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-gray-300 hover:text-gray-500 hover:bg-gray-100 cursor-pointer transition-colors">
+                      <i className="ri-attachment-2 text-sm"></i>
                     </button>
-                    <input ref={commentFileRef} type="file" className="hidden" onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      if (f.size > 100 * 1024 * 1024) {
-                        setCommentFileError(`File too large (max 100 MB). This file is ${(f.size / 1024 / 1024).toFixed(1)} MB.`);
+                    <input ref={commentFileRef} type="file" multiple className="hidden" onChange={e => {
+                      const picked = Array.from(e.target.files ?? []);
+                      if (picked.length === 0) return;
+                      const tooBig = picked.find(f => f.size > 100 * 1024 * 1024);
+                      if (tooBig) {
+                        setCommentFileError(`File too large (max 100 MB). "${tooBig.name}" is ${(tooBig.size / 1024 / 1024).toFixed(1)} MB.`);
                         return;
                       }
-                      setCommentFile(f);
+                      setCommentFiles(prev => [...prev, ...picked]);
                       setCommentFileError(null);
+                      e.target.value = '';
                     }} />
-                    <button onClick={postComment} disabled={postingComment || (!newComment.trim() && !commentFile)}
-                      className="w-7 h-7 bg-[#1c2b3a] disabled:opacity-30 rounded-lg flex items-center justify-center cursor-pointer flex-shrink-0">
-                      <i className={`${postingComment ? 'ri-loader-4-line animate-spin' : 'ri-send-plane-fill'} text-white text-xs`}></i>
-                    </button>
+                    <div className="ml-auto flex items-center gap-1.5">
+                      <span className="text-[10px] text-gray-300">Enter to send</span>
+                      <button onClick={postComment} disabled={postingComment || (!newComment.trim() && commentFiles.length === 0)}
+                        className="w-7 h-7 bg-[#1c2b3a] disabled:opacity-25 rounded-lg flex items-center justify-center cursor-pointer flex-shrink-0 transition-opacity">
+                        <i className={`${postingComment ? 'ri-loader-4-line animate-spin' : 'ri-send-plane-fill'} text-white text-xs`}></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Activity */}
+          {/* Activity — collapsed by default to keep the panel calm */}
           {!isNew && activity.length > 0 && (
-            <div className="p-5">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-3">Activity</p>
-              <div className="space-y-2.5">
+            <div className="px-8 py-4 border-t border-gray-100/80">
+              <button onClick={() => setShowActivity(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 cursor-pointer transition-colors">
+                <i className={`ri-arrow-right-s-line text-sm transition-transform ${showActivity ? 'rotate-90' : ''}`}></i>
+                Activity
+                <span className="text-[10px] bg-gray-100 text-gray-500 font-medium px-1.5 py-0.5 rounded-full">{activity.length}</span>
+              </button>
+              {showActivity && (
+              <div className="space-y-2.5 mt-3">
                 {activity.map(a => (
                   <div key={a.id} className="flex items-start gap-2.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5 flex-shrink-0"></div>
@@ -1915,18 +2110,28 @@ export default function TaskDetailPanel({
                         <span className="font-semibold text-gray-800">{a.actor_name.split(' ')[0]}</span>
                         {' '}{a.description}
                       </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{timeAgo(a.created_at)}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {(() => {
+                          const d = new Date(a.created_at);
+                          const diff = (Date.now() - d.getTime()) / 1000;
+                          if (diff < 60) return 'just now';
+                          if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                          if (diff < 86400 * 3) return `${Math.floor(diff / 3600)}h ago`;
+                          return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                        })()}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
         </div>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         {(editing || isNew || hasUnsavedChanges) && (
-          <div className="border-t border-gray-100 px-5 pt-4 flex items-center gap-3 bg-white flex-shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px) + 1rem)' }}>
+          <div className="border-t border-gray-100 px-8 py-4 flex items-center gap-3 bg-white flex-shrink-0">
             {!isNew && !confirmDelete && (
               <div className="flex items-center gap-3">
                 <button onClick={handleArchive}
@@ -1957,7 +2162,10 @@ export default function TaskDetailPanel({
             {!confirmDelete && (
               <div className="flex flex-col gap-2 ml-auto items-end">
                 {saveError && (
-                  <p className="text-xs text-red-500">{saveError}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-red-500">{saveError}</p>
+                    <button onClick={() => handleSave()} className="text-xs text-red-500 underline cursor-pointer hover:text-red-700">Retry</button>
+                  </div>
                 )}
                 <div className="flex gap-2">
                   {!isNew && (
@@ -1969,7 +2177,7 @@ export default function TaskDetailPanel({
                       Cancel
                     </button>
                   )}
-                  <button onClick={handleSave} disabled={saving || !title.trim()}
+                  <button onClick={() => handleSave()} disabled={saving || !title.trim()}
                     className="px-5 py-2.5 bg-[#111827] text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors cursor-pointer">
                     {saving ? 'Saving…' : isNew ? 'Create Task' : 'Save Changes'}
                   </button>

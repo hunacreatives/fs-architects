@@ -33,7 +33,7 @@ async function run(projectId: number, contractorId: string) {
     .from('hub_project_contractors')
     .select(`
       project_role,
-      hub_projects!inner(id, name, client_name),
+      hub_projects!inner(id, project_name, client_name),
       hub_users!inner(id, full_name, email, slack_id)
     `)
     .eq('project_id', projectId)
@@ -55,7 +55,7 @@ async function run(projectId: number, contractorId: string) {
   }
 
   const firstName = contractor.full_name?.split(' ')[0] ?? contractor.full_name ?? 'there';
-  const projectName = project.name ?? 'Untitled Project';
+  const projectName = project.project_name ?? 'Untitled Project';
   const clientName = project.client_name ?? null;
   const roleLine = projectRole ? `*Role:*\n${projectRole}` : null;
 

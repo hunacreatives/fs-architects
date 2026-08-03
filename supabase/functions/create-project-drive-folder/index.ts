@@ -1,56 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders, guardAdmin } from '../_shared/auth.ts';
-
-// Sentro OS root folder (Drive) — created during Drive integration setup
-const SENTRO_ROOT = '1fuX6nxXERGIizoVEJRORUmvlO-auezNt';
-
-async function getAccessToken(): Promise<string> {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
-      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
-      refresh_token: Deno.env.get('GOOGLE_REFRESH_TOKEN')!,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error('OAuth failed: ' + JSON.stringify(data));
-  return data.access_token;
-}
-
-async function createOrGetFolder(name: string, parentId: string, token: string): Promise<string> {
-  const safe = name.replace(/['"\\]/g, '').trim();
-  const search = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(safe)}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  const { files } = await search.json();
-  if (files?.length > 0) return files[0].id;
-
-  const create = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: safe, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
-  });
-  const created = await create.json();
-  if (!created.id) throw new Error(`Folder create failed: ${JSON.stringify(created)}`);
-
-  // Share new folder as "Anyone with the link can view" so the in-hub
-  // embeddedfolderview iframe renders without a Google sign-in prompt.
-  const perm = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${created.id}/permissions`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-    },
-  );
-  if (!perm.ok) console.error('Set anyone-reader permission failed:', await perm.text());
-
-  return created.id;
-}
+import { driveServiceClient, getGoogleAccessToken, getOrCreateProjectFolderId } from '../_shared/drive.ts';
 
 Deno.serve(async (req) => {
   const CORS = corsHeaders(req); // restrict CORS to allowlisted origins (W-23)
@@ -65,25 +14,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'project_id and project_name required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const token = await getAccessToken();
+    const token = await getGoogleAccessToken();
+    const supabase = driveServiceClient();
+    const { folderId, driveUrl } = await getOrCreateProjectFolderId(supabase, token, project_id, client_name ?? null, project_name);
 
-    // Create or find  FS Root > Projects > ClientName > ProjectName
-    const projectsRootId = await createOrGetFolder('Projects', SENTRO_ROOT, token);
-    const clientFolderId = client_name
-      ? await createOrGetFolder(client_name, projectsRootId, token)
-      : projectsRootId;
-    const projectFolderId = await createOrGetFolder(project_name, clientFolderId, token);
-
-    const drive_url = `https://drive.google.com/drive/folders/${projectFolderId}`;
-
-    // Patch the project row
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-    await supabase.from('hub_projects').update({ drive_url }).eq('id', project_id);
-
-    return new Response(JSON.stringify({ drive_url, folder_id: projectFolderId }), {
+    return new Response(JSON.stringify({ drive_url: driveUrl, folder_id: folderId }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   } catch (err) {

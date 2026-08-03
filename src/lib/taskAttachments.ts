@@ -5,6 +5,7 @@ interface CreateTaskAttachmentParams {
   taskId: number;
   file: File;
   uploadedBy: string;
+  projectId: number;
   projectName?: string;
 }
 
@@ -12,9 +13,10 @@ export async function createTaskAttachment({
   taskId,
   file,
   uploadedBy,
+  projectId,
   projectName = 'General',
 }: CreateTaskAttachmentParams) {
-  const url = await uploadFileToDrive(file, 'task_attachment', { project_name: projectName });
+  const url = await uploadFileToDrive(file, 'task_attachment', { project_id: String(projectId), project_name: projectName });
   if (!url) return null;
 
   const { data, error } = await supabase

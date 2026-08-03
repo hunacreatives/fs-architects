@@ -31,6 +31,8 @@ interface Props {
   title?: string;
   titleContent?: ReactNode;
   actions?: ReactNode;
+  /** Skip the default max-w-7xl centered column — for views (like a full calendar) that want the entire content area. */
+  fullWidth?: boolean;
 }
 
 interface SearchResult {
@@ -212,7 +214,7 @@ function GlobalSearch() {
   );
 }
 
-export default function AdminLayout({ children, title, titleContent, actions }: Props) {
+export default function AdminLayout({ children, title, titleContent, actions, fullWidth }: Props) {
   const { hubUser, loading, session, signOut } = useAuth();
   const { isDemo, demoRole, demoSignOut, setDemoRole } = useDemo();
   const push = usePushNotifications();
@@ -326,7 +328,7 @@ export default function AdminLayout({ children, title, titleContent, actions }: 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
           {!isDemo && <WhatsNewModal />}
-          <div className="max-w-7xl mx-auto">
+          <div className={fullWidth ? '' : 'max-w-7xl mx-auto'}>
             {!isDemo && (
               <PushNotificationPrompt
                 supported={push.supported}

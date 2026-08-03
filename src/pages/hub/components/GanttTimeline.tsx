@@ -290,7 +290,7 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                   onDragLeave={() => setDragOver(null)}
                   className={[
                     'relative group',
-                    mode === 'dots' ? 'min-h-[112px]' : 'min-h-[96px]',
+                    mode === 'dots' ? 'min-h-[140px]' : 'min-h-[96px]',
                     'border-b border-r border-gray-50 flex flex-col',
                     !inMonth ? 'bg-gray-50/30' : '',
                     isWeekend && inMonth ? 'bg-gray-50/50' : '',

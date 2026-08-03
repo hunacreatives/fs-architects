@@ -1058,7 +1058,7 @@ export default function AdminProjectsPage() {
   };
 
   return (
-    <AdminLayout title="Projects" titleContent={workspaceOpen && activeProject ? (
+    <AdminLayout title="Projects" fullWidth={pageView === 'tasks'} titleContent={workspaceOpen && activeProject ? (
       <button onClick={() => { setWorkspaceOpen(false); setActiveId(null); setCollapsedGroups({}); }}
         className="flex items-center gap-1.5 h-8 pl-1.5 pr-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium">
         <i className="ri-arrow-left-s-line text-base"></i>

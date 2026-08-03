@@ -13,6 +13,57 @@ function toBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// Supabase wraps a non-2xx edge function response in a generic error; the
+// actual message the function returned lives in its response body.
+async function extractInvokeError(error: unknown): Promise<Error> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      return new Error(body?.error ?? (error as Error).message);
+    } catch {
+      // response body wasn't JSON — fall through to the generic message
+    }
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+// Task attachments upload straight from the browser to Google Drive via its
+// resumable upload protocol, instead of relaying the file through the edge
+// function as base64 — that relay approach crashes the function's isolate
+// (out of memory) on anything much larger than a few MB, since it has to
+// hold the base64 string, the decoded bytes, AND a re-encoded multipart body
+// all at once. The resumable session URL Google returns is a one-time
+// capability grant — no OAuth token needs to reach the browser for the PUT.
+async function uploadFileToDriveResumable(file: File, type: string, meta: Record<string, string>): Promise<string> {
+  const { data: initData, error: initError } = await supabase.functions.invoke('upload-to-drive', {
+    body: { mode: 'init', filename: file.name, mimeType: file.type || 'application/octet-stream', type, meta },
+  });
+  if (initError) throw await extractInvokeError(initError);
+  if (!initData?.success || !initData?.uploadUrl) {
+    throw new Error(initData?.error ?? 'Failed to start upload.');
+  }
+
+  const putRes = await fetch(initData.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  if (!putRes.ok) {
+    throw new Error(`Upload to Google Drive failed (${putRes.status}).`);
+  }
+  const driveFile = await putRes.json();
+
+  const { data: finalizeData, error: finalizeError } = await supabase.functions.invoke('upload-to-drive', {
+    body: { mode: 'finalize', fileId: driveFile.id, type },
+  });
+  if (finalizeError) throw await extractInvokeError(finalizeError);
+  if (!finalizeData?.success) {
+    throw new Error(finalizeData?.error ?? 'Failed to finalize upload.');
+  }
+
+  return finalizeData.url as string;
+}
+
 export async function uploadFileToDrive(
   file: File,
   type: string,
@@ -22,6 +73,10 @@ export async function uploadFileToDrive(
     throw new Error(`File is too large (max 100 MB). This file is ${(file.size / 1024 / 1024).toFixed(1)} MB.`);
   }
 
+  if (type === 'task_attachment') {
+    return uploadFileToDriveResumable(file, type, meta);
+  }
+
   const buffer = await file.arrayBuffer();
   const base64Content = toBase64(buffer);
 
@@ -29,18 +84,7 @@ export async function uploadFileToDrive(
     body: { filename: file.name, mimeType: file.type || 'application/octet-stream', base64Content, type, meta },
   });
 
-  if (error) {
-    // Extract the actual error body from the edge function response
-    if (error instanceof FunctionsHttpError) {
-      try {
-        const body = await error.context.json();
-        throw new Error(body?.error ?? error.message);
-      } catch (parseErr: any) {
-        if (parseErr?.message && parseErr.message !== error.message) throw parseErr;
-      }
-    }
-    throw new Error(error.message);
-  }
+  if (error) throw await extractInvokeError(error);
 
   if (!data?.success) {
     throw new Error(data?.error ?? 'Upload failed');

@@ -174,7 +174,61 @@ Deno.serve(async (req) => {
   if (denied) return denied;
 
   try {
-    const { filename, mimeType, base64Content, type, meta = {} } = await req.json();
+    const reqBody = await req.json();
+
+    // ── Resumable upload: browser uploads bytes straight to Google, this
+    // function only ever sees small JSON (metadata in, or a fileId to
+    // finalize) — keeps large files from ever passing through the edge
+    // function's own memory. ─────────────────────────────────────────────
+    if (reqBody.mode === 'init') {
+      const { filename, mimeType, type, meta = {} } = reqBody;
+      if (!filename || !mimeType || !type) {
+        return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      const accessToken = await getAccessToken();
+      const folderId = await getFolderForType(type, meta, accessToken);
+      // Google only allows the browser's later cross-origin PUT to this
+      // session if the session-creation request itself declares that same
+      // Origin — without this, the follow-up PUT gets blocked by CORS.
+      const origin = req.headers.get('origin') ?? '';
+      const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+          'X-Upload-Content-Type': mimeType,
+          ...(origin ? { Origin: origin } : {}),
+        },
+        body: JSON.stringify({ name: filename, parents: [folderId] }),
+      });
+      if (!initRes.ok) throw new Error(`Failed to start resumable upload: ${await initRes.text()}`);
+      const uploadUrl = initRes.headers.get('Location');
+      if (!uploadUrl) throw new Error('Google did not return a resumable upload URL.');
+      return new Response(JSON.stringify({ success: true, uploadUrl }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (reqBody.mode === 'finalize') {
+      const { fileId, type } = reqBody;
+      if (!fileId || !type) {
+        return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+          status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      const accessToken = await getAccessToken();
+      if (type === 'task_attachment' || type === 'reimbursement_receipt' || type === 'payout_receipt') {
+        await ensureReadablePreview(fileId, accessToken);
+      }
+      const url = `https://drive.google.com/file/d/${fileId}/view`;
+      return new Response(JSON.stringify({ success: true, fileId, url }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { filename, mimeType, base64Content, type, meta = {} } = reqBody;
 
     if (!filename || !mimeType || !base64Content || !type) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {

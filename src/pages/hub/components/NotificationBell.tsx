@@ -15,6 +15,16 @@ interface Notif {
   unreadDot?: boolean;
 }
 
+function toInternalPath(link: string): string {
+  if (!/^https?:\/\//i.test(link)) return link;
+  try {
+    const u = new URL(link);
+    return `${u.pathname}${u.search}${u.hash}`;
+  } catch {
+    return link;
+  }
+}
+
 function timeAgo(d: Date) {
   const diff = (Date.now() - d.getTime()) / 1000;
   if (diff < 60) return 'just now';
@@ -71,6 +81,7 @@ export default function NotificationBell() {
           title: `${poster} commented on an announcement`,
           body: (c.body as string).slice(0, 80),
           time: new Date(c.created_at),
+          link: '/hub/admin/announcements',
         });
       }
 
@@ -93,6 +104,7 @@ export default function NotificationBell() {
           title: `${name} requested time off`,
           body: `Type: ${r.type}`,
           time: new Date(r.created_at),
+          link: '/hub/admin/timeoff',
         });
       }
 
@@ -115,6 +127,7 @@ export default function NotificationBell() {
           title: `${name} submitted a request`,
           body: r.title,
           time: new Date(r.created_at),
+          link: '/hub/admin/requests',
         });
       }
 
@@ -139,6 +152,7 @@ export default function NotificationBell() {
           title: `${name} requested credential access`,
           body: `${platform}${client ? ` — ${client}` : ''}`,
           time: new Date(r.created_at),
+          link: '/hub/admin/credentials',
         });
       }
 
@@ -161,6 +175,7 @@ export default function NotificationBell() {
           title: `${name} flagged a payslip`,
           body: (d.reason as string).slice(0, 80),
           time: new Date(d.created_at),
+          link: '/hub/admin/payroll',
         });
       }
 
@@ -183,6 +198,7 @@ export default function NotificationBell() {
           title: `${name} requested overtime`,
           body: `${r.hours}h on ${new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
           time: new Date(r.created_at),
+          link: '/hub/admin/overtime',
         });
       }
 
@@ -204,6 +220,7 @@ export default function NotificationBell() {
           title: 'Fund transfer awaiting your approval',
           body: `${b.period_label} · ₱${Number(b.total_amount).toLocaleString()}`,
           time: new Date(b.created_at),
+          link: '/hub/admin/payroll',
         });
       }
 
@@ -226,6 +243,7 @@ export default function NotificationBell() {
           title: `${name} submitted their payslip`,
           body: `Period starting ${new Date(p.cutoff_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
           time: new Date(p.submitted_at),
+          link: '/hub/admin/payroll',
         });
       }
 
@@ -250,6 +268,7 @@ export default function NotificationBell() {
           title: 'New announcement',
           body: a.title,
           time: new Date(a.created_at!),
+          link: '/hub/employee/announcements',
         });
       }
 
@@ -273,6 +292,7 @@ export default function NotificationBell() {
           title: isPaid ? 'Payment sent' : 'Payslip approved — payment incoming',
           body: `Period starting ${new Date(p.cutoff_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
           time: new Date(isPaid ? p.paid_at : p.approved_at),
+          link: '/hub/employee/payouts',
         });
       }
 
@@ -306,6 +326,7 @@ export default function NotificationBell() {
             title: 'Payment approved — transfer in progress',
             body: `${batch.period_label} ${pay}`,
             time: new Date(batch.approved_at),
+            link: '/hub/employee/payouts',
           });
         }
       }
@@ -329,6 +350,7 @@ export default function NotificationBell() {
           title: `Time off ${t.status}`,
           body: `Your ${t.type} leave request was ${t.status}`,
           time: new Date(t.updated_at),
+          link: '/hub/employee/timeoff',
         });
       }
 
@@ -351,6 +373,7 @@ export default function NotificationBell() {
           title: `Request ${r.status === 'in_review' ? 'in review' : 'resolved'}`,
           body: r.title,
           time: new Date(r.updated_at),
+          link: '/hub/employee/requests',
         });
       }
 
@@ -373,6 +396,7 @@ export default function NotificationBell() {
           title: `Overtime request ${r.status}`,
           body: `${r.hours}h on ${new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
           time: new Date(r.updated_at),
+          link: '/hub/employee/overtime',
         });
       }
 
@@ -403,6 +427,7 @@ export default function NotificationBell() {
             title: `${name} commented on an announcement`,
             body: (c.body as string).slice(0, 80),
             time: new Date(c.created_at),
+            link: '/hub/employee/announcements',
           });
         }
       }
@@ -426,6 +451,7 @@ export default function NotificationBell() {
           title: 'Document awaiting your signature',
           body: doc?.title ?? 'Contract',
           time: new Date(a.created_at),
+          link: '/hub/employee/documents',
         });
       }
     }
@@ -612,7 +638,7 @@ export default function NotificationBell() {
                     </div>
                   );
                   return n.link
-                    ? <button key={n.id} onClick={() => { setOpen(false); navigate(n.link!); }} className="block w-full text-left cursor-pointer">{inner}</button>
+                    ? <button key={n.id} onClick={() => { setOpen(false); navigate(toInternalPath(n.link!)); }} className="block w-full text-left cursor-pointer">{inner}</button>
                     : <div key={n.id}>{inner}</div>;
                 })}
               </div>

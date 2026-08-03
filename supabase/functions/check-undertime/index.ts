@@ -161,8 +161,10 @@ async function run() {
   const evalDayStr = ymd(evalDay);
   const { start, end, label } = currentPeriod(evalDay);
 
-  const adminUrl = `${HUB_BASE_URL}/hub/admin/attendance`;
-  const employeeUrl = `${HUB_BASE_URL}/hub/employee/attendance`;
+  const adminPath = '/hub/admin/attendance';
+  const employeePath = '/hub/employee/attendance';
+  const adminUrl = `${HUB_BASE_URL}${adminPath}`;
+  const employeeUrl = `${HUB_BASE_URL}${employeePath}`;
 
   const { data: employees, error: empErr } = await supabase
     .from('hub_users')
@@ -244,7 +246,7 @@ async function run() {
       for (const m of managers) {
         if (m.slack_id) await slackDm(m.slack_id, `:warning: *Undertime alert — ${emp.full_name}*\n${count} undertime days (under ${UNDERTIME_THRESHOLD_HOURS} hours) this pay period (*${label}*): ${breakdown}. They've been asked to explain.`);
         if (m.email) await sendEmail(m.email, `Undertime alert — ${emp.full_name} (${label})`, mgrTitle, label, mgrEmailHtml, 'Review Attendance →', adminUrl);
-        await inApp(m.id, mgrTitle, mgrBody, adminUrl);
+        await inApp(m.id, mgrTitle, mgrBody, adminPath);
         await sendPush(m.id, mgrTitle, mgrBody, adminUrl);
       }
 
@@ -254,7 +256,7 @@ async function run() {
       const empEmailHtml = `Hi ${first},<br><br>Our records show <strong>${count} undertime days</strong> — fewer than ${UNDERTIME_THRESHOLD_HOURS} clocked hours on a scheduled work day — during the pay period <strong>${label}</strong>:${breakdownHtml}<br>Please reach out to HR with an explanation. If you think this is a mistake, check your logged hours below.`;
       if (emp.slack_id) await slackDm(emp.slack_id, `Hi ${first} — our records show *${count} undertime days* (under ${UNDERTIME_THRESHOLD_HOURS} hours) this pay period (*${label}*): ${breakdown}. Please reply here or reach out to HR to explain.`);
       if (emp.email) await sendEmail(emp.email, `Action needed: undertime this pay period (${label})`, empTitle, label, empEmailHtml, 'View My Hours →', employeeUrl);
-      await inApp(emp.id, empTitle, empBody, employeeUrl);
+      await inApp(emp.id, empTitle, empBody, employeePath);
       await sendPush(emp.id, empTitle, empBody, employeeUrl);
     } catch (err) {
       console.error('undertime check failed for', emp.id, err);

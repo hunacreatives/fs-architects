@@ -101,6 +101,24 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
     return 'bg-slate-100 text-[#1c2b3a]';
   };
 
+  // Small status glyph shown on every dots-mode chip — white on a solid
+  // custom-color chip (chipStyle forces white text there), colored otherwise.
+  const chipStatusIcon = (t: ProjectTask) => {
+    const forceWhite = !!chipStyle(t);
+    const icon = t.status === 'done' ? 'ri-checkbox-circle-fill'
+      : t.status === 'in_progress' ? 'ri-loader-2-line'
+      : t.status === 'blocked' ? 'ri-error-warning-fill'
+      : t.status === 'in_review' ? 'ri-eye-line'
+      : 'ri-checkbox-blank-circle-line';
+    const cls = forceWhite ? 'text-white/90'
+      : t.status === 'done' ? 'text-emerald-500'
+      : t.status === 'in_progress' ? 'text-sky-500'
+      : t.status === 'blocked' ? 'text-rose-500'
+      : t.status === 'in_review' ? 'text-amber-500'
+      : 'text-gray-300';
+    return `${icon} ${cls}`;
+  };
+
   // ── Drag handlers ──
 
   const handleDragStart = (e: React.DragEvent, task: ProjectTask, mode: 'move' | 'resize-end' | 'resize-start') => {
@@ -350,7 +368,12 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                                   onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
                                   style={chipStyle(t)}
                                   className={`h-5 flex items-center text-[10px] font-medium overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)} ${rl} ${rr}`}>
-                                  {showLabel && <span className="truncate flex-1 pl-1.5 leading-none">{t.title}</span>}
+                                  {showLabel && (
+                                    <span className="flex items-center gap-1 flex-1 min-w-0 pl-1.5 leading-none">
+                                      <i className={`${chipStatusIcon(t)} text-[9px] flex-shrink-0`}></i>
+                                      <span className="truncate">{t.title}</span>
+                                    </span>
+                                  )}
                                 </button>
                               );
                             })}
@@ -364,8 +387,9 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                             <button key={t.id} type="button" title={t.title}
                               onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
                               style={chipStyle(t)}
-                              className={`w-full text-left px-1.5 py-[3px] rounded text-[10px] leading-tight truncate cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)}`}>
-                              {t.title}
+                              className={`w-full flex items-center gap-1 text-left px-1.5 py-[3px] rounded text-[10px] leading-tight cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)}`}>
+                              <i className={`${chipStatusIcon(t)} text-[9px] flex-shrink-0`}></i>
+                              <span className="truncate">{t.title}</span>
                             </button>
                           ))}
                           {singleDayTasks.length > 3 && (

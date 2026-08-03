@@ -47,16 +47,40 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     e.preventDefault();
     setError('');
     setLoading(true);
+    const newHourly = form.hourly_rate ? parseFloat(form.hourly_rate) : null;
+    const newMonthly = form.monthly_rate ? parseFloat(form.monthly_rate) : null;
+    const rateChanged = form.payment_type !== (contractor.payment_type ?? '')
+      || newHourly !== (contractor.hourly_rate ?? null)
+      || newMonthly !== ((contractor as any).monthly_rate ?? null);
+
     const { error: err } = await supabase.from('hub_users').update({
       ...form,
-      hourly_rate: form.hourly_rate ? parseFloat(form.hourly_rate) : null,
-      monthly_rate: form.monthly_rate ? parseFloat(form.monthly_rate) : null,
+      hourly_rate: newHourly,
+      monthly_rate: newMonthly,
       project_percentage: form.project_percentage ? parseFloat(form.project_percentage) : null,
       employee_id: form.employee_id.trim() || null,
       updated_at: new Date().toISOString(),
     }).eq('id', contractor.id);
+    if (err) { setError(err.message); setLoading(false); return; }
+
+    // Editing here bypasses "Update Rate," which is the only other place
+    // that logs to hub_rate_history — without this, a rate change made
+    // through this modal would desync the profile from the rate ledger
+    // (the exact bug that caused a regularized employee's payroll to read
+    // a stale/wrong rate).
+    if (rateChanged) {
+      await supabase.from('hub_rate_history').insert({
+        contractor_id: contractor.id,
+        effective_date: new Date().toISOString().slice(0, 10),
+        payment_type: form.payment_type,
+        hourly_rate: newHourly,
+        monthly_rate: newMonthly,
+        currency: form.currency || 'PHP',
+        note: 'Updated via Edit Employee',
+      });
+    }
+
     setLoading(false);
-    if (err) { setError(err.message); return; }
     onSuccess();
   };
 

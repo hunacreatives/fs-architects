@@ -447,7 +447,7 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
     ids.length > 0
       ? supabase
           .from('hub_rate_history')
-          .select('contractor_id, effective_date, hourly_rate, monthly_rate')
+          .select('contractor_id, effective_date, payment_type, hourly_rate, monthly_rate')
           .in('contractor_id', ids)
           .lte('effective_date', periodEnd)
           .order('effective_date', { ascending: true })
@@ -477,13 +477,17 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
 
   for (const c of contractors) {
     const hrs = hoursMap[c.id] || { capped: 0, overtime: 0 };
-    const payType = c.payment_type || 'hourly';
     const history = rateHistoryMap[c.id] || [];
 
     const changeInPeriod = history.find(r =>
       r.effective_date >= periodStart && r.effective_date <= periodEnd
     );
     const rateAtStart = [...history].filter(r => r.effective_date < periodStart).pop() || null;
+
+    // Prefer the rate-history row's own payment_type over the live
+    // hub_users.payment_type flag, which can lag behind a logged rate
+    // change (see admin/payroll/page.tsx for the same fix).
+    const payType = changeInPeriod?.payment_type ?? rateAtStart?.payment_type ?? c.payment_type ?? 'hourly';
 
     let pay = 0;
 
@@ -538,8 +542,12 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
           if (date < changeInPeriod.effective_date) hrsAtOld += h as number;
           else hrsAtNew += h as number;
         }
-        const otPay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly, undefined, isRestDayByUser[c.id]);
-        pay = hrsAtOld * oldHourly + hrsAtNew * newHourly + otPay;
+        // Defensive fallback — a rate-history row can have hourly_rate 0/null
+        // in edge cases; don't silently zero out a segment's pay because of it.
+        const effOldHourly = oldHourly || c.hourly_rate || 0;
+        const effNewHourly = newHourly || c.hourly_rate || 0;
+        const otPay = computeOTPayFromDates(overtimeByDate[c.id] || {}, effNewHourly, undefined, isRestDayByUser[c.id]);
+        pay = hrsAtOld * effOldHourly + hrsAtNew * effNewHourly + otPay;
       }
     } else {
       const monthly = rateAtStart?.monthly_rate ?? c.monthly_rate ?? 0;

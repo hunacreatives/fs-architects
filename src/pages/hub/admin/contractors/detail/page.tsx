@@ -194,8 +194,12 @@ export default function ContractorDetailPage() {
       });
     }
 
-    // Determine updated payment_type: if only one field filled, use that; if both, keep existing
-    const newPaymentType = monthly && !hourly ? 'fixed' : !monthly && hourly ? 'hourly' : contractor.payment_type || 'fixed';
+    // Monthly takes priority — the hourly field on this form is the OT-rate
+    // override for a fixed-monthly employee, not a competing payment type
+    // (see the "OT Rate" label swap above). Treating "both filled" as
+    // ambiguous silently kept a regularized employee on payment_type
+    // 'hourly' forever, since this form always pre-fills both fields.
+    const newPaymentType = monthly ? 'fixed' : hourly ? 'hourly' : contractor.payment_type || 'fixed';
 
     const { error } = await supabase.from('hub_rate_history').insert({
       contractor_id: id,
@@ -209,12 +213,21 @@ export default function ContractorDetailPage() {
 
     if (error) { setRateError(error.message); setRateSaving(false); return; }
 
-    // Update hub_users with whichever rates were filled
-    await supabase.from('hub_users').update({
+    // Update hub_users with whichever rates were filled. When going fixed
+    // with the OT override left blank, clear any stale hourly_rate instead
+    // of leaving an old number in place — "leave blank to auto-derive"
+    // should actually mean derived, not silently inherited from before.
+    const { error: syncError } = await supabase.from('hub_users').update({
       payment_type: newPaymentType,
       ...(monthly !== null ? { monthly_rate: monthly } : {}),
-      ...(hourly  !== null ? { hourly_rate:  hourly  } : {}),
+      hourly_rate: hourly ?? (newPaymentType === 'fixed' ? null : contractor.hourly_rate ?? null),
     }).eq('id', id);
+
+    if (syncError) {
+      setRateError(`Rate history saved, but the profile didn't update: ${syncError.message}`);
+      setRateSaving(false);
+      return;
+    }
 
     const rateDesc = monthly ? `₱${monthly.toLocaleString()}/mo` : `₱${hourly?.toLocaleString()}/hr`;
     logAudit({ actor_id: actor?.id, actor_name: actor?.full_name, action: 'update', entity_type: 'contractor', entity_id: id, description: `Updated rate for ${contractor.full_name} to ${rateDesc} (effective ${rateForm.effective_date})` });
@@ -526,7 +539,13 @@ export default function ContractorDetailPage() {
               {[
                 { label: 'Payment Type', value: contractor.payment_type ? ({ fixed: 'Fixed Monthly', hourly: 'Hourly', fixed_flexible: 'Fixed Flexible', project_based: 'Project Based' } as Record<string,string>)[contractor.payment_type] ?? contractor.payment_type : undefined, icon: 'ri-bank-card-line' },
                 { label: 'Rate', value: contractor.payment_type === 'project_based' ? ((contractor as any).project_percentage ? `${(contractor as any).project_percentage}% of project` : undefined) : contractor.payment_type === 'fixed' ? (contractor.monthly_rate ? `₱${contractor.monthly_rate.toLocaleString()}/mo` : undefined) : (contractor.hourly_rate ? `₱${contractor.hourly_rate}/hr ${contractor.currency || ''}` : undefined), icon: 'ri-money-dollar-circle-line' },
-                { label: 'OT Rate', value: contractor.payment_type === 'fixed' && contractor.hourly_rate ? `₱${contractor.hourly_rate}/hr` : undefined, icon: 'ri-time-line' },
+                {
+                  label: 'OT Rate',
+                  value: contractor.payment_type === 'fixed' && contractor.monthly_rate
+                    ? `₱${(contractor.hourly_rate || contractor.monthly_rate / 176).toFixed(2)}/hr${contractor.hourly_rate ? '' : ' (derived)'}`
+                    : undefined,
+                  icon: 'ri-time-line',
+                },
                 { label: 'Bank', value: contractor.bank_name, icon: 'ri-building-line' },
                 { label: 'Account Name', value: contractor.bank_account_name, icon: 'ri-user-line' },
                 { label: 'Account Number', value: contractor.bank_account_number, icon: 'ri-hashtag' },

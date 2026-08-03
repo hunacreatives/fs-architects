@@ -1391,7 +1391,6 @@ export default function AdminPayrollPage() {
 
     const result: PayRow[] = eligibleContractors.map((c: any) => {
       const hrs = hoursMap[c.id] || { capped: 0, raw: 0, overtime: 0, days: 0 };
-      const payType = c.payment_type || 'hourly';
       const history = rateHistoryMap[c.id] || [];
 
       // Rate change that occurred DURING this period (first one only)
@@ -1403,6 +1402,12 @@ export default function AdminPayrollPage() {
       const rateAtStart = [...history]
         .filter(r => r.effective_date < selectedPeriod.start)
         .pop() || null;
+
+      // Prefer the rate-history row's own payment_type over the live
+      // hub_users.payment_type flag — that flag can lag behind a logged
+      // regularization if the profile sync failed or was skipped, which
+      // sent a newly-fixed employee's pay down the wrong (hourly) branch.
+      const payType = changeInPeriod?.payment_type ?? rateAtStart?.payment_type ?? c.payment_type ?? 'hourly';
 
       let pay = 0;
       let overtimePay = 0;
@@ -1474,10 +1479,15 @@ export default function AdminPayrollPage() {
             if (date < changeInPeriod.effective_date) hrsAtOld += h;
             else hrsAtNew += h;
           }
-          derivedHourlyRate = newHourly;
-          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, newHourly, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);
-          pay = hrsAtOld * oldHourly + hrsAtNew * newHourly;
-          proratedNote = `${hrsAtOld.toFixed(1)}h @ ₱${oldHourly}/hr · ${hrsAtNew.toFixed(1)}h @ ₱${newHourly}/hr`;
+          // Same defensive fallback as the no-change branch below — a
+          // rate-history row can have hourly_rate 0/null in edge cases;
+          // don't silently zero out a day's pay because of it.
+          const effOldHourly = oldHourly || c.hourly_rate || 0;
+          const effNewHourly = newHourly || c.hourly_rate || 0;
+          derivedHourlyRate = effNewHourly;
+          overtimePay = computeOTPayFromDates(overtimeByDate[c.id] || {}, effNewHourly, rawHoursByDate[c.id], isRestDayByUser[c.id], trackedDatesByUser[c.id]);
+          pay = hrsAtOld * effOldHourly + hrsAtNew * effNewHourly;
+          proratedNote = `${hrsAtOld.toFixed(1)}h @ ₱${effOldHourly}/hr · ${hrsAtNew.toFixed(1)}h @ ₱${effNewHourly}/hr`;
         }
       } else {
         // No change in period — use rate in effect at period start (or current hub_users rate)

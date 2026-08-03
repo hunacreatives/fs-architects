@@ -13,6 +13,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const EMPLOYEE_BOTTOM_NAV = [
   { to: '/hub/employee/dashboard',    label: 'Dashboard',   icon: 'ri-layout-grid-line' },
+  { to: '/hub/employee/projects',     label: 'Projects',    icon: 'ri-folder-line' },
   { to: '/hub/employee/attendance',   label: 'Attendance',  icon: 'ri-time-line' },
   { to: '/hub/employee/requests',     label: 'Requests',    icon: 'ri-inbox-line' },
   { to: '/hub/employee/timeoff',      label: 'Time Off',    icon: 'ri-calendar-event-line' },

@@ -183,6 +183,7 @@ interface Props {
   onActivityChange?: () => void;
   projectId: number;
   projectName?: string;
+  projects?: { id: number; project_name: string; client_name: string; project_type: 'client' | 'internal' }[];
   initialDueDate?: string | null;
   teamMembers: TeamMember[];
   canEdit: boolean;
@@ -350,6 +351,7 @@ export default function TaskDetailPanel({
   onActivityChange,
   projectId,
   projectName = 'General',
+  projects,
   initialDueDate = null,
   teamMembers,
   canEdit,
@@ -409,6 +411,7 @@ export default function TaskDetailPanel({
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const [commentPreview, setCommentPreview] = useState<{ url: string; name: string; mime: string | null } | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<File | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<number>(projectId);
   const commentEditorRef = useRef<CommentEditorHandle>(null);
   const editEditorRef = useRef<CommentEditorHandle>(null);
   const [reactionPickerFor, setReactionPickerFor] = useState<number | null>(null);
@@ -503,6 +506,7 @@ export default function TaskDetailPanel({
       setConfirmDelete(false);
       setPendingAttachment(null);
       setEditing(true);
+      setSelectedProjectId(projects?.some(p => p.id === projectId) ? projectId : (projects?.[0]?.id ?? projectId));
     }
   }, [task?.id, open]);
 
@@ -666,6 +670,10 @@ export default function TaskDetailPanel({
     setSaveError(null);
     try {
       const payload = taskDraft();
+      const effectiveProjectId = isNew ? selectedProjectId : projectId;
+      const effectiveProjectName = isNew
+        ? (projects?.find(p => p.id === selectedProjectId)?.project_name ?? projectName)
+        : projectName;
 
       if (isDemo) {
         // Demo mode: apply the change locally so the flow feels real,
@@ -673,7 +681,7 @@ export default function TaskDetailPanel({
         const demoAssignee = teamMembers.find(m => m.id === (getTaskAssigneeIds(payload)[0] ?? '')) ?? null;
         const demoHubUsers = demoAssignee ? { id: demoAssignee.id, full_name: demoAssignee.full_name, avatar_url: demoAssignee.avatar_url ?? null } : null;
         if (isNew) {
-          onSaved({ id: Date.now(), project_id: projectId, ...payload, hub_users: demoHubUsers } as TaskDetailTask);
+          onSaved({ id: Date.now(), project_id: effectiveProjectId, ...payload, hub_users: demoHubUsers } as TaskDetailTask);
           onClose();
         } else {
           onSaved({ ...task!, ...payload, hub_users: demoHubUsers } as TaskDetailTask);
@@ -691,7 +699,7 @@ export default function TaskDetailPanel({
       if (isNew) {
         const { data, error } = await supabase
           .from('hub_project_tasks')
-          .insert({ ...payload, project_id: projectId })
+          .insert({ ...payload, project_id: effectiveProjectId })
           .select('*')
           .single();
         if (error) throw error;
@@ -700,8 +708,8 @@ export default function TaskDetailPanel({
             taskId: data.id,
             file: pendingAttachment,
             uploadedBy: currentUserId,
-            projectId,
-            projectName,
+            projectId: effectiveProjectId,
+            projectName: effectiveProjectName,
           });
           if (attachment) {
             await logActivity(data.id, 'attachment_added', `added attachment "${pendingAttachment.name}"`);
@@ -716,7 +724,7 @@ export default function TaskDetailPanel({
               task_id: data.id,
               task_title: title,
               project_id: data.project_id,
-              project_name: projectName,
+              project_name: effectiveProjectName,
               assigned_to_ids: nextAssigneeIds,
               assigned_by_name: currentUserName,
             },
@@ -1235,6 +1243,24 @@ export default function TaskDetailPanel({
 
           {/* Properties */}
           <div className="px-8 py-4 space-y-1.5 border-b border-gray-100/80">
+
+            {/* Project — new-task mode only, when the caller supplied a project list */}
+            {isNew && projects && projects.length > 0 && (
+              <div className="flex items-center h-8 gap-3">
+                <span className="text-xs text-gray-400 w-24 flex-shrink-0">Project</span>
+                <select
+                  value={selectedProjectId}
+                  onChange={e => setSelectedProjectId(Number(e.target.value))}
+                  className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white cursor-pointer"
+                >
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.project_name}{p.project_type !== 'internal' && p.client_name ? ` — ${p.client_name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Status — only show in body when editing (header already shows it in view mode) */}
             {editing && (

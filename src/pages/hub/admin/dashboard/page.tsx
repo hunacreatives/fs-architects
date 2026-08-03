@@ -90,9 +90,26 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-type WidgetKey = 'kpi' | 'teamStatus' | 'payroll' | 'requests' | 'timeOff' | 'announcements' | 'quickActions' | 'outstandingInvoices' | 'birthdays';
+// Monday–Sunday range for a given local date — the To-Do widget's "week" view
+// naturally rolls to the next Mon–Sun window on its own once today crosses
+// into a new week, no scheduled refresh needed.
+function getWeekRange(todayStr: string): { start: string; end: string } {
+  const d = new Date(todayStr + 'T00:00:00');
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  return { start: fmt(monday), end: fmt(sunday) };
+}
+
+type WidgetKey = 'kpi' | 'teamStatus' | 'payroll' | 'requests' | 'timeOff' | 'announcements' | 'quickActions' | 'outstandingInvoices' | 'birthdays' | 'addTask' | 'todoList';
 
 const ALL_WIDGETS: { key: WidgetKey; label: string; icon: string; ownerOnly?: boolean }[] = [
+  { key: 'addTask',            label: 'Add Task',            icon: 'ri-task-line', ownerOnly: true },
+  { key: 'todoList',           label: 'To-Do List',          icon: 'ri-list-check-2' },
   { key: 'kpi',                label: 'KPI Stats',           icon: 'ri-bar-chart-2-line' },
   { key: 'teamStatus',         label: 'Team Status',         icon: 'ri-team-line' },
   { key: 'payroll',            label: 'Payroll Estimate',    icon: 'ri-money-dollar-circle-line' },
@@ -139,6 +156,8 @@ export default function AdminDashboardPage() {
   const [birthdays, setBirthdays] = useState<BirthdayPerson[]>(_cache?.birthdays ?? []);
   const [outstandingInvoices, setOutstandingInvoices] = useState<OutstandingInvoice[]>(_cache?.outstandingInvoices ?? []);
   const [loading, setLoading] = useState(!_cache);
+  const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
+  const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
   const [widgetPrefs, setWidgetPrefs] = useState<Record<WidgetKey, boolean>>(loadWidgetPrefs);
   const [showCustomize, setShowCustomize] = useState(false);
   const isOwner = effectiveRole === 'owner';
@@ -323,6 +342,36 @@ export default function AdminDashboardPage() {
     };
     fetchAll();
   }, [isDemo]);
+
+  useEffect(() => {
+    if (isDemo || !hubUser?.id) return;
+    const fetchTodo = async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { start, end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
+      const { data, error } = await supabase
+        .from('hub_project_tasks')
+        .select('id, title, due_date, status, hub_projects(project_name)')
+        .or(`assigned_to.eq.${hubUser.id},assignee_ids.cs.{${hubUser.id}}`)
+        .neq('status', 'done')
+        .gte('due_date', start)
+        .lte('due_date', end)
+        .order('due_date', { ascending: true });
+      if (!error) {
+        setTodoTasks((data ?? []).map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          project_name: t.hub_projects?.project_name ?? null,
+        })));
+      }
+    };
+    fetchTodo();
+  }, [isDemo, hubUser?.id, todoViewMode]);
+
+  const markTodoDone = async (id: number) => {
+    setTodoTasks(prev => prev.filter(t => t.id !== id));
+    await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
+  };
 
   const counts = {
     on: attendance.filter(r => r.status === 'on').length,
@@ -791,11 +840,28 @@ export default function AdminDashboardPage() {
                     )}
                   </div>
                 )}
+
+                {/* Add Task — owner-only, styled like a project tile */}
+                {isOwner && show('addTask') && (
+                  <button onClick={() => navigate('/hub/admin/projects?newTask=1')}
+                    className="w-full text-left rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden"
+                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(255,255,255,0.9) 100%)', border: '1px solid rgba(139,92,246,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-violet-600">Quick Action</p>
+                        <p className="font-bold text-gray-900 text-sm leading-snug">Add Task</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Create a task for any project</p>
+                      </div>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                        <i className="ri-add-line text-white text-base"></i>
+                      </div>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </div>
         )}
-
 
         {/* Announcements + Quick Actions */}
         {(show('announcements') || show('quickActions')) && (
@@ -853,6 +919,58 @@ export default function AdminDashboardPage() {
             )}
           </div>
         )}
+
+        {/* To-Do List */}
+        {show('todoList') && (
+          <div className="bg-white border border-gray-100 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-[#111827] text-sm">To-Do List</h3>
+              <div className="flex items-center bg-gray-50 rounded-lg p-0.5">
+                {(['day', 'week'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setTodoViewMode(mode)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer transition-colors capitalize ${
+                      todoViewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {todoTasks.length === 0 ? (
+              <div className="flex items-center gap-2 py-4">
+                <i className="ri-checkbox-circle-line text-emerald-400"></i>
+                <p className="text-sm text-gray-400">
+                  Nothing due {todoViewMode === 'day' ? 'today' : 'this week'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {todoTasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2.5 py-1.5">
+                    <button
+                      onClick={() => markTodoDone(t.id)}
+                      className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
+                      title="Mark done"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
+                      {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
+                    </div>
+                    {t.due_date && (
+                      <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                        {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Customize dashboard */}
         <div className="flex justify-center pt-2 pb-1">
           <button

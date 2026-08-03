@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRef, useState } from 'react';
+import QuickAddTaskPopup from './QuickAddTaskPopup';
 
 export interface ProjectTask {
   id: number;
@@ -25,7 +26,7 @@ const dateStr = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(
 const addDays = (s: string, n: number) => { const d = new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return dateStr(d); };
 const diffDays = (a: string, b: string) => Math.round((new Date(b+'T00:00:00').getTime() - new Date(a+'T00:00:00').getTime()) / 86400000);
 
-export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUpdate, mode = 'bars', onAddTask, onTaskClick }: {
+export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUpdate, mode = 'bars', onAddTask, onTaskClick, projects, teamMembers, onQuickTaskCreated }: {
   tasks: ProjectTask[];
   projectStart: string | null;
   projectEnd: string | null;
@@ -35,8 +36,15 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
    * per-day indicator instead — for consolidated calendars with many unrelated
    * tasks, where overlapping full-width bars stop being readable. */
   mode?: 'bars' | 'dots';
+  /** Escape hatch to the full task editor ("More options" in the quick-add popup). */
   onAddTask?: (date: string) => void;
   onTaskClick?: (task: ProjectTask) => void;
+  /** Only used in 'dots' mode, for the quick-add popup's project dropdown. */
+  projects?: { id: number; project_name: string }[];
+  /** Only used in 'dots' mode, for the quick-add popup's assignee dropdown. */
+  teamMembers?: { id: string; full_name: string }[];
+  /** Called after a task is created via the quick-add popup, so the caller can refetch. */
+  onQuickTaskCreated?: () => void;
 }) {
   void projectStart; void projectEnd;
 
@@ -47,6 +55,7 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
   const dragState = useRef<DragState | null>(null);
   const [localTasks, setLocalTasks] = useState<ProjectTask[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [quickAdd, setQuickAdd] = useState<{ date: string; rect: DOMRect } | null>(null);
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
@@ -90,17 +99,6 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
     if (t.due_date && t.due_date < today && t.status !== 'done') return 'bg-rose-100 text-rose-600';
     if ((t as any).color) return '';
     return 'bg-slate-100 text-[#1c2b3a]';
-  };
-  const dotStyle = (t: ProjectTask): React.CSSProperties | undefined => {
-    if ((t as any).color && t.status !== 'done' && !(t.due_date && t.due_date < today)) {
-      return { background: (t as any).color };
-    }
-    return undefined;
-  };
-  const dotCls = (t: ProjectTask) => {
-    if (t.due_date && t.due_date < today && t.status !== 'done') return 'bg-rose-400';
-    if ((t as any).color) return '';
-    return 'bg-[#1c2b3a]/60';
   };
 
   // ── Drag handlers ──
@@ -291,7 +289,8 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                   onDrop={e => handleDrop(e, cellDate)}
                   onDragLeave={() => setDragOver(null)}
                   className={[
-                    mode === 'dots' ? 'min-h-[56px]' : 'min-h-[96px]',
+                    'relative group',
+                    mode === 'dots' ? 'min-h-[112px]' : 'min-h-[96px]',
                     'border-b border-r border-gray-50 flex flex-col',
                     !inMonth ? 'bg-gray-50/30' : '',
                     isWeekend && inMonth ? 'bg-gray-50/50' : '',
@@ -301,8 +300,15 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                     inMonth && isDragging ? 'cursor-copy' : '',
                   ].filter(Boolean).join(' ')}
                 >
-                  {/* Date number */}
-                  <div className="flex justify-end p-1.5 pb-1">
+                  {/* Date number + hover "add task" affordance (dots mode only) */}
+                  <div className="flex items-center justify-between p-1.5 pb-1">
+                    {mode === 'dots' && inMonth && cellDate ? (
+                      <button type="button" title="Add task"
+                        onClick={e => { e.stopPropagation(); setQuickAdd({ date: cellDate, rect: e.currentTarget.getBoundingClientRect() }); }}
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <i className="ri-add-line text-xs"></i>
+                      </button>
+                    ) : <span />}
                     <span className={[
                       'text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full',
                       isToday ? 'bg-slate-500 text-white font-bold' : '',
@@ -313,15 +319,25 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                   </div>
 
                   {mode === 'dots' ? (
-                    /* Compact per-day indicator — full bars stop being readable
-                       once a calendar spans many unrelated projects' tasks. */
-                    <div className="flex flex-wrap content-start gap-1 px-1.5 pb-1.5 flex-1">
-                      {cellDate && (tasksByDate[cellDate] ?? []).slice(0, 6).map(t => (
-                        <span key={t.id} title={t.title} style={dotStyle(t)}
-                          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotCls(t)}`} />
+                    /* Real event-style title chips, like Google Calendar's month
+                       view — a max of 2 per day plus a "+N more" overflow, since
+                       a consolidated calendar showing every unrelated project's
+                       tasks needs a cap somewhere. */
+                    <div className="flex flex-col gap-0.5 px-1 pb-1 flex-1 min-h-0">
+                      {cellDate && (tasksByDate[cellDate] ?? []).slice(0, 3).map(t => (
+                        <button key={t.id} type="button" title={t.title}
+                          onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
+                          style={chipStyle(t)}
+                          className={`w-full text-left px-1.5 py-[3px] rounded text-[10px] leading-tight truncate cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)}`}>
+                          {t.title}
+                        </button>
                       ))}
-                      {cellDate && (tasksByDate[cellDate]?.length ?? 0) > 6 && (
-                        <span className="text-[9px] text-gray-400 leading-none">+{(tasksByDate[cellDate]?.length ?? 0) - 6}</span>
+                      {cellDate && (tasksByDate[cellDate]?.length ?? 0) > 3 && (
+                        <button type="button"
+                          onClick={e => { e.stopPropagation(); setSelectedDate(cellDate); }}
+                          className="text-[9px] text-gray-400 hover:text-gray-600 leading-none px-1.5 text-left cursor-pointer">
+                          +{(tasksByDate[cellDate]?.length ?? 0) - 3} more
+                        </button>
                       )}
                     </div>
                   ) : (
@@ -393,8 +409,10 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
             <p className="text-xs font-semibold text-gray-500">
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
-            {onAddTask && (
-              <button onClick={() => onAddTask(selectedDate)}
+            {(mode === 'dots' ? true : !!onAddTask) && (
+              <button onClick={e => mode === 'dots'
+                ? setQuickAdd({ date: selectedDate, rect: e.currentTarget.getBoundingClientRect() })
+                : onAddTask?.(selectedDate)}
                 className="flex items-center gap-1 text-[11px] font-medium text-[#1c2b3a] hover:underline cursor-pointer flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>Add task
               </button>
@@ -432,6 +450,18 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
         <div className="border-t border-slate-100 bg-slate-50 px-5 py-2 text-[11px] text-[#1c2b3a]/70 text-center">
           Drop on a date to move · Drag the ⋯ handle to resize
         </div>
+      )}
+
+      {quickAdd && (
+        <QuickAddTaskPopup
+          date={quickAdd.date}
+          anchorRect={quickAdd.rect}
+          projects={projects ?? []}
+          teamMembers={teamMembers ?? []}
+          onClose={() => setQuickAdd(null)}
+          onCreated={() => onQuickTaskCreated?.()}
+          onMoreOptions={() => { onAddTask?.(quickAdd.date); setQuickAdd(null); }}
+        />
       )}
     </div>
   );

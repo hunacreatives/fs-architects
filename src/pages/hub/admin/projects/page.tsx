@@ -201,8 +201,6 @@ export default function AdminProjectsPage() {
   const [allTasksLoading, setAllTasksLoading] = useState(false);
   const [taskStatusFilter, setTaskStatusFilter] = useState('active');
   const [taskGroupBy, setTaskGroupBy] = useState<'project' | 'assignee'>('project');
-  const [showTaskProjectPicker, setShowTaskProjectPicker] = useState(false);
-  const [taskProjectPickerSearch, setTaskProjectPickerSearch] = useState('');
   const [pendingTaskDate, setPendingTaskDate] = useState<string | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
   const [projectTypeFilter, setProjectTypeFilter] = useState<'all' | 'client' | 'internal'>('all');
@@ -788,6 +786,22 @@ export default function AdminProjectsPage() {
     }
   }, [projects, searchParams]);
 
+  // Deep link from elsewhere (e.g. the Dashboard's "Add Task" quick action)
+  // straight into the new-task form (project is picked inside the form itself).
+  const didOpenNewTaskFromLink = useRef(false);
+  useEffect(() => {
+    if (didOpenNewTaskFromLink.current) return;
+    if (searchParams.get('newTask') !== '1') return;
+    didOpenNewTaskFromLink.current = true;
+    setPendingTaskDate(null);
+    openNewTask();
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('newTask');
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const projectTags = (project: Project) => {
     const serviceTag = project.service ? [project.service] : ['General'];
     const roleTags = project.hub_project_contractors
@@ -813,7 +827,9 @@ export default function AdminProjectsPage() {
   const wsActiveTasks = tasks.filter(t => !t.archived);
   const wsDoneCt = wsActiveTasks.filter(t => t.status === 'done').length;
   const wsPct = wsActiveTasks.length > 0 ? Math.round((wsDoneCt / wsActiveTasks.length) * 100) : 0;
-  const wsTaskTeam = activeProject ? activeProject.hub_project_contractors.map(pc => pc.hub_users).filter(Boolean) : [];
+  // Not scoped to the active project's own team — a task can be assigned to
+  // anyone in the company, not just people already on that project.
+  const wsTaskTeam = contractors;
   const getWorkspaceTaskAssignees = (task: ProjectTask) =>
     getTaskAssigneeIds(task)
       .map((assigneeId) => wsTaskTeam.find((member) => member?.id === assigneeId))
@@ -1493,7 +1509,7 @@ export default function AdminProjectsPage() {
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
                     {p.stage && (
                       <div className={`flex items-center justify-between text-xs ${(p.start_date || p.deadline) ? 'pb-2.5 border-b border-gray-50' : ''}`}>
-                        <span className="text-gray-400 flex items-center gap-1.5"><i className="ri-map-pin-line text-gray-300"></i>Stage</span>
+                        <span className="text-gray-400 flex items-center gap-1.5"><i className="ri-map-pin-line text-gray-300"></i>Phase</span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStageCfg(p.stage).badge}`}>{p.stage}</span>
                       </div>
                     )}
@@ -1591,7 +1607,7 @@ export default function AdminProjectsPage() {
                 <i className="ri-add-line text-sm"></i>New Project
               </button>
             ) : (
-              <button onClick={() => { setPendingTaskDate(null); setTaskProjectPickerSearch(''); setShowTaskProjectPicker(true); }}
+              <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
                 className="flex items-center justify-center gap-1.5 min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Task
               </button>
@@ -1678,10 +1694,12 @@ export default function AdminProjectsPage() {
                   projectEnd={null}
                   today={localToday()}
                   mode="dots"
+                  projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name }))}
+                  teamMembers={contractors.map(c => ({ id: c.id, full_name: c.full_name }))}
+                  onQuickTaskCreated={fetchAllTasks}
                   onAddTask={(date) => {
                     setPendingTaskDate(date);
-                    setTaskProjectPickerSearch('');
-                    setShowTaskProjectPicker(true);
+                    openNewTask();
                   }}
                   onTaskClick={(t: any) => {
                     const orig = allTasks.find((x: any) => x.id === t.id);
@@ -2021,7 +2039,7 @@ export default function AdminProjectsPage() {
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setPendingTaskDate(null); setTaskProjectPickerSearch(''); setShowTaskProjectPicker(true); }}
+                <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
                   title="Add task"
                   className="ml-auto w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0">
                   <i className="ri-add-line text-base"></i>
@@ -2156,7 +2174,7 @@ export default function AdminProjectsPage() {
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Stage</label>
+                <label className="text-xs font-medium text-gray-700">Phase</label>
                 <select value={form.stage} onChange={e => setForm({ ...form, stage: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
                   {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -2216,50 +2234,6 @@ export default function AdminProjectsPage() {
         </div>
       )}
 
-      {/* ── New Task: pick a project first ── */}
-      {showTaskProjectPicker && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4" onClick={() => setShowTaskProjectPicker(false)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
-              <h2 className="font-semibold text-[#111827]">Add task to which project?</h2>
-              <button onClick={() => setShowTaskProjectPicker(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center"><i className="ri-close-line text-lg"></i></button>
-            </div>
-            <div className="px-5 pt-3 pb-2 flex-shrink-0">
-              <div className="relative">
-                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                <input autoFocus value={taskProjectPickerSearch} onChange={e => setTaskProjectPickerSearch(e.target.value)} placeholder="Search projects..."
-                  className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
-              </div>
-            </div>
-            <div className="overflow-y-auto px-2 pb-3">
-              {projects
-                .filter(p => p.status !== 'cancelled')
-                .filter(p => !taskProjectPickerSearch || p.project_name.toLowerCase().includes(taskProjectPickerSearch.toLowerCase()) || p.client_name.toLowerCase().includes(taskProjectPickerSearch.toLowerCase()))
-                .map(p => {
-                  const pal = getServicePalette(p.service);
-                  const rowLabel = p.project_type === 'internal' ? 'Internal' : p.client_name;
-                  return (
-                    <button key={p.id} onClick={() => { setShowTaskProjectPicker(false); setActiveId(p.id); openNewTask(); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer text-left">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white font-bold text-xs"
-                        style={{ background: `linear-gradient(135deg, ${pal.from}, ${pal.to})` }}>
-                        {p.project_name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#111827] truncate">{p.project_name}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{rowLabel}{p.service ? ` · ${p.service}` : ''}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              {projects.filter(p => p.status !== 'cancelled').length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-8">No projects yet — create one first.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       <TaskDetailPanel
         task={detailTask}
         open={detailOpen}
@@ -2293,7 +2267,8 @@ export default function AdminProjectsPage() {
         onActivityChange={refreshWorkspaceActivity}
         projectId={activeId ?? 0}
         projectName={activeProject?.project_name ?? 'General'}
-        teamMembers={wsTaskTeam.map(u => ({ id: u!.id, full_name: u!.full_name, avatar_url: u!.avatar_url }))}
+        projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name, client_name: p.client_name, project_type: p.project_type }))}
+        teamMembers={contractors.map(c => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url }))}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}
         currentUserName={hubUser?.full_name ?? 'Admin'}

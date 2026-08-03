@@ -13,6 +13,24 @@ import { fetchUserFinanceMap } from '@/lib/userFinance';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
 
+// Color by service (not list position) so a project's color stays the same
+// wherever it shows up in the app, and stays legible as more projects pile up.
+function getProjectCardPalette(service: string | null) {
+  const s = (service ?? '').toLowerCase();
+  if (s.includes('architecture'))        return { from: '#1c2b3a', to: '#2d4a6e', light: 'rgba(28,43,58,0.08)' };
+  if (s.includes('interior design'))     return { from: '#d97706', to: '#f59e0b', light: 'rgba(217,119,6,0.08)' };
+  if (s.includes('design & drafting') || s.includes('drafting')) return { from: '#0ea5e9', to: '#06b6d4', light: 'rgba(14,165,233,0.08)' };
+  if (s.includes('project management'))  return { from: '#10b981', to: '#0ea5e9', light: 'rgba(16,185,129,0.08)' };
+  if (s.includes('construction'))        return { from: '#ef4444', to: '#f97316', light: 'rgba(239,68,68,0.08)' };
+  if (s.includes('feasibility'))         return { from: '#ec4899', to: '#f43f5e', light: 'rgba(236,72,153,0.08)' };
+  if (s.includes('design-build') || s.includes('design build')) return { from: '#1c2b3a', to: '#475569', light: 'rgba(28,43,58,0.08)' };
+  if (s.includes('renovation'))          return { from: '#14b8a6', to: '#10b981', light: 'rgba(20,184,166,0.08)' };
+  if (s.includes('consultation'))        return { from: '#64748b', to: '#475569', light: 'rgba(100,116,139,0.08)' };
+  return                                        { from: '#94a3b8', to: '#64748b', light: 'rgba(148,163,184,0.08)' };
+}
+
+const DASHBOARD_PROJECT_LIMIT = 4;
+
 interface Reaction { emoji: string; user_id: string; }
 interface Comment { id: string; body: string; user_id: string; created_at: string; hub_users: { full_name: string; avatar_url: string | null } | null; }
 
@@ -729,23 +747,33 @@ export default function ContractorDashboard() {
 
             {/* Active Projects */}
             {activeProjects.length > 0 && (() => {
-              const PALETTE = [
-                { from: '#6366f1', to: '#8b5cf6', light: 'rgba(99,102,241,0.08)', bar: '#6366f1' },
-                { from: '#0ea5e9', to: '#6366f1', light: 'rgba(14,165,233,0.08)', bar: '#0ea5e9' },
-                { from: '#10b981', to: '#0ea5e9', light: 'rgba(16,185,129,0.08)', bar: '#10b981' },
-                { from: '#f59e0b', to: '#ef4444', light: 'rgba(245,158,11,0.08)', bar: '#f59e0b' },
-                { from: '#ec4899', to: '#8b5cf6', light: 'rgba(236,72,153,0.08)', bar: '#ec4899' },
-                { from: '#14b8a6', to: '#6366f1', light: 'rgba(20,184,166,0.08)', bar: '#14b8a6' },
-              ];
+              const withUrgency = activeProjects.map(p => {
+                const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date().getTime()) / 86400000) : null;
+                return { p, daysLeft, isOverdue: daysLeft !== null && daysLeft < 0 };
+              });
+              const sorted = [...withUrgency].sort((a, b) => {
+                if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+                if (a.daysLeft === null) return 1;
+                if (b.daysLeft === null) return -1;
+                return a.daysLeft - b.daysLeft;
+              });
+              const shown = sorted.slice(0, DASHBOARD_PROJECT_LIMIT);
+              const remaining = sorted.length - shown.length;
               return (
                 <div className="space-y-2.5">
-                  <h3 className="text-sm font-semibold text-[#111827]">Active Projects</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-[#111827]">Active Projects</h3>
+                    {activeProjects.length > 0 && (
+                      <button onClick={() => navigate('/hub/employee/projects')}
+                        className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors">
+                        View all {activeProjects.length > DASHBOARD_PROJECT_LIMIT ? `(${activeProjects.length}) ` : ''}→
+                      </button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {activeProjects.map((p, idx) => {
-                      const pal = PALETTE[idx % PALETTE.length];
+                    {shown.map(({ p, daysLeft, isOverdue }) => {
+                      const pal = getProjectCardPalette(p.service);
                       const pct = p.tasksTotal > 0 ? Math.round((p.tasksDone / p.tasksTotal) * 100) : 0;
-                      const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date().getTime()) / 86400000) : null;
-                      const isOverdue = daysLeft !== null && daysLeft < 0;
                       const isDueSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
                       return (
                         <button key={p.id} onClick={() => navigate('/hub/employee/projects')}
@@ -786,6 +814,12 @@ export default function ContractorDashboard() {
                       );
                     })}
                   </div>
+                  {remaining > 0 && (
+                    <button onClick={() => navigate('/hub/employee/projects')}
+                      className="w-full text-center text-xs font-medium text-gray-400 hover:text-[#1c2b3a] py-2 cursor-pointer transition-colors">
+                      +{remaining} more project{remaining > 1 ? 's' : ''} →
+                    </button>
+                  )}
                 </div>
               );
             })()}

@@ -1544,7 +1544,7 @@ export default function ContractorProjectsPage() {
 
   return (
     <ContractorLayout
-      title={workspaceRow ? undefined : 'My Work'}
+      title={workspaceRow ? undefined : 'Projects'}
       hideGlobalSearch={!!workspaceRow}
       actions={wsSearchActions}
       titleContent={workspaceRow && wsProject ? (

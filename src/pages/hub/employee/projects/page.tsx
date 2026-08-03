@@ -14,8 +14,6 @@ import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeTaskAssigneePayload } from '@/lib/taskAssignments';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 
-const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 function normalizeTaskActivityAction(type: string) {
   switch (type) {
     case 'created':
@@ -33,38 +31,24 @@ function normalizeTaskActivityAction(type: string) {
   }
 }
 
-interface ContractorPayout { id: number; amount: number; paid_at: string; notes: string | null; receipt_url: string | null; }
-
 interface TeamMember { id: string; full_name: string; avatar_url: string | null; }
 
 interface ProjectRow {
   id: number;
-  percentage: number;
-  payout_type: string;
-  fixed_amount: number | null;
-  payout_status: string;
-  paid_at: string | null;
-  hub_project_contractor_payouts: ContractorPayout[];
   hub_projects: {
     id: number;
     project_type: 'client' | 'internal';
     client_name: string;
     project_name: string;
     service: string | null;
-    contract_price: number;
     status: string;
+    stage: string;
     start_date: string | null;
     deadline: string | null;
     notes: string | null;
     drive_url: string | null;
     slug: string | null;
-    hub_project_payments: { amount: number }[];
-    hub_project_costs: { amount: number }[];
   };
-}
-
-interface ProjectRowRaw extends Omit<ProjectRow, 'hub_projects'> {
-  hub_projects: ProjectRow['hub_projects'] | ProjectRow['hub_projects'][];
 }
 
 interface ProjectTask {
@@ -431,224 +415,6 @@ function TaskRow({ task, projectName, team }: { task: ProjectTask; projectName?:
   );
 }
 
-// ── Project detail drawer ──────────────────────────────────────────────────
-function ProjectDetail({ row, tasks, team, onClose, onReceiptClick }: {
-  row: ProjectRow;
-  tasks: ProjectTask[];
-  team: TeamMember[];
-  onClose: () => void;
-  onReceiptClick: (url: string) => void;
-}) {
-  const p = row.hub_projects;
-  const today = localToday();
-  const isInternal = p.project_type === 'internal';
-  const isRetainer = p.project_type === 'retainer';
-  const totalPaid = p.hub_project_payments.reduce((s, x) => s + x.amount, 0);
-  const totalCosts = p.hub_project_costs.reduce((s, x) => s + x.amount, 0);
-  const netProfit = p.contract_price - totalCosts;
-  const isFixed = row.payout_type === 'fixed';
-  const myCut = isFixed ? (row.fixed_amount ?? 0) : netProfit * (row.percentage / 100);
-  const payouts = row.hub_project_contractor_payouts ?? [];
-  const totalPaidOut = payouts.reduce((s, x) => s + x.amount, 0);
-  const payoutPct = myCut > 0 ? Math.min((totalPaidOut / myCut) * 100, 100) : 0;
-  const isFullyPaid = totalPaidOut >= myCut && myCut > 0;
-  const tasksDone = tasks.filter(t => t.status === 'done').length;
-  const tasksPct = tasks.length > 0 ? Math.round((tasksDone / tasks.length) * 100) : 0;
-  const overdue = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done');
-  const [taskTab, setTaskTab] = useState<'all' | 'todo' | 'in_progress' | 'done'>('all');
-
-  const statusColors: Record<string, string> = {
-    ongoing: 'bg-blue-100 text-blue-700',
-    completed: 'bg-emerald-100 text-emerald-700',
-    paused: 'bg-amber-100 text-amber-700',
-    cancelled: 'bg-gray-100 text-gray-500',
-  };
-  const statusLabels: Record<string, string> = { ongoing: 'Active', completed: 'Done', paused: 'Paused', cancelled: 'Archived' };
-
-  const filteredTasks = tasks.filter(t => taskTab === 'all' || t.status === taskTab);
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Panel */}
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-white shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-start gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-bold text-gray-900 text-base leading-snug">{p.project_name}</h2>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide flex-shrink-0 ${statusColors[p.status] ?? statusColors.ongoing}`}>
-                {statusLabels[p.status] ?? p.status}
-              </span>
-              {p.service && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">{p.service}</span>
-              )}
-            </div>
-            <p className="text-sm text-gray-400 mt-0.5">{isInternal ? 'Internal Project' : p.client_name}</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer flex-shrink-0">
-            <i className="ri-close-line"></i>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-5 space-y-5">
-
-            {/* Dates */}
-            {(p.start_date || p.deadline) && (
-              <div className="flex items-center gap-6 text-sm">
-                {p.start_date && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-0.5">Start</p>
-                    <p className="font-medium text-gray-700">{new Date(p.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                  </div>
-                )}
-                {p.start_date && p.deadline && <i className="ri-arrow-right-line text-gray-300"></i>}
-                {p.deadline && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-0.5">Deadline</p>
-                    <p className={`font-medium ${p.deadline < today && p.status !== 'completed' ? 'text-rose-500' : 'text-gray-700'}`}>
-                      {new Date(p.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Progress + payout/ops stats */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 rounded-2xl p-4 flex flex-col gap-2">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Task Progress</p>
-                <div className="flex items-center gap-3">
-                  <ProgressRing pct={tasksPct} size={52} />
-                  <div>
-                    <p className="text-sm font-bold text-gray-800">{tasksDone}/{tasks.length}</p>
-                    <p className="text-[11px] text-gray-400">tasks done</p>
-                    {overdue.length > 0 && <p className="text-[11px] text-rose-500 font-medium">{overdue.length} overdue</p>}
-                  </div>
-                </div>
-              </div>
-              {isInternal || isRetainer ? (
-                <div className="bg-gray-50 rounded-2xl p-4 flex flex-col gap-2">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Project</p>
-                  <p className="text-sm font-bold text-gray-900 leading-none">{isRetainer ? 'Retainer' : 'Internal'}</p>
-                  <p className="text-[11px] text-gray-400">Ongoing engagement</p>
-                </div>
-              ) : (
-                <div className="bg-gray-50 rounded-2xl p-4 flex flex-col gap-2">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Your Payout</p>
-                  <p className="text-lg font-bold text-gray-900 leading-none">{fmt(myCut)}</p>
-                  <p className="text-[11px] text-gray-400">{isFixed ? 'Fixed fee' : `${row.percentage}% of net`}</p>
-                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${isFullyPaid ? 'bg-emerald-400' : 'bg-blue-400'}`} style={{ width: `${payoutPct}%` }} />
-                  </div>
-                  <p className={`text-[11px] font-medium ${isFullyPaid ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    {isFullyPaid ? 'Paid in full ✓' : `${fmt(totalPaidOut)} received`}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Project overall payment progress — client only, not retainer */}
-            {!isInternal && !isRetainer && (
-              <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Project Collections</p>
-                  <p className="text-xs font-semibold text-gray-600">{fmt(totalPaid)} / {fmt(p.contract_price)}</p>
-                </div>
-                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${p.contract_price > 0 ? Math.min((totalPaid / p.contract_price) * 100, 100) : 0}%` }} />
-                </div>
-                <p className="text-[11px] text-gray-400">{p.contract_price > 0 ? ((totalPaid / p.contract_price) * 100).toFixed(0) : 0}% collected from client</p>
-              </div>
-            )}
-
-            {/* Tasks */}
-            {tasks.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-gray-800">Tasks</p>
-                  <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
-                    {(['all', 'todo', 'in_progress', 'done'] as const).map(f => {
-                      const count = f === 'all' ? tasks.length : tasks.filter(t => t.status === f).length;
-                      const labels: Record<string, string> = { all: 'All', todo: 'Todo', in_progress: 'Active', done: 'Done' };
-                      return count > 0 || f === 'all' ? (
-                        <button key={f} onClick={() => setTaskTab(f)}
-                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium cursor-pointer transition-colors ${taskTab === f ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                          {labels[f]}{f !== 'all' && <span className="ml-1 opacity-70">{count}</span>}
-                        </button>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-                <div className="space-y-0.5 bg-gray-50/60 rounded-2xl py-1">
-                  {filteredTasks.map(t => (
-                    <TaskRow key={t.id} task={t} team={team} />
-                  ))}
-                  {filteredTasks.length === 0 && (
-                    <p className="text-xs text-gray-300 text-center py-4">No tasks here</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Team */}
-            {team.length > 0 && (
-              <div>
-                <p className="text-sm font-semibold text-gray-800 mb-3">Team</p>
-                <div className="flex flex-wrap gap-2">
-                  {team.map(m => (
-                    <div key={m.id} className="flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1.5">
-                      <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-5 h-5" className="flex-shrink-0" />
-                      <span className="text-xs text-gray-700 font-medium">{m.full_name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Notes */}
-            {p.notes && (
-              <div>
-                <p className="text-sm font-semibold text-gray-800 mb-2">Notes</p>
-                <p className="text-sm text-gray-500 bg-gray-50 rounded-2xl p-4 leading-relaxed whitespace-pre-line">{p.notes}</p>
-              </div>
-            )}
-
-            {/* Payout history — client only, not retainer */}
-            {!isInternal && !isRetainer && payouts.length > 0 && (
-              <div>
-                <p className="text-sm font-semibold text-gray-800 mb-3">Payout History</p>
-                <div className="space-y-2">
-                  {payouts.map(pp => (
-                    <div key={pp.id} className="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3">
-                      <i className="ri-check-line text-emerald-500 flex-shrink-0"></i>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800">{fmt(pp.amount)}</p>
-                        {pp.notes && <p className="text-xs text-gray-400 truncate">{pp.notes}</p>}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-400">{new Date(pp.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                        {pp.receipt_url && (
-                          <button onClick={() => onReceiptClick(pp.receipt_url!)} className="text-[11px] text-sky-500 hover:text-sky-700 cursor-pointer flex items-center gap-0.5 ml-auto">
-                            <i className="ri-image-line text-[10px]"></i> Receipt
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ── Per-project color palette ──────────────────────────────────────────────
 // Colors based on service type
 const getCardPalette = (service: string | null) => {
@@ -680,15 +446,6 @@ function ProjectCard({ row, projectTasks, onClick }: {
   const inProgressCount = projectTasks.filter(t => t.status === 'in_progress').length;
   const todoCount = projectTasks.filter(t => t.status === 'todo').length;
   const internalProject = p.project_type === 'internal';
-  const isFixed = row.payout_type === 'fixed';
-  const totalCosts = p.hub_project_costs.reduce((s, x) => s + x.amount, 0);
-  const netProfit = p.contract_price - totalCosts;
-  const myCut = isFixed ? (row.fixed_amount ?? 0) : netProfit * (row.percentage / 100);
-  const payouts = row.hub_project_contractor_payouts ?? [];
-  const totalPaidOut = payouts.reduce((s, x) => s + x.amount, 0);
-  const isFullyPaid = totalPaidOut >= myCut && myCut > 0;
-  const isRetainerProject = p.project_type === 'retainer';
-  const showPayout = !internalProject && !isRetainerProject && myCut > 0;
 
   const daysLeft = p.deadline
     ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000)
@@ -704,7 +461,6 @@ function ProjectCard({ row, projectTasks, onClick }: {
     if (projectTasks.length === 0) return 'No tasks yet';
     if (daysLeft !== null && daysLeft <= 7) return 'Due this week';
     if (internalProject && inProgressCount > 0) return 'Internal sprint';
-    if (showPayout && isFullyPaid) return 'Fully paid';
     return 'In progress';
   })();
   const healthCls =
@@ -713,7 +469,6 @@ function ProjectCard({ row, projectTasks, onClick }: {
     healthLabel === 'Overdue' ? 'bg-rose-100 text-rose-600' :
     healthLabel === 'Due this week' ? 'bg-amber-100 text-amber-700' :
     healthLabel === 'Internal sprint' ? 'bg-slate-100 text-[#1c2b3a]' :
-    healthLabel === 'Fully paid' ? 'bg-emerald-100 text-emerald-700' :
     healthLabel === 'No tasks yet' ? 'bg-gray-100 text-gray-500' :
     'bg-sky-100 text-sky-600';
 
@@ -730,6 +485,11 @@ function ProjectCard({ row, projectTasks, onClick }: {
             {p.service && (
               <span className="inline-block text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: palette.from }}>
                 {p.service}
+              </span>
+            )}
+            {p.stage && (
+              <span className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700 ml-1.5 mb-1 align-middle">
+                {p.stage}
               </span>
             )}
             <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1 group-hover:text-gray-700 transition-colors">
@@ -794,13 +554,10 @@ export default function ContractorProjectsPage() {
   const [searchParams] = useSearchParams();
   const deepLinkDone = useRef<string | null>(null);
   const [rows, setRows] = useState<ProjectRow[]>([]);
-  const [clientEntries, setClientEntries] = useState<{ id: string; rowId?: number; name: string; type: 'retainer' | 'assignment'; status: string; service?: string | null; monthly_rate?: number | null; months_paid?: number; platform?: string | null; role?: string | null; notes?: string | null; clientId?: number }[]>([]);
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [teamMap, setTeamMap] = useState<Record<number, TeamMember[]>>({});
   const [loading, setLoading] = useState(true);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [workspaceRow, setWorkspaceRow] = useState<ProjectRow | null>(null);
-  const [clientWorkspace, setClientWorkspace] = useState<typeof clientEntries[0] | null>(null);
   const [taskFilter, setTaskFilter] = useState<'all' | 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done' | 'overdue'>('all');
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
   const [taskView, setTaskView] = useState<'list' | 'board'>('list');
@@ -938,6 +695,7 @@ export default function ContractorProjectsPage() {
                 taskId: (data as ProjectTask).id,
                 file: taskAttachment,
                 uploadedBy: hubUser.id,
+                projectId: workspaceRow.hub_projects.id,
                 projectName: workspaceRow?.hub_projects?.project_name ?? 'General',
               });
             } finally {
@@ -1230,65 +988,30 @@ export default function ContractorProjectsPage() {
 
     (async () => {
       try {
-        // 1. contractor's assignments + project_ids in one query
-        const { data: pcData, error: pcErr } = await supabase
-          .from('hub_project_contractors')
-          .select('id, project_id, percentage, payout_type, fixed_amount, payout_status, paid_at')
-          .eq('contractor_id', hubUser.id);
-        if (pcErr) throw pcErr;
-        if (!pcData?.length) { setLoading(false); return; }
+        // Every project and workspace is visible to the whole team — fs-architects
+        // doesn't restrict visibility by assignment the way some client hubs do.
+        const { data: projectsData, error: projErr } = await supabase
+          .from('hub_projects')
+          .select('id, project_type, client_name, project_name, service, status, stage, start_date, deadline, notes, drive_url, slug');
+        if (projErr) throw projErr;
+        if (!projectsData?.length) { setLoading(false); return; }
 
-        const projectIds = [...new Set(pcData.map((r: any) => r.project_id as number))];
-        const pcIds = pcData.map((r: any) => r.id as number);
+        const projectIds = projectsData.map((p: any) => p.id as number);
 
-        // 2. fetch everything in parallel — no nested joins
-        const [
-          { data: projectsData },
-          { data: payoutsData },
-          { data: paymentsData },
-          { data: costsData },
-        ] = await Promise.all([
-          supabase.from('hub_projects').select('id, project_type, client_name, project_name, service, contract_price, status, start_date, deadline, notes, drive_url, slug').in('id', projectIds),
-          supabase.from('hub_project_contractor_payouts').select('id, amount, paid_at, notes, receipt_url, project_contractor_id').in('project_contractor_id', pcIds),
-          supabase.from('hub_project_payments').select('amount, project_id').in('project_id', projectIds),
-          supabase.from('hub_project_costs').select('amount, project_id').in('project_id', projectIds),
-        ]);
-
-        const projectMap = Object.fromEntries((projectsData ?? []).map((p: any) => [p.id, p]));
-        const payoutsByPc: Record<number, any[]> = {};
-        for (const p of (payoutsData ?? [])) (payoutsByPc[p.project_contractor_id] ??= []).push(p);
-        const paymentsByProject: Record<number, { amount: number }[]> = {};
-        for (const p of (paymentsData ?? [])) (paymentsByProject[p.project_id] ??= []).push({ amount: p.amount });
-        const costsByProject: Record<number, { amount: number }[]> = {};
-        for (const c of (costsData ?? [])) (costsByProject[c.project_id] ??= []).push({ amount: c.amount });
-
-        const normalized: ProjectRow[] = pcData.map((pc: any) => {
-          const project = projectMap[pc.project_id];
-          if (!project) return null;
-          return {
-            id: pc.id,
-            percentage: pc.percentage,
-            payout_type: pc.payout_type,
-            fixed_amount: pc.fixed_amount,
-            payout_status: pc.payout_status,
-            paid_at: pc.paid_at,
-            hub_project_contractor_payouts: payoutsByPc[pc.id] ?? [],
-            hub_projects: {
-              ...project,
-              hub_project_payments: paymentsByProject[pc.project_id] ?? [],
-              hub_project_costs: costsByProject[pc.project_id] ?? [],
-            },
-          };
-        }).filter(Boolean) as ProjectRow[];
+        const normalized: ProjectRow[] = projectsData.map((project: any) => ({
+          id: project.id,
+          hub_projects: project,
+        }));
 
         setRows(normalized);
 
         // 3. tasks + team
-        const [{ data: taskData }, { data: pcTeamData }] = await Promise.all([
-          supabase.from('hub_project_tasks').select('id, project_id, title, description, status, priority, due_date, start_date, assigned_to, assignee_ids, checklist, color, meta, archived, archived_at').in('project_id', projectIds),
+        const [{ data: taskData, error: taskError }, { data: pcTeamData }] = await Promise.all([
+          supabase.from('hub_project_tasks').select('id, project_id, title, description, status, priority, due_date, start_date, assigned_to, assignee_ids, checklist, color, meta, archived, archived_at').in('project_id', projectIds).is('deleted_at', null),
           supabase.from('hub_project_contractors').select('project_id, contractor_id').in('project_id', projectIds),
         ]);
-        setTasks((taskData as ProjectTask[]) ?? []);
+        if (taskError) console.error('Fetch tasks error:', taskError);
+        else setTasks((taskData as ProjectTask[]) ?? []);
 
         const allUserIds = [...new Set((pcTeamData ?? []).map((r: any) => r.contractor_id as string))];
         if (allUserIds.length > 0) {
@@ -1301,48 +1024,6 @@ export default function ContractorProjectsPage() {
           }
           setTeamMap(map);
         }
-
-        // Fetch retainer clients + international assignments
-        const [{ data: pcRetainers }, { data: assignData }] = await Promise.all([
-          supabase.from('hub_project_contractors')
-            .select('id, hub_project_contractor_payouts(amount), hub_projects(id, client_name, project_name, service, status, project_type, monthly_rate)')
-            .eq('contractor_id', hubUser.id),
-          supabase.from('hub_client_assignments')
-            .select('id, role, hub_clients(id, client_name, platform, status, notes)')
-            .eq('contractor_id', hubUser.id),
-        ]);
-
-        const retainerEntries = (pcRetainers ?? [])
-          .filter((r: any) => { const p = Array.isArray(r.hub_projects) ? r.hub_projects[0] : r.hub_projects; return p?.project_type === 'retainer'; })
-          .map((r: any) => {
-            const p = Array.isArray(r.hub_projects) ? r.hub_projects[0] : r.hub_projects;
-            const totalPaid = (r.hub_project_contractor_payouts ?? []).reduce((s: number, x: any) => s + x.amount, 0);
-            const monthlyRate = p?.monthly_rate ?? 0;
-            return { id: `retainer-${r.id}`, rowId: r.id as number, name: p?.project_name ?? p?.client_name ?? 'Retainer', type: 'retainer' as const, status: p?.status ?? 'ongoing', service: p?.service, monthly_rate: monthlyRate, months_paid: monthlyRate > 0 ? Math.round(totalPaid / monthlyRate) : 0 };
-          });
-
-        const seenClientIds = new Set<number>();
-        const seenKeys = new Set<string>();
-        const seenRetainerNames = new Set(retainerEntries.map(r => r.name.toLowerCase()));
-        const assignmentEntries = (assignData ?? [])
-          .map((a: any) => {
-            const cl = Array.isArray(a.hub_clients) ? a.hub_clients[0] : a.hub_clients;
-            return { id: `assign-${a.id}`, clientId: cl?.id as number | undefined, name: cl?.client_name ?? '', type: 'assignment' as const, status: cl?.status ?? 'active', platform: cl?.platform, role: a.role, notes: cl?.notes };
-          })
-          .filter(e => {
-            if (!e.name) return false; // drop entries with no client data
-            if (e.clientId) {
-              if (seenClientIds.has(e.clientId)) return false;
-              seenClientIds.add(e.clientId);
-            } else {
-              const key = `${e.name.toLowerCase()}|${(e.role ?? '').toLowerCase()}`;
-              if (seenKeys.has(key)) return false;
-              seenKeys.add(key);
-            }
-            if (seenRetainerNames.has(e.name.toLowerCase())) return false;
-            return true;
-          });
-        setClientEntries([...retainerEntries, ...assignmentEntries]);
       } catch (err) {
         console.error('Projects load error:', err);
       } finally {
@@ -1351,17 +1032,14 @@ export default function ContractorProjectsPage() {
     })();
   }, [hubUser, projectRefreshKey]);
 
-  // Realtime: re-fetch when admin assigns or removes this contractor from a project
+  // Realtime: every project is visible to everyone, so re-fetch on any project
+  // or team-assignment change, not just changes involving the current user.
   useEffect(() => {
     if (!hubUser?.id || isDemo) return;
     const channel = supabase
-      .channel(`contractor-assignments-${hubUser.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'hub_project_contractors',
-        filter: `contractor_id=eq.${hubUser.id}`,
-      }, () => setProjectRefreshKey(k => k + 1))
+      .channel(`employee-projects-${hubUser.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hub_project_contractors' }, () => setProjectRefreshKey(k => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hub_projects' }, () => setProjectRefreshKey(k => k + 1))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [hubUser?.id, isDemo]);
@@ -1457,16 +1135,14 @@ export default function ContractorProjectsPage() {
   };
 
   const searchLower = search.toLowerCase();
-  // My Work = one-time + internal only (retainers live in My Clients)
-  const workRows = rows.filter(r => r.hub_projects?.project_type !== 'retainer');
   const filteredRows = search
-    ? workRows.filter(r => {
+    ? rows.filter(r => {
         const p = r.hub_projects;
         return p?.project_name?.toLowerCase().includes(searchLower)
           || p?.client_name?.toLowerCase().includes(searchLower)
           || p?.service?.toLowerCase().includes(searchLower);
       })
-    : workRows;
+    : rows;
   const sortedRows = [...filteredRows].sort((a, b) => {
     const p1 = a.hub_projects, p2 = b.hub_projects;
     const today2 = localToday();
@@ -1548,9 +1224,7 @@ export default function ContractorProjectsPage() {
     { label: 'Overview', description: `${wsProject.project_name} · Stats & progress`, icon: 'ri-bar-chart-2-line', id: 'ws-stats', iconCls: 'bg-emerald-50 text-emerald-500', keywords: ['stats', 'overview', 'total', 'count', 'numbers', 'summary', 'progress'] },
     { label: 'Team', description: `${wsProject.project_name} · Members`, icon: 'ri-team-line', id: 'ws-sidebar', iconCls: 'bg-purple-50 text-purple-500', keywords: ['team', 'members', 'people', 'colleagues', 'who', 'assigned'] },
     { label: 'Notes & Dates', description: `${wsProject.project_name} · Start & deadline`, icon: 'ri-sticky-note-line', id: 'ws-sidebar', iconCls: 'bg-amber-50 text-amber-500', keywords: ['notes', 'brief', 'description', 'info', 'details', 'start', 'due', 'date', 'deadline'] },
-  ].concat(wsProject.project_type === 'internal' ? [] : [
-    { label: 'Payout', description: `${wsProject.project_name} · Your earnings`, icon: 'ri-money-dollar-circle-line', id: 'ws-sidebar', iconCls: 'bg-slate-50 text-[#1c2b3a]', keywords: ['payout', 'payment', 'earnings', 'salary', 'money', 'fee', 'income', 'receive'] },
-  ]) : [];
+  ] : [];
 
   const WS_FILTERS = [
     { label: 'Overdue Tasks', filter: 'overdue' as const, icon: 'ri-alarm-warning-line', cls: 'bg-rose-50 text-rose-500', count: wsTasks.filter(t => !!wsIsOverdue(t)).length, keywords: ['overdue', 'late', 'past due', 'missed'] },
@@ -1883,7 +1557,7 @@ export default function ContractorProjectsPage() {
           <button
             onClick={() => {
               const slug = wsProject.slug || slugify(wsProject.client_name);
-              const url = `https://hunacreatives.com/hub/employee/project/${slug}`;
+              const url = `https://fsarchitects.ph/hub/employee/project/${slug}`;
               try {
                 navigator.clipboard.writeText(url).then(() => {
                   setLinkCopied(true);
@@ -1915,63 +1589,10 @@ export default function ContractorProjectsPage() {
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
         </div>
-      ) : clientWorkspace ? (
-        <div className="flex items-center gap-3 min-w-0">
-          <button onClick={() => setClientWorkspace(null)}
-            className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0">
-            <i className="ri-arrow-left-s-line text-base"></i>
-          </button>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-900 truncate leading-tight">{clientWorkspace.name}</p>
-            <p className="text-xs text-gray-400 truncate">{clientWorkspace.platform ?? clientWorkspace.role ?? 'International Client'}</p>
-          </div>
-        </div>
       ) : undefined}
     >
-      {/* ── International Client Workspace ── */}
-      {clientWorkspace && (
-        <div className="space-y-4 max-w-2xl">
-          <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center flex-shrink-0">
-                <i className="ri-building-line text-[#1c2b3a] text-lg"></i>
-              </div>
-              <div>
-                <p className="font-bold text-gray-900">{clientWorkspace.name}</p>
-                <p className="text-xs text-gray-400">{clientWorkspace.platform ?? clientWorkspace.role ?? 'International Client'}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {clientWorkspace.role && (
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Role</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{clientWorkspace.role}</p>
-                </div>
-              )}
-              {clientWorkspace.platform && (
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Platform</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{clientWorkspace.platform}</p>
-                </div>
-              )}
-              <div className="bg-gray-50 rounded-xl p-3">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Status</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5 capitalize">{clientWorkspace.status}</p>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-3">
-                <p className="text-[10px] text-[#1c2b3a]/50 uppercase tracking-wide">Type</p>
-                <p className="text-sm font-semibold text-[#1c2b3a] mt-0.5">International</p>
-              </div>
-            </div>
-            {clientWorkspace.notes && (
-              <p className="text-xs text-gray-500 italic mt-3 pt-3 border-t border-gray-100">{clientWorkspace.notes}</p>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── Workspace ── */}
-      {!clientWorkspace && workspaceRow && wsProject && (
+      {workspaceRow && wsProject && (
         <div className="flex flex-col -mx-4 -my-4 md:-mx-6 md:-my-6 min-h-full">
 
           {/* ── Hero banner ── */}
@@ -1996,6 +1617,7 @@ export default function ContractorProjectsPage() {
                         </span>
                         {wsIsInternal && <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Internal</span>}
                         {wsProject.service && <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{wsProject.service}</span>}
+                        {wsProject.stage && <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700">{wsProject.stage}</span>}
                       </div>
                       <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{wsProject.project_name}</h2>
                       <p className="text-sm text-gray-400 mt-0.5">{wsIsInternal ? 'Internal Project' : wsProject.client_name}</p>
@@ -2407,42 +2029,6 @@ export default function ContractorProjectsPage() {
                   )}
                 </div>
 
-                {/* Payout */}
-                {!wsIsInternal && wsProject?.project_type !== 'retainer' && (() => {
-                  const totalCosts = wsProject.hub_project_costs.reduce((s, x) => s + x.amount, 0);
-                  const netProfit = wsProject.contract_price - totalCosts;
-                  const isFixed = workspaceRow!.payout_type === 'fixed';
-                  const myCut = isFixed ? (workspaceRow!.fixed_amount ?? 0) : netProfit * (workspaceRow!.percentage / 100);
-                  const payouts = workspaceRow!.hub_project_contractor_payouts ?? [];
-                  const totalPaidOut = payouts.reduce((s, x) => s + x.amount, 0);
-                  const isFullyPaid = totalPaidOut >= myCut && myCut > 0;
-                  const payoutPct = myCut > 0 ? Math.min((totalPaidOut / myCut) * 100, 100) : 0;
-                  return (
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Your Payout</p>
-                      <p className="text-xl font-bold text-gray-900">{fmt(myCut)}</p>
-                      <p className="text-xs text-gray-400">{isFixed ? 'Fixed fee' : `${workspaceRow!.percentage}% of net profit`}</p>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${isFullyPaid ? 'bg-emerald-400' : 'bg-blue-400'}`} style={{ width: `${payoutPct}%` }} />
-                      </div>
-                      <p className={`text-xs font-medium ${isFullyPaid ? 'text-emerald-600' : 'text-gray-400'}`}>
-                        {isFullyPaid ? 'Paid in full ✓' : `${fmt(totalPaidOut)} received`}
-                      </p>
-                      {payouts.length > 0 && (
-                        <div className="space-y-1.5 border-t border-gray-50 pt-3">
-                          {payouts.map(pp => (
-                            <div key={pp.id} className="flex items-center gap-2 text-xs">
-                              <i className="ri-check-line text-emerald-400 flex-shrink-0"></i>
-                              <span className="font-medium text-gray-700">{fmt(pp.amount)}</span>
-                              <span className="text-gray-400 ml-auto">{new Date(pp.paid_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
                 {/* Team */}
                 {wsTeam.length > 0 && (
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -2464,7 +2050,7 @@ export default function ContractorProjectsPage() {
       )}
 
       {/* ── Project list ── */}
-      {!workspaceRow && !clientWorkspace && (loading ? (
+      {!workspaceRow && (loading ? (
         <div className="flex justify-center py-24">
           <i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i>
         </div>
@@ -2549,134 +2135,8 @@ export default function ContractorProjectsPage() {
               );
             })()}
 
-            {/* ── My Clients section ── */}
-            {clientEntries.length > 0 && (
-              <div className="pt-6 mt-3 space-y-3 border-t border-gray-200/80">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <i className="ri-building-line text-[#1c2b3a] text-sm"></i>
-                      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">My Clients <span className="text-gray-400 font-normal">({clientEntries.length})</span></p>
-                    </div>
-                    <p className="text-sm text-gray-400 mt-1">Ongoing retainer and direct client relationships separate from project-based delivery work above.</p>
-                  </div>
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 text-[#1c2b3a] text-[11px] font-semibold whitespace-nowrap">
-                    <i className="ri-repeat-line text-[11px]"></i>
-                    Ongoing Clients
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {clientEntries.map(c => (
-                    <button key={c.id} onClick={() => {
-                      if (c.type === 'retainer' && c.rowId) {
-                        const row = rows.find(r => r.id === c.rowId);
-                        if (row) { setWorkspaceRow(row); setTaskFilter('all'); setTaskSearch(''); setWsFocusSection(null); }
-                      } else {
-                        setClientWorkspace(c);
-                      }
-                    }}
-                      className="w-full text-left rounded-3xl overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-                      style={(() => { const pal = getCardPalette(c.service ?? null); return { background: `linear-gradient(135deg, ${pal.from}, ${pal.to})`, border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 2px 20px rgba(0,0,0,0.12)' }; })()}>
-                      {(() => {
-                        const linkedRow = c.type === 'retainer' && c.rowId ? rows.find(r => r.id === c.rowId) : null;
-                        const linkedProjectId = linkedRow?.hub_projects?.id ?? null;
-                        const linkedTasks = linkedProjectId ? tasks.filter(t => t.project_id === linkedProjectId) : [];
-                        const activeTaskCount = linkedTasks.filter(t => t.status === 'in_progress').length;
-                        const reviewTaskCount = linkedTasks.filter(t => t.status === 'in_review').length;
-                        const overdueTaskCount = linkedTasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done').length;
-                        const doneTaskCount = linkedTasks.filter(t => t.status === 'done').length;
-                        const teamMembers = linkedProjectId ? (teamMap[linkedProjectId] ?? []) : [];
-                        const infoLine = c.type === 'retainer'
-                          ? linkedProjectId
-                            ? `${linkedTasks.length} task${linkedTasks.length !== 1 ? 's' : ''} in workspace`
-                            : 'Retainer workspace'
-                          : c.role ?? c.platform ?? 'Client relationship';
 
-                        return (
-                          <div className="p-3.5 min-h-[152px] flex flex-col justify-between">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                {c.service && <span className="inline-block text-[10px] font-semibold tracking-widest uppercase mb-1 text-white/70">{c.service}</span>}
-                                <p className="font-bold text-white text-sm leading-tight truncate">{c.name}</p>
-                                <p className="text-xs text-white/70 mt-0.5 truncate">{infoLine}</p>
-                              </div>
-                              <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 bg-white/20 text-white">
-                                {c.type === 'retainer' ? 'Retainer' : 'Client'}
-                              </span>
-                            </div>
-
-                            <div className="space-y-2.5 pt-3 border-t border-white/20">
-                              {linkedProjectId ? (
-                                <>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-white/15 text-white/90">
-                                      {activeTaskCount} active
-                                    </span>
-                                    {reviewTaskCount > 0 && (
-                                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-white/15 text-white/90">
-                                        {reviewTaskCount} in review
-                                      </span>
-                                    )}
-                                    {overdueTaskCount > 0 ? (
-                                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-rose-100/20 text-white">
-                                        {overdueTaskCount} overdue
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-white/15 text-white/90">
-                                        {doneTaskCount} done
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      {teamMembers.length > 0 ? (
-                                        <>
-                                          <div className="flex -space-x-1.5">
-                                            {teamMembers.slice(0, 3).map((member) => (
-                                              member.avatar_url ? (
-                                                <img key={member.id} src={member.avatar_url} alt={member.full_name} className="w-6 h-6 rounded-full border border-white/40 object-cover object-top" />
-                                              ) : (
-                                                <div key={member.id} className="w-6 h-6 rounded-full border border-white/40 bg-white/20 flex items-center justify-center text-[9px] font-bold text-white">
-                                                  {member.full_name[0]}
-                                                </div>
-                                              )
-                                            ))}
-                                          </div>
-                                          <span className="text-[10px] text-white/80 truncate">
-                                            {teamMembers.length} teammate{teamMembers.length !== 1 ? 's' : ''}
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <span className="text-[10px] text-white/75">No team assigned yet</span>
-                                      )}
-                                    </div>
-                                    <span className="text-[10px] text-white/80 whitespace-nowrap">
-                                      {linkedTasks.length > 0 ? `${linkedTasks.length} tasks` : 'Open workspace'}
-                                    </span>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-white/15 text-white/90">
-                                    {(c.status === 'active' ? 'Active' : c.status).replace(/^./, (letter) => letter.toUpperCase())}
-                                  </span>
-                                  <span className="text-[10px] text-white/75 truncate text-right">
-                                    {c.notes || c.platform || c.role || 'Open client workspace'}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
-
           {/* ── RIGHT: task panel ── */}
           <div className="hidden lg:flex flex-col gap-4 w-[300px] flex-shrink-0">
 
@@ -2763,20 +2223,6 @@ export default function ContractorProjectsPage() {
         </div>
       ))}
 
-      {/* Receipt lightbox */}
-      {lightboxUrl && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setLightboxUrl(null)}>
-          <div className="relative max-w-3xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <img src={lightboxUrl} alt="Receipt" className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl" />
-            <button onClick={() => setLightboxUrl(null)} className="absolute top-2 right-2 w-8 h-8 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black cursor-pointer">
-              <i className="ri-close-line text-sm"></i>
-            </button>
-            <a href={lightboxUrl} target="_blank" rel="noopener noreferrer" className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 text-white text-xs rounded-lg hover:bg-black">
-              <i className="ri-external-link-line text-xs"></i> Open full size
-            </a>
-          </div>
-        </div>
-      )}
 
       {/* Task add/edit modal */}
       {/* ── Task drawer ── */}

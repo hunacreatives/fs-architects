@@ -82,10 +82,10 @@ export const DEMO_CLIENTS: HubClient[] = [
 
 // Projects
 export const DEMO_PROJECTS = [
-  { id: 1, project_type: 'client', client_name: 'Verde Tech Solutions', project_name: 'Website Redesign', service: 'Website Design', contract_price: 180000, status: 'ongoing', start_date: '2026-03-01', deadline: '2026-07-31', notes: 'Full redesign with CMS integration', contact_email: 'contact@verde.tech', hub_project_payments: [{ id: 1, amount: 90000, paid_at: '2026-03-15', notes: 'Initial 50%', receipt_url: null }], hub_project_costs: [{ id: 1, label: 'Stock assets', amount: 8500, date: '2026-03-10' }], hub_payment_reminders: [], hub_project_contractors: [] },
-  { id: 2, project_type: 'client', client_name: 'Sunrise Capital Group', project_name: 'Brand Identity Package', service: 'Branding & Identity', contract_price: 95000, status: 'ongoing', start_date: '2026-04-15', deadline: '2026-06-30', notes: 'Logo, brand guide, collateral', contact_email: 'hello@sunrise.com', hub_project_payments: [{ id: 2, amount: 47500, paid_at: '2026-04-20', notes: 'Down payment', receipt_url: null }], hub_project_costs: [{ id: 2, label: 'Printing samples', amount: 3200, date: '2026-05-05' }], hub_payment_reminders: [], hub_project_contractors: [] },
-  { id: 3, project_type: 'client', client_name: 'Pacific Wellness Inc.', project_name: 'App UI/UX Design', service: 'Website Design', contract_price: 240000, status: 'ongoing', start_date: '2026-05-20', deadline: '2026-09-30', notes: 'iOS & Android screens, design system', contact_email: 'ops@pacificwellness.ph', hub_project_payments: [{ id: 3, amount: 80000, paid_at: '2026-05-22', notes: 'Kickoff payment', receipt_url: null }], hub_project_costs: [], hub_payment_reminders: [], hub_project_contractors: [] },
-  { id: 4, project_type: 'client', client_name: 'Northern Star Media', project_name: 'Q2 Social Campaign', service: 'Social Media Management', contract_price: 75000, status: 'completed', start_date: '2026-04-01', deadline: '2026-05-31', notes: 'April–May social campaign', contact_email: 'team@northernstar.media', hub_project_payments: [{ id: 4, amount: 75000, paid_at: '2026-05-28', notes: 'Full payment', receipt_url: null }], hub_project_costs: [{ id: 3, label: 'Ad spend', amount: 15000, date: '2026-04-10' }], hub_payment_reminders: [], hub_project_contractors: [] },
+  { id: 1, project_type: 'client', client_name: 'Verde Tech Solutions', project_name: 'Website Redesign', service: 'Website Design', contract_price: 180000, status: 'ongoing', stage: 'Construction Documents', start_date: '2026-03-01', deadline: '2026-07-31', notes: 'Full redesign with CMS integration', contact_email: 'contact@verde.tech', hub_project_payments: [{ id: 1, amount: 90000, paid_at: '2026-03-15', notes: 'Initial 50%', receipt_url: null }], hub_project_costs: [{ id: 1, label: 'Stock assets', amount: 8500, date: '2026-03-10' }], hub_payment_reminders: [], hub_project_contractors: [] },
+  { id: 2, project_type: 'client', client_name: 'Sunrise Capital Group', project_name: 'Brand Identity Package', service: 'Branding & Identity', contract_price: 95000, status: 'ongoing', stage: 'Schematic Design', start_date: '2026-04-15', deadline: '2026-06-30', notes: 'Logo, brand guide, collateral', contact_email: 'hello@sunrise.com', hub_project_payments: [{ id: 2, amount: 47500, paid_at: '2026-04-20', notes: 'Down payment', receipt_url: null }], hub_project_costs: [{ id: 2, label: 'Printing samples', amount: 3200, date: '2026-05-05' }], hub_payment_reminders: [], hub_project_contractors: [] },
+  { id: 3, project_type: 'client', client_name: 'Pacific Wellness Inc.', project_name: 'App UI/UX Design', service: 'Website Design', contract_price: 240000, status: 'ongoing', stage: 'Design Development', start_date: '2026-05-20', deadline: '2026-09-30', notes: 'iOS & Android screens, design system', contact_email: 'ops@pacificwellness.ph', hub_project_payments: [{ id: 3, amount: 80000, paid_at: '2026-05-22', notes: 'Kickoff payment', receipt_url: null }], hub_project_costs: [], hub_payment_reminders: [], hub_project_contractors: [] },
+  { id: 4, project_type: 'client', client_name: 'Northern Star Media', project_name: 'Q2 Social Campaign', service: 'Social Media Management', contract_price: 75000, status: 'completed', stage: 'Post-Construction/Closeout', start_date: '2026-04-01', deadline: '2026-05-31', notes: 'April–May social campaign', contact_email: 'team@northernstar.media', hub_project_payments: [{ id: 4, amount: 75000, paid_at: '2026-05-28', notes: 'Full payment', receipt_url: null }], hub_project_costs: [{ id: 3, label: 'Ad spend', amount: 15000, date: '2026-04-10' }], hub_payment_reminders: [], hub_project_contractors: [] },
 ];
 
 // SOPs
@@ -142,7 +142,7 @@ export const DEMO_CONTRACTOR_PROJECTS = [
     hub_project_contractor_payouts: [],
     hub_projects: {
       id: 1, client_name: 'Verde Tech Solutions', project_name: 'Website Redesign',
-      service: 'Website Design', contract_price: 180000, status: 'ongoing',
+      service: 'Website Design', contract_price: 180000, status: 'ongoing', stage: 'Construction Documents',
       start_date: '2026-03-01', deadline: '2026-07-31',
       notes: 'Full redesign with CMS integration. Mobile-first approach.',
       drive_url: null, project_type: 'client',
@@ -156,7 +156,7 @@ export const DEMO_CONTRACTOR_PROJECTS = [
     hub_project_contractor_payouts: [{ id: 1, amount: 15000, paid_at: '2026-05-28', notes: 'Milestone 1', receipt_url: null }],
     hub_projects: {
       id: 2, client_name: 'Sunrise Capital Group', project_name: 'Brand Identity Package',
-      service: 'Branding & Identity', contract_price: 95000, status: 'ongoing',
+      service: 'Branding & Identity', contract_price: 95000, status: 'ongoing', stage: 'Schematic Design',
       start_date: '2026-04-15', deadline: '2026-06-30',
       notes: 'Logo, brand guide, collateral. Two revision rounds included.',
       drive_url: null, project_type: 'client',

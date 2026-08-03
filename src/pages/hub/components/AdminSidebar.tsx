@@ -6,6 +6,7 @@ import { useSidebarTip } from './SidebarTip';
 
 const navItems = [
   { to: '/hub/admin/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
+  { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
   { divider: true, label: 'People' },
   { to: '/hub/admin/employees', label: 'Employees', icon: 'ri-team-line' },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },

@@ -28,6 +28,7 @@ const ADMIN_BOTTOM_NAV = [
 interface Props {
   children: ReactNode;
   title?: string;
+  titleContent?: ReactNode;
   actions?: ReactNode;
 }
 
@@ -210,7 +211,7 @@ function GlobalSearch() {
   );
 }
 
-export default function AdminLayout({ children, title, actions }: Props) {
+export default function AdminLayout({ children, title, titleContent, actions }: Props) {
   const { hubUser, loading, session, signOut } = useAuth();
   const { isDemo, demoRole, demoSignOut, setDemoRole } = useDemo();
   const push = usePushNotifications();
@@ -309,9 +310,9 @@ export default function AdminLayout({ children, title, actions }: Props) {
         {/* Top bar */}
         <header className="border-b border-white/60 px-4 md:px-6 h-[78px] flex items-center gap-4 flex-shrink-0 bg-transparent">
           <div className="flex-1 min-w-0">
-            {title && (
+            {titleContent ?? (title && (
               <h1 className="text-gray-900 font-semibold text-lg sm:text-[28px] leading-tight truncate">{title}</h1>
-            )}
+            ))}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 overflow-visible">
             {actions}

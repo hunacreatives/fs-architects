@@ -561,6 +561,10 @@ export default function AdminProjectsPage() {
     const isInternal = form.project_type === 'internal';
     if (!form.project_name.trim()) { setFormError('Project name is required.'); return; }
     if (!isInternal && !form.client_name.trim()) { setFormError('Client name is required.'); return; }
+    if (form.start_date && form.deadline && form.start_date > form.deadline) {
+      setFormError('Start date must be before the deadline.');
+      return;
+    }
     setFormSaving(true); setFormError('');
     const payload = {
       project_type: form.project_type,
@@ -1038,7 +1042,13 @@ export default function AdminProjectsPage() {
   };
 
   return (
-    <AdminLayout title="Projects">
+    <AdminLayout title="Projects" titleContent={workspaceOpen && activeProject ? (
+      <button onClick={() => { setWorkspaceOpen(false); setActiveId(null); setCollapsedGroups({}); }}
+        className="flex items-center gap-1.5 h-8 pl-1.5 pr-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium">
+        <i className="ri-arrow-left-s-line text-base"></i>
+        Back to Projects
+      </button>
+    ) : undefined}>
       {workspaceOpen && activeProject && (() => {
         const p = activeProject;
         const internalProject = isInternalProject(p);
@@ -1071,63 +1081,54 @@ export default function AdminProjectsPage() {
           <div className="flex flex-col -mx-4 -my-4 md:-mx-6 md:-py-6 min-h-full bg-gray-50/50">
             {/* ── Header strip ── */}
             <div className="px-5 md:px-6 pt-3 pb-2 flex-shrink-0">
-              {/* Back button row */}
-              <div className="flex items-center gap-2 mb-3">
-                <button onClick={() => { setWorkspaceOpen(false); setActiveId(null); setCollapsedGroups({}); }}
-                  className="flex items-center gap-1.5 h-8 pl-1.5 pr-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium">
-                  <i className="ri-arrow-left-s-line text-base"></i>
-                  Back to Projects
-                </button>
-              </div>
-
               {/* Info card — matches contractor workspace layout */}
-              <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/80 shadow-sm px-4 py-3.5">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
+              <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 shadow-sm px-5 py-5">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
 
                   {/* Left: project identity */}
                   <div className="min-w-0 lg:max-w-[320px] lg:flex-shrink-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusColors[p.status] ?? statusColors.ongoing}`}>
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${statusColors[p.status] ?? statusColors.ongoing}`}>
                         {statusLabels[p.status] ?? p.status}
                       </span>
                       {internalProject && <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Internal</span>}
                       {p.service && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getServiceCfg(p.service).badge}`}>{p.service}</span>}
                       {p.stage && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStageCfg(p.stage).badge}`}>{p.stage}</span>}
                     </div>
-                    <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{p.project_name}</h2>
-                    <p className="text-xs text-gray-400 mt-0.5">{internalProject ? 'Internal Project' : p.client_name}</p>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{p.project_name}</h2>
+                    <p className="text-sm text-gray-400 mt-0.5">{internalProject ? 'Internal Project' : p.client_name}</p>
 
-                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      {wsTeam.length > 0 && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex -space-x-2">
-                            {wsTeam.slice(0, 5).map(m => (
-                              m.avatar_url
-                                ? <img key={m.id} src={m.avatar_url} alt={m.full_name} title={m.full_name} className="w-5 h-5 rounded-full border-2 border-white object-cover object-top shadow-sm" />
-                                : <div key={m.id} title={m.full_name} className="w-5 h-5 rounded-full border-2 border-white bg-[#1c2b3a]/70 flex items-center justify-center text-[9px] font-bold text-white shadow-sm">{m.full_name[0]}</div>
-                            ))}
-                          </div>
-                          <span className="text-[11px] text-gray-400">{wsTeam.length} member{wsTeam.length !== 1 ? 's' : ''}</span>
+                    {wsTeam.length > 0 && (
+                      <div className="flex items-center gap-2 mt-3">
+                        <div className="flex -space-x-2">
+                          {wsTeam.slice(0, 5).map(m => (
+                            m.avatar_url
+                              ? <img key={m.id} src={m.avatar_url} alt={m.full_name} title={m.full_name} className="w-6 h-6 rounded-full border-2 border-white object-cover object-top shadow-sm" />
+                              : <div key={m.id} title={m.full_name} className="w-6 h-6 rounded-full border-2 border-white bg-[#1c2b3a]/70 flex items-center justify-center text-[9px] font-bold text-white shadow-sm">{m.full_name[0]}</div>
+                          ))}
                         </div>
-                      )}
+                        <span className="text-xs text-gray-400">{wsTeam.length} member{wsTeam.length !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
 
-                      {daysLeft !== null && (
-                        isDeadlineOver ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full font-medium">
-                            <i className="ri-alarm-warning-line text-[11px]"></i>{Math.abs(daysLeft)}d overdue
+                    {daysLeft !== null && (
+                      <div className="mt-3">
+                        {isDeadlineOver ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full font-medium">
+                            <i className="ri-alarm-warning-line text-xs"></i>{Math.abs(daysLeft)}d overdue
                           </span>
                         ) : daysLeft === 0 ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
-                            <i className="ri-time-line text-[11px]"></i>Due today
+                          <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
+                            <i className="ri-time-line text-xs"></i>Due today
                           </span>
                         ) : (
-                          <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full border font-medium ${daysLeft <= 7 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-gray-500 bg-gray-50 border-gray-200'}`}>
-                            <i className="ri-calendar-line text-[11px]"></i>
+                          <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium ${daysLeft <= 7 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-gray-500 bg-gray-50 border-gray-200'}`}>
+                            <i className="ri-calendar-line text-xs"></i>
                             {daysLeft}d left · {new Date(p.deadline! + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
-                        )
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Right: Drive — fills remaining width */}
@@ -1160,9 +1161,9 @@ export default function AdminProjectsPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3.5 py-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
-                            <i className="ri-folder-line text-gray-300 text-base"></i>
+                        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4">
+                          <div className="w-10 h-10 rounded-2xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                            <i className="ri-folder-line text-gray-300 text-lg"></i>
                           </div>
                           <div>
                             <p className="text-xs font-medium text-gray-500">No Drive folder linked</p>
@@ -1177,6 +1178,26 @@ export default function AdminProjectsPage() {
             </div>
 
             <div className="flex-1 px-5 md:px-6 pb-6 space-y-4 overflow-y-auto">
+              {/* ── Stats ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: 'Total', value: tasks.length, icon: 'ri-task-line', iconBg: 'bg-gray-100', iconClr: 'text-gray-500', valClr: 'text-gray-800' },
+                  { label: 'Done', value: wsDoneCt, icon: 'ri-checkbox-circle-fill', iconBg: 'bg-emerald-100', iconClr: 'text-emerald-600', valClr: 'text-emerald-700' },
+                  { label: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, icon: 'ri-loader-2-line', iconBg: 'bg-sky-100', iconClr: 'text-sky-600', valClr: 'text-sky-700' },
+                  { label: 'Overdue', value: tasks.filter(t => wsIsOverdue(t)).length, icon: 'ri-alarm-warning-line', iconBg: 'bg-rose-100', iconClr: 'text-rose-500', valClr: 'text-rose-600' },
+                ].map(s => (
+                  <div key={s.label} className="bg-white rounded-2xl px-3.5 py-2.5 shadow-sm border border-gray-100/80 flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg ${s.iconBg} flex items-center justify-center flex-shrink-0`}>
+                      <i className={`${s.icon} ${s.iconClr} text-xs`}></i>
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-base font-bold ${s.valClr} leading-none`}>{s.value}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">{s.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {/* ── Calendar / Timeline ── */}
               <div id="ws-timeline">
                 <GanttTimeline

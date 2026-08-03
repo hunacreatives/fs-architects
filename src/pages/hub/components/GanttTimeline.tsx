@@ -363,11 +363,15 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                               const showLabel = isActualStart || (!slot.spanStart && cellDate === weekFirstDay);
                               const rl = (slot.spanStart && isActualStart) ? 'rounded-l-md ml-1' : '-ml-px';
                               const rr = (slot.spanEnd && isActualEnd) ? 'rounded-r-md mr-1' : '-mr-px';
+                              const draggable = !!onTaskUpdate && isActualStart;
                               return (
                                 <button key={laneIdx} type="button" title={t.title}
+                                  draggable={draggable}
+                                  onDragStart={draggable ? e => { e.stopPropagation(); handleDragStart(e, t, 'move'); } : undefined}
+                                  onDragEnd={handleDragEnd}
                                   onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
                                   style={chipStyle(t)}
-                                  className={`h-5 flex items-center text-[10px] font-medium overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)} ${rl} ${rr}`}>
+                                  className={`h-5 flex items-center text-[10px] font-medium overflow-hidden transition-opacity ${chipCls(t)} ${rl} ${rr} ${draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:opacity-80'}`}>
                                   {showLabel && (
                                     <span className="flex items-center gap-1 flex-1 min-w-0 pl-1.5 leading-none">
                                       <i className={`${chipStatusIcon(t)} text-[9px] flex-shrink-0`}></i>
@@ -385,9 +389,12 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                         <div className="flex flex-col gap-0.5 px-1 pb-1 flex-1 min-h-0">
                           {singleDayTasks.slice(0, 3).map(t => (
                             <button key={t.id} type="button" title={t.title}
+                              draggable={!!onTaskUpdate}
+                              onDragStart={onTaskUpdate ? e => { e.stopPropagation(); handleDragStart(e, t, 'move'); } : undefined}
+                              onDragEnd={handleDragEnd}
                               onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
                               style={chipStyle(t)}
-                              className={`w-full flex items-center gap-1 text-left px-1.5 py-[3px] rounded text-[10px] leading-tight cursor-pointer hover:opacity-80 transition-opacity ${chipCls(t)}`}>
+                              className={`w-full flex items-center gap-1 text-left px-1.5 py-[3px] rounded text-[10px] leading-tight transition-opacity ${chipCls(t)} ${onTaskUpdate ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:opacity-80'}`}>
                               <i className={`${chipStatusIcon(t)} text-[9px] flex-shrink-0`}></i>
                               <span className="truncate">{t.title}</span>
                             </button>
@@ -510,7 +517,7 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
       {/* Drag hint */}
       {isDragging && (
         <div className="border-t border-slate-100 bg-slate-50 px-5 py-2 text-[11px] text-[#1c2b3a]/70 text-center">
-          Drop on a date to move · Drag the ⋯ handle to resize
+          {mode === 'dots' ? 'Drop on a date to move' : 'Drop on a date to move · Drag the ⋯ handle to resize'}
         </div>
       )}
 

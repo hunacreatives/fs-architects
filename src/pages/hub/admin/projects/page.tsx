@@ -203,6 +203,8 @@ export default function AdminProjectsPage() {
   const [taskGroupBy, setTaskGroupBy] = useState<'project' | 'assignee'>('project');
   const [pendingTaskDate, setPendingTaskDate] = useState<string | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
+  const [calendarHiddenProjects, setCalendarHiddenProjects] = useState<Set<number>>(new Set());
+  const [showCalendarFilterMenu, setShowCalendarFilterMenu] = useState(false);
   const [projectTypeFilter, setProjectTypeFilter] = useState<'all' | 'client' | 'internal'>('all');
   const [activeId, setActiveId] = useState<number | null>(() => {
     const w = searchParams.get('w');
@@ -1663,7 +1665,19 @@ export default function AdminProjectsPage() {
         <div className={pageView === 'tasks' ? '' : 'flex items-stretch gap-5'}>
         <section className={pageView === 'tasks' ? 'flex flex-col space-y-3 w-full' : 'flex flex-col space-y-3 flex-1 min-w-0'}>
 
-          {pageView === 'tasks' && (
+          {pageView === 'tasks' && (() => {
+            const tod = localToday();
+            const isOver = (t: any) => isTaskOverdue(t, tod);
+            const calendarProjects = projects.filter(p => p.status !== 'cancelled');
+            const filt = allTasks.filter(t => {
+              if (calendarHiddenProjects.has(t.project_id)) return false;
+              if (taskSearch && !t.title.toLowerCase().includes(taskSearch.toLowerCase()) && !t.project?.project_name?.toLowerCase().includes(taskSearch.toLowerCase())) return false;
+              if (taskStatusFilter === 'active') return t.status !== 'done';
+              if (taskStatusFilter === 'overdue') return isOver(t);
+              if (taskStatusFilter !== 'all') return t.status === taskStatusFilter;
+              return true;
+            });
+            return (
             <div className="space-y-4 pt-1 pb-3">
               {/* ── Filters ── */}
               <div className="flex flex-wrap gap-2 items-center">
@@ -1679,12 +1693,50 @@ export default function AdminProjectsPage() {
                 <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none cursor-pointer">
                   <option value="project">By Project</option><option value="assignee">By Assignee</option>
                 </select>
+                <div className="relative">
+                  <button type="button" onClick={() => setShowCalendarFilterMenu(v => !v)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white hover:bg-gray-50 cursor-pointer">
+                    <i className="ri-calendar-2-line text-gray-400"></i>
+                    Projects
+                    {calendarHiddenProjects.size > 0 && (
+                      <span className="text-[10px] bg-gray-800 text-white rounded-full w-4 h-4 flex items-center justify-center">{calendarHiddenProjects.size}</span>
+                    )}
+                    <i className="ri-arrow-down-s-line text-gray-400"></i>
+                  </button>
+                  {showCalendarFilterMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowCalendarFilterMenu(false)} />
+                      <div className="absolute z-20 top-full left-0 mt-1.5 w-64 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                        <div className="flex items-center justify-between px-2 py-1.5">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Show on calendar</p>
+                          <button type="button" onClick={() => setCalendarHiddenProjects(new Set())}
+                            className="text-[10px] text-[#1c2b3a] hover:underline cursor-pointer">Show all</button>
+                        </div>
+                        {calendarProjects.map(p => {
+                          const hidden = calendarHiddenProjects.has(p.id);
+                          return (
+                            <label key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                              <input type="checkbox" checked={!hidden}
+                                onChange={() => setCalendarHiddenProjects(prev => {
+                                  const next = new Set(prev);
+                                  if (hidden) next.delete(p.id); else next.add(p.id);
+                                  return next;
+                                })}
+                                className="rounded border-gray-300 text-[#1c2b3a] focus:ring-[#1c2b3a]/30 cursor-pointer" />
+                              <span className="text-xs text-gray-700 truncate">{p.project_name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
               {allTasksLoading ? (
                 <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
               ) : (
                 <GanttTimeline
-                  tasks={allTasks.map((t: any) => ({
+                  tasks={filt.map((t: any) => ({
                     id: t.id,
                     project_id: t.project_id,
                     title: `${t.title}${t.project?.project_name ? ` · ${t.project.project_name}` : ''}`,
@@ -1700,9 +1752,20 @@ export default function AdminProjectsPage() {
                   projectEnd={null}
                   today={localToday()}
                   mode="dots"
-                  projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name }))}
+                  projects={calendarProjects.map(p => ({ id: p.id, project_name: p.project_name }))}
                   teamMembers={contractors.map(c => ({ id: c.id, full_name: c.full_name }))}
                   onQuickTaskCreated={fetchAllTasks}
+                  onTaskUpdate={async (taskId, updates) => {
+                    await supabase.from('hub_project_tasks').update({
+                      ...(updates.due_date !== undefined && { due_date: updates.due_date }),
+                      ...(updates.start_date !== undefined && { start_date: updates.start_date }),
+                    }).eq('id', taskId);
+                    setAllTasks(prev => prev.map(t => t.id === taskId ? {
+                      ...t,
+                      ...(updates.due_date !== undefined && { due_date: updates.due_date }),
+                      ...(updates.start_date !== undefined && { start_date: updates.start_date }),
+                    } : t));
+                  }}
                   onAddTask={(date) => {
                     setPendingTaskDate(date);
                     openNewTask();
@@ -1714,15 +1777,6 @@ export default function AdminProjectsPage() {
                 />
               )}
               {allTasksLoading ? null : (() => {
-                const tod = localToday();
-                const isOver = (t: any) => isTaskOverdue(t, tod);
-                const filt = allTasks.filter(t => {
-                  if (taskSearch && !t.title.toLowerCase().includes(taskSearch.toLowerCase()) && !t.project?.project_name?.toLowerCase().includes(taskSearch.toLowerCase())) return false;
-                  if (taskStatusFilter === 'active') return t.status !== 'done';
-                  if (taskStatusFilter === 'overdue') return isOver(t);
-                  if (taskStatusFilter !== 'all') return t.status === taskStatusFilter;
-                  return true;
-                });
                 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
                   todo: { label: 'To Do', cls: 'bg-gray-100 text-gray-600' },
                   in_progress: { label: 'In Progress', cls: 'bg-sky-100 text-sky-700' },
@@ -1787,7 +1841,8 @@ export default function AdminProjectsPage() {
                 });
               })()}
             </div>
-          )}
+            );
+          })()}
 
           <div className="flex-1 flex flex-col pt-1 pb-3" style={{ display: pageView === 'tasks' ? 'none' : undefined }}>
             {loading ? (

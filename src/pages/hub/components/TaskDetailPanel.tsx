@@ -12,18 +12,6 @@ function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; si
   return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
 }
 
-// First name alone, unless another team member shares it — then append the
-// last name's initial (e.g. two "Elijah"s become "Elijah T." and "Elijah M.").
-function shortDisplayName(fullName: string, allMembers: { full_name: string }[]): string {
-  const parts = fullName.trim().split(/\s+/);
-  const first = parts[0];
-  const hasDuplicate = allMembers.filter(m => m.full_name.trim().split(/\s+/)[0] === first).length > 1;
-  if (hasDuplicate && parts.length > 1) {
-    return `${first} ${parts[parts.length - 1][0]}.`;
-  }
-  return first;
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '😮', '🔥', '👀', '✅', '🙏', '👏', '💯', '😢'];
@@ -1357,7 +1345,7 @@ export default function TaskDetailPanel({
                         onClick={() => setAssigneeIds((prev) => selected ? prev.filter((id) => id !== member.id) : [...prev, member.id])}
                         className={`flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-lg border transition-all cursor-pointer ${selected ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
                         <Avatar name={member.full_name} url={member.avatar_url} size={4} />
-                        <span className={`text-[11px] font-medium ${selected ? 'text-indigo-700' : 'text-gray-600'}`}>{shortDisplayName(member.full_name, teamMembers)}</span>
+                        <span className={`text-[11px] font-medium ${selected ? 'text-indigo-700' : 'text-gray-600'}`}>{member.full_name}</span>
                       </button>
                     );
                   })}
@@ -1367,7 +1355,7 @@ export default function TaskDetailPanel({
                   {selectedAssignees.map((member) => (
                     <div key={member.id} className="flex items-center gap-1.5 rounded-md hover:bg-gray-100 pl-0.5 pr-2 py-0.5 transition-colors">
                       <Avatar name={member.full_name} url={member.avatar_url} size={5} />
-                      <span className="text-[13px] text-gray-700">{shortDisplayName(member.full_name, teamMembers)}</span>
+                      <span className="text-[13px] text-gray-700">{member.full_name}</span>
                     </div>
                   ))}
                 </div>
@@ -1576,10 +1564,7 @@ export default function TaskDetailPanel({
                               size={4}
                             />
                             <span className="text-[10px] font-medium text-indigo-700">
-                              {(() => {
-                                const name = teamMembers.find((member) => member.id === item.assignee_id)?.full_name;
-                                return name ? shortDisplayName(name, teamMembers) : 'Assigned';
-                              })()}
+                              {teamMembers.find((member) => member.id === item.assignee_id)?.full_name ?? 'Assigned'}
                             </span>
                           </div>
                         )}
@@ -1939,7 +1924,7 @@ export default function TaskDetailPanel({
                         {(c.seen_by ?? []).length > 0 && (
                           <span
                             className="inline-flex items-center gap-0.5 text-[10px] text-gray-300"
-                            title={`Seen by ${(c.seen_by ?? []).map(id => { const n = teamMembers.find(m => m.id === id)?.full_name; return n ? shortDisplayName(n, teamMembers) : 'someone'; }).join(', ')}`}>
+                            title={`Seen by ${(c.seen_by ?? []).map(id => teamMembers.find(m => m.id === id)?.full_name ?? 'someone').join(', ')}`}>
                             <i className="ri-eye-line"></i>{(c.seen_by ?? []).length}
                           </span>
                         )}

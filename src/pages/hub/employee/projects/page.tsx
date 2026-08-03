@@ -1599,9 +1599,9 @@ export default function ContractorProjectsPage() {
               ? `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`
               : null;
             return (
-              <div className="px-5 md:px-6 pt-4 pb-2 flex-shrink-0">
-                <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 shadow-sm px-5 py-5">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
+              <div className="px-4 sm:px-5 md:px-6 pt-3 sm:pt-4 pb-2 flex-shrink-0">
+                <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 shadow-sm px-4 py-4 sm:px-5 sm:py-5">
+                  <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-start lg:gap-8">
                     <div className="min-w-0 lg:max-w-[320px] lg:flex-shrink-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
                         <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${statusColors[wsProject.status] ?? statusColors.ongoing}`}>
@@ -1649,36 +1649,63 @@ export default function ContractorProjectsPage() {
 
                     <div className="lg:flex-1 lg:min-w-0">
                       {embedUrl && wsProject.drive_url ? (
-                        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-[#f1f3f7] shadow-sm">
-                          <div className="flex items-center justify-end border-b border-gray-200/80 px-3 py-2">
-                            <a
-                              href={wsProject.drive_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 transition-colors hover:text-blue-600"
-                              title="Open in Google Drive"
-                            >
-                              <svg viewBox="0 0 87.3 78" className="h-3.5 w-3.5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
-                                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-                                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-                                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                                <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                                <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-                              </svg>
-                              <span>Open Drive</span>
-                              <i className="ri-external-link-line text-[11px]"></i>
-                            </a>
+                        <>
+                          {/* Desktop/tablet: embedded folder preview — plenty of width to show it usefully */}
+                          <div className="hidden sm:block overflow-hidden rounded-2xl border border-gray-200 bg-[#f1f3f7] shadow-sm">
+                            <div className="flex items-center justify-end border-b border-gray-200/80 px-3 py-2">
+                              <a
+                                href={wsProject.drive_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 transition-colors hover:text-blue-600"
+                                title="Open in Google Drive"
+                              >
+                                <svg viewBox="0 0 87.3 78" className="h-3.5 w-3.5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                                  <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                                  <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                                  <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                                  <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                                  <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                                </svg>
+                                <span>Open Drive</span>
+                                <i className="ri-external-link-line text-[11px]"></i>
+                              </a>
+                            </div>
+                            <div className="h-[150px] overflow-hidden">
+                              <iframe
+                                src={embedUrl}
+                                className="bg-[#f1f3f7]"
+                                style={{ width: '200%', height: 300, border: 'none', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+                                title="Project Files"
+                              />
+                            </div>
                           </div>
-                          <div className="h-[150px] overflow-hidden">
-                            <iframe
-                              src={embedUrl}
-                              className="bg-[#f1f3f7]"
-                              style={{ width: '200%', height: 300, border: 'none', transform: 'scale(0.5)', transformOrigin: 'top left' }}
-                              title="Project Files"
-                            />
-                          </div>
-                        </div>
+
+                          {/* Mobile: the scaled-down iframe renders too sparse to be useful in a
+                              narrow card — a compact tap-through row is more legible and saves
+                              the vertical space a near-empty embed would otherwise eat up. */}
+                          <a
+                            href={wsProject.drive_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="sm:hidden flex items-center gap-3 rounded-2xl border border-gray-200 bg-[#f1f3f7] px-4 py-3 active:bg-[#e8eaf0] transition-colors"
+                          >
+                            <svg viewBox="0 0 87.3 78" className="h-6 w-6 flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
+                              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                              <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                              <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                              <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                              <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                              <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                            </svg>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-700">Project Files</p>
+                              <p className="text-[11px] text-gray-400">Open in Google Drive</p>
+                            </div>
+                            <i className="ri-external-link-line text-gray-400 flex-shrink-0"></i>
+                          </a>
+                        </>
                       ) : (
                         <div className="flex items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4">
                           <div className="w-10 h-10 rounded-2xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
@@ -1711,20 +1738,20 @@ export default function ContractorProjectsPage() {
             )}
 
             {/* Stats */}
-            <div id="ws-stats" className={`grid grid-cols-2 sm:grid-cols-4 gap-3 ${wsFocusSection && wsFocusSection !== 'ws-stats' ? 'hidden' : ''}`}>
+            <div id="ws-stats" className={`grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 ${wsFocusSection && wsFocusSection !== 'ws-stats' ? 'hidden' : ''}`}>
               {[
                 { label: 'Total', value: wsTasks.length, icon: 'ri-task-line', iconBg: 'bg-gray-100', iconClr: 'text-gray-500', valClr: 'text-gray-800' },
                 { label: 'Done', value: wsDone, icon: 'ri-checkbox-circle-fill', iconBg: 'bg-emerald-100', iconClr: 'text-emerald-600', valClr: 'text-emerald-700' },
                 { label: 'In Progress', value: wsTasks.filter(t => t.status === 'in_progress').length, icon: 'ri-loader-2-line', iconBg: 'bg-sky-100', iconClr: 'text-sky-600', valClr: 'text-sky-700' },
                 { label: 'Overdue', value: wsTasks.filter(t => !!wsIsOverdue(t)).length, icon: 'ri-alarm-warning-line', iconBg: 'bg-rose-100', iconClr: 'text-rose-500', valClr: 'text-rose-600' },
               ].map(s => (
-                <div key={s.label} className="bg-white rounded-2xl px-3.5 py-2.5 shadow-sm border border-gray-100/80 flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg ${s.iconBg} flex items-center justify-center flex-shrink-0`}>
-                    <i className={`${s.icon} ${s.iconClr} text-xs`}></i>
+                <div key={s.label} className="bg-white rounded-xl sm:rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 shadow-sm border border-gray-100/80 flex items-center gap-2 sm:gap-2.5">
+                  <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${s.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <i className={`${s.icon} ${s.iconClr} text-[11px] sm:text-xs`}></i>
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-base font-bold ${s.valClr} leading-none`}>{s.value}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{s.label}</p>
+                    <p className={`text-sm sm:text-base font-bold ${s.valClr} leading-none`}>{s.value}</p>
+                    <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 truncate">{s.label}</p>
                   </div>
                 </div>
               ))}

@@ -8,6 +8,7 @@ import ContractorSidebar from './ContractorSidebar';
 import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
 import PushNotificationPrompt from './PushNotificationPrompt';
+import WhatsNewModal from './WhatsNewModal';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const EMPLOYEE_BOTTOM_NAV = [
@@ -396,6 +397,7 @@ export default function ContractorLayout({ children, title, titleContent, action
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
+            {!isDemo && <WhatsNewModal />}
             <div className="max-w-7xl mx-auto">
               {!isDemo && (
                 <PushNotificationPrompt

@@ -5,6 +5,7 @@ import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDemo } from '@/contexts/DemoContext';
 import { supabase } from '@/lib/supabase';
+import { CURRENT_APP_VERSION } from '@/lib/appVersion';
 
 
 export default function SettingsPage() {
@@ -225,7 +226,7 @@ export default function SettingsPage() {
               <div className="space-y-3">
                 {[
                   { label: 'Platform', value: 'Sentro Hub' },
-                  { label: 'Version', value: '1.0.0' },
+                  { label: 'Version', value: CURRENT_APP_VERSION },
                   { label: 'Agency', value: 'FS Architects' },
                   { label: 'Timezone', value: 'Asia/Manila (PHT)' },
                   { label: 'Cutoff Period', value: '1st–15th / 16th–EOM' },

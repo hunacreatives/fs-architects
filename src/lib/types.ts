@@ -37,6 +37,7 @@ export interface HubUser {
   contract_expiry_date?: string;
   employee_id?: string;
   auto_payroll?: boolean;
+  last_seen_app_version?: string;
   created_at?: string;
   updated_at?: string;
 }

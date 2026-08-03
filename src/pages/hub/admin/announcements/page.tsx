@@ -207,8 +207,8 @@ export default function AnnouncementsPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Message *</label>
-                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={4}
-                  placeholder="Write your announcement..." maxLength={500}
+                <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} rows={6}
+                  placeholder="Write your announcement..." maxLength={4000}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">

@@ -745,80 +745,54 @@ export default function ContractorDashboard() {
               </div>
             </div>
 
-            {/* Active Projects */}
+            {/* Active Projects — compact summary, not a browser (stays fixed-height regardless of project count) */}
             {activeProjects.length > 0 && (() => {
               const withUrgency = activeProjects.map(p => {
                 const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date().getTime()) / 86400000) : null;
-                return { p, daysLeft, isOverdue: daysLeft !== null && daysLeft < 0 };
+                return { p, daysLeft, isOverdue: daysLeft !== null && daysLeft < 0, isDueSoon: daysLeft !== null && daysLeft >= 0 && daysLeft <= 7 };
               });
-              const sorted = [...withUrgency].sort((a, b) => {
-                if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
-                if (a.daysLeft === null) return 1;
-                if (b.daysLeft === null) return -1;
-                return a.daysLeft - b.daysLeft;
-              });
-              const shown = sorted.slice(0, DASHBOARD_PROJECT_LIMIT);
-              const remaining = sorted.length - shown.length;
+              const overdue = withUrgency.filter(w => w.isOverdue).sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+              const dueSoon = withUrgency.filter(w => w.isDueSoon).sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
+              const urgent = [...overdue, ...dueSoon].slice(0, DASHBOARD_PROJECT_LIMIT);
+
               return (
-                <div className="space-y-2.5">
+                <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-5 space-y-3.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-[#111827]">Active Projects</h3>
-                    {activeProjects.length > 0 && (
-                      <button onClick={() => navigate('/hub/employee/projects')}
-                        className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors">
-                        View all {activeProjects.length > DASHBOARD_PROJECT_LIMIT ? `(${activeProjects.length}) ` : ''}→
-                      </button>
+                    <button onClick={() => navigate('/hub/employee/projects')}
+                      className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors">
+                      View all →
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-gray-500"><span className="font-bold text-gray-900">{activeProjects.length}</span> active</span>
+                    {dueSoon.length > 0 && (
+                      <span className="text-amber-600"><span className="font-bold">{dueSoon.length}</span> due this week</span>
+                    )}
+                    {overdue.length > 0 && (
+                      <span className="text-rose-500"><span className="font-bold">{overdue.length}</span> overdue</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {shown.map(({ p, daysLeft, isOverdue }) => {
-                      const pal = getProjectCardPalette(p.service);
-                      const pct = p.tasksTotal > 0 ? Math.round((p.tasksDone / p.tasksTotal) * 100) : 0;
-                      const isDueSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
-                      return (
-                        <button key={p.id} onClick={() => navigate('/hub/employee/projects')}
-                          className="text-left rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer space-y-3 overflow-hidden"
-                          style={{ background: `linear-gradient(135deg, ${pal.light} 0%, rgba(255,255,255,0.9) 100%)`, border: `1px solid rgba(255,255,255,0.8)`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              {p.service && (
-                                <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: pal.from }}>{p.service}</p>
-                              )}
-                              <p className="font-bold text-gray-900 text-sm leading-snug truncate">{p.project_name}</p>
-                              <p className="text-xs text-gray-400 truncate mt-0.5">{p.client_name}</p>
-                            </div>
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${pal.from}, ${pal.to})` }}>
-                              <i className="ri-folder-line text-white text-sm"></i>
-                            </div>
-                          </div>
-                          {p.tasksTotal > 0 ? (
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between text-[11px]">
-                                <span className="text-gray-500">{p.tasksDone}/{p.tasksTotal} tasks</span>
-                                <span className="font-bold" style={{ color: pct === 100 ? '#10b981' : pal.from }}>{pct}%</span>
-                              </div>
-                              <div className="h-1.5 bg-black/5 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct === 100 ? '#10b981' : `linear-gradient(90deg, ${pal.from}, ${pal.to})` }} />
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-[11px] text-gray-400 italic">No tasks yet</p>
-                          )}
-                          {daysLeft !== null && (
-                            <p className={`text-[11px] font-semibold ${isOverdue ? 'text-rose-500' : isDueSoon ? 'text-amber-600' : 'text-gray-400'}`}>
-                              {isOverdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
-                              {p.deadline && !isOverdue && ` · ${new Date(p.deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                            </p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {remaining > 0 && (
-                    <button onClick={() => navigate('/hub/employee/projects')}
-                      className="w-full text-center text-xs font-medium text-gray-400 hover:text-[#1c2b3a] py-2 cursor-pointer transition-colors">
-                      +{remaining} more project{remaining > 1 ? 's' : ''} →
-                    </button>
+
+                  {urgent.length > 0 ? (
+                    <div className="divide-y divide-gray-50 -mx-1">
+                      {urgent.map(({ p, daysLeft, isOverdue }) => {
+                        const pal = getProjectCardPalette(p.service);
+                        return (
+                          <button key={p.id} onClick={() => navigate('/hub/employee/projects')}
+                            className="w-full flex items-center gap-2.5 px-1 py-2 text-left hover:bg-gray-50/70 rounded-lg transition-colors cursor-pointer">
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: pal.from }} />
+                            <span className="flex-1 min-w-0 text-sm text-gray-800 truncate">{p.project_name}</span>
+                            <span className={`text-[11px] font-semibold flex-shrink-0 ${isOverdue ? 'text-rose-500' : 'text-amber-600'}`}>
+                              {isOverdue ? `${Math.abs(daysLeft!)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">Nothing urgent — all active projects are on track.</p>
                   )}
                 </div>
               );

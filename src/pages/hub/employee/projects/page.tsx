@@ -14,6 +14,11 @@ import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeTaskAssigneePayload } from '@/lib/taskAssignments';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 
+const STAGES = [
+  'Pre-Design', 'Schematic Design', 'Design Development', 'Construction Documents',
+  'Permitting', 'Bidding/Procurement', 'Construction Administration', 'Post-Construction/Closeout',
+];
+
 function normalizeTaskActivityAction(type: string) {
   switch (type) {
     case 'created':
@@ -1073,20 +1078,7 @@ export default function ContractorProjectsPage() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const greetingEmoji = hour < 6 ? '🌙' : hour < 12 ? '☀️' : hour < 17 ? '🌤️' : hour < 20 ? '🌇' : '🌙';
-  const greetingGradient = hour < 6
-    ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'   // night — indigo-violet
-    : hour < 10
-    ? 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)'   // early morning — amber-rose
-    : hour < 12
-    ? 'linear-gradient(135deg, #f97316 0%, #eab308 100%)'   // morning — orange-yellow
-    : hour < 15
-    ? 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)'   // afternoon — sky-indigo
-    : hour < 18
-    ? 'linear-gradient(135deg, #10b981 0%, #0ea5e9 100%)'   // late afternoon — emerald-sky
-    : hour < 20
-    ? 'linear-gradient(135deg, #f97316 0%, #8b5cf6 100%)'   // evening — orange-violet
-    : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)';  // night — indigo-violet
+  const greetingGradient = 'linear-gradient(135deg, #1c2b3a 0%, #2d4a6e 100%)';
   const today = localToday();
   const firstName = hubUser?.full_name?.split(' ')[0] ?? '';
 
@@ -1550,13 +1542,10 @@ export default function ContractorProjectsPage() {
       titleContent={workspaceRow && wsProject ? (
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => { setWorkspaceRow(null); setTaskFilter('all'); setTaskSearch(''); setWsSearch(''); setWsSearchOpen(false); setWsFocusSection(null); }}
-            className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0">
+            className="flex items-center gap-1.5 h-8 pl-1.5 pr-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium">
             <i className="ri-arrow-left-s-line text-base"></i>
+            Back to Projects
           </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-gray-900 truncate leading-tight">{wsProject.project_name}</p>
-            <p className="text-xs text-gray-400 truncate">{wsIsInternal ? 'Internal Project' : wsProject.client_name}{wsProject.service ? ` · ${wsProject.service}` : ''}</p>
-          </div>
           <button
             onClick={() => {
               const slug = wsProject.slug || slugify(wsProject.client_name);
@@ -1587,7 +1576,7 @@ export default function ContractorProjectsPage() {
               }
             }}
             title={linkCopied ? 'Copied!' : 'Copy project link'}
-            className={`flex items-center gap-1.5 h-8 px-2.5 rounded-xl border cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium ${linkCopied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-gray-200 text-gray-500 hover:text-[#1c2b3a] hover:border-indigo-200'}`}>
+            className={`ml-auto flex items-center gap-1.5 h-8 px-2.5 rounded-xl border cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium ${linkCopied ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white border-gray-200 text-gray-500 hover:text-[#1c2b3a] hover:border-indigo-200'}`}>
             <i className={`text-base ${linkCopied ? 'ri-check-line' : 'ri-link'}`}></i>
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
@@ -1615,7 +1604,7 @@ export default function ContractorProjectsPage() {
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:gap-8">
                     <div className="min-w-0 lg:max-w-[320px] lg:flex-shrink-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wide ${statusColors[wsProject.status] ?? statusColors.ongoing}`}>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold ${statusColors[wsProject.status] ?? statusColors.ongoing}`}>
                           {statusLabels[wsProject.status] ?? wsProject.status}
                         </span>
                         {wsIsInternal && <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Internal</span>}
@@ -1729,12 +1718,14 @@ export default function ContractorProjectsPage() {
                 { label: 'In Progress', value: wsTasks.filter(t => t.status === 'in_progress').length, icon: 'ri-loader-2-line', iconBg: 'bg-sky-100', iconClr: 'text-sky-600', valClr: 'text-sky-700' },
                 { label: 'Overdue', value: wsTasks.filter(t => !!wsIsOverdue(t)).length, icon: 'ri-alarm-warning-line', iconBg: 'bg-rose-100', iconClr: 'text-rose-500', valClr: 'text-rose-600' },
               ].map(s => (
-                <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100/80">
-                  <div className={`w-8 h-8 rounded-xl ${s.iconBg} flex items-center justify-center mb-3`}>
-                    <i className={`${s.icon} ${s.iconClr} text-sm`}></i>
+                <div key={s.label} className="bg-white rounded-2xl px-3.5 py-2.5 shadow-sm border border-gray-100/80 flex items-center gap-2.5">
+                  <div className={`w-7 h-7 rounded-lg ${s.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <i className={`${s.icon} ${s.iconClr} text-xs`}></i>
                   </div>
-                  <p className={`text-2xl font-bold ${s.valClr} leading-none`}>{s.value}</p>
-                  <p className="text-[11px] text-gray-400 mt-1">{s.label}</p>
+                  <div className="min-w-0">
+                    <p className={`text-base font-bold ${s.valClr} leading-none`}>{s.value}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">{s.label}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -2001,6 +1992,7 @@ export default function ContractorProjectsPage() {
                           comment_added: 'ri-chat-3-line text-amber-500',
                           comment_deleted: 'ri-chat-delete-line text-rose-500',
                           task_assigned: 'ri-user-add-line text-purple-500',
+                          attachment_added: 'ri-attachment-2 text-[#1c2b3a]/70',
                         };
                         const labels: Record<string, (a: typeof activityLog[0]) => string> = {
                           task_created: (a) => `created "${a.entity_title}"`,
@@ -2010,6 +2002,7 @@ export default function ContractorProjectsPage() {
                           comment_added: (a) => `commented on "${a.entity_title}"`,
                           comment_deleted: (a) => `deleted a comment on "${a.entity_title}"`,
                           task_assigned: (a) => `assigned "${a.entity_title}"`,
+                          attachment_added: (a) => `added an attachment to "${a.entity_title}"`,
                         };
                         const diff = Math.floor((Date.now() - new Date(a.created_at).getTime()) / 1000);
                         const time = diff < 60 ? 'just now' : diff < 3600 ? `${Math.floor(diff/60)}m ago` : diff < 86400 ? `${Math.floor(diff/3600)}h ago` : new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -2091,16 +2084,15 @@ export default function ContractorProjectsPage() {
                 <span style={{ background: greetingGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                   {greeting}, {firstName}.
                 </span>
-                {' '}<span className="not-italic" style={{ WebkitTextFillColor: 'initial' }}>{greetingEmoji}</span>
                 <br />
                 <span className="text-gray-400 font-normal text-base">
                   {todayDueTasks.length > 0
-                    ? `You've got ${todayDueTasks.length} task${todayDueTasks.length > 1 ? 's' : ''} due today.`
+                    ? `You have ${todayDueTasks.length} task${todayDueTasks.length > 1 ? 's' : ''} due today.`
                     : overdueTasks.length > 0
-                    ? `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} ${overdueTasks.length > 1 ? 'need' : 'needs'} attention.`
+                    ? `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} ${overdueTasks.length > 1 ? 'require' : 'requires'} attention.`
                     : myTasks.length > 0
                     ? `${myTasks.length - doneTasks.length} task${myTasks.length - doneTasks.length !== 1 ? 's' : ''} remaining.`
-                    : 'All clear — nothing pending.'}
+                    : 'No tasks pending.'}
                 </span>
               </h2>
             </div>
@@ -2114,13 +2106,18 @@ export default function ContractorProjectsPage() {
               </div>
             )}
 
-            {/* Project cards grouped by status */}
+            {/* Project cards: urgency call-outs first, then grouped by stage
+                (not status — nearly every project just sits at "ongoing," so
+                status alone isn't useful for browsing; stage is). */}
             {(() => {
               const overdue  = sortedRows.filter(r => r.hub_projects?.deadline && r.hub_projects.deadline < today && r.hub_projects.status !== 'completed');
               const dueSoon  = sortedRows.filter(r => { const p = r.hub_projects; if (!p || overdue.includes(r)) return false; const d = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000) : null; return p.status === 'ongoing' && d !== null && d <= 7; });
-              const active2  = sortedRows.filter(r => r.hub_projects?.status === 'ongoing' && !overdue.includes(r) && !dueSoon.includes(r));
+              const ongoing  = sortedRows.filter(r => r.hub_projects?.status === 'ongoing' && !overdue.includes(r) && !dueSoon.includes(r));
               const paused   = sortedRows.filter(r => r.hub_projects?.status === 'paused');
               const done     = sortedRows.filter(r => r.hub_projects?.status === 'completed');
+              const stageGroups = STAGES
+                .map(stage => ({ stage, rows: ongoing.filter(r => (r.hub_projects?.stage ?? 'Pre-Design') === stage) }))
+                .filter(g => g.rows.length > 0);
 
               const Section = ({ label, rows: sRows, dot }: { label: string; rows: typeof sortedRows; dot: string }) => sRows.length === 0 ? null : (
                 <div className="space-y-2">
@@ -2143,7 +2140,9 @@ export default function ContractorProjectsPage() {
                 <>
                   <Section label="Overdue" rows={overdue} dot="bg-rose-400" />
                   <Section label="Due This Week" rows={dueSoon} dot="bg-amber-400" />
-                  <Section label="Active" rows={active2} dot="bg-[#1c2b3a]/70" />
+                  {stageGroups.map(({ stage, rows }) => (
+                    <Section key={stage} label={stage} rows={rows} dot="bg-[#1c2b3a]/70" />
+                  ))}
                   <Section label="Paused" rows={paused} dot="bg-gray-300" />
                   <Section label="Completed" rows={done} dot="bg-emerald-400" />
                 </>

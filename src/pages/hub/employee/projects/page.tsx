@@ -2128,7 +2128,7 @@ export default function ContractorProjectsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {sRows.map((r) => (
                       <ProjectCard key={r.id} row={r}
-                        projectTasks={tasks.filter(t => t.project_id === r.hub_projects?.id)}
+                        projectTasks={myTasks.filter(t => t.project_id === r.hub_projects?.id)}
                         onClick={() => { setWorkspaceRow(r); setTaskFilter('all'); setTaskSearch(''); setWsFocusSection(null); }}
                       />
                     ))}

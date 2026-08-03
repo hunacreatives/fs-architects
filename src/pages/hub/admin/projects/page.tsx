@@ -1767,7 +1767,7 @@ export default function AdminProjectsPage() {
                                 <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
                                 {taskGroupBy === 'assignee' && t.project && <p className="text-[11px] text-gray-400 truncate">{t.project.project_name}</p>}
                               </div>
-                              <span className={`hidden sm:flex items-center justify-center w-16 text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
+                              <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
                               <span className={`w-12 text-[11px] font-medium flex-shrink-0 text-right ${over ? 'text-rose-500' : 'text-gray-400'}`}>
                                 {t.due_date ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
                               </span>

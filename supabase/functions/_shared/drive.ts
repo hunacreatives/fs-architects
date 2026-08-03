@@ -84,6 +84,22 @@ export async function getOrCreateProjectFolderId(
   return { folderId, driveUrl };
 }
 
+// Get the project's "Task Attachments" subfolder id, cached on hub_projects
+// so repeat uploads skip the Drive search entirely after the first one.
+export async function getOrCreateTaskAttachmentsFolderId(
+  supabase: SupabaseClient,
+  token: string,
+  projectId: number,
+  projectFolderId: string,
+): Promise<string> {
+  const { data } = await supabase.from('hub_projects').select('task_attachments_folder_id').eq('id', projectId).maybeSingle();
+  if (data?.task_attachments_folder_id) return data.task_attachments_folder_id as string;
+
+  const folderId = await createOrGetSharedFolder('Task Attachments', projectFolderId, token);
+  await supabase.from('hub_projects').update({ task_attachments_folder_id: folderId }).eq('id', projectId);
+  return folderId;
+}
+
 export function driveServiceClient(): SupabaseClient {
   return createClient(
     Deno.env.get('SUPABASE_URL')!,

@@ -1,5 +1,5 @@
 import { corsHeaders, guardUser } from '../_shared/auth.ts';
-import { createOrGetSharedFolder, driveServiceClient, getOrCreateProjectFolderId } from '../_shared/drive.ts';
+import { createOrGetSharedFolder, driveServiceClient, getOrCreateProjectFolderId, getOrCreateTaskAttachmentsFolderId } from '../_shared/drive.ts';
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -95,10 +95,17 @@ async function getFolderForType(type: string, meta: Record<string, string>, acce
     const projectId = meta.project_id ? Number(meta.project_id) : null;
     if (projectId) {
       const supabase = driveServiceClient();
-      const { data: project } = await supabase.from('hub_projects').select('client_name, project_name').eq('id', projectId).maybeSingle();
+      const { data: project } = await supabase.from('hub_projects')
+        .select('client_name, project_name, drive_url, task_attachments_folder_id')
+        .eq('id', projectId).maybeSingle();
       if (project) {
-        const { folderId } = await getOrCreateProjectFolderId(supabase, accessToken, projectId, project.client_name ?? null, project.project_name);
-        return createOrGetSharedFolder('Task Attachments', folderId, accessToken);
+        // Fast path: both folders already resolved, zero Drive API calls.
+        if (project.task_attachments_folder_id) return project.task_attachments_folder_id;
+
+        const existingProjectFolderId = project.drive_url?.match(/folders\/([a-zA-Z0-9_-]+)/)?.[1];
+        const projectFolderId = existingProjectFolderId
+          ?? (await getOrCreateProjectFolderId(supabase, accessToken, projectId, project.client_name ?? null, project.project_name)).folderId;
+        return getOrCreateTaskAttachmentsFolderId(supabase, accessToken, projectId, projectFolderId);
       }
     }
     const projectName = meta.project_name || 'General';

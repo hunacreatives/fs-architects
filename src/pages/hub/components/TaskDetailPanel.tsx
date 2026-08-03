@@ -968,7 +968,7 @@ export default function TaskDetailPanel({
 
     // Legacy single-attachment columns mirror the first file so older readers keep working.
     const first = uploaded[0] ?? null;
-    const { data } = await supabase
+    const { data, error: postError } = await supabase
       .from('hub_project_task_comments')
       .insert({
         task_id: task.id,
@@ -984,6 +984,12 @@ export default function TaskDetailPanel({
       })
       .select('id, user_id, body, created_at, author_name, author_avatar_url, attachment_url, attachment_name, attachment_size, attachment_mime, attachments, seen_by')
       .single();
+    if (postError) {
+      console.error('Post comment error:', postError);
+      setCommentFileError(postError.message ?? 'Failed to post comment.');
+      setPosting(false);
+      return;
+    }
     if (data) {
       const { data: commenter } = await supabase.from('hub_users').select('full_name, avatar_url').eq('id', currentUserId).single();
       const norm = { ...data, reactions: {}, seen_by: (data as any).seen_by ?? [], hub_users: commenter ? { full_name: commenter.full_name, avatar_url: commenter.avatar_url ?? null } : { full_name: currentUserName, avatar_url: null } };
@@ -2025,7 +2031,7 @@ export default function TaskDetailPanel({
                   <CommentEditor
                     ref={commentEditorRef}
                     users={teamMembers.filter(m => m.id !== currentUserId)}
-                    placeholder="Leave a note for the team… (@ to mention someone)"
+                    placeholder="Add a comment — type @ to mention someone"
                     onSubmit={postComment}
                     onTextChange={setNewComment}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-[#1c2b3a]/30 transition-shadow"

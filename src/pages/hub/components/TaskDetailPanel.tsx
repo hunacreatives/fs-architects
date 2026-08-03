@@ -235,7 +235,17 @@ function getAttachmentExt(name: string | null | undefined) {
   return parts.length > 1 ? parts.pop() ?? '' : '';
 }
 
+// RAW camera formats — browsers can't render these as <img>/thumbnails even
+// though their mime type often starts with "image/", so they must be treated
+// as a generic downloadable file instead of an inline preview.
+const RAW_IMAGE_EXTENSIONS = ['dng', 'cr2', 'cr3', 'nef', 'arw', 'raf', 'orf', 'rw2', 'srw', 'pef'];
+
+function isRawImageFile(name: string | null | undefined) {
+  return RAW_IMAGE_EXTENSIONS.includes(getAttachmentExt(name));
+}
+
 function isImageAttachment(att: Attachment) {
+  if (isRawImageFile(att.name)) return false;
   if (att.mime_type?.startsWith('image/')) return true;
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif'].includes(getAttachmentExt(att.name));
 }
@@ -1103,6 +1113,8 @@ export default function TaskDetailPanel({
   const deleteAttachment = async (att: Attachment) => {
     await supabase.from('hub_project_task_attachments').delete().eq('id', att.id);
     setAttachments(prev => prev.filter(a => a.id !== att.id));
+    const fileId = driveFileIdFromUrl(att.url);
+    if (fileId) supabase.functions.invoke('delete-from-drive', { body: { fileId } }).catch(console.error);
   };
 
 
@@ -1829,7 +1841,7 @@ export default function TaskDetailPanel({
           {/* Comment attachment preview modal */}
           {commentPreview && (() => {
             const fid = driveFileIdFromUrl(commentPreview.url);
-            const isImage = commentPreview.mime?.startsWith('image/');
+            const isImage = !isRawImageFile(commentPreview.name) && commentPreview.mime?.startsWith('image/');
             const previewSrc = fid ? `https://drive.google.com/file/d/${fid}/preview` : commentPreview.url;
             const downloadUrl = fid ? `https://drive.google.com/uc?export=download&id=${fid}` : commentPreview.url;
             return (
@@ -1929,8 +1941,8 @@ export default function TaskDetailPanel({
                               ? [{ url: c.attachment_url, name: c.attachment_name ?? 'File', size: c.attachment_size, mime: c.attachment_mime }]
                               : [];
                           if (atts.length === 0) return null;
-                          const images = atts.filter(a => a.mime?.startsWith('image/'));
-                          const files = atts.filter(a => !a.mime?.startsWith('image/'));
+                          const images = atts.filter(a => !isRawImageFile(a.name) && a.mime?.startsWith('image/'));
+                          const files = atts.filter(a => isRawImageFile(a.name) || !a.mime?.startsWith('image/'));
                           return (
                             <div className="mt-1.5 space-y-1.5">
                               {images.length > 0 && (
@@ -1959,15 +1971,17 @@ export default function TaskDetailPanel({
                                 const fid = driveFileIdFromUrl(a.url);
                                 const downloadUrl = fid ? `https://drive.google.com/uc?export=download&id=${fid}` : a.url;
                                 return (
-                                  <div key={i} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 max-w-xs mr-1.5">
+                                  <div key={i} role="button" tabIndex={0}
+                                    onClick={() => setCommentPreview({ url: a.url, name: a.name, mime: a.mime })}
+                                    onKeyDown={e => { if (e.key === 'Enter') setCommentPreview({ url: a.url, name: a.name, mime: a.mime }); }}
+                                    title="Preview"
+                                    className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 max-w-xs mr-1.5 cursor-pointer hover:bg-gray-100 transition-colors">
                                     <i className="ri-file-line text-gray-400 text-sm flex-shrink-0"></i>
                                     <span className="text-xs text-gray-700 truncate flex-1">{a.name}</span>
                                     {a.size != null && <span className="text-[10px] text-gray-400 flex-shrink-0">{(a.size / 1024).toFixed(0)} KB</span>}
-                                    <button onClick={() => setCommentPreview({ url: a.url, name: a.name, mime: a.mime })}
-                                      title="Preview" className="ml-1 text-gray-400 hover:text-sky-500 transition-colors cursor-pointer flex-shrink-0">
-                                      <i className="ri-eye-line text-xs"></i>
-                                    </button>
+                                    <i className="ri-eye-line text-xs text-gray-400 ml-1 flex-shrink-0"></i>
                                     <a href={downloadUrl} target="_blank" rel="noopener noreferrer" download
+                                      onClick={e => e.stopPropagation()}
                                       title="Download" className="text-gray-400 hover:text-emerald-500 transition-colors flex-shrink-0">
                                       <i className="ri-download-line text-xs"></i>
                                     </a>

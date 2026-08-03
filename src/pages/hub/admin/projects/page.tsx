@@ -2002,13 +2002,14 @@ export default function AdminProjectsPage() {
           );
         })() : (
           <div className="hidden lg:flex lg:flex-col w-full lg:w-[380px] lg:flex-shrink-0 h-full pt-1">
-            {/* Invisible spacer matching the "PROJECTS (n)" label row on the left,
-                so this card's top aligns with the project list card, not the label. */}
-            <div className="flex items-center gap-2 invisible flex-shrink-0" aria-hidden="true">
+            {/* Invisible spacer matching the stage-group label row on the left
+                (icon + text + mb-2), so this card's top aligns with the
+                project list card, not the label. */}
+            <div className="flex items-center gap-2 mb-2 invisible flex-shrink-0" aria-hidden="true">
               <i className="ri-folder-line text-sm"></i>
               <p className="text-[11px] font-semibold uppercase tracking-widest">Spacer</p>
             </div>
-            <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden mt-3">
+            <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden">
               <div className="px-5 pt-5 pb-3 flex items-center gap-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tasks</p>
                 <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{sidebarTasks.length}</span>

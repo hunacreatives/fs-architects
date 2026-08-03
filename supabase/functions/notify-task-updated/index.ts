@@ -49,14 +49,28 @@ Deno.serve(async (req) => {
       ...((task?.assignee_ids as string[]) ?? []),
     ];
 
-    const { data: admins } = await supabase
+    // Owners see everything across every project. Admins only see projects
+    // they're actually on the team for — otherwise every admin gets pinged
+    // for every comment on every project regardless of involvement.
+    const { data: owners } = await supabase
       .from('hub_users')
       .select('id, slack_id')
-      .in('role', ['admin', 'owner']);
+      .eq('role', 'owner');
 
-    const adminIds: string[] = (admins ?? []).map((a: any) => a.id);
+    const { data: projectTeam } = await supabase
+      .from('hub_project_contractors')
+      .select('contractor_id')
+      .eq('project_id', project_id);
+    const teamIds = (projectTeam ?? []).map((r: any) => r.contractor_id);
 
-    const toNotifyIds = [...new Set([...assigneeIds, ...adminIds])].filter(
+    const { data: teamAdmins } = teamIds.length > 0
+      ? await supabase.from('hub_users').select('id, slack_id').in('id', teamIds).eq('role', 'admin')
+      : { data: [] as { id: string; slack_id: string | null }[] };
+
+    const ownerIds: string[] = (owners ?? []).map((a: any) => a.id);
+    const adminIds: string[] = (teamAdmins ?? []).map((a: any) => a.id);
+
+    const toNotifyIds = [...new Set([...assigneeIds, ...ownerIds, ...adminIds])].filter(
       (id) => id !== updated_by_id
     );
 

@@ -438,6 +438,7 @@ export default function AdminProjectsPage() {
     if (task.status === newStatus || isDemo) return;
     await supabase.from('hub_project_tasks').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', task.id);
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+    setAllTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     const statusLabel = newStatus.replace('_', ' ');
     await logActivity(task.project_id, `${hubUser?.full_name ?? 'Admin'} moved "${task.title}" to ${statusLabel}`);
     if (newStatus === 'done') fetchTasks(task.project_id);
@@ -1227,6 +1228,11 @@ export default function AdminProjectsPage() {
                       ...(updates.start_date !== undefined && { start_date: updates.start_date }),
                     }).eq('id', taskId);
                     fetchTasks(activeId!);
+                    setAllTasks(prev => prev.map(t => t.id === taskId ? {
+                      ...t,
+                      ...(updates.due_date !== undefined && { due_date: updates.due_date }),
+                      ...(updates.start_date !== undefined && { start_date: updates.start_date }),
+                    } : t));
                   }}
                   onAddTask={(date) => { setPendingTaskDate(date); openNewTask(); }}
                   onTaskClick={(t: any) => { const found = tasks.find(x => x.id === t.id); if (found) openTaskDetail(found); }}

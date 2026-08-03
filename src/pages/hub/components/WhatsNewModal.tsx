@@ -55,21 +55,19 @@ export default function WhatsNewModal() {
   const slide = SLIDES[step];
   const projectsPath = hubUser?.role === 'contractor' ? '/hub/employee/projects' : '/hub/admin/projects';
 
-  const dismiss = () => {
+  const dismiss = async () => {
     setHidden(true);
     if (!hubUser) return;
-    supabase
+    const { error } = await supabase
       .from('hub_users')
       .update({ last_seen_app_version: CURRENT_APP_VERSION })
-      .eq('id', hubUser.id)
-      .then(({ error }) => {
-        if (error) console.error('Failed to save last_seen_app_version:', error);
-        refreshHubUser();
-      });
+      .eq('id', hubUser.id);
+    if (error) console.error('Failed to save last_seen_app_version:', error);
+    await refreshHubUser();
   };
 
-  const goToProjects = () => {
-    dismiss();
+  const goToProjects = async () => {
+    await dismiss();
     navigate(projectsPath);
   };
 

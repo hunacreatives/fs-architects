@@ -9,14 +9,14 @@ Deno.serve(async (req) => {
   if (denied) return denied;
 
   try {
-    const { project_id, client_name, project_name } = await req.json();
+    const { project_id, client_name, project_name, project_code } = await req.json();
     if (!project_id || !project_name) {
       return new Response(JSON.stringify({ error: 'project_id and project_name required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
     const token = await getGoogleAccessToken();
     const supabase = driveServiceClient();
-    const { folderId, driveUrl } = await getOrCreateProjectFolderId(supabase, token, project_id, client_name ?? null, project_name);
+    const { folderId, driveUrl } = await getOrCreateProjectFolderId(supabase, token, project_id, client_name ?? null, project_name, project_code || undefined);
 
     return new Response(JSON.stringify({ drive_url: driveUrl, folder_id: folderId }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },

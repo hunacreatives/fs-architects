@@ -13,6 +13,7 @@ import { createTaskAttachment } from '@/lib/taskAttachments';
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeTaskAssigneePayload } from '@/lib/taskAssignments';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
+import { getProjectTypeLabel, getProjectTypePalette } from '@/lib/projectTypes';
 
 const STAGES = [
   'Pre-Design', 'Schematic Design', 'Design Development', 'Construction Documents',
@@ -46,6 +47,8 @@ interface ProjectRow {
     client_name: string;
     project_name: string;
     service: string | null;
+    project_type_code: string | null;
+    project_code: string | null;
     status: string;
     stage: string;
     start_date: string | null;
@@ -420,22 +423,6 @@ function TaskRow({ task, projectName, team }: { task: ProjectTask; projectName?:
   );
 }
 
-// ── Per-project color palette ──────────────────────────────────────────────
-// Colors based on service type
-const getCardPalette = (service: string | null) => {
-  const s = (service ?? '').toLowerCase();
-  if (s.includes('architecture'))        return { from: '#1c2b3a', to: '#2d4a6e' }; // navy
-  if (s.includes('interior design'))     return { from: '#d97706', to: '#f59e0b' }; // amber
-  if (s.includes('design & drafting') || s.includes('drafting')) return { from: '#0ea5e9', to: '#06b6d4' }; // sky-cyan
-  if (s.includes('project management'))  return { from: '#10b981', to: '#0ea5e9' }; // emerald-sky
-  if (s.includes('construction'))        return { from: '#ef4444', to: '#f97316' }; // red-orange
-  if (s.includes('feasibility'))         return { from: '#ec4899', to: '#f43f5e' }; // pink-rose
-  if (s.includes('design-build') || s.includes('design build')) return { from: '#1c2b3a', to: '#475569' }; // navy-slate
-  if (s.includes('renovation'))          return { from: '#14b8a6', to: '#10b981' }; // teal-emerald
-  if (s.includes('consultation'))        return { from: '#64748b', to: '#475569' }; // slate
-  return                                        { from: '#94a3b8', to: '#64748b' }; // gray — other/internal
-};
-
 // ── Project card (summary) ─────────────────────────────────────────────────
 function ProjectCard({ row, projectTasks, onClick }: {
   row: ProjectRow;
@@ -456,7 +443,8 @@ function ProjectCard({ row, projectTasks, onClick }: {
     ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000)
     : null;
   const isOverdue = !!(p.deadline && p.deadline < today && p.status !== 'completed');
-  const palette = getCardPalette(p.service);
+  const palette = getProjectTypePalette(p.project_type_code);
+  const typeLabel = getProjectTypeLabel(p.project_type_code);
 
   const statusLabel = { ongoing: 'Active', completed: 'Completed', paused: 'Paused', cancelled: 'Archived' }[p.status] ?? p.status;
   const healthLabel = (() => {
@@ -486,10 +474,10 @@ function ProjectCard({ row, projectTasks, onClick }: {
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            {/* Service chip */}
-            {p.service && (
+            {/* Project type chip */}
+            {typeLabel && (
               <span className="inline-block text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: palette.from }}>
-                {p.service}
+                {typeLabel}
               </span>
             )}
             {p.stage && (
@@ -499,6 +487,7 @@ function ProjectCard({ row, projectTasks, onClick }: {
             )}
             <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1 group-hover:text-gray-700 transition-colors">
               {p.project_name}
+              {p.project_code && <span className="ml-1.5 text-[10px] font-mono font-normal text-gray-400 align-middle">{p.project_code}</span>}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5 truncate">
               {internalProject ? (
@@ -564,6 +553,9 @@ export default function ContractorProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [workspaceRow, setWorkspaceRow] = useState<ProjectRow | null>(null);
+  const [dashboardTab, setDashboardTab] = useState<'tasks' | 'projects'>('tasks');
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [taskWindow, setTaskWindow] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [taskFilter, setTaskFilter] = useState<'all' | 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done' | 'overdue'>('all');
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
   const [taskView, setTaskView] = useState<'list' | 'board'>('list');
@@ -999,7 +991,7 @@ export default function ContractorProjectsPage() {
         // doesn't restrict visibility by assignment the way some client hubs do.
         const { data: projectsData, error: projErr } = await supabase
           .from('hub_projects')
-          .select('id, project_type, client_name, project_name, service, status, stage, start_date, deadline, notes, drive_url, slug');
+          .select('id, project_type, client_name, project_name, service, project_type_code, project_code, status, stage, start_date, deadline, notes, drive_url, slug');
         if (projErr) throw projErr;
         if (!projectsData?.length) { setLoading(false); return; }
 
@@ -1089,15 +1081,8 @@ export default function ContractorProjectsPage() {
   const overdueTasks = myTasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done');
   const todayDueTasks = myTasks.filter(t => t.due_date === today && t.status !== 'done');
   const pct = myTasks.length > 0 ? Math.round((doneTasks.length / myTasks.length) * 100) : 0;
-
-  const sortedMyTasks = [
-    ...myTasks.filter(t => t.due_date && t.due_date < today && t.status !== 'done'),
-    ...myTasks.filter(t => t.status === 'in_progress' && !(t.due_date && t.due_date < today)),
-    ...myTasks.filter(t => t.status === 'in_review' && !(t.due_date && t.due_date < today)),
-    ...myTasks.filter(t => t.status === 'blocked' && !(t.due_date && t.due_date < today)),
-    ...myTasks.filter(t => t.status === 'todo' && !(t.due_date && t.due_date < today)),
-    ...myTasks.filter(t => t.status === 'done'),
-  ];
+  const daysUntil = (t: ProjectTask) => t.due_date ? Math.ceil((new Date(t.due_date + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000) : null;
+  const thisWeekTasks = myTasks.filter(t => t.status !== 'done' && t.due_date && t.due_date > today && (daysUntil(t) as number) <= 7);
 
   const featuredTasks = todayDueTasks.length > 0 ? todayDueTasks
     : overdueTasks.length > 0 ? overdueTasks
@@ -1117,25 +1102,14 @@ export default function ContractorProjectsPage() {
   const getProjectName = (projectId: number) =>
     rows.find(r => r.hub_projects?.id === projectId)?.hub_projects?.project_name ?? '';
 
-  const openTaskFromDashboard = (task: ProjectTask) => {
-    const row = rows.find(r => r.hub_projects?.id === task.project_id);
-    if (!row) return;
-    setWorkspaceRow(row);
-    setTaskFilter('all');
-    setTaskSearch('');
-    setWsSearch('');
-    setWsSearchOpen(false);
-    setWsFocusSection('ws-tasks');
-    openViewTask(task);
-  };
-
   const searchLower = search.toLowerCase();
   const filteredRows = search
     ? rows.filter(r => {
         const p = r.hub_projects;
         return p?.project_name?.toLowerCase().includes(searchLower)
           || p?.client_name?.toLowerCase().includes(searchLower)
-          || p?.service?.toLowerCase().includes(searchLower);
+          || p?.project_code?.toLowerCase().includes(searchLower)
+          || (getProjectTypeLabel(p?.project_type_code ?? null) ?? '').toLowerCase().includes(searchLower);
       })
     : rows;
   const sortedRows = [...filteredRows].sort((a, b) => {
@@ -1180,6 +1154,12 @@ export default function ContractorProjectsPage() {
       });
   }, [wsProject?.id]);
   const wsTeam = wsTeamDirect.length > 0 ? wsTeamDirect : (wsRow ? (teamMap[wsProject?.id ?? 0] ?? []) : []);
+  // The detail panel can now open for a task without its project's workspace
+  // being active (e.g. from the Tasks tab) — resolve panel props off the
+  // task's own project rather than assuming wsProject/wsTeam are in sync.
+  const detailProjectId = editingTask?.project_id ?? wsProject?.id ?? 0;
+  const detailProjectName = editingTask ? (getProjectName(editingTask.project_id) || 'General') : (wsProject?.project_name ?? 'General');
+  const detailTeam = editingTask ? (teamMap[editingTask.project_id] ?? []) : wsTeam;
   const getWorkspaceTaskAssignees = (task: ProjectTask) =>
     getTaskAssigneeIds(task)
       .map((assigneeId) => wsTeam.find((member) => member.id === assigneeId))
@@ -1608,10 +1588,13 @@ export default function ContractorProjectsPage() {
                           {statusLabels[wsProject.status] ?? wsProject.status}
                         </span>
                         {wsIsInternal && <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Internal</span>}
-                        {wsProject.service && <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{wsProject.service}</span>}
+                        {wsProject.project_type_code && <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{getProjectTypeLabel(wsProject.project_type_code)}</span>}
                         {wsProject.stage && <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700">{wsProject.stage}</span>}
                       </div>
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{wsProject.project_name}</h2>
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
+                        {wsProject.project_name}
+                        {wsProject.project_code && <span className="ml-2 text-xs font-mono font-normal text-gray-400 align-middle">{wsProject.project_code}</span>}
+                      </h2>
                       <p className="text-sm text-gray-400 mt-0.5">{wsIsInternal ? 'Internal Project' : wsProject.client_name}</p>
 
                       {wsTeam.length > 0 && (
@@ -2099,178 +2082,339 @@ export default function ContractorProjectsPage() {
         </div>
       ) : (
         /* ── Main dashboard layout ── */
-        <div className="flex gap-6 min-h-full">
+        <div className="space-y-6">
 
-          {/* ── LEFT: projects ── */}
-          <div className="flex-1 min-w-0 space-y-6">
-
-            {/* Greeting */}
-            <div>
-              <p className="text-xs text-gray-400 mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-              <h2 className="text-xl font-bold tracking-tight leading-tight">
-                <span style={{ background: greetingGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                  {greeting}, {firstName}.
-                </span>
-                <br />
-                <span className="text-gray-400 font-normal text-base">
-                  {todayDueTasks.length > 0
-                    ? `You have ${todayDueTasks.length} task${todayDueTasks.length > 1 ? 's' : ''} due today.`
-                    : overdueTasks.length > 0
-                    ? `${overdueTasks.length} task${overdueTasks.length > 1 ? 's' : ''} ${overdueTasks.length > 1 ? 'require' : 'requires'} attention.`
-                    : myTasks.length > 0
-                    ? `${myTasks.length - doneTasks.length} task${myTasks.length - doneTasks.length !== 1 ? 's' : ''} remaining.`
-                    : 'No tasks pending.'}
-                </span>
-              </h2>
-            </div>
-
-            {/* No search results */}
-            {search && active.length === 0 && other.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <i className="ri-search-line text-3xl text-gray-200"></i>
-                <p className="text-sm text-gray-400">No projects match <span className="font-medium text-gray-600">"{search}"</span></p>
-                <button onClick={() => setSearch('')} className="text-xs text-[#1c2b3a]/70 hover:underline cursor-pointer">Clear search</button>
+          {/* Hero — answers "what do I do right now": completion ring, quick
+              counts, and the single most urgent task spotlighted with a
+              one-tap complete. */}
+          <div className="relative overflow-hidden rounded-[28px] p-6 sm:p-7 text-white shadow-[0_20px_50px_-20px_rgba(28,43,58,0.55)]" style={{ background: greetingGradient }}>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(480px 300px at 88% -10%, rgba(255,255,255,0.16), transparent 60%)' }} />
+            <div className="relative flex items-start justify-between gap-6 flex-wrap">
+              <div>
+                <p className="text-xs text-white/55 font-medium mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                <h2 className="text-2xl font-extrabold tracking-tight leading-tight">{greeting}, {firstName}.</h2>
+                <p className="text-sm text-white/70 mt-1">{subline}</p>
               </div>
-            )}
-
-            {/* Project cards: urgency call-outs first, then grouped by stage
-                (not status — nearly every project just sits at "ongoing," so
-                status alone isn't useful for browsing; stage is).
-                Overdue/Due This Week are keyed off the employee's OWN tasks,
-                not the project's deadline — a project the employee has no
-                tasks in yet shouldn't show up as an urgent call-out for them,
-                even if the project itself is behind schedule company-wide. */}
-            {(() => {
-              const myOverdueProjectIds = new Set(overdueTasks.map(t => t.project_id));
-              const myDueSoonProjectIds = new Set(
-                myTasks
-                  .filter(t => t.status !== 'done' && t.due_date && t.due_date >= today)
-                  .filter(t => Math.ceil((new Date(t.due_date! + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000) <= 7)
-                  .map(t => t.project_id)
-              );
-              const overdue  = sortedRows.filter(r => r.hub_projects && myOverdueProjectIds.has(r.hub_projects.id) && r.hub_projects.status !== 'completed');
-              const dueSoon  = sortedRows.filter(r => r.hub_projects && !overdue.includes(r) && myDueSoonProjectIds.has(r.hub_projects.id) && r.hub_projects.status === 'ongoing');
-              const ongoing  = sortedRows.filter(r => r.hub_projects?.status === 'ongoing' && !overdue.includes(r) && !dueSoon.includes(r));
-              const paused   = sortedRows.filter(r => r.hub_projects?.status === 'paused');
-              const done     = sortedRows.filter(r => r.hub_projects?.status === 'completed');
-              const stageGroups = STAGES
-                .map(stage => ({ stage, rows: ongoing.filter(r => (r.hub_projects?.stage ?? 'Pre-Design') === stage) }))
-                .filter(g => g.rows.length > 0);
-
-              const Section = ({ label, rows: sRows, dot }: { label: string; rows: typeof sortedRows; dot: string }) => sRows.length === 0 ? null : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`}></span>
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label} <span className="text-gray-300 font-normal">({sRows.length})</span></p>
+              {tasks.length > 0 && (
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="relative w-[72px] h-[72px] flex-shrink-0">
+                    <svg width="72" height="72" className="-rotate-90">
+                      <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
+                      <circle cx="36" cy="36" r="30" fill="none" stroke="#fff" strokeWidth="7" strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 30} strokeDashoffset={2 * Math.PI * 30 * (1 - pct / 100)} style={{ transition: 'stroke-dashoffset 0.4s ease' }} />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center text-base font-bold">{pct}%</div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    {sRows.map((r) => (
-                      <ProjectCard key={r.id} row={r}
-                        projectTasks={myTasks.filter(t => t.project_id === r.hub_projects?.id)}
-                        onClick={() => { setWorkspaceRow(r); setTaskFilter('all'); setTaskSearch(''); setWsFocusSection(null); }}
-                      />
-                    ))}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-white/80"><span className="w-1.5 h-1.5 rounded-full bg-amber-300 flex-shrink-0"></span>Today <span className="font-bold text-white">{todayDueTasks.length}</span></div>
+                    <div className="flex items-center gap-2 text-xs text-white/80"><span className="w-1.5 h-1.5 rounded-full bg-rose-300 flex-shrink-0"></span>Overdue <span className="font-bold text-white">{overdueTasks.length}</span></div>
+                    <div className="flex items-center gap-2 text-xs text-white/80"><span className="w-1.5 h-1.5 rounded-full bg-emerald-300 flex-shrink-0"></span>Done <span className="font-bold text-white">{doneTasks.length}</span></div>
                   </div>
-                </div>
-              );
-
-              return (
-                <>
-                  <Section label="Overdue" rows={overdue} dot="bg-rose-400" />
-                  <Section label="Due This Week" rows={dueSoon} dot="bg-amber-400" />
-                  {stageGroups.map(({ stage, rows }) => (
-                    <Section key={stage} label={stage} rows={rows} dot="bg-[#1c2b3a]/70" />
-                  ))}
-                  <Section label="Paused" rows={paused} dot="bg-gray-300" />
-                  <Section label="Completed" rows={done} dot="bg-emerald-400" />
-                </>
-              );
-            })()}
-
-
-          </div>
-          {/* ── RIGHT: task panel ── */}
-          <div className="hidden lg:flex flex-col gap-4 w-[300px] flex-shrink-0">
-
-            {/* Overall progress ring */}
-            {tasks.length > 0 && (
-              <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-5">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">Overall Progress</p>
-                <div className="flex items-center gap-4">
-                  <ProgressRing pct={pct} size={80} />
-                  <div className="space-y-2 flex-1">
-                    {[
-                      { label: 'Done', value: doneTasks.length, color: 'bg-emerald-400' },
-                      { label: 'Active', value: inProgressTasks.length, color: 'bg-blue-400' },
-                      { label: 'To Do', value: todoTasks.length, color: 'bg-gray-200' },
-                    ].map(s => (
-                      <div key={s.label} className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.color}`}></span>
-                        <span className="text-xs text-gray-500 flex-1">{s.label}</span>
-                        <span className="text-xs font-semibold text-gray-700">{s.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* My tasks list */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-5 flex-1 overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
-                    {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                  </p>
-                  <p className="text-lg font-bold text-gray-900 leading-tight">My Tasks</p>
-                </div>
-                {overdueTasks.length > 0 && (
-                  <span className="text-[11px] font-semibold text-rose-500 bg-rose-50 px-2.5 py-1 rounded-full">
-                    {overdueTasks.length} overdue
-                  </span>
-                )}
-              </div>
-
-              {sortedMyTasks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
-                    <i className="ri-checkbox-circle-fill text-emerald-400 text-2xl"></i>
-                  </div>
-                  <p className="text-sm text-gray-400 font-medium text-center">No tasks assigned yet</p>
-                </div>
-              ) : (
-                <div className="space-y-0.5">
-                  {sortedMyTasks.map(t => {
-                    const projectName = getProjectName(t.project_id);
-                    const isOverdue = t.due_date && t.due_date < today && t.status !== 'done';
-                    return (
-                      <div key={t.id} className={`flex items-start gap-2 px-2 py-2 rounded-xl transition-colors ${t.status === 'done' ? 'opacity-40' : 'hover:bg-gray-50/80'}`}>
-                        <button type="button" onClick={() => cycleTask(t)} className="mt-0.5 flex-shrink-0 cursor-pointer">
-                          <i className={`text-base ${
-                            t.status === 'done'        ? 'ri-checkbox-circle-fill text-emerald-500' :
-                            t.status === 'in_progress' ? 'ri-loader-2-line text-sky-500' :
-                            t.status === 'in_review'   ? 'ri-eye-line text-violet-400' :
-                            t.status === 'blocked'     ? 'ri-forbid-line text-rose-400' :
-                            isOverdue                  ? 'ri-error-warning-line text-rose-400' :
-                            'ri-checkbox-blank-circle-line text-gray-300 hover:text-gray-400'
-                          }`}></i>
-                        </button>
-                        <button type="button" onClick={() => openTaskFromDashboard(t)} className="flex-1 min-w-0 text-left cursor-pointer">
-                          <p className={`text-sm leading-snug ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{projectName}</p>
-                        </button>
-                        {t.due_date && t.status !== 'done' && (
-                          <span className={`text-[10px] font-semibold flex-shrink-0 mt-0.5 ${isOverdue ? 'text-rose-500' : t.due_date === today ? 'text-amber-600' : 'text-gray-400'}`}>
-                            {t.due_date === today ? 'Today' : isOverdue ? 'Late' : new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>
+
+            {featuredTasks[0] && (
+              <div className="relative mt-5 flex items-center gap-3.5 bg-white/10 hover:bg-white/[0.14] border border-white/15 rounded-2xl px-4 py-3.5 transition-colors">
+                <button type="button" onClick={() => cycleTask(featuredTasks[0])}
+                  className="w-6 h-6 rounded-full border-2 border-white/45 hover:border-white flex-shrink-0 transition-colors cursor-pointer"></button>
+                <button type="button" onClick={() => openViewTask(featuredTasks[0])} className="flex-1 min-w-0 text-left cursor-pointer">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/55 mb-0.5">Next up</p>
+                  <p className="text-sm font-bold truncate">{featuredTasks[0].title}</p>
+                  <p className="text-xs text-white/65 mt-0.5 truncate">{getProjectName(featuredTasks[0].project_id)}</p>
+                </button>
+                {featuredTasks[0].due_date && (
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
+                    featuredTasks[0].due_date < today ? 'bg-rose-400 text-white' : featuredTasks[0].due_date === today ? 'bg-amber-300 text-amber-900' : 'bg-white/15 text-white'
+                  }`}>
+                    {featuredTasks[0].due_date === today ? 'Today' : featuredTasks[0].due_date < today ? 'Late' : new Date(featuredTasks[0].due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Tabs — tasks first since that's the employee's actual job;
+              projects are just where those tasks live. Sliding pill indicator
+              instead of two independently-styled buttons. */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="relative inline-flex bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1">
+              <div className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out"
+                style={{ transform: dashboardTab === 'projects' ? 'translateX(100%)' : 'translateX(0)' }}></div>
+              <button type="button" onClick={() => setDashboardTab('tasks')}
+                className={`relative z-10 flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${dashboardTab === 'tasks' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                <i className="ri-checkbox-circle-line text-[15px]"></i>Tasks
+              </button>
+              <button type="button" onClick={() => setDashboardTab('projects')}
+                className={`relative z-10 flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${dashboardTab === 'projects' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                <i className="ri-layout-grid-line text-[15px]"></i>Projects
+              </button>
+            </div>
+
+            {/* Window toggle — controls how far out the "upcoming" task group
+                reaches. Overdue/No Due Date/Completed are unaffected by it. */}
+            {dashboardTab === 'tasks' && myTasks.length > 0 && (
+              <div className="inline-flex items-center gap-1 bg-white/50 backdrop-blur-sm border border-white/80 rounded-xl p-1">
+                {([['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']] as const).map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => setTaskWindow(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${taskWindow === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {dashboardTab === 'tasks' ? (
+            <div className="space-y-6">
+              {/* Bento urgency tiles — tap to jump the window toggle or reveal completed */}
+              {myTasks.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/80 p-4">
+                    <div className="w-8 h-8 rounded-[10px] bg-rose-50 text-rose-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-error-warning-line"></i></div>
+                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{overdueTasks.length}</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Overdue</p>
+                  </div>
+                  <button type="button" onClick={() => setTaskWindow('daily')}
+                    className={`text-left bg-white/70 backdrop-blur-sm rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${taskWindow === 'daily' ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
+                    <div className="w-8 h-8 rounded-[10px] bg-amber-50 text-amber-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-sun-line"></i></div>
+                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{todayDueTasks.length}</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Due today</p>
+                  </button>
+                  <button type="button" onClick={() => setTaskWindow('weekly')}
+                    className={`text-left bg-white/70 backdrop-blur-sm rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${taskWindow === 'weekly' ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
+                    <div className="w-8 h-8 rounded-[10px] bg-sky-50 text-sky-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-calendar-todo-line"></i></div>
+                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{thisWeekTasks.length}</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">This week</p>
+                  </button>
+                  <button type="button" onClick={() => setShowCompletedTasks(s => !s)}
+                    className={`text-left bg-white/70 backdrop-blur-sm rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${showCompletedTasks ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
+                    <div className="w-8 h-8 rounded-[10px] bg-emerald-50 text-emerald-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-checkbox-circle-line"></i></div>
+                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{doneTasks.length}</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">Completed</p>
+                  </button>
+                </div>
+              )}
+
+              {/* Task groups: Overdue / Due (window) / Later / No due date,
+                  with Completed collapsed behind a toggle so finished work doesn't
+                  crowd out what's actually pending. */}
+              {myTasks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-3">
+                  <div className="w-14 h-14 rounded-3xl bg-emerald-50 flex items-center justify-center">
+                    <i className="ri-checkbox-circle-fill text-emerald-400 text-2xl"></i>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-500">No tasks assigned yet</p>
+                </div>
+              ) : (() => {
+                const isPending = (t: ProjectTask) => t.status !== 'done';
+                const daysOut = (t: ProjectTask) => Math.ceil((new Date(t.due_date! + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
+                const windowDays = taskWindow === 'daily' ? 0 : taskWindow === 'weekly' ? 7 : 30;
+                const windowLabel = taskWindow === 'daily' ? 'Due Today' : taskWindow === 'weekly' ? 'Due This Week' : 'Due This Month';
+                const dueGroup = myTasks.filter(t => isPending(t) && t.due_date && t.due_date >= today && daysOut(t) <= windowDays);
+                const laterGroup = myTasks.filter(t => isPending(t) && t.due_date && t.due_date > today && daysOut(t) > windowDays);
+                const noDueDateGroup = myTasks.filter(t => isPending(t) && !t.due_date);
+
+                const getProjectDot = (projectId: number) =>
+                  getProjectTypePalette(rows.find(r => r.hub_projects?.id === projectId)?.hub_projects?.project_type_code ?? null).from;
+
+                const TaskRows = ({ list }: { list: ProjectTask[] }) => (
+                  <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 divide-y divide-gray-100/80 overflow-hidden">
+                    {list.map(t => {
+                      const projectName = getProjectName(t.project_id);
+                      const isOverdue = t.due_date && t.due_date < today && t.status !== 'done';
+                      return (
+                        <div key={t.id} className={`flex items-start gap-3 px-4 py-3 transition-colors ${t.status === 'done' ? 'opacity-40' : 'hover:bg-gray-50/80'}`}>
+                          <button type="button" onClick={() => cycleTask(t)} className="mt-0.5 flex-shrink-0 cursor-pointer">
+                            <i className={`text-base ${
+                              t.status === 'done'        ? 'ri-checkbox-circle-fill text-emerald-500' :
+                              t.status === 'in_progress' ? 'ri-loader-2-line text-sky-500' :
+                              t.status === 'in_review'   ? 'ri-eye-line text-violet-400' :
+                              t.status === 'blocked'     ? 'ri-forbid-line text-rose-400' :
+                              isOverdue                  ? 'ri-error-warning-line text-rose-400' :
+                              'ri-checkbox-blank-circle-line text-gray-300 hover:text-gray-400'
+                            }`}></i>
+                          </button>
+                          <button type="button" onClick={() => openViewTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
+                            <p className={`text-sm leading-snug ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: getProjectDot(t.project_id) }}></span>
+                              <p className="text-[11px] text-gray-400 truncate">{projectName}</p>
+                            </div>
+                          </button>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {t.priority === 'high' && t.status !== 'done' && <span className="w-1.5 h-1.5 rounded-full bg-rose-400" title="High priority"></span>}
+                            {t.due_date && t.status !== 'done' && (
+                              <span className={`text-[10px] font-semibold ${isOverdue ? 'text-rose-500' : t.due_date === today ? 'text-amber-600' : 'text-gray-400'}`}>
+                                {t.due_date === today ? 'Today' : isOverdue ? 'Late' : new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+
+                const GroupHeader = ({ label, count, dot }: { label: string; count: number; dot: string }) => (
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`}></span>
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label} <span className="text-gray-300 font-normal">({count})</span></p>
+                  </div>
+                );
+
+                return (
+                  <>
+                    {overdueTasks.length > 0 && (
+                      <div className="space-y-2">
+                        <GroupHeader label="Overdue" count={overdueTasks.length} dot="bg-rose-400" />
+                        <TaskRows list={overdueTasks} />
+                      </div>
+                    )}
+                    {dueGroup.length > 0 && (
+                      <div className="space-y-2">
+                        <GroupHeader label={windowLabel} count={dueGroup.length} dot="bg-amber-400" />
+                        <TaskRows list={dueGroup} />
+                      </div>
+                    )}
+                    {laterGroup.length > 0 && (
+                      <div className="space-y-2">
+                        <GroupHeader label="Later" count={laterGroup.length} dot="bg-gray-300" />
+                        <TaskRows list={laterGroup} />
+                      </div>
+                    )}
+                    {noDueDateGroup.length > 0 && (
+                      <div className="space-y-2">
+                        <GroupHeader label="No Due Date" count={noDueDateGroup.length} dot="bg-gray-200" />
+                        <TaskRows list={noDueDateGroup} />
+                      </div>
+                    )}
+                    {doneTasks.length > 0 && (
+                      <div className="space-y-2">
+                        <button type="button" onClick={() => setShowCompletedTasks(s => !s)} className="flex items-center gap-2 cursor-pointer">
+                          <i className={`ri-arrow-${showCompletedTasks ? 'down' : 'right'}-s-line text-gray-400 text-sm`}></i>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Show Completed <span className="text-gray-300 font-normal">({doneTasks.length})</span></p>
+                        </button>
+                        {showCompletedTasks && <TaskRows list={doneTasks} />}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Projects glance strip — only projects the employee actually has
+                  tasks in (not the whole company's project list, which lives
+                  in the Projects tab instead). */}
+              {(() => {
+                const myProjectIds = new Set(myTasks.map(t => t.project_id));
+                const myProjectRows = sortedRows.filter(r => r.hub_projects && myProjectIds.has(r.hub_projects.id));
+                if (myProjectRows.length === 0) return null;
+                return (
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-3 px-0.5">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Your Projects <span className="text-gray-300 font-normal">({myProjectRows.length})</span></p>
+                    <button type="button" onClick={() => setDashboardTab('projects')}
+                      className="text-xs font-semibold text-[#2d4a6e] hover:underline cursor-pointer flex items-center gap-1">
+                      View all <i className="ri-arrow-right-line text-sm"></i>
+                    </button>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                    {myProjectRows.map(r => {
+                      const p = r.hub_projects;
+                      if (!p) return null;
+                      const pTasks = myTasks.filter(t => t.project_id === p.id);
+                      const pDone = pTasks.filter(t => t.status === 'done').length;
+                      const pPct = pTasks.length > 0 ? Math.round((pDone / pTasks.length) * 100) : 0;
+                      const palette = getProjectTypePalette(p.project_type_code);
+                      return (
+                        <button key={r.id} type="button"
+                          onClick={() => { setWorkspaceRow(r); setTaskFilter('all'); setTaskSearch(''); setWsFocusSection(null); }}
+                          className="flex-shrink-0 w-[168px] text-left bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl p-3.5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-150 cursor-pointer">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: palette.from }}></span>
+                            <p className="text-sm font-bold text-gray-900 truncate">{p.project_name}</p>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <p className="text-[11px] text-gray-400 truncate">{p.client_name || 'Internal Project'}</p>
+                            <p className="text-[11px] font-semibold text-gray-500 flex-shrink-0">{pDone}/{pTasks.length}</p>
+                          </div>
+                          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${pPct}%`, background: pPct === 100 ? '#10b981' : `linear-gradient(90deg, ${palette.from}, ${palette.to})` }}></div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* No search results */}
+              {search && active.length === 0 && other.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <i className="ri-search-line text-3xl text-gray-200"></i>
+                  <p className="text-sm text-gray-400">No projects match <span className="font-medium text-gray-600">"{search}"</span></p>
+                  <button onClick={() => setSearch('')} className="text-xs text-[#1c2b3a]/70 hover:underline cursor-pointer">Clear search</button>
+                </div>
+              )}
+
+              {/* Project cards: urgency call-outs first, then grouped by stage
+                  (not status — nearly every project just sits at "ongoing," so
+                  status alone isn't useful for browsing; stage is).
+                  Overdue/Due This Week are keyed off the employee's OWN tasks,
+                  not the project's deadline — a project the employee has no
+                  tasks in yet shouldn't show up as an urgent call-out for them,
+                  even if the project itself is behind schedule company-wide. */}
+              {(() => {
+                const myOverdueProjectIds = new Set(overdueTasks.map(t => t.project_id));
+                const myDueSoonProjectIds = new Set(
+                  myTasks
+                    .filter(t => t.status !== 'done' && t.due_date && t.due_date >= today)
+                    .filter(t => Math.ceil((new Date(t.due_date! + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000) <= 7)
+                    .map(t => t.project_id)
+                );
+                const overdue  = sortedRows.filter(r => r.hub_projects && myOverdueProjectIds.has(r.hub_projects.id) && r.hub_projects.status !== 'completed');
+                const dueSoon  = sortedRows.filter(r => r.hub_projects && !overdue.includes(r) && myDueSoonProjectIds.has(r.hub_projects.id) && r.hub_projects.status === 'ongoing');
+                const ongoing  = sortedRows.filter(r => r.hub_projects?.status === 'ongoing' && !overdue.includes(r) && !dueSoon.includes(r));
+                const paused   = sortedRows.filter(r => r.hub_projects?.status === 'paused');
+                const done     = sortedRows.filter(r => r.hub_projects?.status === 'completed');
+                const stageGroups = STAGES
+                  .map(stage => ({ stage, rows: ongoing.filter(r => (r.hub_projects?.stage ?? 'Pre-Design') === stage) }))
+                  .filter(g => g.rows.length > 0);
+
+                const Section = ({ label, rows: sRows, dot }: { label: string; rows: typeof sortedRows; dot: string }) => sRows.length === 0 ? null : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`}></span>
+                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label} <span className="text-gray-300 font-normal">({sRows.length})</span></p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {sRows.map((r) => (
+                        <ProjectCard key={r.id} row={r}
+                          projectTasks={myTasks.filter(t => t.project_id === r.hub_projects?.id)}
+                          onClick={() => { setWorkspaceRow(r); setTaskFilter('all'); setTaskSearch(''); setWsFocusSection(null); }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+
+                return (
+                  <>
+                    <Section label="Overdue" rows={overdue} dot="bg-rose-400" />
+                    <Section label="Due This Week" rows={dueSoon} dot="bg-amber-400" />
+                    {stageGroups.map(({ stage, rows }) => (
+                      <Section key={stage} label={stage} rows={rows} dot="bg-[#1c2b3a]/70" />
+                    ))}
+                    <Section label="Paused" rows={paused} dot="bg-gray-300" />
+                    <Section label="Completed" rows={done} dot="bg-emerald-400" />
+                  </>
+                );
+              })()}
+            </div>
+          )}
 
         </div>
       ))}
@@ -2777,9 +2921,9 @@ export default function ContractorProjectsPage() {
           setEditingTask(null);
         }}
         onActivityChange={refreshWorkspaceActivity}
-        projectId={wsProject?.id ?? 0}
-        projectName={wsProject?.project_name ?? 'General'}
-        teamMembers={wsTeam}
+        projectId={detailProjectId}
+        projectName={detailProjectName}
+        teamMembers={detailTeam}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}
         currentUserName={hubUser?.full_name ?? 'Contractor'}

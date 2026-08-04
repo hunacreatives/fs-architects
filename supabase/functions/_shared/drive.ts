@@ -61,27 +61,60 @@ export async function createOrGetSharedFolder(name: string, parentId: string, to
   return created.id;
 }
 
-// Get the project's real Drive folder id, creating Projects/{client}/{project}
-// (and backfilling hub_projects.drive_url) if it doesn't have one yet.
+// Get the project's real Drive folder id, creating it directly under
+// Projects/ (and backfilling hub_projects.drive_url) if it doesn't have one
+// yet. Flat by design — no per-client subfolder layer — since every project
+// now gets its own unique code (FS-{TYPE}-{YY}-{NNN}), a client-name folder
+// is no longer needed to disambiguate projects from each other.
+// `folderName` overrides the leaf folder's name (used to name it after the
+// project's generated code instead of its project_name) — defaults to
+// projectName for callers that don't have a code yet.
 export async function getOrCreateProjectFolderId(
   supabase: SupabaseClient,
   token: string,
   projectId: number,
   clientName: string | null,
   projectName: string,
+  folderName?: string,
 ): Promise<{ folderId: string; driveUrl: string }> {
+  void clientName; // kept in the signature so existing callers don't need updating
   const { data: project } = await supabase.from('hub_projects').select('drive_url').eq('id', projectId).maybeSingle();
   const existing = project?.drive_url?.match(/folders\/([a-zA-Z0-9_-]+)/)?.[1];
   if (existing) return { folderId: existing, driveUrl: project.drive_url as string };
 
   const projectsRootId = await createOrGetSharedFolder('Projects', SENTRO_ROOT, token);
-  const clientFolderId = clientName ? await createOrGetSharedFolder(clientName, projectsRootId, token) : projectsRootId;
-  const folderId = await createOrGetSharedFolder(projectName, clientFolderId, token);
+  const folderId = await createOrGetSharedFolder(folderName || projectName, projectsRootId, token);
   const driveUrl = `https://drive.google.com/drive/folders/${folderId}`;
 
   await supabase.from('hub_projects').update({ drive_url: driveUrl }).eq('id', projectId);
 
   return { folderId, driveUrl };
+}
+
+// Move a file/folder to a new parent, removing all of its current parents.
+export async function moveDriveFolder(fileId: string, newParentId: string, token: string): Promise<void> {
+  const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const { parents } = await getRes.json();
+  const removeParents = (parents ?? []).join(',');
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${newParentId}${removeParents ? `&removeParents=${removeParents}` : ''}`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`Drive move failed: ${await res.text()}`);
+}
+
+// Rename an existing Drive file/folder in place. Safe with respect to
+// sharing — Drive's shareable links are keyed by file ID, not name, so this
+// never breaks a bookmark someone already has.
+export async function renameDriveFolder(fileId: string, newName: string, token: string): Promise<void> {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: newName }),
+  });
+  if (!res.ok) throw new Error(`Drive rename failed: ${await res.text()}`);
 }
 
 // Get the project's "Task Attachments" subfolder id, cached on hub_projects

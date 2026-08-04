@@ -13,40 +13,14 @@ import { DEMO_PROJECTS, DEMO_CONTRACTORS } from '@/lib/demoData';
 import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds } from '@/lib/taskAssignments';
+import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypePalette, getProjectTypeCfg } from '@/lib/projectTypes';
 
-const servicePalette: Record<string, { from: string; to: string }> = {
-  'Architecture':             { from: '#38bdf8', to: '#0284c7' },
-  'Interior Design':          { from: '#fbbf24', to: '#d97706' },
-  'Design & Drafting':        { from: '#22d3ee', to: '#0891b2' },
-  'Project Management':       { from: '#34d399', to: '#059669' },
-  'Construction Admin':       { from: '#fb7185', to: '#e11d48' },
-  'Feasibility Study':        { from: '#f472b6', to: '#db2777' },
-  'Design-Build':             { from: '#1c2b3a', to: '#0f172a' },
-  'Renovation':               { from: '#2dd4bf', to: '#0d9488' },
-  'Consultation':             { from: '#94a3b8', to: '#64748b' },
-  'Other':                    { from: '#9ca3af', to: '#6b7280' },
-};
-const getServicePalette = (service: string | null | undefined) => servicePalette[service ?? ''] ?? servicePalette['Other'];
 const fmtDate = (d: string | null | undefined, fallback = '—') => {
   if (!d) return fallback;
   const s = d.length === 10 ? d + 'T00:00:00' : d;
   const dt = new Date(s);
   return isNaN(dt.getTime()) ? fallback : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
-
-const serviceCfg: Record<string, { border: string; dot: string; badge: string }> = {
-  'Architecture':             { border: 'border-l-sky-400',     dot: 'bg-sky-400',     badge: 'bg-sky-50 text-sky-700' },
-  'Interior Design':          { border: 'border-l-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700' },
-  'Design & Drafting':        { border: 'border-l-cyan-400',    dot: 'bg-cyan-400',    badge: 'bg-cyan-50 text-cyan-700' },
-  'Project Management':       { border: 'border-l-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700' },
-  'Construction Admin':       { border: 'border-l-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-50 text-rose-700' },
-  'Feasibility Study':        { border: 'border-l-pink-400',    dot: 'bg-pink-400',    badge: 'bg-pink-50 text-pink-700' },
-  'Design-Build':             { border: 'border-l-[#1c2b3a]/60', dot: 'bg-[#1c2b3a]/50', badge: 'bg-slate-100 text-[#1c2b3a]' },
-  'Renovation':               { border: 'border-l-teal-400',    dot: 'bg-teal-400',    badge: 'bg-teal-50 text-teal-700' },
-  'Consultation':             { border: 'border-l-slate-400',   dot: 'bg-slate-400',   badge: 'bg-slate-50 text-slate-700' },
-  'Other':                    { border: 'border-l-gray-300',    dot: 'bg-gray-300',    badge: 'bg-gray-50 text-gray-500' },
-};
-const getServiceCfg = (service: string | null) => serviceCfg[service ?? ''] ?? serviceCfg['Other'];
 
 const statusCfg: Record<string, { label: string; cls: string }> = {
   ongoing:   { label: 'Ongoing',   cls: 'bg-sky-100 text-sky-700' },
@@ -65,25 +39,9 @@ const stageCfg: Record<string, { badge: string }> = Object.fromEntries(
 );
 const getStageCfg = (stage: string | null | undefined) => stageCfg[stage ?? ''] ?? stageCfg['Pre-Design'];
 
-const SIDEBAR_STATUS_OPTIONS = [
-  { value: 'todo',        label: 'To Do',       dot: 'bg-gray-300' },
-  { value: 'in_progress', label: 'In Progress', dot: 'bg-sky-400' },
-  { value: 'in_review',   label: 'In Review',   dot: 'bg-violet-400' },
-  { value: 'blocked',     label: 'Blocked',     dot: 'bg-rose-400' },
-  { value: 'done',        label: 'Done',        dot: 'bg-emerald-400' },
-];
-
-function sidebarStatusIcon(status: string, completing: boolean) {
-  if (completing) return <i className="ri-checkbox-circle-fill text-emerald-500 text-xl flex-shrink-0" />;
-  if (status === 'done') return <i className="ri-checkbox-circle-fill text-emerald-400 text-xl flex-shrink-0" />;
-  if (status === 'in_progress') return <i className="ri-loader-4-line animate-spin text-sky-400 text-xl flex-shrink-0" />;
-  if (status === 'blocked') return <i className="ri-close-circle-line text-rose-400 text-xl flex-shrink-0" />;
-  if (status === 'in_review') return <i className="ri-eye-line text-violet-400 text-xl flex-shrink-0" />;
-  return <i className="ri-circle-line text-gray-300 text-xl flex-shrink-0" />;
-}
-
 interface Project {
   id: number; client_name: string; project_name: string; service: string | null;
+  project_type_code: string | null; project_code: string | null;
   project_type: 'client' | 'internal';
   status: string; stage: string; start_date: string | null; deadline: string | null; notes: string | null; contact_email: string | null;
   hub_project_contractors: {
@@ -189,14 +147,12 @@ export default function AdminProjectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
-  const [sidebarScope, setSidebarScope] = useState<'mine' | 'everyone'>('everyone');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [sidebarTaskCompleting, setSidebarTaskCompleting] = useState<number | null>(null);
-  const [sidebarStatusMenuFor, setSidebarStatusMenuFor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paused' | 'completed' | 'cancelled'>('ongoing');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [pageView, setPageView] = useState<'projects' | 'tasks'>('projects');
+  const [pageView, setPageView] = useState<'projects' | 'tasks' | 'team'>('projects');
+  const [teamWindow, setTeamWindow] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [allTasksLoading, setAllTasksLoading] = useState(false);
   const [taskStatusFilter, setTaskStatusFilter] = useState('active');
@@ -211,8 +167,7 @@ export default function AdminProjectsPage() {
     return w ? parseInt(w) : null;
   });
   // Project form
-  const SERVICES = ['Architecture', 'Interior Design', 'Design & Drafting', 'Project Management', 'Construction Admin', 'Feasibility Study', 'Design-Build', 'Renovation', 'Consultation', 'Other'];
-  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', service: 'Architecture', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
+  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -270,28 +225,22 @@ export default function AdminProjectsPage() {
     } as any), 400);
   };
 
-  // Sidebar quick status change. Marking done animates, then the row drops out
-  // of the open-tasks list on the next render (status filter takes over).
-  const updateSidebarTaskStatus = async (taskId: number, newStatus: string) => {
-    let metaPatch: Record<string, unknown> = {};
-    if (newStatus === 'blocked') {
-      const reason = window.prompt("What's blocking this task? (visible to the team)");
-      if (reason === null) return;
-      const { data: cur } = await supabase.from('hub_project_tasks').select('meta').eq('id', taskId).maybeSingle();
-      metaPatch = { meta: { ...((cur?.meta as any) ?? {}), blocked_reason: reason.trim() } };
-    }
-    if (newStatus === 'done') {
-      setSidebarTaskCompleting(taskId);
-      await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', taskId);
-      setTimeout(() => {
-        setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'done' } : t));
-        setSidebarTaskCompleting(null);
-      }, 1800);
-    } else {
-      await supabase.from('hub_project_tasks').update({ status: newStatus, ...metaPatch }).eq('id', taskId);
-      setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    }
+  // Same normalization as openTaskInWorkspace, minus the workspace navigation —
+  // used by the consolidated Tasks calendar, which should open the task sidebar
+  // in place instead of jumping into that project's workspace page.
+  const openTaskDetailInPlace = (t: {
+    id: number; project_id: number; title: string; status: string; priority: string;
+    due_date: string | null; start_date?: string | null; assigned_to?: string | null; assignee_ids?: string[] | null;
+  }) => {
+    openTaskDetail({
+      id: t.id, project_id: t.project_id, title: t.title, description: null,
+      status: t.status as ProjectTask['status'], priority: t.priority as ProjectTask['priority'],
+      assigned_to: t.assigned_to ?? null, assignee_ids: t.assignee_ids ?? null,
+      due_date: t.due_date, start_date: t.start_date ?? null,
+      created_at: new Date().toISOString(), archived: false, archived_at: null,
+    } as any);
   };
+
   // Collapsed task groups in workspace
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
@@ -479,7 +428,7 @@ export default function AdminProjectsPage() {
   const fetchAllTasks = async () => {
     setAllTasksLoading(true);
     const [tasksRes, projectsRes] = await Promise.all([
-      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, due_date, start_date, color, archived').is('deleted_at', null).order('due_date', { ascending: true, nullsFirst: false }),
+      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, due_date, start_date, color, archived, done_at').is('deleted_at', null).order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('hub_projects').select('id, project_name, client_name, project_type'),
     ]);
     if (tasksRes.error) {
@@ -489,7 +438,7 @@ export default function AdminProjectsPage() {
     }
     const projectMap: Record<number, any> = Object.fromEntries((projectsRes.data ?? []).map((p: any) => [p.id, p]));
     const userIds = [...new Set((tasksRes.data ?? []).flatMap((t: any) => getTaskAssigneeIds(t)).filter(Boolean))];
-    const usersRes = userIds.length ? await supabase.from('hub_users').select('id, full_name, avatar_url').in('id', userIds) : { data: [] };
+    const usersRes = userIds.length ? await supabase.from('hub_users').select('id, full_name, avatar_url, is_developer').in('id', userIds) : { data: [] };
     const userMap: Record<string, any> = Object.fromEntries((usersRes.data ?? []).map((u: any) => [u.id, u]));
     setAllTasks((tasksRes.data ?? []).map((t: any) => ({
       ...t,
@@ -526,13 +475,6 @@ export default function AdminProjectsPage() {
 
   const activeProject = projects.find(p => p.id === activeId) ?? null;
 
-  const openSidebarTasks = allTasks
-    .filter((t: any) => t.status !== 'done' && !t.archived)
-    .sort((a: any, b: any) => (a.due_date ?? '9999-99-99').localeCompare(b.due_date ?? '9999-99-99'));
-  const sidebarTasks = sidebarScope === 'mine' && hubUser?.id
-    ? openSidebarTasks.filter((t: any) => getTaskAssigneeIds(t).includes(hubUser.id))
-    : openSidebarTasks;
-
   const isInternalProject = (project: Project | null | undefined) => project?.project_type === 'internal';
 
   const getProjectHealth = (
@@ -562,6 +504,7 @@ export default function AdminProjectsPage() {
     const isInternal = form.project_type === 'internal';
     if (!form.project_name.trim()) { setFormError('Project name is required.'); return; }
     if (!isInternal && !form.client_name.trim()) { setFormError('Client name is required.'); return; }
+    if (!form.project_type_code) { setFormError('Project type is required.'); return; }
     if (form.start_date && form.deadline && form.start_date > form.deadline) {
       setFormError('Start date must be before the deadline.');
       return;
@@ -571,7 +514,7 @@ export default function AdminProjectsPage() {
       project_type: form.project_type,
       client_name: isInternal ? (form.client_name.trim() || 'Internal') : form.client_name.trim(),
       project_name: form.project_name.trim(),
-      service: form.service || null,
+      project_type_code: form.project_type_code,
       status: form.status,
       stage: form.stage,
       start_date: form.start_date || null,
@@ -581,11 +524,19 @@ export default function AdminProjectsPage() {
       drive_url: form.drive_url?.trim() || null,
     };
     if (editingProject) {
-      const { error } = await supabase.from('hub_projects').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingProject.id);
+      const { data, error } = await supabase.from('hub_projects').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingProject.id).select('project_code, drive_url').single();
       if (error) { setFormError(error.message); setFormSaving(false); return; }
       logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'project', entity_id: String(editingProject.id), description: `Updated project "${form.project_name}"` });
+      // Keep the Drive folder name AND location in sync on every save — cheap
+      // no-op if it's already renamed/flat, but needed to catch folders that
+      // still need moving out of an old per-client subfolder even when the
+      // code itself didn't change on this edit. Safe either way since Drive's
+      // shareable links are ID-based, not name-based.
+      if (data?.drive_url && data.project_code) {
+        supabase.functions.invoke('rename-project-drive-folder', { body: { project_id: editingProject.id } }).catch(console.error);
+      }
     } else {
-      const { data, error } = await supabase.from('hub_projects').insert(payload).select('id').single();
+      const { data, error } = await supabase.from('hub_projects').insert(payload).select('id, project_code').single();
       if (error) { setFormError(error.message); setFormSaving(false); return; }
       logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'create', entity_type: 'project', description: `Created ${isInternal ? 'internal' : 'client'} project "${form.project_name}"` });
       // Auto-assign the creator (owner/admin) to the new project
@@ -601,7 +552,7 @@ export default function AdminProjectsPage() {
       if (data && !payload.drive_url) {
         try {
           await supabase.functions.invoke('create-project-drive-folder', {
-            body: { project_id: data.id, client_name: payload.client_name, project_name: payload.project_name },
+            body: { project_id: data.id, client_name: payload.client_name, project_name: payload.project_name, project_code: data.project_code },
           });
         } catch (e) {
           console.error('Auto-create Drive folder failed:', e);
@@ -620,7 +571,7 @@ export default function AdminProjectsPage() {
       project_name: project.project_name,
       client_name: project.client_name,
       contact_email: project.contact_email ?? '',
-      service: project.service ?? '',
+      project_type_code: project.project_type_code ?? '',
       status: project.status,
       stage: project.stage ?? 'Pre-Design',
       start_date: project.start_date ?? '',
@@ -697,11 +648,9 @@ export default function AdminProjectsPage() {
     fetchAll();
   };
 
-  const projectTypes = Array.from(new Set(projects.map(p => p.service).filter(Boolean) as string[])).sort();
-
   const filtered = projects.filter(p => {
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-    const matchesType = typeFilter === 'all' || p.service === typeFilter;
+    const matchesType = typeFilter === 'all' || p.project_type_code === typeFilter;
     const matchesProjectType = projectTypeFilter === 'all' || p.project_type === projectTypeFilter;
     return matchesStatus && matchesType && matchesProjectType;
   });
@@ -711,7 +660,7 @@ export default function AdminProjectsPage() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const due = new Date(deadline); due.setHours(0, 0, 0, 0);
     const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-    if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, cls: 'bg-red-100 text-red-600' };
+    if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, cls: 'bg-rose-100 text-rose-600' };
     if (diff <= 7) return { label: `${diff}d left`, cls: 'bg-amber-100 text-amber-600' };
     return null;
   };
@@ -1006,48 +955,56 @@ export default function AdminProjectsPage() {
   const renderProjectRow = (p: Project) => {
     const cfg = statusCfg[p.status] ?? statusCfg.ongoing;
     const dl = deadlineStatus(p.deadline, p.status);
-    const pal = getServicePalette(p.service);
+    const pal = getProjectTypePalette(p.project_type_code);
     const team = p.hub_project_contractors.map((pc: any) => pc.hub_users).filter(Boolean);
     const rowLabel = p.project_type === 'internal' ? 'Internal' : p.client_name;
+    const typeLabel = getProjectTypeLabel(p.project_type_code);
     const badge = dl ?? (p.status !== 'ongoing' ? cfg : null);
     const panelOpen = activeId === p.id && !workspaceOpen;
     const anyPanelOpen = activeId !== null && !workspaceOpen;
     const pTasks = allTasks.filter((t: any) => t.project_id === p.id);
     const pTasksDone = pTasks.filter((t: any) => t.status === 'done').length;
+    const pPct = pTasks.length > 0 ? Math.round((pTasksDone / pTasks.length) * 100) : 0;
     return (
       <div key={p.id} role="button" tabIndex={0}
         onClick={() => { openWorkspaceOnLoad.current = true; setActiveId(p.id); setWorkspaceOpen(true); }}
         onKeyDown={e => { if (e.key === 'Enter') { openWorkspaceOnLoad.current = true; setActiveId(p.id); setWorkspaceOpen(true); } }}
-        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer group ${
-          panelOpen ? 'bg-slate-50' : 'hover:bg-gray-50/70'
+        className={`w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors cursor-pointer group ${
+          panelOpen ? 'bg-slate-50' : 'hover:bg-white/50'
         }`}>
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
+        <div className="w-[42px] h-[42px] rounded-2xl flex items-center justify-center flex-shrink-0 text-white font-extrabold text-[15px] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.25)]"
           style={{ background: `linear-gradient(135deg, ${pal.from}, ${pal.to})` }}>
           {p.project_name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-[#111827] truncate leading-snug">{p.project_name}</h3>
-          <p className="text-[11px] text-gray-400 truncate mt-0.5">{rowLabel}{p.service ? ` · ${p.service}` : ''}</p>
+          <h3 className="text-sm font-bold text-[#111827] truncate leading-snug">
+            {p.project_name}
+            {p.project_code && <span className="ml-2 text-[10px] font-mono font-normal text-gray-400 align-middle">{p.project_code}</span>}
+          </h3>
+          <p className="text-xs text-gray-400 truncate mt-0.5 mb-2">{rowLabel}{typeLabel ? ` · ${typeLabel}` : ''}</p>
+          {!anyPanelOpen && (
+            <div className="flex items-center gap-2 max-w-[220px]">
+              <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${pPct}%`, background: pPct === 100 ? '#10b981' : `linear-gradient(90deg, ${pal.from}, ${pal.to})` }}></div>
+              </div>
+              <span className="text-[10.5px] text-gray-400 font-semibold flex-shrink-0">{pTasks.length > 0 ? `${pTasksDone}/${pTasks.length} tasks` : 'No tasks'}</span>
+            </div>
+          )}
         </div>
         <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
           <div className="flex -space-x-1.5">
             {team.slice(0, 3).map((u: any, i: number) => (
               u?.avatar_url
-                ? <img key={i} src={u.avatar_url} alt={u.full_name} className="w-6 h-6 rounded-full object-cover object-top border-2 border-white" />
-                : <div key={i} className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[9px] font-bold text-gray-500">{u?.full_name?.[0]}</div>
+                ? <img key={i} src={u.avatar_url} alt={u.full_name} className="w-[26px] h-[26px] rounded-full object-cover object-top border-2 border-white" />
+                : <div key={i} className="w-[26px] h-[26px] rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[9px] font-bold text-gray-500">{u?.full_name?.[0]}</div>
             ))}
-            {team.length === 0 && <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center"><i className="ri-user-line text-[9px] text-gray-400"></i></div>}
+            {team.length === 0 && <div className="w-[26px] h-[26px] rounded-full bg-gray-100 flex items-center justify-center"><i className="ri-user-line text-[9px] text-gray-400"></i></div>}
           </div>
         </div>
-        {!anyPanelOpen && (
-          <span className="hidden md:block text-[11px] text-gray-400 flex-shrink-0 w-20 text-right">
-            {pTasks.length > 0 ? `${pTasksDone}/${pTasks.length} tasks` : 'No tasks'}
-          </span>
-        )}
         {badge ? (
-          <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
+          <span className={`text-[11px] px-3 py-1.5 rounded-full font-bold flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
         ) : (
-          <span className="text-[11px] text-gray-400 flex-shrink-0">Active</span>
+          <span className="text-[11px] text-gray-400 flex-shrink-0 font-medium">Active</span>
         )}
         <button
           onClick={e => { e.stopPropagation(); setActiveId(prev => prev === p.id ? null : p.id); }}
@@ -1060,8 +1017,56 @@ export default function AdminProjectsPage() {
     );
   };
 
+  // Shared Daily/Weekly/Monthly window math — used by both the company-wide hero
+  // below and the Team tab's workload chart, so switching the toggle on either
+  // one stays consistent (they share the same `teamWindow` state).
+  const teamToday = localToday();
+  const windowDays = teamWindow === 'daily' ? 0 : teamWindow === 'weekly' ? 7 : 30;
+  const daysOut = (t: any) => t.due_date ? Math.ceil((new Date(t.due_date + 'T00:00:00').getTime() - new Date(teamToday + 'T00:00:00').getTime()) / 86400000) : null;
+  const doneInWindow = (tasks: any[]) => tasks.filter((t: any) => {
+    // Don't exclude archived tasks here: the auto-archive cron sweeps done tasks
+    // after 14 days, which is shorter than the 30-day Monthly window, so
+    // excluding them would undercount completions on Monthly.
+    if (t.status !== 'done' || !t.done_at) return false;
+    // done_at is a timestamptz; read it in the browser's local calendar day
+    // (matching localToday()) rather than slicing the UTC ISO string, which
+    // would misclassify tasks completed near local midnight.
+    const dd = new Date(t.done_at);
+    const doneDateStr = `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}`;
+    if (doneDateStr > teamToday) return false;
+    const daysAgo = Math.floor((new Date(teamToday + 'T00:00:00').getTime() - new Date(doneDateStr + 'T00:00:00').getTime()) / 86400000);
+    return daysAgo <= windowDays;
+  });
+
+  // Company-wide snapshot for the hero — mirrors the employee dashboard's
+  // personal hero, scoped to the whole team instead of one person, and now to
+  // the selected Daily/Weekly/Monthly window instead of all-time.
+  const heroToday = teamToday;
+  const heroOpenTasks = allTasks.filter((t: any) => t.status !== 'done' && !t.archived);
+  // "Due today" becomes "due this week/month" as the window widens, in step with
+  // the Team tab's toggle (overdue stays its own separate stat either way).
+  const heroDueLabel = teamWindow === 'daily' ? 'Due today' : teamWindow === 'weekly' ? 'Due this week' : 'Due this month';
+  const heroDueInWindowCount = heroOpenTasks.filter((t: any) => {
+    if (!t.due_date || t.due_date < heroToday) return false;
+    const d = daysOut(t);
+    return d !== null && d <= windowDays;
+  }).length;
+  const heroOverdueCount = heroOpenTasks.filter((t: any) => t.due_date && t.due_date < heroToday).length;
+  const heroActiveProjectsCount = projects.filter(p => p.status === 'ongoing').length;
+  // Relevant-to-window open tasks: overdue (always relevant), due within the
+  // window, or — on Monthly — no due date at all.
+  const heroRelevantOpen = heroOpenTasks.filter((t: any) => {
+    if (t.due_date && t.due_date < heroToday) return true;
+    if (!t.due_date) return windowDays >= 30;
+    const d = daysOut(t);
+    return d !== null && d <= windowDays;
+  });
+  const heroDoneInWindow = doneInWindow(allTasks);
+  const heroWindowTotal = heroRelevantOpen.length + heroDoneInWindow.length;
+  const heroPct = heroWindowTotal > 0 ? Math.round((heroDoneInWindow.length / heroWindowTotal) * 100) : 0;
+
   return (
-    <AdminLayout title="Projects" fullWidth={pageView === 'tasks'} titleContent={workspaceOpen && activeProject ? (
+    <AdminLayout title="Projects" fullWidth={pageView !== 'projects'} titleContent={workspaceOpen && activeProject ? (
       <button onClick={() => { setWorkspaceOpen(false); setActiveId(null); setCollapsedGroups({}); }}
         className="flex items-center gap-1.5 h-8 pl-1.5 pr-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 cursor-pointer transition-all shadow-sm flex-shrink-0 text-xs font-medium">
         <i className="ri-arrow-left-s-line text-base"></i>
@@ -1111,10 +1116,13 @@ export default function AdminProjectsPage() {
                         {statusLabels[p.status] ?? p.status}
                       </span>
                       {internalProject && <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Internal</span>}
-                      {p.service && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getServiceCfg(p.service).badge}`}>{p.service}</span>}
+                      {p.project_type_code && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getProjectTypeCfg(p.project_type_code).badge}`}>{getProjectTypeLabel(p.project_type_code)}</span>}
                       {p.stage && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStageCfg(p.stage).badge}`}>{p.stage}</span>}
                     </div>
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{p.project_name}</h2>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
+                      {p.project_name}
+                      {p.project_code && <span className="ml-2 text-xs font-mono font-normal text-gray-400 align-middle">{p.project_code}</span>}
+                    </h2>
                     <p className="text-sm text-gray-400 mt-0.5">{internalProject ? 'Internal Project' : p.client_name}</p>
 
                     {wsTeam.length > 0 && (
@@ -1595,17 +1603,56 @@ export default function AdminProjectsPage() {
       {!workspaceOpen && (
       <div className="space-y-4">
 
+        {/* Company-wide hero — mirrors the employee dashboard's personal hero,
+            scoped to the whole team: overall open-task completion, and how
+            many projects/tasks need attention right now. */}
+        <div className="relative overflow-hidden rounded-[28px] p-6 sm:p-7 text-white shadow-[0_20px_50px_-20px_rgba(28,43,58,0.55)]" style={{ background: 'linear-gradient(135deg, #1c2b3a 0%, #2d4a6e 100%)' }}>
+          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(480px 300px at 88% -10%, rgba(255,255,255,0.16), transparent 60%)' }}></div>
+          <div className="relative flex items-center justify-between gap-6 flex-wrap">
+            <div>
+              <p className="text-xs text-white/55 font-medium mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+              <h2 className="text-2xl font-extrabold tracking-tight leading-tight">Team Overview</h2>
+              <p className="text-sm text-white/70 mt-1">
+                {heroActiveProjectsCount} active project{heroActiveProjectsCount !== 1 ? 's' : ''} · {heroOpenTasks.length} open task{heroOpenTasks.length !== 1 ? 's' : ''} across the team
+              </p>
+            </div>
+            {allTasks.length > 0 && (
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <div className="relative w-[72px] h-[72px] flex-shrink-0">
+                  <svg width="72" height="72" className="-rotate-90">
+                    <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
+                    <circle cx="36" cy="36" r="30" fill="none" stroke="#fff" strokeWidth="7" strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 30} strokeDashoffset={2 * Math.PI * 30 * (1 - heroPct / 100)} style={{ transition: 'stroke-dashoffset 0.4s ease' }} />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-base font-bold">{heroPct}%</div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-white/80"><span className="w-1.5 h-1.5 rounded-full bg-amber-300 flex-shrink-0"></span>{heroDueLabel} <span className="font-bold text-white">{heroDueInWindowCount}</span></div>
+                  <div className="flex items-center gap-2 text-xs text-white/80"><span className="w-1.5 h-1.5 rounded-full bg-rose-300 flex-shrink-0"></span>Overdue <span className="font-bold text-white">{heroOverdueCount}</span></div>
+                  <div className="flex items-center gap-2 text-xs text-white/80"><span className="w-1.5 h-1.5 rounded-full bg-emerald-300 flex-shrink-0"></span>Done <span className="font-bold text-white">{heroDoneInWindow.length}</span></div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-2.5">
           {/* Primary: which section am I in */}
           <div className="flex items-center gap-3">
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-shrink-0">
+            <div className="relative inline-flex bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1 flex-shrink-0">
+              <div className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out"
+                style={{ transform: pageView === 'tasks' ? 'translateX(100%)' : pageView === 'team' ? 'translateX(200%)' : 'translateX(0)' }}></div>
               <button onClick={() => setPageView('projects')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${pageView === 'projects' ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'projects' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-folder-line text-sm"></i>Projects
               </button>
               <button onClick={() => { setPageView('tasks'); fetchAllTasks(); }}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${pageView === 'tasks' ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'tasks' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-task-line text-sm"></i>Tasks
+              </button>
+              <button onClick={() => { setPageView('team'); fetchAllTasks(); }}
+                className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'team' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                <i className="ri-group-line text-sm"></i>Team
               </button>
             </div>
             <div className="flex-1" />
@@ -1614,28 +1661,42 @@ export default function AdminProjectsPage() {
                 className="flex items-center justify-center gap-1.5 min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Project
               </button>
-            ) : (
+            ) : pageView === 'tasks' ? (
               <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
                 className="flex items-center justify-center gap-1.5 min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Task
               </button>
-            )}
-          </div>
-
-          {/* Secondary: narrow down the current section */}
-          {pageView === 'projects' && (
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1 bg-gray-50 border border-gray-100 p-0.5 rounded-xl flex-shrink-0 overflow-x-auto max-w-full">
-                {statusTabs.map(tab => (
-                  <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${statusFilter === tab.key ? 'bg-white text-[#111827] shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>
-                    {tab.label}
+            ) : (
+              <div className="inline-flex items-center gap-1 bg-white/50 backdrop-blur-sm border border-white/80 rounded-xl p-1 flex-shrink-0">
+                {([['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']] as const).map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => setTeamWindow(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${teamWindow === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    {label}
                   </button>
                 ))}
               </div>
-              <div className="relative flex-shrink-0">
+            )}
+          </div>
+
+          {/* Secondary: narrow down the current section — deliberately NOT
+              another pill bar (stacking a second rounded pill-group directly
+              under the primary tab pill above read as a repeated, messy
+              pattern). This is a plain underlined tab-strip instead: a
+              different, clearly-lighter visual language than the tabs. */}
+          {pageView === 'projects' && (
+            <div className="flex items-center justify-between gap-2 border-b border-[#1c2b3a]/[0.09] pb-0">
+              <div className="flex items-center gap-6 overflow-x-auto">
+                {statusTabs.map(tab => (
+                  <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
+                    className={`relative pb-[11px] text-[13px] transition-colors cursor-pointer whitespace-nowrap ${statusFilter === tab.key ? 'text-gray-900 font-bold' : 'text-gray-400 font-semibold hover:text-gray-600'}`}>
+                    {tab.label}
+                    {statusFilter === tab.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-[#1c2b3a]"></span>}
+                  </button>
+                ))}
+              </div>
+              <div className="relative flex-shrink-0 mb-2">
                 <button onClick={() => setShowFilterMenu(v => !v)} title="Filter projects"
-                  className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-colors cursor-pointer ${showFilterMenu ? 'border-gray-300 bg-gray-50 text-gray-700' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors cursor-pointer ${showFilterMenu ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600'}`}>
                   <i className="ri-filter-3-line text-sm"></i>
                 </button>
                 {showFilterMenu && <div className="fixed inset-0 z-10" onClick={() => setShowFilterMenu(false)} />}
@@ -1652,8 +1713,8 @@ export default function AdminProjectsPage() {
                     </select>
                     <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
                       className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-600 focus:outline-none cursor-pointer">
-                      <option value="all">All Services</option>
-                      {projectTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                      <option value="all">All Types</option>
+                      {PROJECT_TYPES.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
                     </select>
                   </div>
                 </div>
@@ -1662,8 +1723,8 @@ export default function AdminProjectsPage() {
           )}
         </div>
 
-        <div className={pageView === 'tasks' ? '' : 'flex items-stretch gap-5'}>
-        <section className={pageView === 'tasks' ? 'flex flex-col space-y-3 w-full' : 'flex flex-col space-y-3 flex-1 min-w-0'}>
+        <div className={pageView === 'projects' && activeProject ? 'flex items-stretch gap-5' : ''}>
+        <section className={pageView === 'projects' && activeProject ? 'flex flex-col space-y-3 flex-1 min-w-0' : 'flex flex-col space-y-3 w-full'}>
 
           {pageView === 'tasks' && (() => {
             const tod = localToday();
@@ -1691,18 +1752,18 @@ export default function AdminProjectsPage() {
                 <div className="relative flex-1 min-w-[160px]">
                   <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                   <input value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search tasks..."
-                    className="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                    className="w-full pl-7 pr-3 py-1.5 text-xs border border-white/80 bg-white/70 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
-                <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none cursor-pointer">
+                <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
                   <option value="active">Active</option><option value="all">All</option><option value="overdue">Overdue</option>
                   <option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="in_review">In Review</option><option value="blocked">Blocked</option><option value="done">Done</option>
                 </select>
-                <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} className="px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white focus:outline-none cursor-pointer">
+                <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
                   <option value="project">By Project</option><option value="assignee">By Assignee</option>
                 </select>
                 <div className="relative">
                   <button type="button" onClick={() => setShowCalendarFilterMenu(v => !v)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-xl bg-white hover:bg-gray-50 cursor-pointer">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer">
                     <i className="ri-calendar-2-line text-gray-400"></i>
                     Projects
                     {calendarHiddenProjects.size > 0 && (
@@ -1779,7 +1840,7 @@ export default function AdminProjectsPage() {
                   }}
                   onTaskClick={(t: any) => {
                     const orig = allTasks.find((x: any) => x.id === t.id);
-                    if (orig) openTaskInWorkspace(orig);
+                    if (orig) openTaskDetailInPlace(orig);
                   }}
                 />
               )}
@@ -1801,20 +1862,20 @@ export default function AdminProjectsPage() {
                   const pct = Math.round((done / gtasks.length) * 100);
                   const overdue = gtasks.filter(t => isOver(t)).length;
                   return (
-                    <div key={grp} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                      <div className="px-5 py-3 border-b border-gray-50 flex items-center justify-between gap-3">
+                    <div key={grp} className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 overflow-hidden">
+                      <div className="px-5 py-3 border-b border-gray-100/80 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2 h-2 rounded-full bg-[#1c2b3a] flex-shrink-0"></span>
-                          <h3 className="font-semibold text-sm text-gray-800 truncate">{grp}</h3>
+                          <span className="w-2 h-2 rounded-full bg-[#1c2b3a]/70 flex-shrink-0"></span>
+                          <h3 className="font-bold text-sm text-gray-800 truncate">{grp}</h3>
                           <span className="text-xs text-gray-400 flex-shrink-0">{gtasks.length}</span>
-                          {overdue > 0 && <span className="text-[10px] text-rose-500 font-medium flex-shrink-0">{overdue} overdue</span>}
+                          {overdue > 0 && <span className="text-[10px] text-rose-500 font-semibold flex-shrink-0">{overdue} overdue</span>}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} /></div>
                           <span className="text-xs text-gray-400">{done}/{gtasks.length}</span>
                         </div>
                       </div>
-                      <div className="divide-y divide-gray-50">
+                      <div className="divide-y divide-gray-100/80">
                         {gtasks.map(t => {
                           const over = isOver(t);
                           const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
@@ -1851,7 +1912,153 @@ export default function AdminProjectsPage() {
             );
           })()}
 
-          <div className="flex-1 flex flex-col pt-1 pb-3" style={{ display: pageView === 'tasks' ? 'none' : undefined }}>
+          {/* ── Team ── who's working on what, one floating card per person. */}
+          {pageView === 'team' && (() => {
+            const cards = contractors.map(c => {
+              const personTasks = allTasks.filter((t: any) => t.status !== 'done' && !t.archived && getTaskAssigneeIds(t).includes(c.id));
+              const overdue = personTasks.filter((t: any) => t.due_date && t.due_date < teamToday);
+              const inWindow = personTasks.filter((t: any) => {
+                if (!t.due_date || t.due_date < teamToday) return false;
+                const d = daysOut(t);
+                return d !== null && d <= windowDays;
+              });
+              const noDueDate = windowDays >= 30 ? personTasks.filter((t: any) => !t.due_date) : [];
+              // Cap overdue tasks shown so the window toggle stays visible instead of
+              // overdue items filling all 4 slots regardless of Daily/Weekly/Monthly.
+              const shown = [...overdue.slice(0, 2), ...inWindow, ...noDueDate].slice(0, 4);
+              // Windowed total drives the workload bar below: overdue + due within the
+              // selected window (+ no-due-date tasks once the window is Monthly).
+              const windowOpen = overdue.length + inWindow.length + noDueDate.length;
+              const allPersonTasks = allTasks.filter((t: any) => getTaskAssigneeIds(t).includes(c.id));
+              const doneCount = doneInWindow(allPersonTasks).length;
+              return { contractor: c, shown, overdueCount: overdue.length, totalOpen: personTasks.length, windowOpen, doneCount };
+            }).sort((a, b) => (b.overdueCount - a.overdueCount) || (b.shown.length - a.shown.length));
+
+            // Shared bucket math for tasks that don't belong to a single active contractor
+            // (unassigned, or assigned only to someone outside the active roster below).
+            const bucketStats = (bucketTasks: any[]) => {
+              const openTasks = bucketTasks.filter((t: any) => t.status !== 'done' && !t.archived);
+              const overdue = openTasks.filter((t: any) => t.due_date && t.due_date < teamToday);
+              const inWindow = openTasks.filter((t: any) => {
+                if (!t.due_date || t.due_date < teamToday) return false;
+                const d = daysOut(t);
+                return d !== null && d <= windowDays;
+              });
+              const noDueDate = windowDays >= 30 ? openTasks.filter((t: any) => !t.due_date) : [];
+              return { windowOpen: overdue.length + inWindow.length + noDueDate.length, overdueCount: overdue.length, doneCount: doneInWindow(bucketTasks).length };
+            };
+
+            const unassignedTasks = allTasks.filter((t: any) => getTaskAssigneeIds(t).length === 0);
+            const unassignedStats = bucketStats(unassignedTasks);
+
+            // Deactivated employees outside the active roster used to vanish silently —
+            // neither attributed to a name nor bucketed as Unassigned, since they do
+            // technically have an assignee. `allTasks[].assignees` already carries their
+            // real name/avatar/is_developer flag, so attribute each one by name — but
+            // dev/test accounts stay excluded on purpose, so skip those rather than
+            // surfacing them.
+            const contractorIds = new Set(contractors.map(c => c.id));
+            const orphanedByAssignee = new Map<string, { id: string; name: string; avatar_url: string | null; tasks: any[] }>();
+            allTasks.forEach((t: any) => {
+              getTaskAssigneeIds(t).forEach((id: string) => {
+                if (contractorIds.has(id)) return;
+                const u = (t.assignees ?? []).find((a: any) => a.id === id);
+                if (u?.is_developer) return;
+                if (!orphanedByAssignee.has(id)) {
+                  orphanedByAssignee.set(id, { id, name: u?.full_name ? `${u.full_name} (inactive)` : 'Unknown user', avatar_url: u?.avatar_url ?? null, tasks: [] });
+                }
+                orphanedByAssignee.get(id)!.tasks.push(t);
+              });
+            });
+            const orphanedEntries = [...orphanedByAssignee.values()].map(({ id, name, avatar_url, tasks }) => ({ id, name, avatar_url, ...bucketStats(tasks) }));
+
+            const workload = [
+              ...cards.map(({ contractor: c, windowOpen, overdueCount, doneCount }) => ({ id: c.id, name: c.full_name, avatar_url: c.avatar_url, totalOpen: windowOpen, overdueCount, doneCount })),
+              ...((unassignedStats.windowOpen > 0 || unassignedStats.doneCount > 0) ? [{ id: '__unassigned', name: 'Unassigned', avatar_url: null, totalOpen: unassignedStats.windowOpen, overdueCount: unassignedStats.overdueCount, doneCount: unassignedStats.doneCount }] : []),
+              ...orphanedEntries.filter(e => e.windowOpen > 0 || e.doneCount > 0).map(({ windowOpen, ...rest }) => ({ ...rest, totalOpen: windowOpen })),
+            ].sort((a, b) => (b.totalOpen - a.totalOpen) || (b.doneCount - a.doneCount));
+            const maxOpen = Math.max(1, ...workload.map(w => w.totalOpen));
+
+            return (
+              <div className="pt-1 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cards.map(({ contractor: c, shown, overdueCount }) => (
+                  <div key={c.id} className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      {c.avatar_url ? (
+                        <img src={c.avatar_url} alt={c.full_name} className="w-11 h-11 rounded-full object-cover object-top flex-shrink-0" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-[#1c2b3a]/70 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{c.full_name[0]}</div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{c.full_name}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{c.department || 'Team'}</p>
+                      </div>
+                      {overdueCount > 0 && (
+                        <span className="ml-auto text-[10px] font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full flex-shrink-0">{overdueCount} overdue</span>
+                      )}
+                    </div>
+                    {shown.length === 0 ? (
+                      <div className="flex items-center gap-2 py-2">
+                        <i className="ri-checkbox-circle-line text-emerald-400 text-base"></i>
+                        <p className="text-xs text-gray-400">All caught up</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 -mx-1">
+                        {shown.slice(0, 4).map((t: any) => {
+                          const isOverdueTask = t.due_date && t.due_date < teamToday;
+                          return (
+                            <button key={t.id} type="button" onClick={() => openTaskDetailInPlace(t)}
+                              className="w-full flex items-center gap-2 px-1 py-1.5 rounded-xl hover:bg-gray-50/80 transition-colors text-left cursor-pointer">
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOverdueTask ? 'bg-rose-400' : 'bg-sky-400'}`}></span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-gray-800 truncate">{t.title}</p>
+                                <p className="text-[10px] text-gray-400 truncate">{t.project?.project_name ?? 'Unknown'}</p>
+                              </div>
+                              {t.due_date && (
+                                <span className={`text-[10px] font-semibold flex-shrink-0 ${isOverdueTask ? 'text-rose-500' : t.due_date === teamToday ? 'text-amber-600' : 'text-gray-400'}`}>
+                                  {t.due_date === teamToday ? 'Today' : isOverdueTask ? 'Late' : new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                        {shown.length > 4 && <p className="text-[10px] text-gray-400 px-1 pt-1">+{shown.length - 4} more</p>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                </div>
+                {workload.length > 0 && (
+                  <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-3xl p-5 mt-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Team Workload</p>
+                    <div className="space-y-3.5">
+                      {workload.map(w => (
+                        <div key={w.id} className="flex items-center gap-3">
+                          {w.avatar_url ? (
+                            <img src={w.avatar_url} alt={w.name} className="w-8 h-8 rounded-full object-cover object-top flex-shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs flex-shrink-0">{w.name[0]}</div>
+                          )}
+                          <p className="text-sm text-gray-700 w-24 flex-shrink-0 truncate">{w.name}</p>
+                          <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div className={`h-full rounded-full ${w.overdueCount > 0 ? 'bg-rose-400' : 'bg-sky-400'}`}
+                              style={{ width: `${(w.totalOpen / maxOpen) * 100}%` }}></div>
+                          </div>
+                          <p className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">
+                            {w.totalOpen} open{w.overdueCount > 0 && <> · <span className="text-rose-500 font-semibold">{w.overdueCount} late</span></>}
+                            {w.doneCount > 0 && <> · <span className="text-emerald-600 font-semibold">{w.doneCount} done</span></>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <div className="flex-1 flex flex-col pt-1 pb-3" style={{ display: pageView !== 'projects' ? 'none' : undefined }}>
             {loading ? (
               <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-gray-300 text-2xl"></i></div>
             ) : filtered.length === 0 ? (
@@ -1870,10 +2077,10 @@ export default function AdminProjectsPage() {
                       {clientGroups.map(({ stage, projects }) => (
                         <div key={stage}>
                           <div className="flex items-center gap-2 mb-2">
-                            <i className="ri-folder-line text-[#1c2b3a] text-sm"></i>
-                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">{stage} <span className="text-gray-400 font-normal">({projects.length})</span></p>
+                            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#1c2b3a]/70"></span>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{stage} <span className="text-gray-300 font-normal">({projects.length})</span></p>
                           </div>
-                          <div className="rounded-2xl bg-white border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                          <div className="rounded-3xl bg-white/70 backdrop-blur-sm border border-white/80 divide-y divide-gray-100/80 overflow-hidden">
                             {projects.map(p => renderProjectRow(p))}
                           </div>
                         </div>
@@ -1881,10 +2088,10 @@ export default function AdminProjectsPage() {
                       {internalGroup.length > 0 && (
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <i className="ri-building-line text-[#1c2b3a] text-sm"></i>
-                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Internal <span className="text-gray-400 font-normal">({internalGroup.length})</span></p>
+                            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#1c2b3a]/70"></span>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Internal <span className="text-gray-300 font-normal">({internalGroup.length})</span></p>
                           </div>
-                          <div className="rounded-2xl bg-white border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                          <div className="rounded-3xl bg-white/70 backdrop-blur-sm border border-white/80 divide-y divide-gray-100/80 overflow-hidden">
                             {internalGroup.map(p => renderProjectRow(p))}
                           </div>
                         </div>
@@ -1898,7 +2105,7 @@ export default function AdminProjectsPage() {
         </section>
 
         <div ref={detailPanelRef} />
-        {pageView !== 'tasks' && (activeProject ? (() => {
+        {pageView === 'projects' && (activeProject ? (() => {
           const cfg = statusCfg[activeProject.status] ?? statusCfg.ongoing;
           const unassigned = contractors.filter(c => !activeProject.hub_project_contractors.some(pc => pc.hub_users?.id === c.id));
           const internalProject = isInternalProject(activeProject);
@@ -1969,13 +2176,16 @@ export default function AdminProjectsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="font-bold text-[#111827] text-lg leading-tight">{activeProject.project_name}</h2>
+                      <h2 className="font-bold text-[#111827] text-lg leading-tight">
+                        {activeProject.project_name}
+                        {activeProject.project_code && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400 align-middle">{activeProject.project_code}</span>}
+                      </h2>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${cfg.cls}`}>{cfg.label}</span>
                       {internalProject && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">Internal</span>
                       )}
-                      {activeProject.service && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getServiceCfg(activeProject.service).badge}`}>{activeProject.service}</span>
+                      {activeProject.project_type_code && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getProjectTypeCfg(activeProject.project_type_code).badge}`}>{getProjectTypeLabel(activeProject.project_type_code)}</span>
                       )}
                       {activeProject.stage && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStageCfg(activeProject.stage).badge}`}>{activeProject.stage}</span>
@@ -2086,106 +2296,10 @@ export default function AdminProjectsPage() {
 
             </> // end desktop + mobile sheets
           );
-        })() : (
-          <div className="hidden lg:flex lg:flex-col w-full lg:w-[380px] lg:flex-shrink-0 h-full pt-1">
-            {/* Invisible spacer matching the stage-group label row on the left
-                (icon + text + mb-2), so this card's top aligns with the
-                project list card, not the label. */}
-            <div className="flex items-center gap-2 mb-2 invisible flex-shrink-0" aria-hidden="true">
-              <i className="ri-folder-line text-sm"></i>
-              <p className="text-[11px] font-semibold uppercase tracking-widest">Spacer</p>
-            </div>
-            <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden">
-              <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tasks</p>
-                <span className="text-[10px] font-semibold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">{sidebarTasks.length}</span>
-                <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg ml-1">
-                  {([['mine', 'Mine'], ['everyone', 'Everyone']] as const).map(([key, label]) => (
-                    <button key={key} onClick={() => setSidebarScope(key)}
-                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${sidebarScope === key ? 'bg-white text-[#111827] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
-                  title="Add task"
-                  className="ml-auto w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0">
-                  <i className="ri-add-line text-base"></i>
-                </button>
-              </div>
-              {sidebarTasks.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center px-5 pb-6 text-center">
-                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <i className="ri-folder-open-line text-2xl text-gray-300"></i>
-                  </div>
-                  <p className="text-sm text-gray-400">{sidebarScope === 'mine' ? 'No open tasks assigned to you.' : 'No open tasks across the team.'}</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-50 max-h-[70vh] overflow-y-auto">
-                  {sidebarTasks.map((t: any) => {
-                    const today = localToday();
-                    const over = isTaskOverdue(t, today);
-                    const completing = sidebarTaskCompleting === t.id;
-                    return (
-                      <div key={t.id}
-                        className={`flex items-start gap-2.5 px-5 py-3 transition-colors ${completing ? 'bg-emerald-50' : 'hover:bg-gray-50/70'}`}>
-                        <div className="relative flex-shrink-0 mt-0.5">
-                          <button onClick={() => setSidebarStatusMenuFor(prev => prev === t.id ? null : t.id)}
-                            className="cursor-pointer" title="Change status">
-                            {sidebarStatusIcon(t.status, completing)}
-                          </button>
-                          {sidebarStatusMenuFor === t.id && !completing && (
-                            <>
-                              <div className="fixed inset-0 z-20" onClick={() => setSidebarStatusMenuFor(null)} />
-                              <div className="absolute left-0 top-7 z-30 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[140px]">
-                                {SIDEBAR_STATUS_OPTIONS.map(opt => (
-                                  <button key={opt.value}
-                                    onClick={() => { setSidebarStatusMenuFor(null); updateSidebarTaskStatus(t.id, opt.value); }}
-                                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-50 cursor-pointer text-left transition-colors ${t.status === opt.value ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${opt.dot}`} />
-                                    {opt.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        {completing ? (
-                          <p className="flex-1 text-sm font-medium text-emerald-600 line-through pt-0.5">Task completed</p>
-                        ) : (
-                          <>
-                            <button onClick={() => openTaskInWorkspace(t)} className="flex-1 min-w-0 text-left cursor-pointer">
-                              <p className={`text-sm truncate ${over ? 'text-gray-800' : 'text-gray-800'}`}>{t.title}</p>
-                              <p className="text-[11px] text-gray-400 truncate mt-0.5">{t.project?.project_name ?? 'Unknown'}</p>
-                            </button>
-                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                              {t.assignee ? (
-                                t.assignee.avatar_url
-                                  ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} title={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover object-top" />
-                                  : <div title={t.assignee.full_name} className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500">{t.assignee.full_name[0]}</div>
-                              ) : (
-                                <div title="Unassigned" className="w-6 h-6 rounded-full bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center"><i className="ri-user-line text-[9px] text-gray-300"></i></div>
-                              )}
-                              {t.due_date ? (
-                                <span className={`text-[10px] font-medium whitespace-nowrap ${over ? 'text-rose-500' : 'text-gray-400'}`}>
-                                  Due {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-gray-300 whitespace-nowrap">No due date</span>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+        })() : null)}
         </div>
       </div>
+
       )}
 
       {/* Project form modal */}
@@ -2229,17 +2343,14 @@ export default function AdminProjectsPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Service</label>
-                <select value={SERVICES.includes(form.service) ? form.service : 'Other'}
-                  onChange={e => setForm({ ...form, service: e.target.value === 'Other' ? '' : e.target.value })}
+                <label className="text-xs font-medium text-gray-700">Project Type *</label>
+                <select value={form.project_type_code}
+                  onChange={e => setForm({ ...form, project_type_code: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
-                  {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
+                  <option value="" disabled>Select a type...</option>
+                  {PROJECT_TYPES.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
                 </select>
-                {!SERVICES.slice(0, -1).includes(form.service) && (
-                  <input value={form.service} onChange={e => setForm({ ...form, service: e.target.value })}
-                    placeholder="Describe the service..."
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] mt-1.5" />
-                )}
+                <p className="text-[10px] text-gray-400">A project code is generated automatically and used as the Google Drive folder name.</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Phase</label>

@@ -1669,9 +1669,16 @@ export default function AdminProjectsPage() {
             const tod = localToday();
             const isOver = (t: any) => isTaskOverdue(t, tod);
             const calendarProjects = projects.filter(p => p.status !== 'cancelled');
-            const filt = allTasks.filter(t => {
+            // The calendar filters by project visibility + search only — like a
+            // real calendar, a completed task stays visible on the day it was
+            // due (just with a checkmark glyph), it doesn't disappear. The
+            // status dropdown (Active/Overdue/To Do/etc.) only narrows the list.
+            const calendarTasks = allTasks.filter(t => {
               if (calendarHiddenProjects.has(t.project_id)) return false;
               if (taskSearch && !t.title.toLowerCase().includes(taskSearch.toLowerCase()) && !t.project?.project_name?.toLowerCase().includes(taskSearch.toLowerCase())) return false;
+              return true;
+            });
+            const filt = calendarTasks.filter(t => {
               if (taskStatusFilter === 'active') return t.status !== 'done';
               if (taskStatusFilter === 'overdue') return isOver(t);
               if (taskStatusFilter !== 'all') return t.status === taskStatusFilter;
@@ -1736,7 +1743,7 @@ export default function AdminProjectsPage() {
                 <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
               ) : (
                 <GanttTimeline
-                  tasks={filt.map((t: any) => ({
+                  tasks={calendarTasks.map((t: any) => ({
                     id: t.id,
                     project_id: t.project_id,
                     title: `${t.title}${t.project?.project_name ? ` · ${t.project.project_name}` : ''}`,

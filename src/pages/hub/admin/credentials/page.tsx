@@ -6,7 +6,7 @@ import { useDemo } from '@/contexts/DemoContext';
 
 interface Credential {
   id: string;
-  client_name: string;
+  category: string;
   platform: string;
   account_email: string | null;
   password: string | null;
@@ -30,11 +30,27 @@ interface CredentialRequest {
   reviewed_at: string | null;
   created_at: string;
   hub_users?: { full_name: string; avatar_url?: string };
-  hub_credentials?: { platform: string; client_name: string };
+  hub_credentials?: { platform: string };
 }
 
+interface Employee {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+}
+
+const CATEGORIES: { value: string; label: string }[] = [
+  { value: 'design_cad', label: 'Design & CAD Software' },
+  { value: 'project_mgmt', label: 'Project Management' },
+  { value: 'finance', label: 'Finance & Admin' },
+  { value: 'cloud_storage', label: 'Cloud & Storage' },
+  { value: 'marketing', label: 'Marketing & Socials' },
+  { value: 'other', label: 'Other' },
+];
+const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]));
+
 const emptyForm = {
-  client_name: '',
+  category: 'design_cad',
   platform: '',
   login_type: 'email_password',
   account_email: '',
@@ -64,15 +80,19 @@ export default function CredentialsVaultPage() {
 
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [requests, setRequests] = useState<CredentialRequest[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [editingCred, setEditingCred] = useState<Credential | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showPassIds, setShowPassIds] = useState<Set<string>>(new Set());
   const [showFormPass, setShowFormPass] = useState(false);
+  const [grantingFor, setGrantingFor] = useState<Credential | null>(null);
+  const [grantEmployeeId, setGrantEmployeeId] = useState('');
+  const [granting, setGranting] = useState(false);
   const [toast, setToast] = useState('');
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,19 +106,22 @@ export default function CredentialsVaultPage() {
     setLoading(true);
     // Secrets are stored encrypted and direct column reads are revoked; the admin
     // RPC decrypts and returns the full list (admin-only, enforced server-side).
-    const [{ data: creds }, { data: reqs }] = await Promise.all([
+    const [{ data: creds }, { data: reqs }, { data: emps }] = await Promise.all([
       supabase.rpc('admin_list_credentials'),
       supabase
         .from('hub_credential_requests')
-        .select('*, hub_users!contractor_id(full_name, avatar_url), hub_credentials!credential_id(platform, client_name)')
+        .select('*, hub_users!contractor_id(full_name, avatar_url), hub_credentials!credential_id(platform)')
         .order('created_at', { ascending: false }),
+      supabase.from('hub_users').select('id, full_name, avatar_url')
+        .eq('status', 'active').in('role', ['contractor', 'admin']).neq('is_developer', true).order('full_name'),
     ]);
     const credList = (creds as Credential[]) ?? [];
     setCredentials(credList);
     setRequests((reqs as CredentialRequest[]) ?? []);
-    // Default all clients expanded
-    const clients = new Set(credList.map((c) => c.client_name));
-    setExpandedClients(clients);
+    setEmployees((emps as Employee[]) ?? []);
+    // Default all categories expanded
+    const categories = new Set(credList.map((c) => c.category));
+    setExpandedCategories(categories);
     setLoading(false);
   };
 
@@ -114,29 +137,44 @@ export default function CredentialsVaultPage() {
     </AdminLayout>
   );
 
-  // Group credentials by client
+  // Group credentials by category
   const filtered = credentials.filter((c) =>
     !search ||
-    c.client_name.toLowerCase().includes(search.toLowerCase()) ||
     c.platform.toLowerCase().includes(search.toLowerCase()) ||
     (c.account_email ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   const groups = filtered.reduce<Record<string, Credential[]>>((acc, c) => {
-    if (!acc[c.client_name]) acc[c.client_name] = [];
-    acc[c.client_name].push(c);
+    if (!acc[c.category]) acc[c.category] = [];
+    acc[c.category].push(c);
     return acc;
   }, {});
 
-  const clientNames = Object.keys(groups).sort();
+  const categoryKeys = CATEGORIES.map(c => c.value).filter(k => groups[k]?.length);
 
   const pendingRequests = requests.filter((r) => r.status === 'pending');
   const otherRequests = requests.filter((r) => r.status !== 'pending');
 
-  const toggleClient = (name: string) => {
-    setExpandedClients((prev) => {
+  // Who currently has access to each credential — approved requests, whether
+  // they came from an employee's own request or an admin's direct grant.
+  const accessByCredential = requests.reduce<Record<string, CredentialRequest[]>>((acc, r) => {
+    if (r.status !== 'approved') return acc;
+    (acc[r.credential_id] ??= []).push(r);
+    return acc;
+  }, {});
+
+  const revokeAccess = async (requestId: string) => {
+    if (!confirm('Revoke this person\'s access? They\'ll need a new grant or request to see it again.')) return;
+    const { error } = await supabase.from('hub_credential_requests').delete().eq('id', requestId);
+    if (error) { showToast('Failed to revoke access. Try again.'); return; }
+    showToast('Access revoked.');
+    fetchData();
+  };
+
+  const toggleCategory = (key: string) => {
+    setExpandedCategories((prev) => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
@@ -159,7 +197,7 @@ export default function CredentialsVaultPage() {
   const openEdit = (c: Credential) => {
     setEditingCred(c);
     setForm({
-      client_name: c.client_name,
+      category: c.category,
       platform: c.platform,
       login_type: c.login_type,
       account_email: c.account_email ?? '',
@@ -174,13 +212,13 @@ export default function CredentialsVaultPage() {
   };
 
   const save = async () => {
-    if (!form.client_name.trim() || !form.platform.trim()) return;
+    if (!form.platform.trim()) return;
     setSaving(true);
     // Write through the RPC so secrets are encrypted server-side. Passing the
     // current id updates; null inserts.
     const { error } = await supabase.rpc('admin_save_credential', {
       p_id: editingCred?.id ?? null,
-      p_client_name: form.client_name.trim(),
+      p_category: form.category,
       p_platform: form.platform.trim(),
       p_account_email: form.account_email.trim() || null,
       p_login_type: form.login_type,
@@ -222,11 +260,39 @@ export default function CredentialsVaultPage() {
         body: {
           contractor_id: req.contractor_id,
           platform: req.hub_credentials?.platform ?? 'credential',
-          client_name: req.hub_credentials?.client_name ?? '',
           decision: status,
         },
       }).catch(console.error);
     }
+    fetchData();
+  };
+
+  const openGrant = (c: Credential) => {
+    setGrantingFor(c);
+    setGrantEmployeeId('');
+  };
+
+  // Admin-initiated grant — skips the request step entirely by inserting an
+  // already-approved row, reusing the same table/notification path a normal
+  // request-then-approve flow uses.
+  const grantAccess = async () => {
+    if (!grantingFor || !grantEmployeeId) return;
+    setGranting(true);
+    const { error } = await supabase.from('hub_credential_requests').insert({
+      credential_id: grantingFor.id,
+      contractor_id: grantEmployeeId,
+      reason: 'Granted directly by admin',
+      status: 'approved',
+      reviewed_by: hubUser?.id,
+      reviewed_at: new Date().toISOString(),
+    });
+    setGranting(false);
+    if (error) { showToast('Failed to grant access. Try again.'); return; }
+    supabase.functions.invoke('notify-credential-decision', {
+      body: { contractor_id: grantEmployeeId, platform: grantingFor.platform, decision: 'approved' },
+    }).catch(console.error);
+    showToast(`Access granted for ${grantingFor.platform}.`);
+    setGrantingFor(null);
     fetchData();
   };
 
@@ -249,7 +315,7 @@ export default function CredentialsVaultPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search credentials..."
+                placeholder="Search platforms..."
                 className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
               />
             </div>
@@ -268,35 +334,35 @@ export default function CredentialsVaultPage() {
           </button>
         </div>
 
-        {/* Credentials grouped by client */}
+        {/* Credentials grouped by category */}
         {loading ? (
           <div className="flex justify-center py-12">
             <i className="ri-loader-4-line animate-spin text-xl text-gray-400"></i>
           </div>
-        ) : clientNames.length === 0 ? (
+        ) : categoryKeys.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
             <i className="ri-lock-2-line text-4xl text-gray-200 mb-3 block"></i>
             <p className="text-gray-400 text-sm">No credentials yet. Add the first one.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {clientNames.map((clientName) => {
-              const clientCreds = groups[clientName];
-              const isExpanded = expandedClients.has(clientName);
+            {categoryKeys.map((catKey) => {
+              const catCreds = groups[catKey];
+              const isExpanded = expandedCategories.has(catKey);
               return (
-                <div key={clientName} className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-                  {/* Client group header */}
+                <div key={catKey} className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                  {/* Category group header */}
                   <button
-                    onClick={() => toggleClient(clientName)}
+                    onClick={() => toggleCategory(catKey)}
                     className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="w-7 h-7 bg-[#1c2b3a]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i className="ri-building-2-line text-[#1c2b3a] text-sm"></i>
+                        <i className="ri-folder-3-line text-[#1c2b3a] text-sm"></i>
                       </div>
-                      <span className="text-sm font-semibold text-[#111827]">{clientName}</span>
+                      <span className="text-sm font-semibold text-[#111827]">{CATEGORY_LABEL[catKey] ?? catKey}</span>
                       <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
-                        {clientCreds.length}
+                        {catCreds.length}
                       </span>
                     </div>
                     <i className={`text-gray-400 text-sm transition-transform ${isExpanded ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'}`}></i>
@@ -305,7 +371,7 @@ export default function CredentialsVaultPage() {
                   {/* Credential cards */}
                   {isExpanded && (
                     <div className="border-t border-gray-50 divide-y divide-gray-50">
-                      {clientCreds.map((cred) => {
+                      {catCreds.map((cred) => {
                         const typeInfo = LOGIN_TYPE_LABELS[cred.login_type] ?? { label: cred.login_type, color: 'bg-gray-100 text-gray-600' };
                         const passVisible = showPassIds.has(cred.id);
                         return (
@@ -365,10 +431,43 @@ export default function CredentialsVaultPage() {
                                 {cred.notes && (
                                   <p className="text-xs text-gray-400 italic">{cred.notes}</p>
                                 )}
+
+                                {/* Who has access */}
+                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                  <i className="ri-team-line text-gray-300 text-xs"></i>
+                                  {(accessByCredential[cred.id] ?? []).length === 0 ? (
+                                    <span className="text-xs text-gray-300">No one has access yet</span>
+                                  ) : (
+                                    (accessByCredential[cred.id] ?? []).map((r) => (
+                                      <span key={r.id} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full pl-1 pr-1.5 py-0.5">
+                                        {r.hub_users?.avatar_url ? (
+                                          <img src={r.hub_users.avatar_url} alt={r.hub_users.full_name} className="w-4 h-4 rounded-full object-cover" />
+                                        ) : (
+                                          <span className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-500">{r.hub_users?.full_name?.[0] ?? '?'}</span>
+                                        )}
+                                        <span className="text-[11px] text-gray-600">{r.hub_users?.full_name ?? 'Unknown'}</span>
+                                        <button
+                                          onClick={() => revokeAccess(r.id)}
+                                          title="Revoke access"
+                                          className="text-gray-300 hover:text-red-500 cursor-pointer transition-colors"
+                                        >
+                                          <i className="ri-close-line text-xs"></i>
+                                        </button>
+                                      </span>
+                                    ))
+                                  )}
+                                </div>
                               </div>
 
                               {/* Actions */}
                               <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => openGrant(cred)}
+                                  className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Grant access to an employee"
+                                >
+                                  <i className="ri-shield-user-line text-sm"></i>
+                                </button>
                                 <button
                                   onClick={() => openEdit(cred)}
                                   className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-[#1c2b3a]/10 rounded-lg transition-colors cursor-pointer"
@@ -430,7 +529,6 @@ export default function CredentialsVaultPage() {
                         <span className="text-sm font-medium text-gray-800">{user?.full_name ?? 'Unknown'}</span>
                         <span className="text-xs text-gray-400">wants access to</span>
                         <span className="text-sm font-medium text-gray-800">{cred?.platform ?? '—'}</span>
-                        <span className="text-xs text-gray-400">({cred?.client_name ?? '—'})</span>
                       </div>
                       {req.reason && (
                         <p className="text-xs text-gray-500 mt-1 ml-8">{req.reason}</p>
@@ -495,20 +593,21 @@ export default function CredentialsVaultPage() {
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Client Name *</label>
-                  <input
-                    value={form.client_name}
-                    onChange={(e) => setForm({ ...form, client_name: e.target.value })}
-                    placeholder="e.g. BCN Dental"
-                    className={inputCls}
-                  />
+                  <label className="text-xs font-medium text-gray-700">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className={`${inputCls} bg-white`}
+                  >
+                    {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">Platform *</label>
                   <input
                     value={form.platform}
                     onChange={(e) => setForm({ ...form, platform: e.target.value })}
-                    placeholder="e.g. Facebook Business"
+                    placeholder="e.g. AutoCAD"
                     className={inputCls}
                   />
                 </div>
@@ -619,10 +718,50 @@ export default function CredentialsVaultPage() {
               </button>
               <button
                 onClick={save}
-                disabled={saving || !form.client_name.trim() || !form.platform.trim()}
+                disabled={saving || !form.platform.trim()}
                 className="flex-1 py-2.5 text-sm bg-[#111827] text-white rounded-lg hover:bg-gray-800 disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap"
               >
                 {saving ? 'Saving...' : editingCred ? 'Save Changes' : 'Add Credential'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grant Access Modal */}
+      {grantingFor && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h2 className="font-semibold text-[#111827]">Grant Access</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Give someone the login for {grantingFor.platform}</p>
+              </div>
+              <button onClick={() => setGrantingFor(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
+                <i className="ri-close-line text-lg"></i>
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="bg-emerald-50 rounded-lg px-4 py-3 text-xs text-emerald-700 flex items-start gap-2">
+                <i className="ri-information-line mt-0.5"></i>
+                <span>Access is granted right away — no approval step, and they won't need to request it themselves.</span>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Grant to *</label>
+                <select
+                  value={grantEmployeeId}
+                  onChange={(e) => setGrantEmployeeId(e.target.value)}
+                  className={`${inputCls} bg-white`}
+                >
+                  <option value="">Choose an employee</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button onClick={() => setGrantingFor(null)} className="flex-1 py-2.5 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">Cancel</button>
+              <button onClick={grantAccess} disabled={granting || !grantEmployeeId} className="flex-1 py-2.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-40 cursor-pointer transition-colors">
+                {granting ? 'Granting...' : 'Grant Access'}
               </button>
             </div>
           </div>

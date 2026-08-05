@@ -906,25 +906,27 @@ export default function AdminDashboardPage() {
                       </div>
                     </button>
                     {quickAddOpen && (
-                      <div className="flex flex-col gap-1.5 px-4 pb-4">
+                      <div className="flex flex-col gap-2 sm:gap-1.5 px-4 pb-4">
                         <input autoFocus value={quickAddTitle} onChange={e => setQuickAddTitle(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') void quickAddTask(); if (e.key === 'Escape') resetQuickAdd(); }}
                           placeholder="Task title..."
-                          className="w-full px-2.5 py-1.5 text-xs border border-violet-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400" />
-                        <div className="flex items-center gap-1.5">
+                          className="w-full px-3 py-2.5 sm:px-2.5 sm:py-1.5 text-sm sm:text-xs border border-violet-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400" />
+                        {/* Stacked full-width on mobile — two selects side by side were too
+                            cramped to tap/read; sm: puts them back in a compact row on desktop. */}
+                        <div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-1.5">
                           <select value={quickAddProjectId ?? ''} onChange={e => setQuickAddProjectId(Number(e.target.value))}
-                            className="flex-1 min-w-0 px-2 py-1.5 text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            className="w-full sm:flex-1 sm:min-w-0 px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
                             {quickAddProjects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
                           </select>
                           <select value={quickAddAssigneeId} onChange={e => setQuickAddAssigneeId(e.target.value)}
-                            className="flex-1 min-w-0 px-2 py-1.5 text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            className="w-full sm:flex-1 sm:min-w-0 px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
                             <option value="">Unassigned</option>
                             {quickAddTeam.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
                           </select>
                         </div>
                         <input type="date" value={quickAddDueDate} onChange={e => setQuickAddDueDate(e.target.value)}
-                          className="px-2 py-1.5 text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
-                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          className="w-full px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
+                        <div className="flex items-center justify-between gap-2 pt-1 sm:pt-0.5">
                           <button type="button"
                             onClick={() => {
                               const params = new URLSearchParams({ newTask: '1' });
@@ -934,9 +936,9 @@ export default function AdminDashboardPage() {
                               navigate(`/hub/admin/projects?${params.toString()}`);
                               resetQuickAdd();
                             }}
-                            className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">Add details</button>
+                            className="text-xs sm:text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer py-1 sm:py-0">Add details</button>
                           <button type="button" disabled={!quickAddTitle.trim() || !quickAddProjectId || quickAddSaving} onClick={() => void quickAddTask()}
-                            className="px-3 py-1 text-[11px] font-semibold text-white rounded-lg disabled:opacity-40 cursor-pointer"
+                            className="px-4 py-2 sm:px-3 sm:py-1 text-sm sm:text-[11px] font-semibold text-white rounded-lg disabled:opacity-40 cursor-pointer"
                             style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
                             {quickAddSaving ? 'Adding...' : 'Add'}
                           </button>

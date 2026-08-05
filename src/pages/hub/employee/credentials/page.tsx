@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface CredentialCatalog {
   id: string;
-  client_name: string;
+  category: string;
   platform: string;
   login_type: string;
   status: string;
@@ -26,6 +26,16 @@ interface MyRequest {
   reason: string | null;
 }
 
+const CATEGORIES: { value: string; label: string }[] = [
+  { value: 'design_cad', label: 'Design & CAD Software' },
+  { value: 'project_mgmt', label: 'Project Management' },
+  { value: 'finance', label: 'Finance & Admin' },
+  { value: 'cloud_storage', label: 'Cloud & Storage' },
+  { value: 'marketing', label: 'Marketing & Socials' },
+  { value: 'other', label: 'Other' },
+];
+const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]));
+
 const LOGIN_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   email_password: { label: 'Email + Password', color: 'bg-blue-100 text-blue-700' },
   otp: { label: 'OTP', color: 'bg-amber-100 text-amber-700' },
@@ -44,9 +54,8 @@ export default function ContractorCredentialsPage() {
   const [credentials, setCredentials] = useState<CredentialCatalog[]>([]);
   const [fullData, setFullData] = useState<Record<string, FullData>>({});
   const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
-  const [assignedClients, setAssignedClients] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [showPassIds, setShowPassIds] = useState<Set<string>>(new Set());
   const [requestModal, setRequestModal] = useState<CredentialCatalog | null>(null);
   const [requestReason, setRequestReason] = useState('');
@@ -66,31 +75,26 @@ export default function ContractorCredentialsPage() {
     setLoading(true);
 
     // Secrets are served only through an authorization-checked RPC — the catalog
-    // and any decrypted password/additional_info for assigned/approved credentials
-    // come back together, scoped server-side. Direct table reads of secret columns
-    // are revoked, so a contractor can never fetch another client's password.
-    const [credsRes, reqsRes, clientsRes] = await Promise.all([
+    // and any decrypted password/additional_info for approved credentials come
+    // back together, scoped server-side. Direct table reads of secret columns
+    // are revoked, so a contractor can never fetch another platform's password.
+    const [credsRes, reqsRes] = await Promise.all([
       supabase.rpc('get_my_credentials'),
       supabase.from('hub_credential_requests')
         .select('id, credential_id, status, reason')
         .eq('contractor_id', hubUser.id),
-      supabase.from('hub_clients')
-        .select('client_name')
-        .eq('assigned_contractor_id', hubUser.id),
     ]);
 
     const rpcRows = (credsRes.data as any[]) ?? [];
     const credList: CredentialCatalog[] = rpcRows.map((r) => ({
-      id: r.id, client_name: r.client_name, platform: r.platform, login_type: r.login_type,
+      id: r.id, category: r.category, platform: r.platform, login_type: r.login_type,
       status: r.status, account_email: r.account_email, otp_contact: r.otp_contact, notes: r.notes,
     }));
     const reqList = (reqsRes.data as MyRequest[]) ?? [];
-    const autoClientNames = new Set<string>((clientsRes.data ?? []).map((c: any) => c.client_name));
 
     setCredentials(credList);
     setMyRequests(reqList);
-    setAssignedClients(autoClientNames);
-    setExpandedClients(new Set(credList.map((c) => c.client_name)));
+    setExpandedCategories(new Set(credList.map((c) => c.category)));
 
     const map: Record<string, FullData> = {};
     rpcRows.forEach((r) => {
@@ -106,30 +110,21 @@ export default function ContractorCredentialsPage() {
   const requestMap = Object.fromEntries(myRequests.map((r) => [r.credential_id, r]));
 
   const filtered = credentials.filter((c) =>
-    !search ||
-    c.client_name.toLowerCase().includes(search.toLowerCase()) ||
-    c.platform.toLowerCase().includes(search.toLowerCase())
+    !search || c.platform.toLowerCase().includes(search.toLowerCase())
   );
 
   const groups = filtered.reduce<Record<string, CredentialCatalog[]>>((acc, c) => {
-    if (!acc[c.client_name]) acc[c.client_name] = [];
-    acc[c.client_name].push(c);
+    if (!acc[c.category]) acc[c.category] = [];
+    acc[c.category].push(c);
     return acc;
   }, {});
 
-  const clientNames = Object.keys(groups).sort((a, b) => {
-    // Assigned clients first
-    const aAssigned = assignedClients.has(a);
-    const bAssigned = assignedClients.has(b);
-    if (aAssigned && !bAssigned) return -1;
-    if (!aAssigned && bAssigned) return 1;
-    return a.localeCompare(b);
-  });
+  const categoryKeys = CATEGORIES.map(c => c.value).filter(k => groups[k]?.length);
 
-  const toggleClient = (name: string) => {
-    setExpandedClients((prev) => {
+  const toggleCategory = (key: string) => {
+    setExpandedCategories((prev) => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
@@ -154,14 +149,13 @@ export default function ContractorCredentialsPage() {
     setSubmitting(false);
     if (error) { showToast('Failed to submit request. Try again.'); return; }
     supabase.functions.invoke('notify-internal-request', {
-      body: { type: 'credential_request', contractor_name: hubUser!.full_name, detail: `${requestModal.platform} — ${requestModal.client_name}`, notes: requestReason },
+      body: { type: 'credential_request', contractor_name: hubUser!.full_name, detail: requestModal.platform, notes: requestReason },
     });
     setRequestModal(null);
     showToast('Access request submitted!');
     fetchData();
   };
 
-  const autoAccessCount = credentials.filter((c) => assignedClients.has(c.client_name)).length;
   const approvedCount = myRequests.filter((r) => r.status === 'approved').length;
   const myPending = myRequests.filter((r) => r.status === 'pending').length;
 
@@ -178,7 +172,7 @@ export default function ContractorCredentialsPage() {
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
             { label: 'Total Platforms', value: credentials.length, icon: 'ri-global-line', color: 'text-gray-600', bg: 'bg-gray-50' },
-            { label: 'Auto Access', value: autoAccessCount + approvedCount, icon: 'ri-shield-check-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: 'Approved', value: approvedCount, icon: 'ri-shield-check-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
             { label: 'Pending', value: myPending, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50' },
           ].map((card) => (
             <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3">
@@ -198,7 +192,7 @@ export default function ContractorCredentialsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by platform or client…"
+            placeholder="Search platforms…"
             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
           />
         </div>
@@ -207,44 +201,39 @@ export default function ContractorCredentialsPage() {
           <div className="flex justify-center py-12">
             <i className="ri-loader-4-line animate-spin text-xl text-gray-400"></i>
           </div>
-        ) : clientNames.length === 0 ? (
+        ) : categoryKeys.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
             <i className="ri-lock-2-line text-4xl text-gray-200 mb-3 block"></i>
             <p className="text-gray-400 text-sm">No credentials available yet.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {clientNames.map((clientName) => {
-              const clientCreds = groups[clientName];
-              const isExpanded = expandedClients.has(clientName);
-              const isAssigned = assignedClients.has(clientName);
+            {categoryKeys.map((catKey) => {
+              const catCreds = groups[catKey];
+              const isExpanded = expandedCategories.has(catKey);
               return (
-                <div key={clientName} className={`bg-white border rounded-xl overflow-hidden ${isAssigned ? 'border-emerald-200' : 'border-gray-100'}`}>
+                <div key={catKey} className="bg-white border border-gray-100 rounded-xl overflow-hidden">
                   <button
-                    onClick={() => toggleClient(clientName)}
+                    onClick={() => toggleCategory(catKey)}
                     className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isAssigned ? 'bg-emerald-100' : 'bg-[#1c2b3a]/10'}`}>
-                        <i className={`text-sm ${isAssigned ? 'ri-shield-check-line text-emerald-600' : 'ri-building-2-line text-[#1c2b3a]'}`}></i>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-[#1c2b3a]/10">
+                        <i className="ri-folder-3-line text-[#1c2b3a] text-sm"></i>
                       </div>
-                      <span className="text-sm font-semibold text-[#111827]">{clientName}</span>
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">{clientCreds.length}</span>
-                      {isAssigned && (
-                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Assigned</span>
-                      )}
+                      <span className="text-sm font-semibold text-[#111827]">{CATEGORY_LABEL[catKey] ?? catKey}</span>
+                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">{catCreds.length}</span>
                     </div>
                     <i className={`text-gray-400 text-sm transition-transform ${isExpanded ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'}`}></i>
                   </button>
 
                   {isExpanded && (
                     <div className="border-t border-gray-50 divide-y divide-gray-50">
-                      {clientCreds.map((cred) => {
+                      {catCreds.map((cred) => {
                         const typeInfo = LOGIN_TYPE_LABELS[cred.login_type] ?? { label: cred.login_type, color: 'bg-gray-100 text-gray-600' };
                         const myReq = requestMap[cred.id];
-                        const isAutoAccess = isAssigned;
-                        const isApproved = isAutoAccess || myReq?.status === 'approved';
-                        const isPending = !isAutoAccess && myReq?.status === 'pending';
+                        const isApproved = myReq?.status === 'approved';
+                        const isPending = myReq?.status === 'pending';
                         const credFullData = isApproved ? fullData[cred.id] : null;
                         const passVisible = showPassIds.has(cred.id);
 
@@ -259,12 +248,7 @@ export default function ContractorCredentialsPage() {
                                     <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[cred.status] ?? 'bg-gray-400'}`}></span>
                                     <span className="text-xs text-gray-400 capitalize">{cred.status}</span>
                                   </div>
-                                  {isAutoAccess && (
-                                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-0.5">
-                                      <i className="ri-shield-check-line text-xs"></i> Client Assigned
-                                    </span>
-                                  )}
-                                  {!isAutoAccess && myReq?.status === 'approved' && (
+                                  {isApproved && (
                                     <span className="text-xs bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-0.5">
                                       <i className="ri-shield-check-line text-xs"></i> Access Granted
                                     </span>
@@ -344,7 +328,7 @@ export default function ContractorCredentialsPage() {
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
                 <h2 className="font-semibold text-[#111827]">Request Access</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{requestModal.platform} — {requestModal.client_name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{requestModal.platform}</p>
               </div>
               <button onClick={() => setRequestModal(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer w-7 h-7 flex items-center justify-center">
                 <i className="ri-close-line text-lg"></i>
@@ -361,7 +345,7 @@ export default function ContractorCredentialsPage() {
                   value={requestReason}
                   onChange={(e) => setRequestReason(e.target.value)}
                   rows={3}
-                  placeholder="e.g. Need to post content for the May campaign..."
+                  placeholder="e.g. Need to open shared project files..."
                   maxLength={500}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none"
                 />

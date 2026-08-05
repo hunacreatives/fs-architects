@@ -43,7 +43,7 @@ export default function ContractorsPage() {
     const { data } = await supabase
       .from('hub_users')
       .select('*')
-      .in('role', ['contractor', 'admin'])
+      .in('role', ['contractor', 'admin', 'hr'])
       .neq('is_developer', true)
       .order('full_name');
     const list = (data as HubUser[]) ?? [];

@@ -160,6 +160,7 @@ export interface Appraisal {
   hr_reviewer_id: string | null;
   hr_comments: string | null;
   hr_reviewed_at: string | null;
+  internal_notes: string | null;
   created_at: string;
   updated_at: string;
   employee?: { full_name: string; avatar_url: string | null; department?: string | null };

@@ -103,6 +103,8 @@ export default function AdminPerformancePage() {
   const [showRubric, setShowRubric] = useState(false);
   const [hrComments, setHrComments] = useState('');
   const [rescheduleAt, setRescheduleAt] = useState('');
+  const [internalNote, setInternalNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -310,6 +312,18 @@ export default function AdminPerformancePage() {
     setShowForm(true);
   };
 
+  // Internal-only note, any stage — never sent to the employee. Employee
+  // reads go through get_my_appraisals(), which doesn't select this column
+  // at all, so there's nothing to accidentally leak.
+  const saveInternalNote = async (a: Appraisal) => {
+    setSavingNote(true);
+    const { error } = await supabase.rpc('save_appraisal_internal_note', { p_id: a.id, p_note: internalNote });
+    setSavingNote(false);
+    if (error) { alert(`Could not save note: ${error.message}`); return; }
+    setSelected(prev => prev ? { ...prev, internal_notes: internalNote.trim() || null } : prev);
+    fetchAll();
+  };
+
   const completeHrReview = async (a: Appraisal) => {
     setSaving(true);
     const { error } = await supabase.from('hub_appraisals').update({
@@ -394,7 +408,7 @@ export default function AdminPerformancePage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map(a => (
-                    <tr key={a.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => { setSelected(a); setHrComments(''); setRescheduleAt(''); }}>
+                    <tr key={a.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => { setSelected(a); setHrComments(''); setRescheduleAt(''); setInternalNote(a.internal_notes ?? ''); }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <HubAvatar fullName={a.employee?.full_name || '?'} avatarUrl={a.employee?.avatar_url || null} size="w-8 h-8" />
@@ -800,6 +814,20 @@ export default function AdminPerformancePage() {
                   {saving ? 'Sending…' : 'Mark 1-on-1 Held & Send Result'}
                 </button>
               )}
+
+              <div className="border border-gray-200 rounded-xl p-4 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                  <i className="ri-eye-off-line text-sm"></i> Internal Notes
+                  <span className="font-normal text-gray-400">— never shown to the employee</span>
+                </p>
+                <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)} rows={3}
+                  placeholder="Notes for admin/HR/owner only..."
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] resize-none" />
+                <button disabled={savingNote || internalNote === (selected.internal_notes ?? '')} onClick={() => saveInternalNote(selected)}
+                  className="px-4 py-2 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-40 cursor-pointer">
+                  {savingNote ? 'Saving…' : 'Save Note'}
+                </button>
+              </div>
 
               <div className="flex flex-wrap gap-3 pt-1">
                 <button onClick={() => printAppraisal(selected)}

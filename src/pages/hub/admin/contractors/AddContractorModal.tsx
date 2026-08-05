@@ -11,7 +11,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const emptyForm = {
   full_name: '',
   email: '',
-  role: 'contractor' as 'contractor' | 'admin',
+  role: 'contractor' as 'contractor' | 'admin' | 'hr',
   department: '',
   employment_classification: '',
   start_date: new Date().toISOString().slice(0, 10),
@@ -195,7 +195,8 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                   <select value={form.role} onChange={e => set('role', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
                     <option value="contractor">Employee</option>
-                    <option value="admin">HR / Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="hr">HR</option>
                     <option value="owner">Owner</option>
                   </select>
                   {previewId && (

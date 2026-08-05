@@ -144,13 +144,15 @@ export interface Appraisal {
   job_title: string | null;
   period_covered: string;
   month_appraised: string;
-  status: 'draft' | 'awaiting_employee' | 'awaiting_hr' | 'completed';
+  status: 'draft' | 'meeting_scheduled' | 'meeting_accepted' | 'meeting_declined' | 'awaiting_employee' | 'awaiting_hr' | 'completed';
   ratings: AppraisalRatings;
   total_score: number | null;
   final_rating_pct: number | null;
   performance_level: number | null;
   comments_recommendations: string | null;
   one_on_one_at: string | null;
+  decline_reason: string | null;
+  results_sent_at: string | null;
   decision: 'regularization' | 'end_of_contract' | null;
   below_satisfactory_action: 'monitoring' | 'pip' | null;
   employee_comments: string | null;
@@ -222,6 +224,9 @@ export function belowSatisfactoryFactors(ratings: AppraisalRatings): AppraisalFa
 
 export const APPRAISAL_STATUS_META: Record<Appraisal['status'], { label: string; chip: string }> = {
   draft: { label: 'Draft', chip: 'bg-gray-100 text-gray-600' },
+  meeting_scheduled: { label: '1-on-1 Scheduled', chip: 'bg-violet-100 text-violet-700' },
+  meeting_accepted: { label: '1-on-1 Accepted', chip: 'bg-teal-100 text-teal-700' },
+  meeting_declined: { label: '1-on-1 Declined', chip: 'bg-rose-100 text-rose-700' },
   awaiting_employee: { label: 'Awaiting Employee', chip: 'bg-sky-100 text-sky-700' },
   awaiting_hr: { label: 'Awaiting HR Review', chip: 'bg-amber-100 text-amber-700' },
   completed: { label: 'Completed', chip: 'bg-emerald-100 text-emerald-700' },

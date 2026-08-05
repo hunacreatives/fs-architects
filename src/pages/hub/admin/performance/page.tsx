@@ -102,6 +102,7 @@ export default function AdminPerformancePage() {
   const [filterEmployee, setFilterEmployee] = useState('');
   const [showRubric, setShowRubric] = useState(false);
   const [hrComments, setHrComments] = useState('');
+  const [rescheduleAt, setRescheduleAt] = useState('');
 
   const fetchAll = async () => {
     setLoading(true);
@@ -185,15 +186,15 @@ export default function AdminPerformancePage() {
     fetchAll();
   };
 
-  // Fretz's step 4: after actually holding the 1-on-1 discussion in person,
-  // he confirms it here — this is what finally makes the appraisal visible
-  // to the employee (in-app + email, the latter fired by a DB trigger on the
-  // status change) and moves it into their acknowledgment queue.
-  const confirmDiscussedAndSend = async (a: Appraisal) => {
+  // Step 2: once rating is fully done, schedule the 1-on-1. The employee is
+  // notified of the meeting invite only (no ratings/scores) — that's handled
+  // by the existing DB trigger on one_on_one_at, which was already written
+  // to never include scores.
+  const scheduleMeeting = async (a: Appraisal) => {
     const aScores = computeScores(a.ratings);
     const aBelowSat = belowSatisfactoryFactors(a.ratings);
     if (!aScores.complete) {
-      alert('All 24 criteria need a rating before this can be sent — edit the draft first.');
+      alert('All 24 criteria need a rating before this can be scheduled — edit the draft first.');
       return;
     }
     if (aBelowSat.length > 0 && !a.below_satisfactory_action) {
@@ -201,19 +202,70 @@ export default function AdminPerformancePage() {
       return;
     }
     if (!a.one_on_one_at) {
-      alert('Schedule a 1-on-1 discussion date first — edit the draft to set it.');
+      alert('Set a 1-on-1 discussion date first — edit the draft to set it.');
       return;
     }
-    if (!window.confirm(`Confirm you've discussed this appraisal with ${a.employee?.full_name} in person? This sends it to them to acknowledge.`)) return;
+    if (!window.confirm(`Schedule this 1-on-1 with ${a.employee?.full_name}? They'll be notified of the meeting — ratings stay hidden until you send the result after you've met.`)) return;
 
     setSaving(true);
     const { error } = await supabase.from('hub_appraisals').update({
-      status: 'awaiting_employee',
+      status: 'meeting_scheduled',
       updated_at: new Date().toISOString(),
     }).eq('id', a.id).eq('status', 'draft');
 
     if (error) {
-      alert(`Could not send appraisal: ${error.message}`);
+      alert(`Could not schedule: ${error.message}`);
+      setSaving(false);
+      return;
+    }
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'appraisal', description: `Scheduled 1-on-1 for ${a.employee?.full_name} — ${a.month_appraised}` });
+
+    setSaving(false);
+    setSelected(null);
+    fetchAll();
+  };
+
+  // Step 4 (after a decline): pick a new date and re-notify — loops back to
+  // meeting_scheduled so the employee can accept/decline again.
+  const rescheduleMeeting = async (a: Appraisal) => {
+    if (!rescheduleAt) { alert('Pick a new date/time first.'); return; }
+    setSaving(true);
+    const { error } = await supabase.from('hub_appraisals').update({
+      status: 'meeting_scheduled',
+      one_on_one_at: new Date(rescheduleAt).toISOString(),
+      decline_reason: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', a.id).eq('status', 'meeting_declined');
+
+    if (error) {
+      alert(`Could not reschedule: ${error.message}`);
+      setSaving(false);
+      return;
+    }
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'appraisal', description: `Rescheduled 1-on-1 for ${a.employee?.full_name} — ${a.month_appraised}` });
+
+    setSaving(false);
+    setRescheduleAt('');
+    setSelected(null);
+    fetchAll();
+  };
+
+  // Step 6: after actually holding the 1-on-1 discussion in person, mark it
+  // complete and send the result — this is what finally makes ratings
+  // visible to the employee (in-app + email) and moves it into their
+  // outcome-confirmation queue.
+  const sendResult = async (a: Appraisal) => {
+    if (!window.confirm(`Confirm you've held the 1-on-1 with ${a.employee?.full_name} and want to send the result? This reveals their ratings and moves it to their confirmation queue.`)) return;
+
+    setSaving(true);
+    const { error } = await supabase.from('hub_appraisals').update({
+      status: 'awaiting_employee',
+      results_sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', a.id).eq('status', 'meeting_accepted');
+
+    if (error) {
+      alert(`Could not send result: ${error.message}`);
       setSaving(false);
       return;
     }
@@ -222,11 +274,11 @@ export default function AdminPerformancePage() {
       user_id: a.employee_id,
       type: 'appraisal',
       title: 'Performance appraisal ready for your review',
-      body: `Your appraisal for ${a.month_appraised} is ready. Please read it, add any comments, and acknowledge.`,
+      body: `Your appraisal for ${a.month_appraised} is ready. Please read it, add any comments, and confirm.`,
       link: '/hub/employee/performance',
       read: false,
     });
-    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'appraisal', description: `Confirmed 1-on-1 discussed and sent appraisal for ${a.employee?.full_name} — ${a.month_appraised}` });
+    logAudit({ actor_id: hubUser?.id, actor_name: hubUser?.full_name, action: 'update', entity_type: 'appraisal', description: `Sent 1-on-1 result for ${a.employee?.full_name} — ${a.month_appraised}` });
 
     setSaving(false);
     setSelected(null);
@@ -342,7 +394,7 @@ export default function AdminPerformancePage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map(a => (
-                    <tr key={a.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => { setSelected(a); setHrComments(''); }}>
+                    <tr key={a.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => { setSelected(a); setHrComments(''); setRescheduleAt(''); }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <HubAvatar fullName={a.employee?.full_name || '?'} avatarUrl={a.employee?.avatar_url || null} size="w-8 h-8" />
@@ -360,7 +412,7 @@ export default function AdminPerformancePage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{a.rater?.full_name || '—'}</td>
                       <td className="px-4 py-3">
-                        {isOwner && (a.status === 'draft' || a.status === 'awaiting_employee') && (
+                        {isOwner && a.status !== 'awaiting_hr' && a.status !== 'completed' && (
                           <button onClick={e => { e.stopPropagation(); startEdit(a); }}
                             className="text-gray-300 hover:text-[#1c2b3a] transition-colors cursor-pointer">
                             <i className="ri-pencil-line text-sm"></i>
@@ -638,9 +690,42 @@ export default function AdminPerformancePage() {
                 <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 flex items-center gap-2.5">
                   <i className="ri-calendar-event-line text-sky-600"></i>
                   <div>
-                    <p className="text-xs font-semibold text-sky-800">1-on-1 Discussion Scheduled</p>
+                    <p className="text-xs font-semibold text-sky-800">1-on-1 Discussion {selected.status === 'draft' ? 'Proposed' : 'Scheduled'}</p>
                     <p className="text-xs text-sky-600">{new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                   </div>
+                </div>
+              )}
+
+              {selected.status === 'meeting_scheduled' && (
+                <div className="bg-violet-50 border border-violet-100 rounded-lg p-3 flex items-center gap-2.5">
+                  <i className="ri-time-line text-violet-600"></i>
+                  <p className="text-xs font-medium text-violet-800">Waiting for {selected.employee?.full_name} to accept or decline the invite.</p>
+                </div>
+              )}
+
+              {selected.status === 'meeting_accepted' && (
+                <div className="bg-teal-50 border border-teal-100 rounded-lg p-3 flex items-center gap-2.5">
+                  <i className="ri-checkbox-circle-line text-teal-600"></i>
+                  <p className="text-xs font-medium text-teal-800">{selected.employee?.full_name} accepted — hold the meeting, then send the result below.</p>
+                </div>
+              )}
+
+              {selected.status === 'meeting_declined' && (
+                <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-rose-800">{selected.employee?.full_name} declined and requested a reschedule</p>
+                    {selected.decline_reason && <p className="text-xs text-rose-600 mt-1">{selected.decline_reason}</p>}
+                  </div>
+                  {isOwner && (
+                    <>
+                      <input type="datetime-local" value={rescheduleAt} onChange={e => setRescheduleAt(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-rose-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-400/40 bg-white" />
+                      <button disabled={saving} onClick={() => rescheduleMeeting(selected)}
+                        className="w-full py-2.5 text-sm bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-60 cursor-pointer font-medium">
+                        {saving ? 'Saving…' : 'Reschedule & Resend Invite'}
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -701,10 +786,18 @@ export default function AdminPerformancePage() {
               )}
 
               {isOwner && selected.status === 'draft' && (
-                <button disabled={saving} onClick={() => confirmDiscussedAndSend(selected)}
+                <button disabled={saving} onClick={() => scheduleMeeting(selected)}
+                  className="w-full py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer font-medium flex items-center justify-center gap-1.5">
+                  <i className="ri-calendar-event-line text-sm"></i>
+                  {saving ? 'Scheduling…' : 'Schedule 1-on-1'}
+                </button>
+              )}
+
+              {isOwner && selected.status === 'meeting_accepted' && (
+                <button disabled={saving} onClick={() => sendResult(selected)}
                   className="w-full py-2.5 text-sm bg-[#1c2b3a] text-white rounded-lg hover:bg-[#0f1c28] disabled:opacity-60 cursor-pointer font-medium flex items-center justify-center gap-1.5">
                   <i className="ri-checkbox-circle-line text-sm"></i>
-                  {saving ? 'Sending…' : "Confirm Discussed & Send to Employee"}
+                  {saving ? 'Sending…' : 'Mark 1-on-1 Held & Send Result'}
                 </button>
               )}
 
@@ -713,7 +806,7 @@ export default function AdminPerformancePage() {
                   className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5">
                   <i className="ri-printer-line text-sm"></i> Print Form
                 </button>
-                {isOwner && (selected.status === 'draft' || selected.status === 'awaiting_employee') && (
+                {isOwner && selected.status !== 'awaiting_hr' && selected.status !== 'completed' && (
                   <button onClick={() => startEdit(selected)}
                     className="flex-1 py-2.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center justify-center gap-1.5">
                     <i className="ri-pencil-line text-sm"></i> Edit

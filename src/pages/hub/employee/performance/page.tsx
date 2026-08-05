@@ -25,16 +25,25 @@ export default function EmployeePerformancePage() {
   const [showRubric, setShowRubric] = useState(false);
   const [acknowledging, setAcknowledging] = useState(false);
   const [error, setError] = useState('');
+  const [declineReason, setDeclineReason] = useState('');
+  const [showDeclineForm, setShowDeclineForm] = useState(false);
+  const [responding, setResponding] = useState(false);
 
+  // Ratings/scores are nulled server-side by the RPC until status reaches
+  // awaiting_employee or later — this page never has access to them earlier,
+  // not just hides them, so there's nothing to accidentally render.
   const fetchAll = async () => {
     if (!hubUser?.id) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('hub_appraisals')
-      .select('*, employee:hub_users!employee_id(full_name, avatar_url), rater:hub_users!rater_id(full_name), hr_reviewer:hub_users!hr_reviewer_id(full_name)')
-      .eq('employee_id', hubUser.id)
-      .order('created_at', { ascending: false });
-    setAppraisals((data as Appraisal[]) ?? []);
+    const { data } = await supabase.rpc('get_my_appraisals');
+    const rows = (data as any[]) ?? [];
+    setAppraisals(rows.map((r): Appraisal => ({
+      ...r,
+      employee_id: hubUser.id,
+      rater_id: null,
+      rater: r.rater_name ? { full_name: r.rater_name } : null,
+      hr_reviewer: r.hr_reviewer_name ? { full_name: r.hr_reviewer_name } : null,
+    })));
     setLoading(false);
   };
 
@@ -55,6 +64,29 @@ export default function EmployeePerformancePage() {
     fetchAll();
   };
 
+  const acceptMeeting = async (a: Appraisal) => {
+    setResponding(true);
+    setError('');
+    const { error: rpcError } = await supabase.rpc('accept_appraisal_meeting', { p_id: a.id });
+    setResponding(false);
+    if (rpcError) { setError(rpcError.message); return; }
+    setSelected(null);
+    fetchAll();
+  };
+
+  const declineMeeting = async (a: Appraisal) => {
+    if (!declineReason.trim()) { setError('Let your leader know why, so they can pick a better time.'); return; }
+    setResponding(true);
+    setError('');
+    const { error: rpcError } = await supabase.rpc('decline_appraisal_meeting', { p_id: a.id, p_reason: declineReason.trim() });
+    setResponding(false);
+    if (rpcError) { setError(rpcError.message); return; }
+    setDeclineReason('');
+    setShowDeclineForm(false);
+    setSelected(null);
+    fetchAll();
+  };
+
   return (
     <ContractorLayout title="My Performance">
       <div className="space-y-4 max-w-3xl">
@@ -69,7 +101,7 @@ export default function EmployeePerformancePage() {
         ) : (
           <div className="space-y-3">
             {appraisals.map(a => (
-              <button key={a.id} onClick={() => { setSelected(a); setComments(''); setError(''); }}
+              <button key={a.id} onClick={() => { setSelected(a); setComments(''); setError(''); setDeclineReason(''); setShowDeclineForm(false); }}
                 className="w-full text-left bg-white border border-gray-100 rounded-xl p-4 hover:border-gray-200 transition-colors cursor-pointer">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div>
@@ -83,7 +115,9 @@ export default function EmployeePerformancePage() {
                       </span>
                     )}
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${APPRAISAL_STATUS_META[a.status].chip}`}>
-                      {a.status === 'awaiting_employee' ? 'Needs Your Acknowledgment' : APPRAISAL_STATUS_META[a.status].label}
+                      {a.status === 'meeting_scheduled' ? 'Needs Your Response'
+                        : a.status === 'awaiting_employee' ? 'Needs Your Acknowledgment'
+                        : APPRAISAL_STATUS_META[a.status].label}
                     </span>
                   </div>
                 </div>
@@ -107,75 +141,137 @@ export default function EmployeePerformancePage() {
             </div>
 
             <div className="p-5 space-y-4">
-              <div className="bg-[#1c2b3a] text-white rounded-xl p-4 flex flex-wrap items-center gap-x-8 gap-y-2">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-white/50">Final Rating</p>
-                  <p className="text-lg font-bold">{selected.final_rating_pct != null ? `${Number(selected.final_rating_pct).toFixed(1)}%` : '—'}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-white/50">Performance Level</p>
-                  <p className="text-lg font-bold">{selected.performance_level != null ? Number(selected.performance_level).toFixed(1) : '—'}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wider text-white/50">Total Score</p>
-                  <p className="text-lg font-bold">{selected.total_score != null ? `${Number(selected.total_score).toFixed(2)} / 40` : '—'}</p>
-                </div>
-              </div>
-
-              <button type="button" onClick={() => setShowRubric(!showRubric)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg text-sm text-gray-600 hover:bg-gray-100 cursor-pointer">
-                <span className="font-medium">What the ratings mean (1–5)</span>
-                <i className={`ri-arrow-${showRubric ? 'up' : 'down'}-s-line`}></i>
-              </button>
-              {showRubric && (
-                <div className="space-y-2 -mt-2">
-                  {PERFORMANCE_LEVEL_BANDS.map(b => (
-                    <div key={b.level} className="flex gap-3 bg-gray-50 rounded-lg p-3">
-                      <span className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${LEVEL_COLORS[b.level]}`}>{b.level}</span>
-                      <div>
-                        <p className="text-xs font-semibold text-[#111827]">{b.label} <span className="text-gray-400 font-normal">({b.range})</span></p>
-                        <p className="text-xs text-gray-500 mt-0.5">{b.description}</p>
+              {selected.status === 'meeting_scheduled' && (
+                <div className="border border-violet-200 bg-violet-50 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <i className="ri-calendar-event-line text-violet-600"></i>
+                    <div>
+                      <p className="text-sm font-semibold text-violet-900">1-on-1 Discussion Invite</p>
+                      {selected.one_on_one_at && (
+                        <p className="text-xs text-violet-700">{new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-violet-800">Your immediate head wants to discuss your performance appraisal with you. Ratings aren't shared until after this meeting.</p>
+                  {error && <p className="text-xs text-rose-600">{error}</p>}
+                  {showDeclineForm ? (
+                    <div className="space-y-2">
+                      <textarea value={declineReason} onChange={e => setDeclineReason(e.target.value)} rows={2}
+                        placeholder="Why does this time not work? (required)"
+                        className="w-full px-3 py-2 text-sm border border-violet-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400/40 bg-white resize-none" />
+                      <div className="flex gap-2">
+                        <button disabled={responding} onClick={() => setShowDeclineForm(false)}
+                          className="flex-1 py-2 text-sm border border-violet-200 rounded-lg text-violet-700 hover:bg-violet-100 cursor-pointer">Back</button>
+                        <button disabled={responding} onClick={() => declineMeeting(selected)}
+                          className="flex-1 py-2 text-sm bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-60 cursor-pointer font-medium">
+                          {responding ? 'Submitting…' : 'Submit Decline'}
+                        </button>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="flex gap-2">
+                      <button disabled={responding} onClick={() => setShowDeclineForm(true)}
+                        className="flex-1 py-2.5 text-sm border border-violet-200 rounded-lg text-violet-700 hover:bg-violet-100 cursor-pointer font-medium">Decline</button>
+                      <button disabled={responding} onClick={() => acceptMeeting(selected)}
+                        className="flex-1 py-2.5 text-sm bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-60 cursor-pointer font-medium">
+                        {responding ? 'Submitting…' : 'Accept'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div className="space-y-2">
-                {APPRAISAL_FACTORS.map(f => {
-                  const r = selected.ratings?.[f.key];
-                  const score = factorScore(r);
-                  return (
-                    <div key={f.key} className="bg-gray-50 rounded-lg px-4 py-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-[#111827]">{f.label}</p>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${score == null ? 'bg-gray-100 text-gray-400' : score < 3 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                          {score == null ? '—' : score.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="mt-2 space-y-1.5">
-                        {f.criteria.map((c, i) => (
-                          <div key={i} className="flex items-start gap-2">
-                            <span className={`w-5 h-5 shrink-0 rounded flex items-center justify-center text-[10px] font-semibold ${r?.levels?.[i] != null ? LEVEL_COLORS[r.levels[i] as number] : 'bg-gray-100 text-gray-300'}`}>
-                              {r?.levels?.[i] ?? '·'}
-                            </span>
-                            <p className="text-xs text-gray-500">{c}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {r?.remarks && (
-                        <p className="text-xs text-gray-600 bg-white rounded-lg px-3 py-2 mt-2"><span className="font-medium">Remarks:</span> {r.remarks}</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              {selected.status === 'meeting_declined' && (
+                <div className="border border-rose-200 bg-rose-50 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-rose-800">You declined this 1-on-1</p>
+                  {selected.decline_reason && <p className="text-xs text-rose-600 mt-1">{selected.decline_reason}</p>}
+                  <p className="text-xs text-rose-700 mt-2">Waiting for your immediate head to propose a new time.</p>
+                </div>
+              )}
 
-              {selected.one_on_one_at && (
+              {selected.status === 'meeting_accepted' && (
+                <div className="border border-teal-200 bg-teal-50 rounded-xl p-4 space-y-1">
+                  <p className="text-sm font-semibold text-teal-800">You accepted the 1-on-1</p>
+                  {selected.one_on_one_at && (
+                    <p className="text-xs text-teal-700">{new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
+                  )}
+                  <p className="text-xs text-teal-700">Ratings will be shared after the discussion.</p>
+                </div>
+              )}
+
+              {(selected.status === 'awaiting_employee' || selected.status === 'awaiting_hr' || selected.status === 'completed') && (
+                <>
+                  <div className="bg-[#1c2b3a] text-white rounded-xl p-4 flex flex-wrap items-center gap-x-8 gap-y-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-white/50">Final Rating</p>
+                      <p className="text-lg font-bold">{selected.final_rating_pct != null ? `${Number(selected.final_rating_pct).toFixed(1)}%` : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-white/50">Performance Level</p>
+                      <p className="text-lg font-bold">{selected.performance_level != null ? Number(selected.performance_level).toFixed(1) : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-white/50">Total Score</p>
+                      <p className="text-lg font-bold">{selected.total_score != null ? `${Number(selected.total_score).toFixed(2)} / 40` : '—'}</p>
+                    </div>
+                  </div>
+
+                  <button type="button" onClick={() => setShowRubric(!showRubric)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-lg text-sm text-gray-600 hover:bg-gray-100 cursor-pointer">
+                    <span className="font-medium">What the ratings mean (1–5)</span>
+                    <i className={`ri-arrow-${showRubric ? 'up' : 'down'}-s-line`}></i>
+                  </button>
+                  {showRubric && (
+                    <div className="space-y-2 -mt-2">
+                      {PERFORMANCE_LEVEL_BANDS.map(b => (
+                        <div key={b.level} className="flex gap-3 bg-gray-50 rounded-lg p-3">
+                          <span className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${LEVEL_COLORS[b.level]}`}>{b.level}</span>
+                          <div>
+                            <p className="text-xs font-semibold text-[#111827]">{b.label} <span className="text-gray-400 font-normal">({b.range})</span></p>
+                            <p className="text-xs text-gray-500 mt-0.5">{b.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {APPRAISAL_FACTORS.map(f => {
+                      const r = selected.ratings?.[f.key];
+                      const score = factorScore(r);
+                      return (
+                        <div key={f.key} className="bg-gray-50 rounded-lg px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-[#111827]">{f.label}</p>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${score == null ? 'bg-gray-100 text-gray-400' : score < 3 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {score == null ? '—' : score.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="mt-2 space-y-1.5">
+                            {f.criteria.map((c, i) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <span className={`w-5 h-5 shrink-0 rounded flex items-center justify-center text-[10px] font-semibold ${r?.levels?.[i] != null ? LEVEL_COLORS[r.levels[i] as number] : 'bg-gray-100 text-gray-300'}`}>
+                                  {r?.levels?.[i] ?? '·'}
+                                </span>
+                                <p className="text-xs text-gray-500">{c}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {r?.remarks && (
+                            <p className="text-xs text-gray-600 bg-white rounded-lg px-3 py-2 mt-2"><span className="font-medium">Remarks:</span> {r.remarks}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {selected.one_on_one_at && (selected.status === 'awaiting_employee' || selected.status === 'awaiting_hr' || selected.status === 'completed') && (
                 <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 flex items-center gap-2.5">
                   <i className="ri-calendar-event-line text-sky-600"></i>
                   <div>
-                    <p className="text-xs font-semibold text-sky-800">1-on-1 Discussion Scheduled</p>
+                    <p className="text-xs font-semibold text-sky-800">1-on-1 Discussion Held</p>
                     <p className="text-xs text-sky-600">{new Date(selected.one_on_one_at).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                   </div>
                 </div>

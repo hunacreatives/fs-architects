@@ -474,10 +474,10 @@ function ProjectCard({ row, projectTasks, onClick }: {
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            {/* Project type chip */}
-            {typeLabel && (
-              <span className="inline-block text-[10px] font-semibold tracking-widest uppercase mb-1" style={{ color: palette.from }}>
-                {typeLabel}
+            {/* Eyebrow: project code + type */}
+            {(p.project_code || typeLabel) && (
+              <span className="inline-block text-[10px] font-semibold tracking-widest uppercase mb-1 text-[#1c2b3a]">
+                {[p.project_code, typeLabel].filter(Boolean).join(' · ')}
               </span>
             )}
             {p.stage && (
@@ -487,7 +487,6 @@ function ProjectCard({ row, projectTasks, onClick }: {
             )}
             <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1 group-hover:text-gray-700 transition-colors">
               {p.project_name}
-              {p.project_code && <span className="ml-1.5 text-[10px] font-mono font-normal text-gray-400 align-middle">{p.project_code}</span>}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5 truncate">
               {internalProject ? (
@@ -1591,10 +1590,12 @@ export default function ContractorProjectsPage() {
                         {wsProject.project_type_code && <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{getProjectTypeLabel(wsProject.project_type_code)}</span>}
                         {wsProject.stage && <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-violet-50 text-violet-700">{wsProject.stage}</span>}
                       </div>
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
-                        {wsProject.project_name}
-                        {wsProject.project_code && <span className="ml-2 text-xs font-mono font-normal text-gray-400 align-middle">{wsProject.project_code}</span>}
-                      </h2>
+                      {wsProject.project_code && (
+                        <span className="block text-[10px] font-semibold tracking-widest uppercase mb-0.5 text-[#1c2b3a]">
+                          {wsProject.project_code}
+                        </span>
+                      )}
+                      <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{wsProject.project_name}</h2>
                       <p className="text-sm text-gray-400 mt-0.5">{wsIsInternal ? 'Internal Project' : wsProject.client_name}</p>
 
                       {wsTeam.length > 0 && (

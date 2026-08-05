@@ -158,6 +158,17 @@ export default function AdminProjectsPage() {
   const [taskStatusFilter, setTaskStatusFilter] = useState('active');
   const [taskGroupBy, setTaskGroupBy] = useState<'project' | 'assignee'>('project');
   const [pendingTaskDate, setPendingTaskDate] = useState<string | null>(null);
+  // Carries a quick-add draft (assignee/title/project) into the full task
+  // drawer when someone hits "Add details" instead of the one-line quick add.
+  const [pendingTaskAssigneeId, setPendingTaskAssigneeId] = useState<string | null>(null);
+  const [pendingTaskTitle, setPendingTaskTitle] = useState('');
+  const [pendingTaskProjectId, setPendingTaskProjectId] = useState<number | null>(null);
+  // Inline "+ Assign task" quick-add on a Team member's card
+  const [quickAddFor, setQuickAddFor] = useState<string | null>(null);
+  const [quickAddTitle, setQuickAddTitle] = useState('');
+  const [quickAddProjectId, setQuickAddProjectId] = useState<number | null>(null);
+  const [quickAddDueDate, setQuickAddDueDate] = useState('');
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
   const [taskSearch, setTaskSearch] = useState('');
   const [calendarHiddenProjects, setCalendarHiddenProjects] = useState<Set<number>>(new Set());
   const [showCalendarFilterMenu, setShowCalendarFilterMenu] = useState(false);
@@ -198,6 +209,40 @@ export default function AdminProjectsPage() {
   const openTaskDetail = (task: ProjectTask) => { setDetailTask(task as TaskDetailTask); setDetailOpen(true); };
   const openNewTask = () => { setDetailTask(null); setDetailOpen(true); };
 
+  // "Add details" escape hatch from the quick-add form on a Team card — opens
+  // the full drawer pre-filled with whatever was typed so nothing's lost.
+  const openTaskDetailsForAssignee = (contractorId: string, prefillTitle: string, prefillProjectId: number | null) => {
+    setPendingTaskAssigneeId(contractorId);
+    setPendingTaskTitle(prefillTitle);
+    setPendingTaskProjectId(prefillProjectId);
+    openNewTask();
+  };
+
+  // One-line quick add from a Team card: title + project + optional due date,
+  // assignee is implicit. Skips the drawer entirely for the common case.
+  const quickAddTask = async (contractorId: string) => {
+    if (!quickAddTitle.trim() || !quickAddProjectId) return;
+    setQuickAddSaving(true);
+    const { error } = await supabase.from('hub_project_tasks').insert({
+      title: quickAddTitle.trim(),
+      description: null,
+      status: 'todo',
+      priority: 'medium',
+      assignee_ids: [contractorId],
+      assigned_to: contractorId,
+      due_date: quickAddDueDate || null,
+      start_date: null,
+      checklist: [],
+      color: null,
+      meta: null,
+      project_id: quickAddProjectId,
+    });
+    setQuickAddSaving(false);
+    if (error) { console.error('Quick add task error:', error); return; }
+    await fetchAllTasks();
+    setQuickAddFor(null); setQuickAddTitle(''); setQuickAddProjectId(null); setQuickAddDueDate('');
+  };
+
   // Activity
   const [activity, setActivity] = useState<ProjectActivity[]>([]);
 
@@ -206,28 +251,9 @@ export default function AdminProjectsPage() {
   const openWorkspaceOnLoad = useRef(false);
   const detailPanelRef = useRef<HTMLDivElement>(null);
 
-  // Open a task's workspace, then its detail panel once the workspace has mounted.
-  const openTaskInWorkspace = (t: {
-    id: number; project_id: number; title: string; status: string; priority: string;
-    due_date: string | null; start_date?: string | null; assigned_to?: string | null; assignee_ids?: string[] | null;
-  }) => {
-    const proj = projects.find(pr => pr.id === t.project_id);
-    if (!proj) return;
-    openWorkspaceOnLoad.current = true;
-    setActiveId(proj.id);
-    setWorkspaceOpen(true);
-    setTimeout(() => openTaskDetail({
-      id: t.id, project_id: t.project_id, title: t.title, description: null,
-      status: t.status as ProjectTask['status'], priority: t.priority as ProjectTask['priority'],
-      assigned_to: t.assigned_to ?? null, assignee_ids: t.assignee_ids ?? null,
-      due_date: t.due_date, start_date: t.start_date ?? null,
-      created_at: new Date().toISOString(), archived: false, archived_at: null,
-    } as any), 400);
-  };
-
-  // Same normalization as openTaskInWorkspace, minus the workspace navigation —
-  // used by the consolidated Tasks calendar, which should open the task sidebar
-  // in place instead of jumping into that project's workspace page.
+  // Normalizes a task row into the shape openTaskDetail expects, without
+  // navigating into that project's workspace — used by the Tasks subtab
+  // list/calendar so clicking a task just opens the sidebar in place.
   const openTaskDetailInPlace = (t: {
     id: number; project_id: number; title: string; status: string; priority: string;
     due_date: string | null; start_date?: string | null; assigned_to?: string | null; assignee_ids?: string[] | null;
@@ -977,10 +1003,12 @@ export default function AdminProjectsPage() {
           {p.project_name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-[#111827] truncate leading-snug">
-            {p.project_name}
-            {p.project_code && <span className="ml-2 text-[10px] font-mono font-normal text-gray-400 align-middle">{p.project_code}</span>}
-          </h3>
+          {p.project_code && (
+            <span className="block text-[10px] font-semibold tracking-widest uppercase mb-0.5 text-[#1c2b3a]">
+              {p.project_code}
+            </span>
+          )}
+          <h3 className="text-sm font-bold text-[#111827] truncate leading-snug">{p.project_name}</h3>
           <p className="text-xs text-gray-400 truncate mt-0.5 mb-2">{rowLabel}{typeLabel ? ` · ${typeLabel}` : ''}</p>
           {!anyPanelOpen && (
             <div className="flex items-center gap-2 max-w-[220px]">
@@ -1119,10 +1147,12 @@ export default function AdminProjectsPage() {
                       {p.project_type_code && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getProjectTypeCfg(p.project_type_code).badge}`}>{getProjectTypeLabel(p.project_type_code)}</span>}
                       {p.stage && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStageCfg(p.stage).badge}`}>{p.stage}</span>}
                     </div>
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
-                      {p.project_name}
-                      {p.project_code && <span className="ml-2 text-xs font-mono font-normal text-gray-400 align-middle">{p.project_code}</span>}
-                    </h2>
+                    {p.project_code && (
+                      <span className="block text-[10px] font-semibold tracking-widest uppercase mb-0.5 text-[#1c2b3a]">
+                        {p.project_code}
+                      </span>
+                    )}
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{p.project_name}</h2>
                     <p className="text-sm text-gray-400 mt-0.5">{internalProject ? 'Internal Project' : p.client_name}</p>
 
                     {wsTeam.length > 0 && (
@@ -1639,19 +1669,19 @@ export default function AdminProjectsPage() {
         <div className="space-y-2.5">
           {/* Primary: which section am I in */}
           <div className="flex items-center gap-3">
-            <div className="relative inline-flex bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1 flex-shrink-0">
+            <div className="relative inline-grid grid-cols-3 bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1 flex-shrink-0">
               <div className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out"
                 style={{ transform: pageView === 'tasks' ? 'translateX(100%)' : pageView === 'team' ? 'translateX(200%)' : 'translateX(0)' }}></div>
               <button onClick={() => setPageView('projects')}
-                className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'projects' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'projects' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-folder-line text-sm"></i>Projects
               </button>
               <button onClick={() => { setPageView('tasks'); fetchAllTasks(); }}
-                className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'tasks' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'tasks' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-task-line text-sm"></i>Tasks
               </button>
               <button onClick={() => { setPageView('team'); fetchAllTasks(); }}
-                className={`relative z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'team' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap ${pageView === 'team' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-group-line text-sm"></i>Team
               </button>
             </div>
@@ -1730,10 +1760,8 @@ export default function AdminProjectsPage() {
             const tod = localToday();
             const isOver = (t: any) => isTaskOverdue(t, tod);
             const calendarProjects = projects.filter(p => p.status !== 'cancelled');
-            // The calendar filters by project visibility + search only — like a
-            // real calendar, a completed task stays visible on the day it was
-            // due (just with a checkmark glyph), it doesn't disappear. The
-            // status dropdown (Active/Overdue/To Do/etc.) only narrows the list.
+            // Project visibility + search apply first; the Status dropdown then
+            // narrows both the calendar and the list below it the same way.
             const calendarTasks = allTasks.filter(t => {
               if (calendarHiddenProjects.has(t.project_id)) return false;
               if (taskSearch && !t.title.toLowerCase().includes(taskSearch.toLowerCase()) && !t.project?.project_name?.toLowerCase().includes(taskSearch.toLowerCase())) return false;
@@ -1754,15 +1782,22 @@ export default function AdminProjectsPage() {
                   <input value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search tasks..."
                     className="w-full pl-7 pr-3 py-1.5 text-xs border border-white/80 bg-white/70 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
-                <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
-                  <option value="active">Active</option><option value="all">All</option><option value="overdue">Overdue</option>
-                  <option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="in_review">In Review</option><option value="blocked">Blocked</option><option value="done">Done</option>
-                </select>
-                <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
-                  <option value="project">By Project</option><option value="assignee">By Assignee</option>
-                </select>
+                <label className="flex items-center gap-1.5 px-1">
+                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Status</span>
+                  <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} title="Filter tasks by status" className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
+                    <option value="active">Active</option><option value="all">All</option><option value="overdue">Overdue</option>
+                    <option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="in_review">In Review</option><option value="blocked">Blocked</option><option value="done">Done</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-1.5 px-1">
+                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Group by</span>
+                  <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} title="Group the task list below by project or by assignee" className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
+                    <option value="project">Project</option><option value="assignee">Assignee</option>
+                  </select>
+                </label>
                 <div className="relative">
                   <button type="button" onClick={() => setShowCalendarFilterMenu(v => !v)}
+                    title="Show or hide specific projects' tasks on the calendar"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer">
                     <i className="ri-calendar-2-line text-gray-400"></i>
                     Projects
@@ -1804,7 +1839,7 @@ export default function AdminProjectsPage() {
                 <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
               ) : (
                 <GanttTimeline
-                  tasks={calendarTasks.map((t: any) => ({
+                  tasks={filt.map((t: any) => ({
                     id: t.id,
                     project_id: t.project_id,
                     title: `${t.title}${t.project?.project_name ? ` · ${t.project.project_name}` : ''}`,
@@ -1880,7 +1915,7 @@ export default function AdminProjectsPage() {
                           const over = isOver(t);
                           const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
                           return (
-                            <div key={t.id} onClick={() => openTaskInWorkspace(t)}
+                            <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
                               className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer ${over ? 'bg-rose-50/30' : ''}`}>
                               <button onClick={async e => { e.stopPropagation(); const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
                                 <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
@@ -1981,6 +2016,9 @@ export default function AdminProjectsPage() {
 
             return (
               <div className="pt-1 pb-3">
+                {(() => {
+                  const assignableProjects = projects.filter(p => p.status !== 'cancelled');
+                  return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {cards.map(({ contractor: c, shown, overdueCount }) => (
                   <div key={c.id} className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-4 flex flex-col gap-3">
@@ -1994,10 +2032,48 @@ export default function AdminProjectsPage() {
                         <p className="text-sm font-bold text-gray-900 truncate">{c.full_name}</p>
                         <p className="text-[11px] text-gray-400 truncate">{c.department || 'Team'}</p>
                       </div>
-                      {overdueCount > 0 && (
-                        <span className="ml-auto text-[10px] font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full flex-shrink-0">{overdueCount} overdue</span>
-                      )}
+                      <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+                        {overdueCount > 0 && (
+                          <span className="text-[10px] font-semibold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">{overdueCount} overdue</span>
+                        )}
+                        <button type="button" title={`Assign a task to ${c.full_name.split(' ')[0]}`}
+                          onClick={() => {
+                            setQuickAddFor(quickAddFor === c.id ? null : c.id);
+                            setQuickAddTitle(''); setQuickAddDueDate('');
+                            setQuickAddProjectId(assignableProjects[0]?.id ?? null);
+                          }}
+                          className={`w-6 h-6 flex items-center justify-center rounded-lg cursor-pointer transition-colors ${quickAddFor === c.id ? 'bg-[#1c2b3a] text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}>
+                          <i className="ri-add-line text-sm"></i>
+                        </button>
+                      </div>
                     </div>
+                    {quickAddFor === c.id && (
+                      <div className="flex flex-col gap-1.5 bg-gray-50/80 rounded-xl p-2.5">
+                        <input autoFocus value={quickAddTitle} onChange={e => setQuickAddTitle(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') void quickAddTask(c.id); if (e.key === 'Escape') setQuickAddFor(null); }}
+                          placeholder="Task title..."
+                          className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                        <div className="flex items-center gap-1.5">
+                          <select value={quickAddProjectId ?? ''} onChange={e => setQuickAddProjectId(Number(e.target.value))}
+                            className="flex-1 min-w-0 px-2 py-1.5 text-[11px] border border-gray-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            {assignableProjects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+                          </select>
+                          <input type="date" value={quickAddDueDate} onChange={e => setQuickAddDueDate(e.target.value)}
+                            className="px-2 py-1.5 text-[11px] border border-gray-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
+                        </div>
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          <button type="button" onClick={() => openTaskDetailsForAssignee(c.id, quickAddTitle, quickAddProjectId)}
+                            className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">Add details</button>
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" onClick={() => setQuickAddFor(null)} className="px-2.5 py-1 text-[11px] text-gray-500 hover:text-gray-700 cursor-pointer">Cancel</button>
+                            <button type="button" disabled={!quickAddTitle.trim() || !quickAddProjectId || quickAddSaving} onClick={() => void quickAddTask(c.id)}
+                              className="px-3 py-1 text-[11px] font-semibold bg-[#1c2b3a] text-white rounded-lg disabled:opacity-40 cursor-pointer">
+                              {quickAddSaving ? 'Adding...' : 'Add'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {shown.length === 0 ? (
                       <div className="flex items-center gap-2 py-2">
                         <i className="ri-checkbox-circle-line text-emerald-400 text-base"></i>
@@ -2029,6 +2105,8 @@ export default function AdminProjectsPage() {
                   </div>
                 ))}
                 </div>
+                  );
+                })()}
                 {workload.length > 0 && (
                   <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-3xl p-5 mt-4">
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Team Workload</p>
@@ -2417,7 +2495,12 @@ export default function AdminProjectsPage() {
         task={detailTask}
         open={detailOpen}
         initialDueDate={pendingTaskDate}
-        onClose={() => { setDetailOpen(false); setDetailTask(null); setPendingTaskDate(null); }}
+        initialAssigneeIds={pendingTaskAssigneeId ? [pendingTaskAssigneeId] : null}
+        initialTitle={pendingTaskTitle}
+        onClose={() => {
+          setDetailOpen(false); setDetailTask(null);
+          setPendingTaskDate(null); setPendingTaskAssigneeId(null); setPendingTaskTitle(''); setPendingTaskProjectId(null);
+        }}
         onSaved={(saved) => {
           setTasks(prev => prev.some(t => t.id === saved.id)
             ? prev.map(t => t.id === saved.id ? { ...t, ...saved } : t)
@@ -2428,7 +2511,7 @@ export default function AdminProjectsPage() {
             .then(({ data }) => setCommentCounts(prev => ({ ...prev, [saved.id]: data?.length ?? prev[saved.id] ?? 0 })));
           refreshWorkspaceActivity();
           fetchAllTasks();
-          setPendingTaskDate(null);
+          setPendingTaskDate(null); setPendingTaskAssigneeId(null); setPendingTaskTitle(''); setPendingTaskProjectId(null);
         }}
         onDeleted={(id) => {
           setTasks(prev => prev.filter(t => t.id !== id));
@@ -2444,8 +2527,8 @@ export default function AdminProjectsPage() {
           setDetailTask(null);
         }}
         onActivityChange={refreshWorkspaceActivity}
-        projectId={activeId ?? 0}
-        projectName={activeProject?.project_name ?? 'General'}
+        projectId={detailTask?.project_id ?? pendingTaskProjectId ?? activeId ?? 0}
+        projectName={projects.find(p => p.id === (detailTask?.project_id ?? pendingTaskProjectId))?.project_name ?? activeProject?.project_name ?? 'General'}
         projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name, client_name: p.client_name, project_type: p.project_type }))}
         teamMembers={contractors.map(c => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url }))}
         canEdit={true}

@@ -185,6 +185,8 @@ interface Props {
   projectName?: string;
   projects?: { id: number; project_name: string; client_name: string; project_type: 'client' | 'internal' }[];
   initialDueDate?: string | null;
+  initialAssigneeIds?: string[] | null;
+  initialTitle?: string;
   teamMembers: TeamMember[];
   canEdit: boolean;
   currentUserId: string;
@@ -353,6 +355,8 @@ export default function TaskDetailPanel({
   projectName = 'General',
   projects,
   initialDueDate = null,
+  initialAssigneeIds = null,
+  initialTitle = '',
   teamMembers,
   canEdit,
   currentUserId,
@@ -491,8 +495,8 @@ export default function TaskDetailPanel({
     } else {
       baselineDraftRef.current = null;
       lastFetchedTaskRef.current = null;
-      setTitle(''); setDesc(''); setStatus('todo'); setPriority('medium');
-      setAssigneeIds([]); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
+      setTitle(initialTitle); setDesc(''); setStatus('todo'); setPriority('medium');
+      setAssigneeIds(initialAssigneeIds ?? []); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
       setComments([]); setAttachments([]); setActivity([]);
       // Clear the contenteditable DOM too — taskDraft() reads from it, so a
       // stale innerHTML would copy the previous task's description into the new one.
@@ -1223,6 +1227,11 @@ export default function TaskDetailPanel({
             <h2 className="text-xl font-semibold text-gray-900 leading-snug">{title}</h2>
           )}
           <div className="flex items-center gap-2 mt-2.5 flex-wrap pb-2">
+            {!isNew && projectName && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] border border-[#1c2b3a]/10">
+                <i className="ri-folder-3-line text-[11px]"></i>{projectName}
+              </span>
+            )}
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${sc.bg} ${sc.text}`}>
               <i className={`${sc.icon} text-[11px]`}></i>{sc.label}
             </span>

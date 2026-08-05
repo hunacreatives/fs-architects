@@ -157,7 +157,18 @@ export default function AdminDashboardPage() {
   const [outstandingInvoices, setOutstandingInvoices] = useState<OutstandingInvoice[]>(_cache?.outstandingInvoices ?? []);
   const [loading, setLoading] = useState(!_cache);
   const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
-  const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
+  const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
+  // Quick "Add Task" popover on the dashboard tile — mirrors the inline
+  // quick-add pattern on the Projects page's Team cards, minus an implicit
+  // assignee (there's no "person's card" context here, so it needs its own field).
+  const [quickAddProjects, setQuickAddProjects] = useState<{ id: number; project_name: string }[]>([]);
+  const [quickAddTeam, setQuickAddTeam] = useState<{ id: string; full_name: string; avatar_url: string | null }[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddTitle, setQuickAddTitle] = useState('');
+  const [quickAddProjectId, setQuickAddProjectId] = useState<number | null>(null);
+  const [quickAddAssigneeId, setQuickAddAssigneeId] = useState<string>('');
+  const [quickAddDueDate, setQuickAddDueDate] = useState('');
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
   const [widgetPrefs, setWidgetPrefs] = useState<Record<WidgetKey, boolean>>(loadWidgetPrefs);
   const [showCustomize, setShowCustomize] = useState(false);
   const isOwner = effectiveRole === 'owner';
@@ -214,7 +225,7 @@ export default function AdminDashboardPage() {
     }
     const fetchAll = async () => {
       try {
-      const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, clientsResult, usdRateStr, invResult, linkResult] = await Promise.all([
+      const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, clientsResult, usdRateStr, invResult, linkResult, taskProjectsResult] = await Promise.all([
         supabase.functions.invoke('slack-attendance'),
         supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name)').order('created_at', { ascending: false }).limit(4),
         supabase.from('hub_requests').select('*, hub_users!contractor_id(full_name, avatar_url)').in('status', ['open', 'in_review']).order('created_at', { ascending: false }),
@@ -226,7 +237,10 @@ export default function AdminDashboardPage() {
         getSetting('usd_rate', '56'),
         supabase.from('hub_invoice_log').select('id, invoice_number, client_name, project_name, project_id, balance, sent_at').gt('balance', 0).eq('settled', false).order('sent_at', { ascending: false }),
         supabase.from('hub_invoice_payment_links').select('invoice_number, project_id, due_date').order('created_at', { ascending: false }),
+        supabase.from('hub_projects').select('id, project_name').neq('status', 'cancelled').order('project_name'),
       ]);
+      setQuickAddProjects((taskProjectsResult.data as any[]) ?? []);
+      setQuickAddTeam(((contractorsResult.data as any[]) ?? []).map((c: any) => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url })));
       const payrollTotal = await fetchPayrollTotal(cutoffStart, cutoffEnd, parseFloat(usdRateStr || '56')).catch(() => 0);
 
       if (!slackResult.error && slackResult.data?.attendance) {
@@ -348,10 +362,11 @@ export default function AdminDashboardPage() {
     const fetchTodo = async () => {
       const todayStr = new Date().toISOString().slice(0, 10);
       const { start, end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
+      // Team-wide pending task list, not just this admin's own tasks —
+      // meant to be a quick scan of what the whole team has due.
       const { data, error } = await supabase
         .from('hub_project_tasks')
-        .select('id, title, due_date, status, hub_projects(project_name)')
-        .or(`assigned_to.eq.${hubUser.id},assignee_ids.cs.{${hubUser.id}}`)
+        .select('id, title, due_date, status, hub_projects(project_name), hub_users!assigned_to(full_name, avatar_url)')
         .neq('status', 'done')
         .gte('due_date', start)
         .lte('due_date', end)
@@ -362,6 +377,8 @@ export default function AdminDashboardPage() {
           title: t.title,
           due_date: t.due_date,
           project_name: t.hub_projects?.project_name ?? null,
+          assignee_name: t.hub_users?.full_name ?? null,
+          assignee_avatar: t.hub_users?.avatar_url ?? null,
         })));
       }
     };
@@ -371,6 +388,32 @@ export default function AdminDashboardPage() {
   const markTodoDone = async (id: number) => {
     setTodoTasks(prev => prev.filter(t => t.id !== id));
     await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
+  };
+
+  const resetQuickAdd = () => {
+    setQuickAddOpen(false); setQuickAddTitle(''); setQuickAddProjectId(null); setQuickAddAssigneeId(''); setQuickAddDueDate('');
+  };
+
+  const quickAddTask = async () => {
+    if (!quickAddTitle.trim() || !quickAddProjectId) return;
+    setQuickAddSaving(true);
+    const { error } = await supabase.from('hub_project_tasks').insert({
+      title: quickAddTitle.trim(),
+      description: null,
+      status: 'todo',
+      priority: 'medium',
+      assignee_ids: quickAddAssigneeId ? [quickAddAssigneeId] : null,
+      assigned_to: quickAddAssigneeId || null,
+      due_date: quickAddDueDate || null,
+      start_date: null,
+      checklist: [],
+      color: null,
+      meta: null,
+      project_id: quickAddProjectId,
+    });
+    setQuickAddSaving(false);
+    if (error) { console.error('Quick add task error:', error); return; }
+    resetQuickAdd();
   };
 
   const counts = {
@@ -843,27 +886,74 @@ export default function AdminDashboardPage() {
 
                 {/* Add Task — owner-only, styled like a project tile */}
                 {isOwner && show('addTask') && (
-                  <button onClick={() => navigate('/hub/admin/projects?newTask=1')}
-                    className="w-full text-left rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden"
+                  <div className="rounded-2xl overflow-hidden"
                     style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(255,255,255,0.9) 100%)', border: '1px solid rgba(139,92,246,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-violet-600">Quick Action</p>
-                        <p className="font-bold text-gray-900 text-sm leading-snug">Add Task</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Create a task for any project</p>
+                    <button onClick={() => {
+                        if (quickAddOpen) { resetQuickAdd(); return; }
+                        setQuickAddOpen(true);
+                        setQuickAddProjectId(quickAddProjects[0]?.id ?? null);
+                      }}
+                      className="w-full text-left p-4 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-violet-600">Quick Action</p>
+                          <p className="font-bold text-gray-900 text-sm leading-snug">Add Task</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Create a task for any project</p>
+                        </div>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                          <i className={`${quickAddOpen ? 'ri-close-line' : 'ri-add-line'} text-white text-base`}></i>
+                        </div>
                       </div>
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
-                        <i className="ri-add-line text-white text-base"></i>
+                    </button>
+                    {quickAddOpen && (
+                      <div className="flex flex-col gap-1.5 px-4 pb-4">
+                        <input autoFocus value={quickAddTitle} onChange={e => setQuickAddTitle(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') void quickAddTask(); if (e.key === 'Escape') resetQuickAdd(); }}
+                          placeholder="Task title..."
+                          className="w-full px-2.5 py-1.5 text-xs border border-violet-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400" />
+                        <div className="flex items-center gap-1.5">
+                          <select value={quickAddProjectId ?? ''} onChange={e => setQuickAddProjectId(Number(e.target.value))}
+                            className="flex-1 min-w-0 px-2 py-1.5 text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            {quickAddProjects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+                          </select>
+                          <select value={quickAddAssigneeId} onChange={e => setQuickAddAssigneeId(e.target.value)}
+                            className="flex-1 min-w-0 px-2 py-1.5 text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            <option value="">Unassigned</option>
+                            {quickAddTeam.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                          </select>
+                        </div>
+                        <input type="date" value={quickAddDueDate} onChange={e => setQuickAddDueDate(e.target.value)}
+                          className="px-2 py-1.5 text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          <button type="button"
+                            onClick={() => {
+                              const params = new URLSearchParams({ newTask: '1' });
+                              if (quickAddTitle) params.set('title', quickAddTitle);
+                              if (quickAddProjectId) params.set('projectId', String(quickAddProjectId));
+                              if (quickAddAssigneeId) params.set('assigneeId', quickAddAssigneeId);
+                              navigate(`/hub/admin/projects?${params.toString()}`);
+                              resetQuickAdd();
+                            }}
+                            className="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">Add details</button>
+                          <button type="button" disabled={!quickAddTitle.trim() || !quickAddProjectId || quickAddSaving} onClick={() => void quickAddTask()}
+                            className="px-3 py-1 text-[11px] font-semibold text-white rounded-lg disabled:opacity-40 cursor-pointer"
+                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                            {quickAddSaving ? 'Adding...' : 'Add'}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    )}
+                  </div>
                 )}
 
                 {/* To-Do List */}
                 {show('todoList') && (
                   <div className="bg-white border border-gray-100 rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-[#111827] text-sm">To-Do List</h3>
+                      <div>
+                        <h3 className="font-semibold text-[#111827] text-sm">To-Do List</h3>
+                        <p className="text-[11px] text-gray-400">Team-wide, pending only</p>
+                      </div>
                       <div className="flex items-center bg-gray-50 rounded-lg p-0.5">
                         {(['day', 'week'] as const).map((mode) => (
                           <button
@@ -898,6 +988,11 @@ export default function AdminDashboardPage() {
                               <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
                               {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
                             </div>
+                            {t.assignee_name && (
+                              <div title={t.assignee_name} className="flex-shrink-0">
+                                <Avatar name={t.assignee_name} url={t.assignee_avatar} size={5} />
+                              </div>
+                            )}
                             {t.due_date && (
                               <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
                                 {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

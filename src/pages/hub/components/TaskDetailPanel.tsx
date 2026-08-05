@@ -1376,10 +1376,20 @@ export default function TaskDetailPanel({
               <span className="text-xs text-gray-400 w-24 flex-shrink-0">Dates</span>
               {editing ? (
                 <div className="flex items-center gap-2 flex-1">
-                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                  <input type="date" value={startDate} max={dueDate || undefined}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setStartDate(v);
+                      // Keep the due date from ever landing before the new start date.
+                      if (dueDate && v && v > dueDate) setDueDate(v);
+                    }}
                     className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white" />
                   <i className="ri-arrow-right-line text-gray-300 text-xs flex-shrink-0"></i>
-                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                  <input type="date" value={dueDate} min={startDate || undefined}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setDueDate(startDate && v && v < startDate ? startDate : v);
+                    }}
                     className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 bg-white" />
                 </div>
               ) : (

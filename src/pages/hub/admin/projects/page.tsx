@@ -765,17 +765,22 @@ export default function AdminProjectsPage() {
   }, [projects, searchParams]);
 
   // Deep link from elsewhere (e.g. the Dashboard's "Add Task" quick action)
-  // straight into the new-task form (project is picked inside the form itself).
+  // straight into the new-task form, carrying over whatever was already
+  // typed into the dashboard's quick-add ("Add details" escape hatch).
   const didOpenNewTaskFromLink = useRef(false);
   useEffect(() => {
     if (didOpenNewTaskFromLink.current) return;
     if (searchParams.get('newTask') !== '1') return;
     didOpenNewTaskFromLink.current = true;
     setPendingTaskDate(null);
+    setPendingTaskTitle(searchParams.get('title') ?? '');
+    const linkProjectId = searchParams.get('projectId');
+    setPendingTaskProjectId(linkProjectId ? Number(linkProjectId) : null);
+    setPendingTaskAssigneeId(searchParams.get('assigneeId'));
     openNewTask();
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      next.delete('newTask');
+      next.delete('newTask'); next.delete('title'); next.delete('projectId'); next.delete('assigneeId');
       return next;
     }, { replace: true });
   }, [searchParams, setSearchParams]);
@@ -1236,20 +1241,20 @@ export default function AdminProjectsPage() {
 
             <div className="flex-1 px-5 md:px-6 pb-6 space-y-4 overflow-y-auto">
               {/* ── Stats ── */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   { label: 'Total', value: tasks.length, icon: 'ri-task-line', iconBg: 'bg-gray-100', iconClr: 'text-gray-500', valClr: 'text-gray-800' },
                   { label: 'Done', value: wsDoneCt, icon: 'ri-checkbox-circle-fill', iconBg: 'bg-emerald-100', iconClr: 'text-emerald-600', valClr: 'text-emerald-700' },
                   { label: 'In Progress', value: tasks.filter(t => t.status === 'in_progress').length, icon: 'ri-loader-2-line', iconBg: 'bg-sky-100', iconClr: 'text-sky-600', valClr: 'text-sky-700' },
                   { label: 'Overdue', value: tasks.filter(t => wsIsOverdue(t)).length, icon: 'ri-alarm-warning-line', iconBg: 'bg-rose-100', iconClr: 'text-rose-500', valClr: 'text-rose-600' },
                 ].map(s => (
-                  <div key={s.label} className="bg-white rounded-2xl px-3.5 py-2.5 shadow-sm border border-gray-100/80 flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-lg ${s.iconBg} flex items-center justify-center flex-shrink-0`}>
-                      <i className={`${s.icon} ${s.iconClr} text-xs`}></i>
+                  <div key={s.label} className="bg-white rounded-xl sm:rounded-2xl px-2.5 py-2 sm:px-3.5 sm:py-2.5 shadow-sm border border-gray-100/80 flex items-center gap-2 sm:gap-2.5">
+                    <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg ${s.iconBg} flex items-center justify-center flex-shrink-0`}>
+                      <i className={`${s.icon} ${s.iconClr} text-[11px] sm:text-xs`}></i>
                     </div>
                     <div className="min-w-0">
-                      <p className={`text-base font-bold ${s.valClr} leading-none`}>{s.value}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">{s.label}</p>
+                      <p className={`text-sm sm:text-base font-bold ${s.valClr} leading-none`}>{s.value}</p>
+                      <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 truncate">{s.label}</p>
                     </div>
                   </div>
                 ))}
@@ -1776,29 +1781,31 @@ export default function AdminProjectsPage() {
             return (
             <div className="space-y-4 pt-1 pb-3">
               {/* ── Filters ── */}
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="relative flex-1 min-w-[160px]">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center">
+                <div className="relative w-full sm:flex-1 sm:min-w-[160px]">
                   <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                   <input value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search tasks..."
                     className="w-full pl-7 pr-3 py-1.5 text-xs border border-white/80 bg-white/70 backdrop-blur-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
-                <label className="flex items-center gap-1.5 px-1">
+                {/* Scrolls horizontally on mobile instead of wrapping into a messy stack */}
+                <div className="flex items-center gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
+                <label className="flex items-center gap-1.5 px-1 flex-shrink-0">
                   <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Status</span>
                   <select value={taskStatusFilter} onChange={e => setTaskStatusFilter(e.target.value)} title="Filter tasks by status" className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
                     <option value="active">Active</option><option value="all">All</option><option value="overdue">Overdue</option>
                     <option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="in_review">In Review</option><option value="blocked">Blocked</option><option value="done">Done</option>
                   </select>
                 </label>
-                <label className="flex items-center gap-1.5 px-1">
+                <label className="flex items-center gap-1.5 px-1 flex-shrink-0">
                   <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Group by</span>
                   <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} title="Group the task list below by project or by assignee" className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
                     <option value="project">Project</option><option value="assignee">Assignee</option>
                   </select>
                 </label>
-                <div className="relative">
+                <div className="relative flex-shrink-0">
                   <button type="button" onClick={() => setShowCalendarFilterMenu(v => !v)}
                     title="Show or hide specific projects' tasks on the calendar"
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer whitespace-nowrap">
                     <i className="ri-calendar-2-line text-gray-400"></i>
                     Projects
                     {calendarHiddenProjects.size > 0 && (
@@ -1833,6 +1840,7 @@ export default function AdminProjectsPage() {
                       </div>
                     </>
                   )}
+                </div>
                 </div>
               </div>
               {allTasksLoading ? (

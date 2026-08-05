@@ -2168,31 +2168,41 @@ export default function ContractorProjectsPage() {
 
           {dashboardTab === 'tasks' ? (
             <div className="space-y-6">
-              {/* Bento urgency tiles — tap to jump the window toggle or reveal completed */}
+              {/* Urgency tiles — tap to jump the window toggle or reveal completed.
+                  Compact horizontal layout (icon beside the number, not stacked
+                  above it) so 4 tiles don't eat two full screens on mobile. */}
               {myTasks.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-white/80 p-4">
-                    <div className="w-8 h-8 rounded-[10px] bg-rose-50 text-rose-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-error-warning-line"></i></div>
-                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{overdueTasks.length}</p>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Overdue</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-white/80 px-2.5 py-2 sm:px-4 sm:py-4 flex items-center sm:block gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-[10px] bg-rose-50 text-rose-500 flex items-center justify-center text-xs sm:text-sm flex-shrink-0 sm:mb-2.5"><i className="ri-error-warning-line"></i></div>
+                    <div className="min-w-0">
+                      <p className="text-base sm:text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{overdueTasks.length}</p>
+                      <p className="text-[10px] sm:text-xs font-semibold text-gray-400 mt-0.5 sm:mt-1 truncate">Overdue</p>
+                    </div>
                   </div>
                   <button type="button" onClick={() => setTaskWindow('daily')}
-                    className={`text-left bg-white/70 backdrop-blur-sm rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${taskWindow === 'daily' ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
-                    <div className="w-8 h-8 rounded-[10px] bg-amber-50 text-amber-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-sun-line"></i></div>
-                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{todayDueTasks.length}</p>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Due today</p>
+                    className={`text-left bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl border px-2.5 py-2 sm:px-4 sm:py-4 flex items-center sm:block gap-2.5 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${taskWindow === 'daily' ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-[10px] bg-amber-50 text-amber-500 flex items-center justify-center text-xs sm:text-sm flex-shrink-0 sm:mb-2.5"><i className="ri-sun-line"></i></div>
+                    <div className="min-w-0">
+                      <p className="text-base sm:text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{todayDueTasks.length}</p>
+                      <p className="text-[10px] sm:text-xs font-semibold text-gray-400 mt-0.5 sm:mt-1 truncate">Due today</p>
+                    </div>
                   </button>
                   <button type="button" onClick={() => setTaskWindow('weekly')}
-                    className={`text-left bg-white/70 backdrop-blur-sm rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${taskWindow === 'weekly' ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
-                    <div className="w-8 h-8 rounded-[10px] bg-sky-50 text-sky-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-calendar-todo-line"></i></div>
-                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{thisWeekTasks.length}</p>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">This week</p>
+                    className={`text-left bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl border px-2.5 py-2 sm:px-4 sm:py-4 flex items-center sm:block gap-2.5 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${taskWindow === 'weekly' ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-[10px] bg-sky-50 text-sky-500 flex items-center justify-center text-xs sm:text-sm flex-shrink-0 sm:mb-2.5"><i className="ri-calendar-todo-line"></i></div>
+                    <div className="min-w-0">
+                      <p className="text-base sm:text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{thisWeekTasks.length}</p>
+                      <p className="text-[10px] sm:text-xs font-semibold text-gray-400 mt-0.5 sm:mt-1 truncate">This week</p>
+                    </div>
                   </button>
                   <button type="button" onClick={() => setShowCompletedTasks(s => !s)}
-                    className={`text-left bg-white/70 backdrop-blur-sm rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${showCompletedTasks ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
-                    <div className="w-8 h-8 rounded-[10px] bg-emerald-50 text-emerald-500 flex items-center justify-center text-sm mb-2.5"><i className="ri-checkbox-circle-line"></i></div>
-                    <p className="text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{doneTasks.length}</p>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">Completed</p>
+                    className={`text-left bg-white/70 backdrop-blur-sm rounded-xl sm:rounded-2xl border px-2.5 py-2 sm:px-4 sm:py-4 flex items-center sm:block gap-2.5 cursor-pointer transition-shadow hover:shadow-lg hover:-translate-y-0.5 duration-150 ${showCompletedTasks ? 'border-[#1c2b3a] ring-1 ring-[#1c2b3a]' : 'border-white/80'}`}>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-[10px] bg-emerald-50 text-emerald-500 flex items-center justify-center text-xs sm:text-sm flex-shrink-0 sm:mb-2.5"><i className="ri-checkbox-circle-line"></i></div>
+                    <div className="min-w-0">
+                      <p className="text-base sm:text-2xl font-extrabold tracking-tight text-[#1c2b3a] leading-none">{doneTasks.length}</p>
+                      <p className="text-[10px] sm:text-xs font-semibold text-gray-400 mt-0.5 sm:mt-1 truncate">Completed</p>
+                    </div>
                   </button>
                 </div>
               )}

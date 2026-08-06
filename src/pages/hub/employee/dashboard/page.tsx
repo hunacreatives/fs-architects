@@ -369,7 +369,7 @@ export default function ContractorDashboard() {
           .eq('user_id', user.id)
           .gte('date', periodStartStr)
           .lte('date', periodEndStr),
-        supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(10),
+        supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name, avatar_url)').eq('published', true).order('created_at', { ascending: false }).limit(5),
         supabase.from('hub_requests').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
         supabase.from('hub_time_off').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false }).limit(3),
         supabase.functions.invoke('slack-attendance'),

@@ -13,23 +13,19 @@ import { fetchUserFinanceMap } from '@/lib/userFinance';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
 
-// Color by service (not list position) so a project's color stays the same
-// wherever it shows up in the app, and stays legible as more projects pile up.
-function getProjectCardPalette(service: string | null) {
-  const s = (service ?? '').toLowerCase();
-  if (s.includes('architecture'))        return { from: '#1c2b3a', to: '#2d4a6e', light: 'rgba(28,43,58,0.08)' };
-  if (s.includes('interior design'))     return { from: '#d97706', to: '#f59e0b', light: 'rgba(217,119,6,0.08)' };
-  if (s.includes('design & drafting') || s.includes('drafting')) return { from: '#0ea5e9', to: '#06b6d4', light: 'rgba(14,165,233,0.08)' };
-  if (s.includes('project management'))  return { from: '#10b981', to: '#0ea5e9', light: 'rgba(16,185,129,0.08)' };
-  if (s.includes('construction'))        return { from: '#ef4444', to: '#f97316', light: 'rgba(239,68,68,0.08)' };
-  if (s.includes('feasibility'))         return { from: '#ec4899', to: '#f43f5e', light: 'rgba(236,72,153,0.08)' };
-  if (s.includes('design-build') || s.includes('design build')) return { from: '#1c2b3a', to: '#475569', light: 'rgba(28,43,58,0.08)' };
-  if (s.includes('renovation'))          return { from: '#14b8a6', to: '#10b981', light: 'rgba(20,184,166,0.08)' };
-  if (s.includes('consultation'))        return { from: '#64748b', to: '#475569', light: 'rgba(100,116,139,0.08)' };
-  return                                        { from: '#94a3b8', to: '#64748b', light: 'rgba(148,163,184,0.08)' };
+// Monday–Sunday range for a given local date — mirrors the admin dashboard's
+// To-Do widget so both behave the same way as the week rolls over.
+function getWeekRange(todayStr: string): { start: string; end: string } {
+  const d = new Date(todayStr + 'T00:00:00');
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  return { start: fmt(monday), end: fmt(sunday) };
 }
-
-const DASHBOARD_PROJECT_LIMIT = 4;
 
 interface Reaction { emoji: string; user_id: string; }
 interface Comment { id: string; body: string; user_id: string; created_at: string; hub_users: { full_name: string; avatar_url: string | null } | null; }
@@ -321,7 +317,8 @@ export default function ContractorDashboard() {
   const [teamStatus, setTeamStatus] = useState<SlackTeamRecord[]>([]);
   const [payoutStatus, setPayoutStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeProjects, setActiveProjects] = useState<{ id: number; project_name: string; client_name: string; service: string | null; status: string; deadline: string | null; tasksDone: number; tasksTotal: number }[]>([]);
+  const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
+  const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
 
   const today = new Date();
   const currentPeriod = getPeriods().at(-1) ?? {
@@ -365,25 +362,6 @@ export default function ContractorDashboard() {
     const periodStartStr = cutoffStartStr;
     const periodEndStr   = cutoffEndStr;
     try {
-      // Fetch active projects
-      supabase
-        .from('hub_project_contractors')
-        .select('hub_projects(id, project_name, client_name, service, status, deadline)')
-        .eq('contractor_id', user.id)
-        .then(async ({ data }) => {
-          const projects = ((data ?? []) as any[])
-            .map((r: any) => Array.isArray(r.hub_projects) ? r.hub_projects[0] : r.hub_projects)
-            .filter((p: any) => p && p.status === 'ongoing');
-          if (projects.length === 0) { setActiveProjects([]); return; }
-          const projectIds = projects.map((p: any) => p.id);
-          const { data: tasks } = await supabase.from('hub_project_tasks').select('project_id, status').in('project_id', projectIds);
-          setActiveProjects(projects.map((p: any) => {
-            const pts = (tasks ?? []).filter((t: any) => t.project_id === p.id);
-            return { id: p.id, project_name: p.project_name, client_name: p.client_name, service: p.service, status: p.status, deadline: p.deadline, tasksDone: pts.filter((t: any) => t.status === 'done').length, tasksTotal: pts.length };
-          }));
-        })
-        .catch(() => setActiveProjects([]));
-
       const [attResult, annResult, reqResult, toResult, slackResult, rateRes, payoutRes] = await Promise.all([
         supabase
           .from('hub_daily_hours')
@@ -505,7 +483,6 @@ export default function ContractorDashboard() {
       setPayoutStatus(payoutRes.data?.status ?? null);
     } catch (error) {
       console.error('Contractor dashboard load failed:', error);
-      setActiveProjects([]);
       setAnnouncements([]);
       setRequests([]);
       setTimeOffs([]);
@@ -520,6 +497,36 @@ export default function ContractorDashboard() {
   };
 
   useEffect(() => { fetchData(); }, [user, isDemo]);
+
+  useEffect(() => {
+    if (isDemo || !user?.id) return;
+    const fetchTodo = async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { start, end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
+      const { data, error } = await supabase
+        .from('hub_project_tasks')
+        .select('id, title, due_date, status, hub_projects(project_name)')
+        .or(`assigned_to.eq.${user.id},assignee_ids.cs.{${user.id}}`)
+        .neq('status', 'done')
+        .gte('due_date', start)
+        .lte('due_date', end)
+        .order('due_date', { ascending: true });
+      if (!error) {
+        setTodoTasks((data ?? []).map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          due_date: t.due_date,
+          project_name: t.hub_projects?.project_name ?? null,
+        })));
+      }
+    };
+    fetchTodo();
+  }, [isDemo, user?.id, todoViewMode]);
+
+  const markTodoDone = async (id: number) => {
+    setTodoTasks(prev => prev.filter(t => t.id !== id));
+    await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
+  };
 
   const hour = now.getHours();
   const phTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -745,58 +752,59 @@ export default function ContractorDashboard() {
               </div>
             </div>
 
-            {/* Active Projects — compact summary, not a browser (stays fixed-height regardless of project count) */}
-            {activeProjects.length > 0 && (() => {
-              const withUrgency = activeProjects.map(p => {
-                const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date().getTime()) / 86400000) : null;
-                return { p, daysLeft, isOverdue: daysLeft !== null && daysLeft < 0, isDueSoon: daysLeft !== null && daysLeft >= 0 && daysLeft <= 7 };
-              });
-              const overdue = withUrgency.filter(w => w.isOverdue).sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
-              const dueSoon = withUrgency.filter(w => w.isDueSoon).sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
-              const urgent = [...overdue, ...dueSoon].slice(0, DASHBOARD_PROJECT_LIMIT);
-
-              return (
-                <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 p-5 space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-[#111827]">Active Projects</h3>
-                    <button onClick={() => navigate('/hub/employee/projects')}
-                      className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors">
-                      View all →
-                    </button>
+            {/* To-Do List — the employee's own assigned tasks, Daily/Weekly */}
+            <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-[#111827]">To-Do List</h3>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-gray-50 rounded-lg p-0.5">
+                    {(['day', 'week'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setTodoViewMode(mode)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer transition-colors capitalize ${
+                          todoViewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
                   </div>
-
-                  <div className="flex items-center gap-4 text-xs">
-                    <span className="text-gray-500"><span className="font-bold text-gray-900">{activeProjects.length}</span> active</span>
-                    {dueSoon.length > 0 && (
-                      <span className="text-amber-600"><span className="font-bold">{dueSoon.length}</span> due this week</span>
-                    )}
-                    {overdue.length > 0 && (
-                      <span className="text-rose-500"><span className="font-bold">{overdue.length}</span> overdue</span>
-                    )}
-                  </div>
-
-                  {urgent.length > 0 ? (
-                    <div className="divide-y divide-gray-50 -mx-1">
-                      {urgent.map(({ p, daysLeft, isOverdue }) => {
-                        const pal = getProjectCardPalette(p.service);
-                        return (
-                          <button key={p.id} onClick={() => navigate('/hub/employee/projects')}
-                            className="w-full flex items-center gap-2.5 px-1 py-2 text-left hover:bg-gray-50/70 rounded-lg transition-colors cursor-pointer">
-                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: pal.from }} />
-                            <span className="flex-1 min-w-0 text-sm text-gray-800 truncate">{p.project_name}</span>
-                            <span className={`text-[11px] font-semibold flex-shrink-0 ${isOverdue ? 'text-rose-500' : 'text-amber-600'}`}>
-                              {isOverdue ? `${Math.abs(daysLeft!)}d overdue` : daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400">Nothing urgent — all active projects are on track.</p>
-                  )}
+                  <button onClick={() => navigate('/hub/employee/projects')}
+                    className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors whitespace-nowrap">
+                    View all →
+                  </button>
                 </div>
-              );
-            })()}
+              </div>
+
+              {todoTasks.length === 0 ? (
+                <div className="flex items-center gap-2 py-4">
+                  <i className="ri-checkbox-circle-line text-emerald-400"></i>
+                  <p className="text-sm text-gray-400">Nothing due {todoViewMode === 'day' ? 'today' : 'this week'}</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {todoTasks.map((t) => (
+                    <div key={t.id} className="flex items-center gap-2.5 py-1.5">
+                      <button
+                        onClick={() => markTodoDone(t.id)}
+                        className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
+                        title="Mark done"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
+                        {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
+                      </div>
+                      {t.due_date && (
+                        <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                          {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Announcements */}
             <div className="space-y-3">

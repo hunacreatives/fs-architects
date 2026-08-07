@@ -53,7 +53,7 @@ interface Project {
   }[];
 }
 
-interface Contractor { id: string; full_name: string; avatar_url: string | null; department: string | null; }
+interface Contractor { id: string; full_name: string; avatar_url: string | null; department: string | null; team?: string | null; }
 
 interface ProjectTask {
   id: number;
@@ -147,9 +147,20 @@ function Avatar({ name, url }: { name: string; url?: string | null }) {
 export default function AdminProjectsPage() {
   const { hubUser } = useAuth();
   const { isDemo } = useDemo();
+  // Team leads (Chico, Gab) reach this page via a narrow route carve-out —
+  // they're role='contractor', not admin/owner/hr, and their view/actions
+  // are scoped to their own team only (RLS enforces the actual write
+  // boundary; these flags just drive what the UI offers them).
+  const isFullAccess = isDemo || ['owner', 'admin', 'hr'].includes(hubUser?.role ?? '');
+  const myTeam = hubUser?.team_lead_of ?? null;
+  const isTeamLead = !isFullAccess && !!myTeam;
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
+  // A team lead should only see their own teammates in assignee pickers —
+  // not a hard security boundary (RLS doesn't enforce this), just keeps the
+  // picker from offering people outside their team to assign work to.
+  const assignableContractors = isTeamLead ? contractors.filter(c => c.team === myTeam) : contractors;
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'paused' | 'completed' | 'cancelled'>('ongoing');
@@ -483,7 +494,7 @@ export default function AdminProjectsPage() {
       supabase.from('hub_projects')
         .select('*, hub_project_contractors(id, project_role, hub_users(id, full_name, avatar_url, email))')
         .order('created_at', { ascending: false }),
-      supabase.from('hub_users').select('id, full_name, avatar_url, department')
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, team')
         .eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
     setProjects((pRes.data as Project[]) ?? []);
@@ -1701,10 +1712,12 @@ export default function AdminProjectsPage() {
             </div>
             <div className="hidden sm:block flex-1" />
             {pageView === 'projects' ? (
+              isFullAccess && (
               <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
                 className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Project
               </button>
+              )
             ) : pageView === 'tasks' ? (
               <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
                 className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
@@ -1873,7 +1886,7 @@ export default function AdminProjectsPage() {
                   today={localToday()}
                   mode="dots"
                   projects={calendarProjects.map(p => ({ id: p.id, project_name: p.project_name }))}
-                  teamMembers={contractors.map(c => ({ id: c.id, full_name: c.full_name }))}
+                  teamMembers={assignableContractors.map(c => ({ id: c.id, full_name: c.full_name }))}
                   onQuickTaskCreated={fetchAllTasks}
                   onTaskUpdate={async (taskId, updates) => {
                     await supabase.from('hub_project_tasks').update({
@@ -1966,7 +1979,7 @@ export default function AdminProjectsPage() {
 
           {/* ── Team ── who's working on what, one floating card per person. */}
           {pageView === 'team' && (() => {
-            const cards = contractors.map(c => {
+            const cards = assignableContractors.map(c => {
               const personTasks = allTasks.filter((t: any) => t.status !== 'done' && !t.archived && getTaskAssigneeIds(t).includes(c.id));
               const overdue = personTasks.filter((t: any) => t.due_date && t.due_date < teamToday);
               const inWindow = personTasks.filter((t: any) => {
@@ -2555,7 +2568,7 @@ export default function AdminProjectsPage() {
         projectId={detailTask?.project_id ?? pendingTaskProjectId ?? activeId ?? 0}
         projectName={projects.find(p => p.id === (detailTask?.project_id ?? pendingTaskProjectId))?.project_name ?? activeProject?.project_name ?? 'General'}
         projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name, client_name: p.client_name, project_type: p.project_type }))}
-        teamMembers={contractors.map(c => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url }))}
+        teamMembers={assignableContractors.map(c => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url }))}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}
         currentUserName={hubUser?.full_name ?? 'Admin'}

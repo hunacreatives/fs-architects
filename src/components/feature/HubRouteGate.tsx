@@ -13,11 +13,16 @@ const HubPageSpinner = () => (
 
 interface HubRouteGateProps {
   allowedRoles: UserRole[];
+  // Lets a `contractor` with hub_users.team_lead_of set through too, even
+  // though their role isn't in allowedRoles — used for the one admin route
+  // (Projects) that team leads get narrow, team-scoped access to, without
+  // opening up the rest of the admin section to them.
+  allowTeamLead?: boolean;
   children: ReactNode;
 }
 
-export default function HubRouteGate({ allowedRoles, children }: HubRouteGateProps) {
-  const { loading, session, effectiveRole } = useAuth();
+export default function HubRouteGate({ allowedRoles, allowTeamLead, children }: HubRouteGateProps) {
+  const { loading, session, effectiveRole, hubUser } = useAuth();
   const { isDemo } = useDemo();
   const location = useLocation();
 
@@ -35,7 +40,10 @@ export default function HubRouteGate({ allowedRoles, children }: HubRouteGatePro
     return <Navigate to="/hub/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (!allowedRoles.includes(effectiveRole as UserRole)) {
+  const roleAllowed = allowedRoles.includes(effectiveRole as UserRole);
+  const teamLeadAllowed = allowTeamLead === true && !!hubUser?.team_lead_of;
+
+  if (!roleAllowed && !teamLeadAllowed) {
     return <Navigate to={getHubHomePath(effectiveRole)} replace />;
   }
 

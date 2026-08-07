@@ -39,6 +39,10 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
   const navItems = [
     filteredBase[0],
     { to: '/hub/employee/projects', label: 'My Projects', icon: 'ri-folder-line' },
+    // Team leads (Chico, Gab) get one extra link into the admin Projects
+    // page, narrowly scoped to their own team (see HubRouteGate's
+    // allowTeamLead) — not shown to anyone else.
+    ...(hubUser?.team_lead_of ? [{ to: '/hub/admin/projects', label: 'My Team', icon: 'ri-team-line' }] : []),
     ...filteredBase.slice(1),
   ];
   const { bind: tipFor, tipEl, clearTip } = useSidebarTip(collapsed);

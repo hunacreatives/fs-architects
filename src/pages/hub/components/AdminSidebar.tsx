@@ -4,6 +4,13 @@ import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { useSidebarTip } from './SidebarTip';
 
+// Team leads (Chico, Gab) reach this layout via a narrow route carve-out
+// (see HubRouteGate's allowTeamLead) — they're role='contractor', not
+// admin/owner/hr, so they only get this one link, not the full admin nav.
+const teamLeadNavItems = [
+  { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
+];
+
 const navItems = [
   { to: '/hub/admin/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
   { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
@@ -41,7 +48,10 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
   const { isDemo, demoUser, demoSignOut } = useDemo();
   const navigate = useNavigate();
   const activeUser = isDemo ? demoUser : hubUser;
-  const visibleNavItems = navItems.filter((item) => !(item as { devOnly?: boolean }).devOnly || hubUser?.is_developer);
+  const isTeamLeadOnly = !isDemo && hubUser?.role === 'contractor' && !!hubUser?.team_lead_of;
+  const visibleNavItems = isTeamLeadOnly
+    ? teamLeadNavItems
+    : navItems.filter((item) => !(item as { devOnly?: boolean }).devOnly || hubUser?.is_developer);
   const { bind: tipFor, tipEl, clearTip } = useSidebarTip(collapsed);
 
   const handleSignOut = async () => {

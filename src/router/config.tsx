@@ -72,6 +72,13 @@ const withAdminGate = (element: ReactNode) => (
   <HubRouteGate allowedRoles={['owner', 'admin', 'hr']}>{element}</HubRouteGate>
 );
 
+// Team leads (Chico, Gab) are role='contractor' but get narrow access to
+// this one admin page, scoped to their own team inside the page itself —
+// they still can't reach any other /hub/admin/* route.
+const withProjectsGate = (element: ReactNode) => (
+  <HubRouteGate allowedRoles={['owner', 'admin', 'hr']} allowTeamLead>{element}</HubRouteGate>
+);
+
 const withContractorGate = (element: ReactNode) => (
   <HubRouteGate allowedRoles={['contractor']}>{element}</HubRouteGate>
 );
@@ -117,7 +124,7 @@ const routes: RouteObject[] = [
   { path: '/hub/admin/payouts', element: <S>{withAdminGate(<HubAdminPayouts />)}</S> },
   { path: '/hub/admin/docrequests', element: <S>{withAdminGate(<HubAdminDocRequests />)}</S> },
   { path: '/hub/admin/credentials', element: <S>{withAdminGate(<HubAdminCredentials />)}</S> },
-  { path: '/hub/admin/projects', element: <S>{withAdminGate(<HubAdminProjects />)}</S> },
+  { path: '/hub/admin/projects', element: <S>{withProjectsGate(<HubAdminProjects />)}</S> },
   { path: '/hub/admin/documents', element: <S>{withAdminGate(<HubAdminDocuments />)}</S> },
   { path: '/hub/admin/invoices/:projectId', element: <S>{withAdminGate(<HubAdminInvoiceBuilder />)}</S> },
   { path: '/hub/admin/invoice-log', element: <S>{withAdminGate(<HubAdminInvoiceLog />)}</S> },

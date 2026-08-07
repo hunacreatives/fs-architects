@@ -319,6 +319,8 @@ export default function ContractorDashboard() {
   const [loading, setLoading] = useState(true);
   const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
   const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
+  const myTeamLead = (user as any)?.team_lead_of ?? null;
+  const [teamDeadlines, setTeamDeadlines] = useState<{ id: number; title: string; due_date: string | null; priority: string; project_name: string | null }[]>([]);
 
   const today = new Date();
   const currentPeriod = getPeriods().at(-1) ?? {
@@ -527,6 +529,35 @@ export default function ContractorDashboard() {
     setTodoTasks(prev => prev.filter(t => t.id !== id));
     await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
   };
+
+  // Team leads only — their team's open tasks, ranked by priority then due
+  // date. Everyone else never has myTeamLead set, so this just never fires.
+  useEffect(() => {
+    if (isDemo || !myTeamLead) return;
+    const fetchTeamDeadlines = async () => {
+      const { data, error } = await supabase
+        .from('hub_project_tasks')
+        .select('id, title, due_date, priority, status, hub_projects(project_name)')
+        .eq('team', myTeamLead)
+        .neq('status', 'done')
+        .order('due_date', { ascending: true, nullsFirst: false });
+      if (!error) {
+        const priorityWeight: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        const rows = (data ?? [])
+          .map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            due_date: t.due_date,
+            priority: t.priority,
+            project_name: t.hub_projects?.project_name ?? null,
+          }))
+          .sort((a, b) => (priorityWeight[a.priority] ?? 1) - (priorityWeight[b.priority] ?? 1))
+          .slice(0, 8);
+        setTeamDeadlines(rows);
+      }
+    };
+    fetchTeamDeadlines();
+  }, [isDemo, myTeamLead]);
 
   const hour = now.getHours();
   const phTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -752,6 +783,47 @@ export default function ContractorDashboard() {
               </div>
             </div>
 
+            {/* Team leads get their team's deadlines alongside their own
+                to-do list; everyone else just gets the to-do list. */}
+            <div className={myTeamLead ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 items-start' : ''}>
+            {myTeamLead && (
+              <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-[#111827]">Team Deadlines</h3>
+                  <button onClick={() => navigate('/hub/admin/projects')}
+                    className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors whitespace-nowrap">
+                    Manage →
+                  </button>
+                </div>
+                {teamDeadlines.length === 0 ? (
+                  <div className="flex items-center gap-2 py-4">
+                    <i className="ri-checkbox-circle-line text-emerald-400"></i>
+                    <p className="text-sm text-gray-400">Nothing open for your team</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {teamDeadlines.map((t) => {
+                      const priorityDot = t.priority === 'high' ? 'bg-rose-400' : t.priority === 'low' ? 'bg-gray-300' : 'bg-amber-400';
+                      return (
+                        <div key={t.id} className="flex items-center gap-2.5 py-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priorityDot}`}></span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
+                            {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
+                          </div>
+                          {t.due_date && (
+                            <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                              {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* To-Do List — the employee's own assigned tasks, Daily/Weekly */}
             <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -804,6 +876,7 @@ export default function ContractorDashboard() {
                   ))}
                 </div>
               )}
+            </div>
             </div>
 
             {/* Announcements */}

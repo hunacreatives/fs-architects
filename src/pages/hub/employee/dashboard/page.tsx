@@ -320,7 +320,8 @@ export default function ContractorDashboard() {
   const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
   const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
   const myTeamLead = (user as any)?.team_lead_of ?? null;
-  const [teamDeadlines, setTeamDeadlines] = useState<{ id: number; title: string; due_date: string | null; priority: string; project_name: string | null }[]>([]);
+  const myTeam = (user as any)?.team ?? null;
+  const [teamDeadlines, setTeamDeadlines] = useState<{ id: number; title: string; due_date: string | null; priority: string; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
 
   const today = new Date();
   const currentPeriod = getPeriods().at(-1) ?? {
@@ -530,15 +531,16 @@ export default function ContractorDashboard() {
     await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
   };
 
-  // Team leads only — their team's open tasks, ranked by priority then due
-  // date. Everyone else never has myTeamLead set, so this just never fires.
+  // Any team member (not just the lead) sees their team's open tasks here —
+  // ranked by priority then due date, with who it's assigned to so it reads
+  // as a real team view, not just a personal one.
   useEffect(() => {
-    if (isDemo || !myTeamLead) return;
+    if (isDemo || !myTeam) return;
     const fetchTeamDeadlines = async () => {
       const { data, error } = await supabase
         .from('hub_project_tasks')
-        .select('id, title, due_date, priority, status, hub_projects(project_name)')
-        .eq('team', myTeamLead)
+        .select('id, title, due_date, priority, status, hub_projects(project_name), hub_users!assigned_to(full_name, avatar_url)')
+        .eq('team', myTeam)
         .neq('status', 'done')
         .order('due_date', { ascending: true, nullsFirst: false });
       if (!error) {
@@ -550,6 +552,8 @@ export default function ContractorDashboard() {
             due_date: t.due_date,
             priority: t.priority,
             project_name: t.hub_projects?.project_name ?? null,
+            assignee_name: t.hub_users?.full_name ?? null,
+            assignee_avatar: t.hub_users?.avatar_url ?? null,
           }))
           .sort((a, b) => (priorityWeight[a.priority] ?? 1) - (priorityWeight[b.priority] ?? 1))
           .slice(0, 8);
@@ -557,7 +561,7 @@ export default function ContractorDashboard() {
       }
     };
     fetchTeamDeadlines();
-  }, [isDemo, myTeamLead]);
+  }, [isDemo, myTeam]);
 
   const hour = now.getHours();
   const phTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -783,17 +787,20 @@ export default function ContractorDashboard() {
               </div>
             </div>
 
-            {/* Team leads get their team's deadlines alongside their own
-                to-do list; everyone else just gets the to-do list. */}
-            <div className={myTeamLead ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 items-start' : ''}>
-            {myTeamLead && (
+            {/* Anyone on a team sees their team's deadlines alongside their
+                own to-do list; only the lead gets the "Manage" link into the
+                scoped admin view. Everyone else just gets the to-do list. */}
+            <div className={myTeam ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 items-start' : ''}>
+            {myTeam && (
               <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-semibold text-[#111827]">Team Deadlines</h3>
-                  <button onClick={() => navigate('/hub/admin/projects')}
-                    className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors whitespace-nowrap">
-                    Manage →
-                  </button>
+                  {myTeamLead && (
+                    <button onClick={() => navigate('/hub/admin/projects')}
+                      className="text-xs font-medium text-gray-400 hover:text-[#1c2b3a] cursor-pointer transition-colors whitespace-nowrap">
+                      Manage →
+                    </button>
+                  )}
                 </div>
                 {teamDeadlines.length === 0 ? (
                   <div className="flex items-center gap-2 py-4">
@@ -809,8 +816,13 @@ export default function ContractorDashboard() {
                           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priorityDot}`}></span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
-                            {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
+                            <p className="text-xs text-gray-400 truncate">
+                              {t.project_name}{t.project_name && t.assignee_name ? ' · ' : ''}{t.assignee_name}
+                            </p>
                           </div>
+                          {t.assignee_name && (
+                            <HubAvatar fullName={t.assignee_name} avatarUrl={t.assignee_avatar} size="w-6 h-6" />
+                          )}
                           {t.due_date && (
                             <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
                               {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

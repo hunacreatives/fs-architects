@@ -13,7 +13,7 @@ export interface OrgPerson {
   role: string;
 }
 
-interface Team { key: string; label: string; color: string; }
+interface Team { key: string; label: string; color: string; lead_id?: string | null; }
 
 interface Props {
   people: OrgPerson[];
@@ -159,11 +159,17 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
   const submitEdit = async () => {
     if (!editing) return;
     setSaving(true);
-    const newManagerId = editManagerId || root.id;
+    let newManagerId = editManagerId || root.id;
     const managerChanged = newManagerId !== (editing.manager_id ?? root.id);
     const titleChanged = (editRoleTitle.trim() || null) !== editing.role_title;
     const newTeam = editTeam || null;
     const teamChanged = newTeam !== (editing.team ?? null);
+    // Keep the Teams page in sync: if the team changed and "Reports To"
+    // wasn't also explicitly changed, nest them under that team's lead.
+    if (teamChanged && !managerChanged) {
+      const leadId = teams.find(t => t.key === newTeam)?.lead_id;
+      if (leadId && leadId !== editing.id) newManagerId = leadId;
+    }
     await supabase.from('hub_users').update({
       manager_id: newManagerId === root.id ? null : newManagerId,
       role_title: editRoleTitle.trim() || null,

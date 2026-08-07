@@ -97,6 +97,15 @@ export default function ManageTeamsPage() {
         link: '/hub/employee/dashboard',
         read: false,
       });
+      // Keep the org chart in sync: re-parent current members onto the new
+      // lead, but only those who weren't already explicitly reporting to
+      // someone else (i.e. were on the old lead or had no manager set).
+      const memberIds = employees
+        .filter(e => e.team === key && e.id !== form.lead_id && (e.manager_id === previousLeadId || !e.manager_id))
+        .map(e => e.id);
+      if (memberIds.length) {
+        await supabase.from('hub_users').update({ manager_id: form.lead_id }).in('id', memberIds);
+      }
     }
 
     setSaving(false);
@@ -114,8 +123,12 @@ export default function ManageTeamsPage() {
   const addMember = async (teamKey: string, employeeId: string) => {
     if (!employeeId) return;
     setAddingTo(null);
-    setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, team: teamKey } : e));
-    const { error: addErr } = await supabase.from('hub_users').update({ team: teamKey }).eq('id', employeeId);
+    // Nest them under the team's lead in the org chart too, so the two
+    // views stay in sync — unless they're the lead themself.
+    const lead = teams.find(t => t.key === teamKey)?.lead_id ?? null;
+    const managerUpdate = lead && lead !== employeeId ? { manager_id: lead } : {};
+    setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, team: teamKey, ...managerUpdate } : e));
+    const { error: addErr } = await supabase.from('hub_users').update({ team: teamKey, ...managerUpdate }).eq('id', employeeId);
     if (addErr) { alert(`Could not add member: ${addErr.message}`); fetchAll(); return; }
     const teamLabel = teams.find(t => t.key === teamKey)?.label ?? 'a team';
     await supabase.from('hub_notifications').insert({
@@ -129,8 +142,12 @@ export default function ManageTeamsPage() {
   };
 
   const removeMember = async (employee: Employee, team: Team) => {
-    setEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, team: null } : e));
-    await supabase.from('hub_users').update({ team: null }).eq('id', employee.id);
+    // Clear team, and drop the reporting line back to the root if it was
+    // only there because of this team membership (leave explicit
+    // reassignments to someone else alone).
+    const clearManager = employee.manager_id === team.lead_id;
+    setEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, team: null, ...(clearManager ? { manager_id: null } : {}) } : e));
+    await supabase.from('hub_users').update({ team: null, ...(clearManager ? { manager_id: null } : {}) }).eq('id', employee.id);
     // If they were also the lead, clear that too.
     if (team.lead_id === employee.id) {
       await supabase.from('hub_users').update({ team_lead_of: null }).eq('id', employee.id);

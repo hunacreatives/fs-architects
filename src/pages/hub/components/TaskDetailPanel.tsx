@@ -82,7 +82,13 @@ function renderCommentBody(rawBody: string): { html: string; isHtml: boolean } {
 }
 
 function renderDescription(body: string): string {
-  const hasHtml = /<[a-z][\s\S]*?>/i.test(body);
+  // The description always comes from a contentEditable div's innerHTML, so
+  // even a plain one-liner with no formatting tags is still real HTML (e.g.
+  // "FF&E" is serialized as "FF&amp;E"). Checking for tags alone missed that
+  // case and re-escaped the already-encoded "&", producing a visible "&amp;".
+  // Also match a bare HTML entity so untagged-but-encoded text isn't escaped
+  // twice.
+  const hasHtml = /<[a-z][\s\S]*?>|&[a-zA-Z#][a-zA-Z0-9]*;/i.test(body);
   if (hasHtml) {
     const safe = sanitizeHtml(body).replace(/<a\s/gi, '<a target="_blank" rel="noopener noreferrer" ');
     return autoLinkUrls(safe);

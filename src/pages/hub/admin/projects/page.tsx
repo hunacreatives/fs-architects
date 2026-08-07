@@ -1673,7 +1673,7 @@ export default function AdminProjectsPage() {
 
         <div className="space-y-2.5">
           {/* Primary: which section am I in */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative inline-grid grid-cols-3 bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1 flex-shrink-0">
               <div className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out"
                 style={{ transform: pageView === 'tasks' ? 'translateX(100%)' : pageView === 'team' ? 'translateX(200%)' : 'translateX(0)' }}></div>
@@ -1690,15 +1690,15 @@ export default function AdminProjectsPage() {
                 <i className="ri-group-line text-sm"></i>Team
               </button>
             </div>
-            <div className="flex-1" />
+            <div className="hidden sm:block flex-1" />
             {pageView === 'projects' ? (
               <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
-                className="flex items-center justify-center gap-1.5 min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+                className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Project
               </button>
             ) : pageView === 'tasks' ? (
               <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
-                className="flex items-center justify-center gap-1.5 min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+                className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Task
               </button>
             ) : (

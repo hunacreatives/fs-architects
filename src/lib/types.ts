@@ -1,5 +1,24 @@
 export type UserRole = 'owner' | 'admin' | 'hr' | 'contractor';
 
+// hub_users has a column-level SELECT lockdown: financial/banking columns
+// (hourly_rate, monthly_rate, bank_*, notes, project_percentage, ...) are
+// deliberately NOT granted to `authenticated` and are only readable via the
+// authorization-checked get_user_finance() RPC (see fetchUserFinanceMap).
+// `select('*')` against this table always fails with 403 because Postgres
+// expands `*` to every column and denies the whole query if any one of
+// them isn't granted — so every direct hub_users read must use this
+// explicit column list (or a subset of it), never '*'.
+export const HUB_USER_SAFE_COLUMNS = [
+  'id', 'full_name', 'email', 'role', 'avatar_url', 'phone', 'birthday', 'address',
+  'emergency_contact', 'emergency_contact_name', 'emergency_contact_relationship', 'emergency_contact_phone',
+  'slack_username', 'slack_id', 'department', 'start_date', 'status', 'onboarding_completed',
+  'is_developer', 'shift_start', 'shift_end', 'work_days', 'annual_pto_days', 'annual_sick_days',
+  'contract_expiry_date', 'dev_toolbar_hidden', 'currency', 'payment_type',
+  'avatar_position', 'avatar_scale', 'created_at', 'updated_at', 'last_seen_app_version',
+  'team', 'team_lead_of', 'timesheet_sheet_id', 'manager_id', 'role_title',
+  'auto_payroll', 'employee_id', 'employment_classification',
+].join(', ');
+
 export interface HubUser {
   id: string;
   full_name: string;

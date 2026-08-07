@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
+import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { useDemo } from '@/contexts/DemoContext';
 
@@ -9,9 +10,10 @@ interface Team {
   color: string;
   lead_id: string | null;
   lead_name: string | null;
+  lead_avatar: string | null;
 }
 
-interface Employee { id: string; full_name: string; }
+interface Employee { id: string; full_name: string; avatar_url: string | null; department: string | null; team: string | null; }
 
 const PRESET_COLORS = ['#808000', '#1e3a8a', '#a3c1e0', '#b91c1c', '#059669', '#7c3aed', '#c2410c', '#0891b2'];
 
@@ -31,14 +33,18 @@ export default function ManageTeamsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [addingTo, setAddingTo] = useState<string | null>(null);
 
   const fetchAll = async () => {
     setLoading(true);
     const [tRes, eRes] = await Promise.all([
-      supabase.from('hub_teams').select('key, label, color, lead_id, hub_users!lead_id(full_name)').order('label'),
-      supabase.from('hub_users').select('id, full_name').eq('status', 'active').neq('is_developer', true).order('full_name'),
+      supabase.from('hub_teams').select('key, label, color, lead_id, hub_users!lead_id(full_name, avatar_url)').order('label'),
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, team').eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
-    setTeams(((tRes.data as any[]) ?? []).map(t => ({ key: t.key, label: t.label, color: t.color, lead_id: t.lead_id, lead_name: t.hub_users?.full_name ?? null })));
+    setTeams(((tRes.data as any[]) ?? []).map(t => ({
+      key: t.key, label: t.label, color: t.color, lead_id: t.lead_id,
+      lead_name: t.hub_users?.full_name ?? null, lead_avatar: t.hub_users?.avatar_url ?? null,
+    })));
     setEmployees((eRes.data as Employee[]) ?? []);
     setLoading(false);
   };
@@ -72,12 +78,12 @@ export default function ManageTeamsPage() {
     if (saveErr) { setError(saveErr.message); setSaving(false); return; }
 
     // Keep hub_users.team_lead_of in sync — clear the outgoing lead (if the
-    // lead actually changed), set the incoming one.
+    // lead actually changed), set the incoming one. A lead is also a member.
     if (previousLeadId && previousLeadId !== form.lead_id) {
       await supabase.from('hub_users').update({ team_lead_of: null }).eq('id', previousLeadId).eq('team_lead_of', key);
     }
     if (form.lead_id) {
-      await supabase.from('hub_users').update({ team_lead_of: key }).eq('id', form.lead_id);
+      await supabase.from('hub_users').update({ team_lead_of: key, team: key }).eq('id', form.lead_id);
     }
 
     setSaving(false);
@@ -92,8 +98,27 @@ export default function ManageTeamsPage() {
     fetchAll();
   };
 
+  const addMember = async (teamKey: string, employeeId: string) => {
+    if (!employeeId) return;
+    setAddingTo(null);
+    setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, team: teamKey } : e));
+    const { error: addErr } = await supabase.from('hub_users').update({ team: teamKey }).eq('id', employeeId);
+    if (addErr) { alert(`Could not add member: ${addErr.message}`); fetchAll(); }
+  };
+
+  const removeMember = async (employee: Employee, team: Team) => {
+    setEmployees(prev => prev.map(e => e.id === employee.id ? { ...e, team: null } : e));
+    await supabase.from('hub_users').update({ team: null }).eq('id', employee.id);
+    // If they were also the lead, clear that too.
+    if (team.lead_id === employee.id) {
+      await supabase.from('hub_users').update({ team_lead_of: null }).eq('id', employee.id);
+      await supabase.from('hub_teams').update({ lead_id: null }).eq('key', team.key);
+    }
+    fetchAll();
+  };
+
   return (
-    <AdminLayout title="Manage Teams">
+    <AdminLayout title="Teams">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-gray-400">{teams.length} team{teams.length !== 1 ? 's' : ''}</p>
@@ -112,27 +137,83 @@ export default function ManageTeamsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {teams.map(t => (
-              <div key={t.key} className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: t.color }}></span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-gray-900 truncate">{t.label}</p>
-                    <p className="text-xs text-gray-400 truncate">{t.lead_name ? `Led by ${t.lead_name}` : 'No lead assigned'}</p>
+            {teams.map(t => {
+              const members = employees.filter(e => e.team === t.key && e.id !== t.lead_id);
+              const availableToAdd = employees.filter(e => e.team !== t.key);
+              return (
+                <div key={t.key} className="bg-white border border-gray-100 rounded-xl overflow-hidden flex flex-col">
+                  <div className="p-4 flex items-center gap-3 border-b border-gray-50">
+                    <span className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: t.color }}></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-gray-900 truncate">{t.label}</p>
+                      <p className="text-xs text-gray-400 truncate">{members.length + (t.lead_id ? 1 : 0)} member{members.length + (t.lead_id ? 1 : 0) !== 1 ? 's' : ''}</p>
+                    </div>
+                    <button onClick={() => openEdit(t)} title="Edit team"
+                      className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-gray-50 rounded-lg cursor-pointer flex-shrink-0">
+                      <i className="ri-pencil-line text-sm"></i>
+                    </button>
+                    <button onClick={() => deleteTeam(t)} title="Delete team"
+                      className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer flex-shrink-0">
+                      <i className="ri-delete-bin-line text-sm"></i>
+                    </button>
+                  </div>
+
+                  {/* Hierarchy: lead on top, members below */}
+                  <div className="p-4 space-y-1 flex-1">
+                    {t.lead_id ? (
+                      <div className="flex items-center gap-2.5 py-1.5">
+                        <div className="relative flex-shrink-0">
+                          <HubAvatar fullName={t.lead_name ?? '?'} avatarUrl={t.lead_avatar} size="w-8 h-8" />
+                          <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white">
+                            <i className="ri-vip-crown-fill text-white text-[8px]"></i>
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{t.lead_name}</p>
+                          <p className="text-[10px] text-amber-600 font-medium">Team Lead</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-300 italic py-1.5">No lead assigned</p>
+                    )}
+
+                    {members.length > 0 && (
+                      <div className="pl-2 border-l-2 border-gray-100 ml-4 space-y-1">
+                        {members.map(m => (
+                          <div key={m.id} className="flex items-center gap-2.5 py-1 group">
+                            <HubAvatar fullName={m.full_name} avatarUrl={m.avatar_url} size="w-7 h-7" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-gray-800 truncate">{m.full_name}</p>
+                              {m.department && <p className="text-[10px] text-gray-400 truncate">{m.department}</p>}
+                            </div>
+                            <button onClick={() => removeMember(m, t)} title="Remove from team"
+                              className="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-rose-500 rounded-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              <i className="ri-close-line text-sm"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add member */}
+                  <div className="px-4 pb-4">
+                    {addingTo === t.key ? (
+                      <select autoFocus defaultValue="" onChange={e => addMember(t.key, e.target.value)} onBlur={() => setAddingTo(null)}
+                        className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none bg-white cursor-pointer">
+                        <option value="" disabled>Select someone to add...</option>
+                        {availableToAdd.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+                      </select>
+                    ) : (
+                      <button onClick={() => setAddingTo(t.key)}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-gray-500 border border-dashed border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-700 cursor-pointer">
+                        <i className="ri-user-add-line"></i> Add Teammate
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <button onClick={() => openEdit(t)}
-                    className="flex-1 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 cursor-pointer">
-                    Edit
-                  </button>
-                  <button onClick={() => deleteTeam(t)}
-                    className="flex-1 py-1.5 text-xs border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -160,7 +241,7 @@ export default function ManageTeamsPage() {
                   <option value="">No lead</option>
                   {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
                 </select>
-                <p className="text-[11px] text-gray-400">The lead gets elevated access to manage this team's projects/tasks.</p>
+                <p className="text-[11px] text-gray-400">The lead gets elevated access to manage this team's projects/tasks, and is added as a member automatically.</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Color</label>

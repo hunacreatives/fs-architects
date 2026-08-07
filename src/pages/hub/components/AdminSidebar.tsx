@@ -16,7 +16,7 @@ const navItems = [
   { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
   { divider: true, label: 'People' },
   { to: '/hub/admin/employees', label: 'Employees', icon: 'ri-team-line' },
-  { to: '/hub/admin/teams', label: 'Manage Teams', icon: 'ri-git-branch-line', roles: ['owner', 'admin'] },
+  { to: '/hub/admin/teams', label: 'Teams', icon: 'ri-git-branch-line', roles: ['owner', 'admin'] },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },
   { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line' },
   { divider: true, label: 'Inbound' },

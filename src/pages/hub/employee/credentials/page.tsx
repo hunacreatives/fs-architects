@@ -167,7 +167,7 @@ export default function ContractorCredentialsPage() {
         </div>
       )}
 
-      <div className="p-6 space-y-5">
+      <div className="space-y-5">
 
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
@@ -175,19 +175,19 @@ export default function ContractorCredentialsPage() {
             { label: 'Approved', value: approvedCount, icon: 'ri-shield-check-line', color: 'text-emerald-600', bg: 'bg-emerald-50' },
             { label: 'Pending', value: myPending, icon: 'ri-time-line', color: 'text-amber-600', bg: 'bg-amber-50' },
           ].map((card) => (
-            <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3">
-              <div className={`w-9 h-9 flex items-center justify-center rounded-xl ${card.bg} flex-shrink-0`}>
-                <i className={`${card.icon} text-lg ${card.color}`}></i>
+            <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-2.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3 min-w-0">
+              <div className={`w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl ${card.bg} flex-shrink-0`}>
+                <i className={`${card.icon} text-sm sm:text-lg ${card.color}`}></i>
               </div>
-              <div>
-                <p className="text-lg font-semibold text-gray-900">{card.value}</p>
-                <p className="text-xs text-gray-500">{card.label}</p>
+              <div className="min-w-0">
+                <p className="text-base sm:text-lg font-semibold text-gray-900">{card.value}</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-tight">{card.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="relative max-w-sm">
+        <div className="relative sm:max-w-sm">
           <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
           <input
             value={search}

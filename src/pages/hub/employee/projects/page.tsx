@@ -2138,16 +2138,16 @@ export default function ContractorProjectsPage() {
           {/* Tabs — tasks first since that's the employee's actual job;
               projects are just where those tasks live. Sliding pill indicator
               instead of two independently-styled buttons. */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="relative inline-flex bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="relative flex sm:inline-flex w-full sm:w-auto bg-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-1">
               <div className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-out"
                 style={{ transform: dashboardTab === 'projects' ? 'translateX(100%)' : 'translateX(0)' }}></div>
               <button type="button" onClick={() => setDashboardTab('tasks')}
-                className={`relative z-10 flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${dashboardTab === 'tasks' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${dashboardTab === 'tasks' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-checkbox-circle-line text-[15px]"></i>Tasks
               </button>
               <button type="button" onClick={() => setDashboardTab('projects')}
-                className={`relative z-10 flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${dashboardTab === 'projects' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`relative z-10 flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer ${dashboardTab === 'projects' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <i className="ri-layout-grid-line text-[15px]"></i>Projects
               </button>
             </div>
@@ -2155,10 +2155,10 @@ export default function ContractorProjectsPage() {
             {/* Window toggle — controls how far out the "upcoming" task group
                 reaches. Overdue/No Due Date/Completed are unaffected by it. */}
             {dashboardTab === 'tasks' && myTasks.length > 0 && (
-              <div className="inline-flex items-center gap-1 bg-white/50 backdrop-blur-sm border border-white/80 rounded-xl p-1">
+              <div className="flex sm:inline-flex items-center gap-1 w-full sm:w-auto bg-white/50 backdrop-blur-sm border border-white/80 rounded-xl p-1">
                 {([['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']] as const).map(([key, label]) => (
                   <button key={key} type="button" onClick={() => setTaskWindow(key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${taskWindow === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${taskWindow === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                     {label}
                   </button>
                 ))}

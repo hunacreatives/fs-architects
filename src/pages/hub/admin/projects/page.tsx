@@ -1764,13 +1764,13 @@ export default function AdminProjectsPage() {
             {pageView === 'projects' ? (
               isFullAccess && (
               <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
-                className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+                className="flex items-center justify-center gap-1.5 w-auto min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Project
               </button>
               )
             ) : pageView === 'tasks' ? (
               <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}
-                className="flex items-center justify-center gap-1.5 w-full sm:w-auto sm:min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+                className="flex items-center justify-center gap-1.5 w-auto min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
                 <i className="ri-add-line text-sm"></i>New Task
               </button>
             ) : (

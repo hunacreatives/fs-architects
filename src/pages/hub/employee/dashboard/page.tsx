@@ -646,8 +646,9 @@ export default function ContractorDashboard() {
                 @keyframes twinkle-c{0%,100%{opacity:.35}50%{opacity:.85}}
               `}</style>
 
-              {/* Sky + celestial */}
-              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+              {/* Sky + celestial — hidden on mobile, where the card is too
+                  narrow for it not to collide with the status badge. */}
+              <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none hidden sm:block">
                 <div className="absolute inset-0" style={{
                   background: isNight
                     ? 'radial-gradient(ellipse at 78% 18%, rgba(25,35,75,0.9) 0%, transparent 65%)'
@@ -703,9 +704,9 @@ export default function ContractorDashboard() {
               </div>
 
               <div className="relative">
-                <div className="flex gap-4">
+                <div className="flex flex-row gap-3 sm:gap-4">
                   <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-                    <div className="h-32 aspect-[4/5] rounded-2xl overflow-hidden bg-white/10">
+                    <div className="h-20 w-16 sm:h-32 sm:w-auto sm:aspect-[4/5] rounded-2xl overflow-hidden bg-white/10">
                       {(user as any)?.avatar_url ? (
                         <img src={(user as any).avatar_url} alt={user?.full_name ?? ''} className="w-full h-full object-cover object-top" />
                       ) : (
@@ -719,7 +720,7 @@ export default function ContractorDashboard() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-2 sm:gap-3 flex-wrap">
                   <div>
                     <p className="text-white/50 text-xs flex items-center gap-1.5">
                       {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -757,10 +758,6 @@ export default function ContractorDashboard() {
                     <div className="h-full bg-[#1c2b3a] rounded-full" style={{ width: `${(daysElapsed / periodTotal) * 100}%` }} />
                   </div>
                 </div>
-                <p className="text-white/30 text-xs mt-3 flex items-center gap-1">
-                  <i className="ri-slack-line"></i>
-                  Type <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On</span>, <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On/Site</span>, or <span className="font-mono bg-white/10 px-1 rounded mx-0.5">On/WFH</span> · <span className="font-mono bg-white/10 px-1 rounded mx-0.5">Off</span> in Slack
-                </p>
                   </div>
                 </div>
               </div>

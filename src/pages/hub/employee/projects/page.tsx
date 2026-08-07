@@ -1005,7 +1005,7 @@ export default function ContractorProjectsPage() {
 
         // 3. tasks + team
         const [{ data: taskData, error: taskError }, { data: pcTeamData }] = await Promise.all([
-          supabase.from('hub_project_tasks').select('id, project_id, title, description, status, priority, due_date, start_date, assigned_to, assignee_ids, checklist, color, meta, archived, archived_at').in('project_id', projectIds).is('deleted_at', null),
+          supabase.from('hub_project_tasks').select('id, project_id, title, description, status, priority, due_date, start_date, assigned_to, assignee_ids, team, checklist, color, meta, archived, archived_at').in('project_id', projectIds).is('deleted_at', null),
           supabase.from('hub_project_contractors').select('project_id, contractor_id').in('project_id', projectIds),
         ]);
         if (taskError) console.error('Fetch tasks error:', taskError);

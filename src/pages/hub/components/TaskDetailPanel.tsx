@@ -7,6 +7,7 @@ import { getTaskAssigneeIds, normalizeChecklistItems, normalizeTaskAssigneePaylo
 import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import CommentEditor, { type CommentEditorHandle } from '@/pages/hub/components/CommentEditor';
+import { TEAMS, teamMeta } from '@/lib/teams';
 
 function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; size?: number }) {
   return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
@@ -114,6 +115,7 @@ export interface TaskDetailTask {
   assignee_id?: string | null;
   assigned_to?: string | null;
   assignee_ids?: string[] | null;
+  team?: string | null;
   due_date: string | null;
   start_date: string | null;
   checklist?: ChecklistItem[] | null;
@@ -316,6 +318,7 @@ type TaskDraftSource = Pick<TaskDetailTask, 'title' | 'description' | 'status' |
   assigned_to?: string | null;
   assignee_id?: string | null;
   assignee_ids?: string[] | null;
+  team?: string | null;
   checklist?: ChecklistItem[] | null;
   color?: string | null;
   meta?: { custom_fields?: { id: string; label: string; value: string }[]; blocked_reason?: string | null } | null;
@@ -339,6 +342,7 @@ function buildTaskDraftSnapshot(task: TaskDraftSource) {
     status: task.status,
     priority: task.priority,
     ...normalizeTaskAssigneePayload(getTaskAssigneeIds(task)),
+    team: task.team ?? null,
     due_date: task.due_date ?? null,
     start_date: task.start_date ?? null,
     checklist: normalizeChecklistItems(task.checklist),
@@ -378,6 +382,7 @@ export default function TaskDetailPanel({
   const [status, setStatus]         = useState<TaskDetailTask['status']>('todo');
   const [priority, setPriority]     = useState<TaskDetailTask['priority']>('medium');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [taskTeam, setTaskTeam] = useState<string>('');
   const [dueDate, setDueDate]       = useState('');
   const [startDate, setStartDate]   = useState('');
   const [checklist, setChecklist]   = useState<ChecklistItem[]>([]);
@@ -444,12 +449,13 @@ export default function TaskDetailPanel({
     status,
     priority,
     ...normalizeTaskAssigneePayload(assigneeIds),
+    team: taskTeam || null,
     due_date: dueDate || null,
     start_date: startDate || null,
     checklist: normalizeChecklistItems(checklist),
     color: taskColor || null,
     meta: buildTaskMetaPayload(customFields, status, blockedReason),
-  }), [title, description, status, priority, assigneeIds, dueDate, startDate, checklist, taskColor, customFields, blockedReason]);
+  }), [title, description, status, priority, assigneeIds, taskTeam, dueDate, startDate, checklist, taskColor, customFields, blockedReason]);
 
   const initialDraft = task
     ? buildTaskDraftSnapshot(task)
@@ -459,6 +465,7 @@ export default function TaskDetailPanel({
         status: 'todo' as TaskDetailTask['status'],
         priority: 'medium' as TaskDetailTask['priority'],
         ...normalizeTaskAssigneePayload([]),
+        team: null,
         due_date: null,
         start_date: null,
         checklist: [],
@@ -485,6 +492,7 @@ export default function TaskDetailPanel({
       setStatus(task.status);
       setPriority(task.priority);
       setAssigneeIds(getTaskAssigneeIds(task));
+      setTaskTeam(task.team ?? '');
       setDueDate(task.due_date ?? '');
       setStartDate(task.start_date ?? '');
       setChecklist(normalizeChecklistItems(task.checklist));
@@ -502,7 +510,7 @@ export default function TaskDetailPanel({
       baselineDraftRef.current = null;
       lastFetchedTaskRef.current = null;
       setTitle(initialTitle); setDesc(''); setStatus('todo'); setPriority('medium');
-      setAssigneeIds(initialAssigneeIds ?? []); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
+      setAssigneeIds(initialAssigneeIds ?? []); setTaskTeam(''); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
       setComments([]); setAttachments([]); setActivity([]);
       // Clear the contenteditable DOM too — taskDraft() reads from it, so a
       // stale innerHTML would copy the previous task's description into the new one.
@@ -622,7 +630,7 @@ export default function TaskDetailPanel({
     if (isDemo) return;
     const [taskRes, commRes, attRes, actRes] = await Promise.all([
       supabase.from('hub_project_tasks')
-        .select('title, description, status, priority, assigned_to, assignee_ids, due_date, start_date, checklist, color, meta, updated_at')
+        .select('title, description, status, priority, assigned_to, assignee_ids, team, due_date, start_date, checklist, color, meta, updated_at')
         .eq('id', taskId)
         .single(),
       supabase.from('hub_project_task_comments')
@@ -647,6 +655,7 @@ export default function TaskDetailPanel({
       setStatus(taskRes.data.status);
       setPriority(taskRes.data.priority);
       setAssigneeIds(getTaskAssigneeIds(taskRes.data));
+      setTaskTeam((taskRes.data as any).team ?? '');
       setDueDate(taskRes.data.due_date ?? '');
       setStartDate(taskRes.data.start_date ?? '');
       setChecklist(normalizeChecklistItems(taskRes.data.checklist));
@@ -764,7 +773,7 @@ export default function TaskDetailPanel({
           // refresh our version marker, and let them decide to save again.
           const { data: freshRow } = await supabase
             .from('hub_project_tasks')
-            .select('title, description, status, priority, assigned_to, assignee_ids, due_date, start_date, checklist, color, meta, updated_at')
+            .select('title, description, status, priority, assigned_to, assignee_ids, team, due_date, start_date, checklist, color, meta, updated_at')
             .eq('id', prev.id)
             .maybeSingle();
           if (freshRow) lastFetchedTaskRef.current = { id: prev.id, ...freshRow };
@@ -1375,6 +1384,31 @@ export default function TaskDetailPanel({
                   ))}
                 </div>
               ) : <span className="text-[13px] text-gray-300 pt-1">Empty</span>}
+            </div>
+
+            {/* Team — independent of assignee, so a task can be handed to a
+                team before a specific person is picked */}
+            <div className="flex items-center h-8 gap-3">
+              <span className="text-xs text-gray-400 w-24 flex-shrink-0">Team</span>
+              {editing ? (
+                <div className="flex gap-1.5">
+                  <button type="button" onClick={() => setTaskTeam('')}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-all cursor-pointer ${taskTeam === '' ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
+                    None
+                  </button>
+                  {TEAMS.map((t) => (
+                    <button key={t.key} type="button" onClick={() => setTaskTeam(t.key)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer ${taskTeam === t.key ? t.chip + ' border-transparent' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: t.color }}></span>{t.label}
+                    </button>
+                  ))}
+                </div>
+              ) : taskTeam ? (
+                <span className="inline-flex items-center gap-1.5 text-[13px] text-gray-700">
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: teamMeta(taskTeam)?.color }}></span>
+                  {teamMeta(taskTeam)?.label}
+                </span>
+              ) : <span className="text-[13px] text-gray-300">Empty</span>}
             </div>
 
             {/* Dates */}

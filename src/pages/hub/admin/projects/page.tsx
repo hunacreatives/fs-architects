@@ -14,6 +14,7 @@ import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/Tas
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds } from '@/lib/taskAssignments';
 import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypePalette, getProjectTypeCfg } from '@/lib/projectTypes';
+import { TEAMS, teamMeta } from '@/lib/teams';
 
 const fmtDate = (d: string | null | undefined, fallback = '—') => {
   if (!d) return fallback;
@@ -44,6 +45,7 @@ interface Project {
   project_type_code: string | null; project_code: string | null;
   project_type: 'client' | 'internal';
   status: string; stage: string; start_date: string | null; deadline: string | null; notes: string | null; contact_email: string | null;
+  team: string | null;
   hub_project_contractors: {
     id: number;
     project_role?: string | null;
@@ -62,6 +64,7 @@ interface ProjectTask {
   priority: 'low' | 'medium' | 'high';
   assigned_to: string | null;
   assignee_ids?: string[] | null;
+  team?: string | null;
   due_date: string | null;
   start_date: string | null;
   created_at: string;
@@ -178,7 +181,7 @@ export default function AdminProjectsPage() {
     return w ? parseInt(w) : null;
   });
   // Project form
-  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '' };
+  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '', team: '' as '' | 'cp' | 'egs' | 'fs' };
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -454,7 +457,7 @@ export default function AdminProjectsPage() {
   const fetchAllTasks = async () => {
     setAllTasksLoading(true);
     const [tasksRes, projectsRes] = await Promise.all([
-      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, due_date, start_date, color, archived, done_at').is('deleted_at', null).order('due_date', { ascending: true, nullsFirst: false }),
+      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, team, due_date, start_date, color, archived, done_at').is('deleted_at', null).order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('hub_projects').select('id, project_name, client_name, project_type'),
     ]);
     if (tasksRes.error) {
@@ -548,6 +551,7 @@ export default function AdminProjectsPage() {
       notes: form.notes || null,
       contact_email: isInternal ? null : (form.contact_email.trim() || null),
       drive_url: form.drive_url?.trim() || null,
+      team: form.team || null,
     };
     if (editingProject) {
       const { data, error } = await supabase.from('hub_projects').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingProject.id).select('project_code, drive_url').single();
@@ -604,6 +608,7 @@ export default function AdminProjectsPage() {
       deadline: project.deadline ?? '',
       notes: project.notes ?? '',
       drive_url: (project as any).drive_url ?? '',
+      team: (project.team as '' | 'cp' | 'egs' | 'fs') ?? '',
     });
     setShowForm(true);
   };
@@ -988,6 +993,7 @@ export default function AdminProjectsPage() {
     const dl = deadlineStatus(p.deadline, p.status);
     const pal = getProjectTypePalette(p.project_type_code);
     const team = p.hub_project_contractors.map((pc: any) => pc.hub_users).filter(Boolean);
+    const projTeam = teamMeta(p.team);
     const rowLabel = p.project_type === 'internal' ? 'Internal' : p.client_name;
     const typeLabel = getProjectTypeLabel(p.project_type_code);
     const badge = dl ?? (p.status !== 'ongoing' ? cfg : null);
@@ -1038,6 +1044,9 @@ export default function AdminProjectsPage() {
           <span className={`text-[11px] px-3 py-1.5 rounded-full font-bold flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
         ) : (
           <span className="text-[11px] text-gray-400 flex-shrink-0 font-medium">Active</span>
+        )}
+        {projTeam && (
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: projTeam.color }} title={projTeam.label}></span>
         )}
         <button
           onClick={e => { e.stopPropagation(); setActiveId(prev => prev === p.id ? null : p.id); }}
@@ -2443,6 +2452,14 @@ export default function AdminProjectsPage() {
                 <select value={form.stage} onChange={e => setForm({ ...form, stage: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
                   {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Team</label>
+                <select value={form.team} onChange={e => setForm({ ...form, team: e.target.value as '' | 'cp' | 'egs' | 'fs' })}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
+                  <option value="">Unassigned</option>
+                  {TEAMS.map(t => <option key={t.key} value={t.key}>{t.label} ({t.leadName.split(' ')[0]})</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

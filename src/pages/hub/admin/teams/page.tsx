@@ -27,6 +27,18 @@ function slugify(label: string): string {
 
 const emptyForm = { label: '', color: PRESET_COLORS[0], lead_id: '' };
 
+// Walk manager_id up from personId, returning everyone they (transitively)
+// report to. Used to keep team-lead auto-reparenting from creating a cycle.
+function getAncestorIds(personId: string, all: Employee[]): Set<string> {
+  const out = new Set<string>();
+  let cur = all.find(e => e.id === personId)?.manager_id ?? null;
+  while (cur && !out.has(cur)) {
+    out.add(cur);
+    cur = all.find(e => e.id === cur)?.manager_id ?? null;
+  }
+  return out;
+}
+
 export default function ManageTeamsPage() {
   const { isDemo } = useDemo();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -99,9 +111,12 @@ export default function ManageTeamsPage() {
       });
       // Keep the org chart in sync: re-parent current members onto the new
       // lead, but only those who weren't already explicitly reporting to
-      // someone else (i.e. were on the old lead or had no manager set).
+      // someone else (i.e. were on the old lead or had no manager set), and
+      // never anyone the new lead already (directly or transitively)
+      // reports to — that would create a reporting cycle.
+      const ancestorsOfNewLead = getAncestorIds(form.lead_id, employees);
       const memberIds = employees
-        .filter(e => e.team === key && e.id !== form.lead_id && (e.manager_id === previousLeadId || !e.manager_id))
+        .filter(e => e.team === key && e.id !== form.lead_id && (e.manager_id === previousLeadId || !e.manager_id) && !ancestorsOfNewLead.has(e.id))
         .map(e => e.id);
       if (memberIds.length) {
         await supabase.from('hub_users').update({ manager_id: form.lead_id }).in('id', memberIds);
@@ -124,9 +139,11 @@ export default function ManageTeamsPage() {
     if (!employeeId) return;
     setAddingTo(null);
     // Nest them under the team's lead in the org chart too, so the two
-    // views stay in sync — unless they're the lead themself.
+    // views stay in sync — unless they're the lead themself, or the lead
+    // already (transitively) reports to this person, which would cycle.
     const lead = teams.find(t => t.key === teamKey)?.lead_id ?? null;
-    const managerUpdate = lead && lead !== employeeId ? { manager_id: lead } : {};
+    const wouldCycle = !!lead && getAncestorIds(lead, employees).has(employeeId);
+    const managerUpdate = lead && lead !== employeeId && !wouldCycle ? { manager_id: lead } : {};
     setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, team: teamKey, ...managerUpdate } : e));
     const { error: addErr } = await supabase.from('hub_users').update({ team: teamKey, ...managerUpdate }).eq('id', employeeId);
     if (addErr) { alert(`Could not add member: ${addErr.message}`); fetchAll(); return; }

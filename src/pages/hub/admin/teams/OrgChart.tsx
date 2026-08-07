@@ -54,14 +54,19 @@ function getDescendantIds(personId: string, all: OrgPerson[]): Set<string> {
   return out;
 }
 
-function OrgNode({ person, all, rootId, teams, depth, readOnly, onAddReport, onEdit }: {
+function OrgNode({ person, all, rootId, teams, depth, readOnly, onAddReport, onEdit, ancestors }: {
   person: OrgPerson; all: OrgPerson[]; rootId: string; teams: Team[]; depth: number;
   readOnly?: boolean;
   onAddReport?: (managerId: string) => void;
   onEdit?: (person: OrgPerson) => void;
+  // Guards against bad/cyclic manager_id data (A reports to B, B reports to
+  // A) recursing forever and freezing the tab — anyone already in the
+  // current branch's ancestor chain is dropped instead of re-rendered.
+  ancestors: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const children = getChildren(person, all, rootId);
+  const children = getChildren(person, all, rootId).filter(c => !ancestors.has(c.id));
+  const childAncestors = new Set(ancestors).add(person.id);
   const teamMeta = teams.find(t => t.key === person.team);
   const isRoot = person.id === rootId;
 
@@ -105,7 +110,7 @@ function OrgNode({ person, all, rootId, teams, depth, readOnly, onAddReport, onE
       {expanded && children.length > 0 && (
         <div>
           {children.map(child => (
-            <OrgNode key={child.id} person={child} all={all} rootId={rootId} teams={teams} depth={depth + 1} readOnly={readOnly} onAddReport={onAddReport} onEdit={onEdit} />
+            <OrgNode key={child.id} person={child} all={all} rootId={rootId} teams={teams} depth={depth + 1} readOnly={readOnly} onAddReport={onAddReport} onEdit={onEdit} ancestors={childAncestors} />
           ))}
         </div>
       )}
@@ -165,10 +170,12 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
     const newTeam = editTeam || null;
     const teamChanged = newTeam !== (editing.team ?? null);
     // Keep the Teams page in sync: if the team changed and "Reports To"
-    // wasn't also explicitly changed, nest them under that team's lead.
+    // wasn't also explicitly changed, nest them under that team's lead —
+    // unless that lead reports (directly or transitively) to the person
+    // being edited, which would create a cycle.
     if (teamChanged && !managerChanged) {
       const leadId = teams.find(t => t.key === newTeam)?.lead_id;
-      if (leadId && leadId !== editing.id) newManagerId = leadId;
+      if (leadId && leadId !== editing.id && !getDescendantIds(editing.id, people).has(leadId)) newManagerId = leadId;
     }
     await supabase.from('hub_users').update({
       manager_id: newManagerId === root.id ? null : newManagerId,
@@ -217,7 +224,7 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-5 overflow-x-auto">
-      <OrgNode person={root} all={people} rootId={root.id} teams={teams} depth={0} readOnly={readOnly} onAddReport={openAddReport} onEdit={openEdit} />
+      <OrgNode person={root} all={people} rootId={root.id} teams={teams} depth={0} readOnly={readOnly} onAddReport={openAddReport} onEdit={openEdit} ancestors={new Set([root.id])} />
 
       {addReportFor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">

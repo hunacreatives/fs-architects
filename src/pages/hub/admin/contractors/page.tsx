@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
-import { HubUser } from '@/lib/types';
+import { HubUser, HUB_USER_SAFE_COLUMNS } from '@/lib/types';
 import { fetchUserFinanceMap, mergeFinance } from '@/lib/userFinance';
 import { useDemo } from '@/contexts/DemoContext';
 import { DEMO_CONTRACTORS } from '@/lib/demoData';
@@ -42,7 +42,7 @@ export default function ContractorsPage() {
   const fetchContractors = async () => {
     const { data } = await supabase
       .from('hub_users')
-      .select('*')
+      .select(HUB_USER_SAFE_COLUMNS)
       .in('role', ['contractor', 'admin', 'hr'])
       .neq('is_developer', true)
       .order('full_name');

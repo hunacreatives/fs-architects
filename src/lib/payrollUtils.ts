@@ -346,7 +346,8 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
   const [contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes, leaveRes] = await Promise.all([
     supabase
       .from('hub_users')
-      .select('id, full_name, role, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days')
+      // hourly_rate/monthly_rate are finance-locked columns, merged in below via fetchUserFinanceMap.
+      .select('id, full_name, role, currency, payment_type, start_date, work_days')
       .eq('status', 'active')
       .in('role', ['contractor', 'admin'])
       .neq('is_developer', true),

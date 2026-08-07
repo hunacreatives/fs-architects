@@ -1219,7 +1219,10 @@ export default function AdminPayrollPage() {
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
-        .select('id, full_name, role, auto_payroll, avatar_url, department, currency, payment_type, hourly_rate, monthly_rate, start_date, work_days, payment_method, bank_name, bank_account_name, bank_account_number, bank_account_type')
+        // hourly_rate/monthly_rate/payment_method/bank_* are finance-locked
+        // columns (not directly grantable) — merged in below via
+        // fetchUserFinanceMap/mergeFinance instead of selecting them here.
+        .select('id, full_name, role, auto_payroll, avatar_url, department, currency, payment_type, start_date, work_days')
         // For past closed periods include inactive/deleted users so historical rows aren't lost
         .in('status', isPastPeriod ? ['active', 'inactive'] : ['active'])
         .in('role', ['contractor', 'admin'])

@@ -6,6 +6,7 @@ import { useSidebarTip } from './SidebarTip';
 
 const baseNavItems = [
   { to: '/hub/employee/dashboard', label: 'Dashboard', icon: 'ri-layout-grid-line' },
+  { divider: true, label: 'Time & Requests' },
   { to: '/hub/employee/attendance', label: 'My Attendance', icon: 'ri-time-line' },
   { to: '/hub/employee/requests', label: 'Requests', icon: 'ri-inbox-line' },
   { to: '/hub/employee/timeoff', label: 'Time-Off', icon: 'ri-calendar-event-line' },
@@ -34,7 +35,7 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
 
   const isProjectBased = hubUser?.payment_type === 'project_based';
   const filteredBase = isProjectBased
-    ? baseNavItems.filter(i => !['My Attendance', 'Time-Off', 'Overtime', 'Requests'].includes((i as any).label))
+    ? baseNavItems.filter(i => !['My Attendance', 'Time-Off', 'Overtime', 'Requests', 'Time & Requests'].includes((i as any).label))
     : baseNavItems;
   const navItems = [
     filteredBase[0],
@@ -98,8 +99,10 @@ export default function ContractorSidebar({ collapsed, onToggle }: Props) {
           {navItems.map((item, idx) => {
             if ((item as any).divider) {
               return !collapsed ? (
-                <div key={idx} className="pt-4 pb-2 px-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400/70">{item.label}</p>
+                <div key={idx} className={`px-3 ${item.label ? 'pt-4 pb-2' : 'pt-3'}`}>
+                  {item.label
+                    ? <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400/70">{item.label}</p>
+                    : <div className="border-t border-gray-200/50" />}
                 </div>
               ) : <div key={idx} className="mx-3 my-3 border-t border-gray-200/50"></div>;
             }

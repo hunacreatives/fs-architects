@@ -10,6 +10,7 @@ import { HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF } from '@/lib/demoData';
 import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
 import { fetchUserFinanceMap } from '@/lib/userFinance';
+import OrgChart, { type OrgPerson } from '@/pages/hub/admin/teams/OrgChart';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
 
@@ -322,6 +323,9 @@ export default function ContractorDashboard() {
   const myTeamLead = (user as any)?.team_lead_of ?? null;
   const myTeam = (user as any)?.team ?? null;
   const [teamDeadlines, setTeamDeadlines] = useState<{ id: number; title: string; due_date: string | null; priority: string; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
+  const [teamOrgPeople, setTeamOrgPeople] = useState<OrgPerson[]>([]);
+  const [teamOrgRootId, setTeamOrgRootId] = useState<string | null>(null);
+  const [teamOrgMeta, setTeamOrgMeta] = useState<{ key: string; label: string; color: string }[]>([]);
 
   const today = new Date();
   const currentPeriod = getPeriods().at(-1) ?? {
@@ -561,6 +565,26 @@ export default function ContractorDashboard() {
       }
     };
     fetchTeamDeadlines();
+  }, [isDemo, myTeam]);
+
+  // Read-only, team-scoped org chart — same tree component the admin Teams
+  // page uses, just fed only this person's teammates and rendered with no
+  // edit affordances. The team's lead is the local root; leads see this
+  // exact same read-only view too, they just also get the editable one on
+  // the admin side via their team_lead_of access.
+  useEffect(() => {
+    if (isDemo || !myTeam) return;
+    const fetchTeamOrg = async () => {
+      const [{ data: people }, { data: teamRow }] = await Promise.all([
+        supabase.from('hub_users').select('id, full_name, avatar_url, department, team, manager_id, role_title, role')
+          .eq('team', myTeam).eq('status', 'active').neq('is_developer', true),
+        supabase.from('hub_teams').select('key, label, color, lead_id').eq('key', myTeam).maybeSingle(),
+      ]);
+      setTeamOrgPeople((people as OrgPerson[]) ?? []);
+      setTeamOrgRootId(teamRow?.lead_id ?? (people ?? [])[0]?.id ?? null);
+      if (teamRow) setTeamOrgMeta([{ key: teamRow.key, label: teamRow.label, color: teamRow.color }]);
+    };
+    fetchTeamOrg();
   }, [isDemo, myTeam]);
 
   const hour = now.getHours();
@@ -890,6 +914,16 @@ export default function ContractorDashboard() {
               )}
             </div>
             </div>
+
+            {/* Your Team — read-only org chart scoped to just this team,
+                rooted at the team's lead. Same tree component as the admin
+                Teams page, just non-editable. */}
+            {myTeam && teamOrgPeople.length > 0 && teamOrgRootId && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-[#111827]">Your Team</h3>
+                <OrgChart people={teamOrgPeople} teams={teamOrgMeta} onChange={() => {}} rootId={teamOrgRootId} readOnly />
+              </div>
+            )}
 
             {/* Announcements */}
             <div className="space-y-3">

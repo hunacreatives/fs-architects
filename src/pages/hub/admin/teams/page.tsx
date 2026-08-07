@@ -3,6 +3,7 @@ import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { useDemo } from '@/contexts/DemoContext';
+import OrgChart from './OrgChart';
 
 interface Team {
   key: string;
@@ -13,7 +14,10 @@ interface Team {
   lead_avatar: string | null;
 }
 
-interface Employee { id: string; full_name: string; avatar_url: string | null; department: string | null; team: string | null; }
+interface Employee {
+  id: string; full_name: string; avatar_url: string | null; department: string | null; team: string | null;
+  manager_id: string | null; role_title: string | null; role: string;
+}
 
 const PRESET_COLORS = ['#808000', '#1e3a8a', '#a3c1e0', '#b91c1c', '#059669', '#7c3aed', '#c2410c', '#0891b2'];
 
@@ -34,12 +38,13 @@ export default function ManageTeamsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'teams' | 'orgchart'>('teams');
 
   const fetchAll = async () => {
     setLoading(true);
     const [tRes, eRes] = await Promise.all([
       supabase.from('hub_teams').select('key, label, color, lead_id, hub_users!lead_id(full_name, avatar_url)').order('label'),
-      supabase.from('hub_users').select('id, full_name, avatar_url, department, team').eq('status', 'active').neq('is_developer', true).order('full_name'),
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, team, manager_id, role_title, role').eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
     setTeams(((tRes.data as any[]) ?? []).map(t => ({
       key: t.key, label: t.label, color: t.color, lead_id: t.lead_id,
@@ -138,15 +143,26 @@ export default function ManageTeamsPage() {
     <AdminLayout title="Teams">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-gray-400">{teams.length} team{teams.length !== 1 ? 's' : ''}</p>
-          <button onClick={openNew}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#1c2b3a] text-white rounded-xl text-sm font-medium hover:bg-[#0f1c28] cursor-pointer transition-colors">
-            <i className="ri-add-line"></i> New Team
-          </button>
+          <div className="inline-flex items-center bg-gray-50 rounded-xl p-1">
+            {(['teams', 'orgchart'] as const).map(mode => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${viewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                {mode === 'teams' ? 'Teams' : 'Org Chart'}
+              </button>
+            ))}
+          </div>
+          {viewMode === 'teams' && (
+            <button onClick={openNew}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#1c2b3a] text-white rounded-xl text-sm font-medium hover:bg-[#0f1c28] cursor-pointer transition-colors">
+              <i className="ri-add-line"></i> New Team
+            </button>
+          )}
         </div>
 
         {loading ? (
           <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
+        ) : viewMode === 'orgchart' ? (
+          <OrgChart people={employees} teams={teams} onChange={fetchAll} />
         ) : teams.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
             <i className="ri-team-line text-4xl text-gray-200 mb-3 block"></i>

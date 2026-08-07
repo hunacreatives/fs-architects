@@ -34,6 +34,7 @@ const HubAdminPayroll = lazy(() => import('../pages/hub/admin/payroll/page'));
 const HubAdminPayouts = lazy(() => import('../pages/hub/admin/payouts/page'));
 const HubAdminDocRequests = lazy(() => import('../pages/hub/admin/docrequests/page'));
 const HubAdminCredentials = lazy(() => import('../pages/hub/admin/credentials/page'));
+const HubAdminTeams = lazy(() => import('../pages/hub/admin/teams/page'));
 const HubAdminPerformance = lazy(() => import('../pages/hub/admin/performance/page'));
 const HubAdminProjects = lazy(() => import('../pages/hub/admin/projects/page'));
 const HubAdminDocuments = lazy(() => import('../pages/hub/admin/documents/page'));
@@ -83,6 +84,11 @@ const withContractorGate = (element: ReactNode) => (
   <HubRouteGate allowedRoles={['contractor']}>{element}</HubRouteGate>
 );
 
+// Team structure/lead assignment is an owner/admin call, not HR's.
+const withTeamsGate = (element: ReactNode) => (
+  <HubRouteGate allowedRoles={['owner', 'admin']}>{element}</HubRouteGate>
+);
+
 const S = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><div className="w-6 h-6 border-2 border-gray-200 border-t-[#1c2b3a] rounded-full animate-spin" /></div>}>{children}</Suspense>
 );
@@ -124,6 +130,7 @@ const routes: RouteObject[] = [
   { path: '/hub/admin/payouts', element: <S>{withAdminGate(<HubAdminPayouts />)}</S> },
   { path: '/hub/admin/docrequests', element: <S>{withAdminGate(<HubAdminDocRequests />)}</S> },
   { path: '/hub/admin/credentials', element: <S>{withAdminGate(<HubAdminCredentials />)}</S> },
+  { path: '/hub/admin/teams', element: <S>{withTeamsGate(<HubAdminTeams />)}</S> },
   { path: '/hub/admin/projects', element: <S>{withProjectsGate(<HubAdminProjects />)}</S> },
   { path: '/hub/admin/documents', element: <S>{withAdminGate(<HubAdminDocuments />)}</S> },
   { path: '/hub/admin/invoices/:projectId', element: <S>{withAdminGate(<HubAdminInvoiceBuilder />)}</S> },

@@ -16,6 +16,7 @@ const navItems = [
   { to: '/hub/admin/projects', label: 'Projects', icon: 'ri-folder-line' },
   { divider: true, label: 'People' },
   { to: '/hub/admin/employees', label: 'Employees', icon: 'ri-team-line' },
+  { to: '/hub/admin/teams', label: 'Manage Teams', icon: 'ri-git-branch-line', roles: ['owner', 'admin'] },
   { to: '/hub/admin/attendance', label: 'Attendance', icon: 'ri-time-line' },
   { to: '/hub/admin/performance', label: 'Performance', icon: 'ri-medal-line' },
   { divider: true, label: 'Inbound' },
@@ -51,7 +52,12 @@ export default function AdminSidebar({ collapsed, onToggle }: Props) {
   const isTeamLeadOnly = !isDemo && hubUser?.role === 'contractor' && !!hubUser?.team_lead_of;
   const visibleNavItems = isTeamLeadOnly
     ? teamLeadNavItems
-    : navItems.filter((item) => !(item as { devOnly?: boolean }).devOnly || hubUser?.is_developer);
+    : navItems.filter((item) => {
+        if ((item as { devOnly?: boolean }).devOnly && !hubUser?.is_developer) return false;
+        const roles = (item as { roles?: string[] }).roles;
+        if (roles && !roles.includes(hubUser?.role ?? '')) return false;
+        return true;
+      });
   const { bind: tipFor, tipEl, clearTip } = useSidebarTip(collapsed);
 
   const handleSignOut = async () => {

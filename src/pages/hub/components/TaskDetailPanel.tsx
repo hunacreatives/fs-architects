@@ -7,7 +7,7 @@ import { getTaskAssigneeIds, normalizeChecklistItems, normalizeTaskAssigneePaylo
 import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import CommentEditor, { type CommentEditorHandle } from '@/pages/hub/components/CommentEditor';
-import { TEAMS, teamMeta } from '@/lib/teams';
+import { loadTeams, teamMeta, type TeamMeta } from '@/lib/teams';
 
 function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; size?: number }) {
   return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
@@ -386,6 +386,8 @@ export default function TaskDetailPanel({
   const [priority, setPriority]     = useState<TaskDetailTask['priority']>('medium');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [taskTeam, setTaskTeam] = useState<string>('');
+  const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
+  useEffect(() => { loadTeams().then(setTeamsList); }, []);
   const [taskHours, setTaskHours] = useState<string>('');
   const [dueDate, setDueDate]       = useState('');
   const [startDate, setStartDate]   = useState('');
@@ -1404,9 +1406,10 @@ export default function TaskDetailPanel({
                     className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-all cursor-pointer ${taskTeam === '' ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
                     None
                   </button>
-                  {TEAMS.map((t) => (
+                  {teamsList.map((t) => (
                     <button key={t.key} type="button" onClick={() => setTaskTeam(t.key)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer ${taskTeam === t.key ? t.chip + ' border-transparent' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer ${taskTeam === t.key ? 'border-transparent' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}
+                      style={taskTeam === t.key ? { background: `${t.color}1a`, color: t.color } : undefined}>
                       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: t.color }}></span>{t.label}
                     </button>
                   ))}

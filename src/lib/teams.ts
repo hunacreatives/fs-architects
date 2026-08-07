@@ -1,26 +1,45 @@
-// The firm's three teams, named after their leads' initials. FS is the
-// owner's own team — no separate "team_lead_of" needed since the owner
-// already has full access everywhere.
+// Teams are managed by owner/admin via the Manage Teams page (hub_teams
+// table) — not hardcoded. This module keeps a small in-memory cache so
+// synchronous lookups (teamMeta, color dots) work anywhere without every
+// call site needing its own fetch; call loadTeams() once per page (in a
+// useEffect) to populate/refresh it.
 
-export type TeamKey = 'cp' | 'egs' | 'fs';
+import { supabase } from '@/lib/supabase';
 
 export interface TeamMeta {
-  key: TeamKey;
+  key: string;
   label: string;
-  leadName: string;
-  color: string; // solid swatch, e.g. for a dot/tag
-  chip: string;  // tailwind classes for a pill/badge
+  leadId: string | null;
+  leadName: string | null;
+  color: string;
 }
 
-export const TEAMS: TeamMeta[] = [
-  { key: 'cp', label: 'Team CP', leadName: 'Chico Palanas', color: '#808000', chip: 'bg-[#808000]/10 text-[#5f5f00]' },
-  { key: 'egs', label: 'Team EGS', leadName: 'Elijah Gabriel Sanchez', color: '#1e3a8a', chip: 'bg-blue-900/10 text-blue-900' },
-  { key: 'fs', label: 'Team FS', leadName: 'Fretz Suralta', color: '#a3c1e0', chip: 'bg-sky-100 text-sky-700' },
-];
+let cache: TeamMeta[] = [];
 
-export const TEAM_META: Record<TeamKey, TeamMeta> = Object.fromEntries(TEAMS.map(t => [t.key, t])) as Record<TeamKey, TeamMeta>;
+export function getCachedTeams(): TeamMeta[] {
+  return cache;
+}
+
+export async function loadTeams(): Promise<TeamMeta[]> {
+  const { data, error } = await supabase
+    .from('hub_teams')
+    .select('key, label, color, lead_id, hub_users!lead_id(full_name)')
+    .order('label');
+  if (error) {
+    console.error('Failed to load teams:', error);
+    return cache;
+  }
+  cache = (data ?? []).map((t: any) => ({
+    key: t.key,
+    label: t.label,
+    leadId: t.lead_id,
+    leadName: t.hub_users?.full_name ?? null,
+    color: t.color,
+  }));
+  return cache;
+}
 
 export function teamMeta(key: string | null | undefined): TeamMeta | null {
   if (!key) return null;
-  return TEAM_META[key as TeamKey] ?? null;
+  return cache.find(t => t.key === key) ?? null;
 }

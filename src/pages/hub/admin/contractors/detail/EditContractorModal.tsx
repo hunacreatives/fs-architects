@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import { HubUser } from '@/lib/types';
+import { loadTeams, type TeamMeta } from '@/lib/teams';
 
 interface Props {
   contractor: HubUser;
@@ -40,6 +41,8 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     team_lead_of: (contractor as any).team_lead_of || '',
   });
   const [loading, setLoading] = useState(false);
+  const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
+  useEffect(() => { loadTeams().then(setTeamsList); }, []);
   const [error, setError] = useState('');
   const currencySymbol = form.currency === 'USD' ? '$' : form.currency === 'EUR' ? 'EUR ' : form.currency === 'GBP' ? 'GBP ' : form.currency === 'AUD' ? 'AUD ' : form.currency === 'CAD' ? 'CAD ' : '₱';
 
@@ -231,9 +234,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               <select value={form.team} onChange={(e) => set('team', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="">None</option>
-                <option value="cp">Team CP (Chico Palanas)</option>
-                <option value="egs">Team EGS (Elijah Gabriel Sanchez)</option>
-                <option value="fs">Team FS (Fretz Suralta)</option>
+                {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}{t.leadName ? ` (${t.leadName})` : ''}</option>)}
               </select>
             </div>
 
@@ -242,9 +243,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               <select value={form.team_lead_of} onChange={(e) => set('team_lead_of', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="">Not a team lead</option>
-                <option value="cp">Team CP</option>
-                <option value="egs">Team EGS</option>
-                <option value="fs">Team FS</option>
+                {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
               </select>
               <p className="text-[11px] text-gray-400">Grants access to manage that team's tasks/projects.</p>
             </div>

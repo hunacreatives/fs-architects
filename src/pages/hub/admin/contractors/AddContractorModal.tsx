@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { loadTeams, type TeamMeta } from '@/lib/teams';
 
 interface Props {
   onClose: () => void;
@@ -24,7 +25,7 @@ const emptyForm = {
   shift_end: '',
   work_days: [] as string[],
   slack_id: '',
-  team: '' as '' | 'cp' | 'egs' | 'fs',
+  team: '',
   auto_payroll: false,
   skip_email: false,
 };
@@ -35,6 +36,8 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
+  useEffect(() => { loadTeams().then(setTeamsList); }, []);
 
   useEffect(() => {
     supabase.rpc('preview_next_employee_id', { p_role: form.role })
@@ -218,9 +221,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                   <select value={form.team} onChange={e => set('team', e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
                     <option value="">None</option>
-                    <option value="cp">Team CP (Chico)</option>
-                    <option value="egs">Team EGS (Gab)</option>
-                    <option value="fs">Team FS (Fretz)</option>
+                    {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}{t.leadName ? ` (${t.leadName.split(' ')[0]})` : ''}</option>)}
                   </select>
                 </div>
               </div>

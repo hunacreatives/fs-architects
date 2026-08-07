@@ -14,7 +14,7 @@ import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/Tas
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds } from '@/lib/taskAssignments';
 import { PROJECT_TYPES, getProjectTypeLabel, getProjectTypePalette, getProjectTypeCfg } from '@/lib/projectTypes';
-import { TEAMS, teamMeta } from '@/lib/teams';
+import { loadTeams, teamMeta, type TeamMeta } from '@/lib/teams';
 
 const fmtDate = (d: string | null | undefined, fallback = '—') => {
   if (!d) return fallback;
@@ -154,6 +154,8 @@ export default function AdminProjectsPage() {
   const isFullAccess = isDemo || ['owner', 'admin', 'hr'].includes(hubUser?.role ?? '');
   const myTeam = hubUser?.team_lead_of ?? null;
   const isTeamLead = !isFullAccess && !!myTeam;
+  const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
+  useEffect(() => { loadTeams().then(setTeamsList); }, []);
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [contractors, setContractors] = useState<Contractor[]>([]);
@@ -192,7 +194,7 @@ export default function AdminProjectsPage() {
     return w ? parseInt(w) : null;
   });
   // Project form
-  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '', team: '' as '' | 'cp' | 'egs' | 'fs' };
+  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '', team: '' };
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -649,7 +651,7 @@ export default function AdminProjectsPage() {
       deadline: project.deadline ?? '',
       notes: project.notes ?? '',
       drive_url: (project as any).drive_url ?? '',
-      team: (project.team as '' | 'cp' | 'egs' | 'fs') ?? '',
+      team: project.team ?? '',
     });
     setShowForm(true);
   };
@@ -2505,10 +2507,10 @@ export default function AdminProjectsPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Team</label>
-                <select value={form.team} onChange={e => setForm({ ...form, team: e.target.value as '' | 'cp' | 'egs' | 'fs' })}
+                <select value={form.team} onChange={e => setForm({ ...form, team: e.target.value })}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
                   <option value="">Unassigned</option>
-                  {TEAMS.map(t => <option key={t.key} value={t.key}>{t.label} ({t.leadName.split(' ')[0]})</option>)}
+                  {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}{t.leadName ? ` (${t.leadName.split(' ')[0]})` : ''}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -465,6 +465,36 @@ export default function AdminProjectsPage() {
     ));
   };
 
+  // All tasks, not just the currently-filtered view — filter afterward in
+  // the spreadsheet itself, per how this was scoped.
+  const downloadTasksCsv = () => {
+    const csvCell = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Title', 'Project', 'Client', 'Team', 'Status', 'Priority', 'Assignees', 'Start Date', 'Due Date', 'Archived'];
+    const rows = allTasks.map((t: any) => [
+      t.title,
+      t.project?.project_name ?? '',
+      t.project?.client_name ?? '',
+      teamMeta(t.team)?.label ?? '',
+      t.status,
+      t.priority,
+      (t.assignees ?? []).map((a: any) => a.full_name).join('; '),
+      t.start_date ?? '',
+      t.due_date ?? '',
+      t.archived ? 'Yes' : 'No',
+    ]);
+    const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tasks-export-${localToday()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const fetchAllTasks = async () => {
     setAllTasksLoading(true);
     const [tasksRes, projectsRes] = await Promise.all([
@@ -1824,6 +1854,12 @@ export default function AdminProjectsPage() {
                     <option value="project">Project</option><option value="assignee">Assignee</option>
                   </select>
                 </label>
+                <button type="button" onClick={downloadTasksCsv}
+                  title="Download all tasks as a CSV file"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer whitespace-nowrap flex-shrink-0">
+                  <i className="ri-download-2-line text-gray-400"></i>
+                  Download
+                </button>
                 <div className="relative flex-shrink-0">
                   <button type="button" onClick={() => setShowCalendarFilterMenu(v => !v)}
                     title="Show or hide specific projects' tasks on the calendar"

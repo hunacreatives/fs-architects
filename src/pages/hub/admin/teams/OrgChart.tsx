@@ -87,13 +87,13 @@ function OrgNode({ person, all, rootId, teams, depth, readOnly, onAddReport, onE
         </div>
 
         {!readOnly && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button onClick={() => onAddReport?.(person.id)} title="Add a direct report"
               className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-gray-50 rounded-lg cursor-pointer">
               <i className="ri-user-add-line text-sm"></i>
             </button>
             {person.role !== 'owner' && (
-              <button onClick={() => onEdit?.(person)} title="Edit role / reports-to"
+              <button onClick={() => onEdit?.(person)} title="Edit role, team, or reports-to"
                 className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-gray-50 rounded-lg cursor-pointer">
                 <i className="ri-pencil-line text-sm"></i>
               </button>
@@ -122,6 +122,7 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
   const [editing, setEditing] = useState<OrgPerson | null>(null);
   const [editRoleTitle, setEditRoleTitle] = useState('');
   const [editManagerId, setEditManagerId] = useState('');
+  const [editTeam, setEditTeam] = useState('');
   const [saving, setSaving] = useState(false);
 
   const root = people.find(p => p.id === effectiveRootId);
@@ -130,7 +131,12 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
   }
 
   const openAddReport = (managerId: string) => { setAddReportFor(managerId); setAddEmployeeId(''); setAddRoleTitle(''); };
-  const openEdit = (person: OrgPerson) => { setEditing(person); setEditRoleTitle(person.role_title ?? ''); setEditManagerId(person.manager_id ?? effectiveRootId ?? ''); };
+  const openEdit = (person: OrgPerson) => {
+    setEditing(person);
+    setEditRoleTitle(person.role_title ?? '');
+    setEditManagerId(person.manager_id ?? effectiveRootId ?? '');
+    setEditTeam(person.team ?? '');
+  };
 
   const submitAddReport = async () => {
     if (!addReportFor || !addEmployeeId) return;
@@ -156,9 +162,12 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
     const newManagerId = editManagerId || root.id;
     const managerChanged = newManagerId !== (editing.manager_id ?? root.id);
     const titleChanged = (editRoleTitle.trim() || null) !== editing.role_title;
+    const newTeam = editTeam || null;
+    const teamChanged = newTeam !== (editing.team ?? null);
     await supabase.from('hub_users').update({
       manager_id: newManagerId === root.id ? null : newManagerId,
       role_title: editRoleTitle.trim() || null,
+      team: newTeam,
     }).eq('id', editing.id);
     if (managerChanged || titleChanged) {
       const managerName = people.find(p => p.id === newManagerId)?.full_name ?? root.full_name;
@@ -167,6 +176,17 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
         type: 'team',
         title: 'Reporting line updated',
         body: `You now report to ${managerName}${editRoleTitle.trim() ? ` as ${editRoleTitle.trim()}` : ''}.`,
+        link: '/hub/employee/dashboard',
+        read: false,
+      });
+    }
+    if (teamChanged) {
+      const teamLabel = teams.find(t => t.key === newTeam)?.label ?? null;
+      await supabase.from('hub_notifications').insert({
+        user_id: editing.id,
+        type: 'team',
+        title: teamLabel ? 'Added to a team' : 'Removed from team',
+        body: teamLabel ? `You've been assigned to ${teamLabel}.` : 'You are no longer assigned to a team.',
         link: '/hub/employee/dashboard',
         read: false,
       });
@@ -250,6 +270,14 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
                 <select value={editManagerId} onChange={e => setEditManagerId(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
                   {people.filter(p => !invalidManagerIds.has(p.id)).map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700">Team</label>
+                <select value={editTeam} onChange={e => setEditTeam(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
+                  <option value="">Unassigned</option>
+                  {teams.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                 </select>
               </div>
             </div>

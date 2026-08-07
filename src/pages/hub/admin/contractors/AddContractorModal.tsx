@@ -24,6 +24,7 @@ const emptyForm = {
   shift_end: '',
   work_days: [] as string[],
   slack_id: '',
+  team: '' as '' | 'cp' | 'egs' | 'fs',
   auto_payroll: false,
   skip_email: false,
 };
@@ -72,6 +73,7 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
         shift_end: form.shift_end || null,
         work_days: form.work_days,
         slack_id: form.slack_id || null,
+        team: form.team || null,
         auto_payroll: form.auto_payroll,
         skip_email: form.skip_email,
       },
@@ -210,6 +212,16 @@ export default function AddContractorModal({ onClose, onSuccess }: Props) {
                   <input value={form.slack_id} onChange={e => set('slack_id', e.target.value)}
                     placeholder="e.g. U09NUQFTZL6"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Team</label>
+                  <select value={form.team} onChange={e => set('team', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none bg-white">
+                    <option value="">None</option>
+                    <option value="cp">Team CP (Chico)</option>
+                    <option value="egs">Team EGS (Gab)</option>
+                    <option value="fs">Team FS (Fretz)</option>
+                  </select>
                 </div>
               </div>
               {(form.role === 'admin' || form.role === 'hr') && (

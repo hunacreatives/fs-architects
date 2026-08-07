@@ -36,6 +36,9 @@ export interface HubUser {
   annual_sick_days?: number;
   contract_expiry_date?: string;
   employee_id?: string;
+  team?: 'cp' | 'egs' | 'fs' | null;
+  team_lead_of?: 'cp' | 'egs' | 'fs' | null;
+  timesheet_sheet_id?: string | null;
   auto_payroll?: boolean;
   last_seen_app_version?: string;
   created_at?: string;

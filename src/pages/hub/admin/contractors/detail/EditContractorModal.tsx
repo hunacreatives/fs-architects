@@ -36,6 +36,8 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     bank_account_type: contractor.bank_account_type || '',
     notes: contractor.notes || '',
     employee_id: contractor.employee_id || '',
+    team: (contractor as any).team || '',
+    team_lead_of: (contractor as any).team_lead_of || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,6 +61,8 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
       monthly_rate: newMonthly,
       project_percentage: form.project_percentage ? parseFloat(form.project_percentage) : null,
       employee_id: form.employee_id.trim() || null,
+      team: form.team || null,
+      team_lead_of: form.team_lead_of || null,
       updated_at: new Date().toISOString(),
     }).eq('id', contractor.id);
     if (err) { setError(err.message); setLoading(false); return; }
@@ -217,8 +221,32 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
                 <option value="contractor">Employee</option>
                 <option value="admin">Admin</option>
+                <option value="hr">HR</option>
                 <option value="owner">Owner</option>
               </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">Team</label>
+              <select value={form.team} onChange={(e) => set('team', e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                <option value="">None</option>
+                <option value="cp">Team CP (Chico Palanas)</option>
+                <option value="egs">Team EGS (Elijah Gabriel Sanchez)</option>
+                <option value="fs">Team FS (Fretz Suralta)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">Team Lead Of</label>
+              <select value={form.team_lead_of} onChange={(e) => set('team_lead_of', e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white">
+                <option value="">Not a team lead</option>
+                <option value="cp">Team CP</option>
+                <option value="egs">Team EGS</option>
+                <option value="fs">Team FS</option>
+              </select>
+              <p className="text-[11px] text-gray-400">Grants access to manage that team's tasks/projects.</p>
             </div>
 
             <div className="space-y-1">

@@ -70,6 +70,22 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     }).eq('id', contractor.id);
     if (err) { setError(err.message); setLoading(false); return; }
 
+    const teamChanged = (form.team || null) !== ((contractor as any).team ?? null) && !!form.team;
+    const leadChanged = (form.team_lead_of || null) !== ((contractor as any).team_lead_of ?? null) && !!form.team_lead_of;
+    if (teamChanged || leadChanged) {
+      const teamKey = form.team_lead_of || form.team;
+      const { data: teamRow } = await supabase.from('hub_teams').select('label').eq('key', teamKey).maybeSingle();
+      const teamLabel = teamRow?.label ?? 'a team';
+      await supabase.from('hub_notifications').insert({
+        user_id: contractor.id,
+        type: 'team',
+        title: leadChanged ? 'Made a team lead' : 'Added to a team',
+        body: leadChanged ? `You've been made lead of ${teamLabel}.` : `You've been assigned to ${teamLabel}.`,
+        link: '/hub/employee/dashboard',
+        read: false,
+      });
+    }
+
     // Editing here bypasses "Update Rate," which is the only other place
     // that logs to hub_rate_history — without this, a rate change made
     // through this modal would desync the profile from the rate ledger

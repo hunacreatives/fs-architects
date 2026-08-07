@@ -572,6 +572,22 @@ export default function AdminProjectsPage() {
     return 'In progress';
   };
 
+  // Assigning a project to a team pulls in everyone on that team as
+  // contractors automatically — idempotent, so re-saving with the same team
+  // never double-adds anyone already on the project.
+  const addTeamMembersToProject = async (projectId: number, teamKey: string) => {
+    const [{ data: members }, { data: existing }] = await Promise.all([
+      supabase.from('hub_users').select('id').eq('team', teamKey).eq('status', 'active'),
+      supabase.from('hub_project_contractors').select('contractor_id').eq('project_id', projectId),
+    ]);
+    const existingIds = new Set((existing ?? []).map((c: any) => c.contractor_id));
+    const toAdd = (members ?? []).filter((m: any) => !existingIds.has(m.id));
+    if (toAdd.length === 0) return;
+    await supabase.from('hub_project_contractors').insert(
+      toAdd.map((m: any) => ({ project_id: projectId, contractor_id: m.id, payout_type: 'percentage', percentage: 0 }))
+    );
+  };
+
   const saveProject = async () => {
     const isInternal = form.project_type === 'internal';
     if (!form.project_name.trim()) { setFormError('Project name is required.'); return; }
@@ -608,6 +624,7 @@ export default function AdminProjectsPage() {
       if (data?.drive_url && data.project_code) {
         supabase.functions.invoke('rename-project-drive-folder', { body: { project_id: editingProject.id } }).catch(console.error);
       }
+      if (payload.team) await addTeamMembersToProject(editingProject.id, payload.team);
     } else {
       const { data, error } = await supabase.from('hub_projects').insert(payload).select('id, project_code').single();
       if (error) { setFormError(error.message); setFormSaving(false); return; }
@@ -631,6 +648,7 @@ export default function AdminProjectsPage() {
           console.error('Auto-create Drive folder failed:', e);
         }
       }
+      if (data && payload.team) await addTeamMembersToProject(data.id, payload.team);
       if (data) setActiveId(data.id);
     }
     setFormSaving(false); setShowForm(false); setEditingProject(null); setForm(emptyForm);

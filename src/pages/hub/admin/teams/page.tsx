@@ -82,8 +82,16 @@ export default function ManageTeamsPage() {
     if (previousLeadId && previousLeadId !== form.lead_id) {
       await supabase.from('hub_users').update({ team_lead_of: null }).eq('id', previousLeadId).eq('team_lead_of', key);
     }
-    if (form.lead_id) {
+    if (form.lead_id && form.lead_id !== previousLeadId) {
       await supabase.from('hub_users').update({ team_lead_of: key, team: key }).eq('id', form.lead_id);
+      await supabase.from('hub_notifications').insert({
+        user_id: form.lead_id,
+        type: 'team',
+        title: 'Made a team lead',
+        body: `You've been made lead of ${form.label.trim()}.`,
+        link: '/hub/employee/dashboard',
+        read: false,
+      });
     }
 
     setSaving(false);
@@ -103,7 +111,16 @@ export default function ManageTeamsPage() {
     setAddingTo(null);
     setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, team: teamKey } : e));
     const { error: addErr } = await supabase.from('hub_users').update({ team: teamKey }).eq('id', employeeId);
-    if (addErr) { alert(`Could not add member: ${addErr.message}`); fetchAll(); }
+    if (addErr) { alert(`Could not add member: ${addErr.message}`); fetchAll(); return; }
+    const teamLabel = teams.find(t => t.key === teamKey)?.label ?? 'a team';
+    await supabase.from('hub_notifications').insert({
+      user_id: employeeId,
+      type: 'team',
+      title: 'Added to a team',
+      body: `You've been assigned to ${teamLabel}.`,
+      link: '/hub/employee/dashboard',
+      read: false,
+    });
   };
 
   const removeMember = async (employee: Employee, team: Team) => {

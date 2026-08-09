@@ -831,6 +831,70 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
+                {/* Add Task — owner-only, styled like a project tile */}
+                {isOwner && show('addTask') && (
+                  <div className="rounded-2xl overflow-hidden"
+                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(255,255,255,0.9) 100%)', border: '1px solid rgba(139,92,246,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                    <button onClick={() => {
+                        if (quickAddOpen) { resetQuickAdd(); return; }
+                        setQuickAddOpen(true);
+                        setQuickAddProjectId(quickAddProjects[0]?.id ?? null);
+                      }}
+                      className="w-full text-left p-4 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-violet-600">Quick Action</p>
+                          <p className="font-bold text-gray-900 text-sm leading-snug">Add Task</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Create a task for any project</p>
+                        </div>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                          <i className={`${quickAddOpen ? 'ri-close-line' : 'ri-add-line'} text-white text-base`}></i>
+                        </div>
+                      </div>
+                    </button>
+                    {quickAddOpen && (
+                      <div className="flex flex-col gap-2 sm:gap-1.5 px-4 pb-4">
+                        <input autoFocus value={quickAddTitle} onChange={e => setQuickAddTitle(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') void quickAddTask(); if (e.key === 'Escape') resetQuickAdd(); }}
+                          placeholder="Task title..."
+                          className="w-full px-3 py-2.5 sm:px-2.5 sm:py-1.5 text-sm sm:text-xs border border-violet-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400" />
+                        {/* Stacked full-width on mobile — two selects side by side were too
+                            cramped to tap/read; sm: puts them back in a compact row on desktop. */}
+                        <div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-1.5">
+                          <select value={quickAddProjectId ?? ''} onChange={e => setQuickAddProjectId(Number(e.target.value))}
+                            className="w-full sm:flex-1 sm:min-w-0 px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            {quickAddProjects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+                          </select>
+                          <select value={quickAddAssigneeId} onChange={e => setQuickAddAssigneeId(e.target.value)}
+                            className="w-full sm:flex-1 sm:min-w-0 px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                            <option value="">Unassigned</option>
+                            {quickAddTeam.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+                          </select>
+                        </div>
+                        <input type="date" value={quickAddDueDate} onChange={e => setQuickAddDueDate(e.target.value)}
+                          className="w-full px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
+                        <div className="flex items-center justify-between gap-2 pt-1 sm:pt-0.5">
+                          <button type="button"
+                            onClick={() => {
+                              const params = new URLSearchParams({ newTask: '1' });
+                              if (quickAddTitle) params.set('title', quickAddTitle);
+                              if (quickAddProjectId) params.set('projectId', String(quickAddProjectId));
+                              if (quickAddAssigneeId) params.set('assigneeId', quickAddAssigneeId);
+                              navigate(`/hub/admin/projects?${params.toString()}`);
+                              resetQuickAdd();
+                            }}
+                            className="text-xs sm:text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer py-1 sm:py-0">Add details</button>
+                          <button type="button" disabled={!quickAddTitle.trim() || !quickAddProjectId || quickAddSaving} onClick={() => void quickAddTask()}
+                            className="px-4 py-2 sm:px-3 sm:py-1 text-sm sm:text-[11px] font-semibold text-white rounded-lg disabled:opacity-40 cursor-pointer"
+                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                            {quickAddSaving ? 'Adding...' : 'Add'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* To-Do List */}
                 {show('todoList') && (
                   <div className="bg-white border border-gray-100 rounded-xl p-5">
@@ -879,7 +943,7 @@ export default function AdminDashboardPage() {
                               </div>
                             )}
                             {t.due_date && (
-                              <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                              <p className={`text-xs whitespace-nowrap flex-shrink-0 ${t.due_date < new Date().toISOString().slice(0, 10) ? 'text-rose-500 font-semibold' : 'text-gray-400'}`}>
                                 {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                               </p>
                             )}
@@ -953,70 +1017,6 @@ export default function AdminDashboardPage() {
                             <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 capitalize font-medium ${toColors[to.type]}`}>{to.type}</span>
                           </div>
                         ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Add Task — owner-only, styled like a project tile */}
-                {isOwner && show('addTask') && (
-                  <div className="rounded-2xl overflow-hidden"
-                    style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(255,255,255,0.9) 100%)', border: '1px solid rgba(139,92,246,0.18)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                    <button onClick={() => {
-                        if (quickAddOpen) { resetQuickAdd(); return; }
-                        setQuickAddOpen(true);
-                        setQuickAddProjectId(quickAddProjects[0]?.id ?? null);
-                      }}
-                      className="w-full text-left p-4 hover:shadow-lg transition-all duration-200 cursor-pointer">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-violet-600">Quick Action</p>
-                          <p className="font-bold text-gray-900 text-sm leading-snug">Add Task</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Create a task for any project</p>
-                        </div>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
-                          <i className={`${quickAddOpen ? 'ri-close-line' : 'ri-add-line'} text-white text-base`}></i>
-                        </div>
-                      </div>
-                    </button>
-                    {quickAddOpen && (
-                      <div className="flex flex-col gap-2 sm:gap-1.5 px-4 pb-4">
-                        <input autoFocus value={quickAddTitle} onChange={e => setQuickAddTitle(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') void quickAddTask(); if (e.key === 'Escape') resetQuickAdd(); }}
-                          placeholder="Task title..."
-                          className="w-full px-3 py-2.5 sm:px-2.5 sm:py-1.5 text-sm sm:text-xs border border-violet-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400" />
-                        {/* Stacked full-width on mobile — two selects side by side were too
-                            cramped to tap/read; sm: puts them back in a compact row on desktop. */}
-                        <div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-1.5">
-                          <select value={quickAddProjectId ?? ''} onChange={e => setQuickAddProjectId(Number(e.target.value))}
-                            className="w-full sm:flex-1 sm:min-w-0 px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
-                            {quickAddProjects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-                          </select>
-                          <select value={quickAddAssigneeId} onChange={e => setQuickAddAssigneeId(e.target.value)}
-                            className="w-full sm:flex-1 sm:min-w-0 px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
-                            <option value="">Unassigned</option>
-                            {quickAddTeam.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
-                          </select>
-                        </div>
-                        <input type="date" value={quickAddDueDate} onChange={e => setQuickAddDueDate(e.target.value)}
-                          className="w-full px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
-                        <div className="flex items-center justify-between gap-2 pt-1 sm:pt-0.5">
-                          <button type="button"
-                            onClick={() => {
-                              const params = new URLSearchParams({ newTask: '1' });
-                              if (quickAddTitle) params.set('title', quickAddTitle);
-                              if (quickAddProjectId) params.set('projectId', String(quickAddProjectId));
-                              if (quickAddAssigneeId) params.set('assigneeId', quickAddAssigneeId);
-                              navigate(`/hub/admin/projects?${params.toString()}`);
-                              resetQuickAdd();
-                            }}
-                            className="text-xs sm:text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer py-1 sm:py-0">Add details</button>
-                          <button type="button" disabled={!quickAddTitle.trim() || !quickAddProjectId || quickAddSaving} onClick={() => void quickAddTask()}
-                            className="px-4 py-2 sm:px-3 sm:py-1 text-sm sm:text-[11px] font-semibold text-white rounded-lg disabled:opacity-40 cursor-pointer"
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
-                            {quickAddSaving ? 'Adding...' : 'Add'}
-                          </button>
-                        </div>
                       </div>
                     )}
                   </div>

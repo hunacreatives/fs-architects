@@ -2042,13 +2042,11 @@ export default function AdminProjectsPage() {
                                     <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
                                   </button>
                                   <div className="flex-1 min-w-0">
+                                    {t.project && (
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1c2b3a]/60 truncate">{t.project.project_name}</p>
+                                    )}
                                     <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
                                   </div>
-                                  {t.project ? (
-                                    <span className="hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 w-32 truncate bg-[#1c2b3a]/5 text-[#1c2b3a]">
-                                      {t.project.project_name}
-                                    </span>
-                                  ) : <span className="hidden sm:block w-32 flex-shrink-0" />}
                                   <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 w-24 ${scfg.cls}`}>{scfg.label}</span>
                                   <div className="w-6 h-6 flex-shrink-0" title={t.assignee?.full_name}>
                                     {t.assignee && (

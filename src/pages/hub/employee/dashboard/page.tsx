@@ -918,7 +918,7 @@ export default function ContractorDashboard() {
                         {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
                       </button>
                       {t.due_date && (
-                        <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                        <p className={`text-xs whitespace-nowrap flex-shrink-0 ${t.due_date < new Date().toISOString().slice(0, 10) ? 'text-rose-500 font-semibold' : 'text-gray-400'}`}>
                           {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}

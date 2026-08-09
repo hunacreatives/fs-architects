@@ -1,10 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Fired server-side (via pg_net, from a DB trigger) whenever a task's status
-// flips to 'done'. Appends one row to each assignee's own Google Sheet —
-// auto-created on their first completed task — building a permanent,
-// live-synced history of every task they've ever finished. Reuses the exact
-// working OAuth + Drive/Sheets pattern already proven in log-to-sheet.
+// flips to 'done'. Writes one row per task to each assignee's own Google
+// Sheet — auto-created on their first completed task — building a
+// permanent, live-synced history of every task they've ever finished. If a
+// task is un-done and marked done again later, its existing row is updated
+// in place rather than duplicated. Reuses the exact working OAuth/Drive/
+// Sheets pattern already proven in log-to-sheet.
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -54,7 +56,11 @@ async function createOrGetFolder(name: string, parentId: string, accessToken: st
   return createData.id;
 }
 
-const TIMESHEET_HEADERS = ['Date', 'Project', 'Task', 'Scope / Description', 'Hours', 'Status'];
+// Task ID is a trailing, unobtrusive column used only to find-and-update a
+// task's existing row when it's re-marked done after being un-done — not
+// meant to be a human-facing column, but Sheets has no easy way to hide a
+// single column via this API without extra formatting calls.
+const TIMESHEET_HEADERS = ['Date', 'Project', 'Task', 'Scope / Description', 'Hours', 'Status', 'Task ID'];
 
 async function createSpreadsheet(name: string, parentId: string, accessToken: string): Promise<string> {
   const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
@@ -104,6 +110,34 @@ async function appendRow(sheetId: string, row: (string | number)[], accessToken:
   if (!res.ok) throw new Error(`Failed to append row: ${JSON.stringify(await res.json())}`);
 }
 
+// One row per task, ever — if a task is un-done and marked done again, this
+// finds its existing row (by the trailing Task ID column) and overwrites it
+// in place instead of appending a duplicate. Returns the 1-based row number
+// it wrote, or null if no existing row was found (caller should append).
+async function findRowByTaskId(sheetId: string, taskId: number, accessToken: string): Promise<number | null> {
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/G:G`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const col: string[] = data.values?.map((r: string[]) => r[0]) ?? [];
+  const idx = col.findIndex((v) => v === String(taskId));
+  return idx === -1 ? null : idx + 1; // +1: sheet rows are 1-indexed
+}
+
+async function updateRow(sheetId: string, rowNumber: number, row: (string | number)[], accessToken: string): Promise<void> {
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A${rowNumber}:G${rowNumber}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] }),
+    },
+  );
+  if (!res.ok) throw new Error(`Failed to update row ${rowNumber}: ${JSON.stringify(await res.json())}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
@@ -142,7 +176,7 @@ Deno.serve(async (req) => {
 
     const projectName = (task.hub_projects as any)?.project_name ?? 'Unknown Project';
     const dateStr = (task.done_at ?? new Date().toISOString()).slice(0, 10);
-    const row = [dateStr, projectName, task.title, task.description ?? '', task.hours_spent ?? '', task.status];
+    const row = [dateStr, projectName, task.title, task.description ?? '', task.hours_spent ?? '', task.status, task.id];
 
     const results: { employee: string; sheetId: string }[] = [];
     for (const employee of employees ?? []) {
@@ -153,7 +187,12 @@ Deno.serve(async (req) => {
         if (!sheetId) sheetId = await createSpreadsheet(sheetName, timesheetsFolder, accessToken);
         await supabase.from('hub_users').update({ timesheet_sheet_id: sheetId }).eq('id', employee.id);
       }
-      await appendRow(sheetId, row, accessToken);
+      const existingRow = await findRowByTaskId(sheetId, task.id, accessToken);
+      if (existingRow) {
+        await updateRow(sheetId, existingRow, row, accessToken);
+      } else {
+        await appendRow(sheetId, row, accessToken);
+      }
       results.push({ employee: employee.full_name, sheetId });
     }
 

@@ -2005,51 +2005,65 @@ export default function AdminProjectsPage() {
                   blocked: { label: 'Blocked', cls: 'bg-rose-100 text-rose-700' },
                   done: { label: 'Done', cls: 'bg-emerald-100 text-emerald-700' },
                 };
-                // Nearest deadline first, flat across all projects/assignees
-                // — tasks with no due date sort last.
-                const byDueDate = (a: any, b: any) => {
-                  if (!a.due_date && !b.due_date) return 0;
-                  if (!a.due_date) return 1;
-                  if (!b.due_date) return -1;
-                  return a.due_date.localeCompare(b.due_date);
-                };
-                const sorted = [...filt].sort(byDueDate);
-                if (sorted.length === 0) return null;
+                const today = localToday();
+                const groups: Record<string, any[]> = {};
+                for (const t of filt) {
+                  const key = t.due_date ?? '__none';
+                  (groups[key] ??= []).push(t);
+                }
+                const dateKeys = Object.keys(groups).filter(k => k !== '__none').sort();
+                const orderedKeys = groups.__none ? [...dateKeys, '__none'] : dateKeys;
+                if (orderedKeys.length === 0) return null;
                 return (
-                  <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 overflow-hidden">
-                    <div className="divide-y divide-gray-100/80">
-                      {sorted.map(t => {
-                        const over = isOver(t);
-                        const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
-                        return (
-                          <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
-                            className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer ${over ? 'bg-rose-50/30' : ''}`}>
-                            <button onClick={async e => { e.stopPropagation(); const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
-                              <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
-                            </div>
-                            {t.project && (
-                              <span className="hidden sm:inline-flex items-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] flex-shrink-0 max-w-[140px] truncate">
-                                {t.project.project_name}
-                              </span>
-                            )}
-                            <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
-                            <span className={`w-12 text-[11px] font-medium flex-shrink-0 text-right ${over ? 'text-rose-500' : 'text-gray-400'}`}>
-                              {t.due_date ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
-                            </span>
-                            <div className="w-6 h-6 flex-shrink-0" title={t.assignee?.full_name}>
-                              {t.assignee && (
-                                t.assignee.avatar_url
-                                  ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover" />
-                                  : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
-                              )}
-                            </div>
+                  <div className="space-y-4">
+                    {orderedKeys.map(key => {
+                      const gtasks = groups[key];
+                      const isNoDate = key === '__none';
+                      const isPast = !isNoDate && key < today;
+                      const isToday = key === today;
+                      const label = isNoDate
+                        ? 'No Due Date'
+                        : isToday ? 'Today'
+                        : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                      return (
+                        <div key={key} className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 overflow-hidden">
+                          <div className="px-5 py-3 border-b border-gray-100/80 flex items-center gap-2">
+                            <h3 className={`font-bold text-sm ${isPast ? 'text-rose-600' : 'text-gray-800'}`}>{label}</h3>
+                            {isPast && <span className="text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">Overdue</span>}
+                            <span className="text-xs text-gray-400 flex-shrink-0">{gtasks.length}</span>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="divide-y divide-gray-100/80">
+                            {gtasks.map((t: any) => {
+                              const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
+                              return (
+                                <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
+                                  className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer">
+                                  <button onClick={async e => { e.stopPropagation(); const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
+                                    <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
+                                  </button>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
+                                  </div>
+                                  {t.project && (
+                                    <span className="hidden sm:inline-flex items-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] flex-shrink-0 max-w-[140px] truncate">
+                                      {t.project.project_name}
+                                    </span>
+                                  )}
+                                  <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
+                                  <div className="w-6 h-6 flex-shrink-0" title={t.assignee?.full_name}>
+                                    {t.assignee && (
+                                      t.assignee.avatar_url
+                                        ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover" />
+                                        : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}

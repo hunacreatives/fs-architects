@@ -831,6 +831,64 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
+                {/* To-Do List */}
+                {show('todoList') && (
+                  <div className="bg-white border border-gray-100 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-[#111827] text-sm">To-Do List</h3>
+                        <p className="text-[11px] text-gray-400">Team-wide, pending only</p>
+                      </div>
+                      <div className="flex items-center bg-gray-50 rounded-lg p-0.5">
+                        {(['day', 'week'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => setTodoViewMode(mode)}
+                            className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer transition-colors capitalize ${
+                              todoViewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                          >
+                            {mode}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {todoTasks.length === 0 ? (
+                      <div className="flex items-center gap-2 py-4">
+                        <i className="ri-checkbox-circle-line text-emerald-400"></i>
+                        <p className="text-sm text-gray-400">
+                          Nothing due {todoViewMode === 'day' ? 'today' : 'this week'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {todoTasks.map((t) => (
+                          <div key={t.id} className="flex items-center gap-2.5 py-1.5">
+                            <button
+                              onClick={() => markTodoDone(t.id)}
+                              className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
+                              title="Mark done"
+                            />
+                            <button type="button" onClick={() => openTodoTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
+                              <p className="text-sm font-medium text-gray-800 truncate hover:text-[#1c2b3a]">{t.title}</p>
+                              {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
+                            </button>
+                            {t.assignee_name && (
+                              <div title={t.assignee_name} className="flex-shrink-0">
+                                <Avatar name={t.assignee_name} url={t.assignee_avatar} size={5} />
+                              </div>
+                            )}
+                            {t.due_date && (
+                              <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
+                                {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {show('requests') && (
                   <div className="bg-white border border-gray-100 rounded-xl p-4">
@@ -964,64 +1022,6 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
-                {/* To-Do List */}
-                {show('todoList') && (
-                  <div className="bg-white border border-gray-100 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-[#111827] text-sm">To-Do List</h3>
-                        <p className="text-[11px] text-gray-400">Team-wide, pending only</p>
-                      </div>
-                      <div className="flex items-center bg-gray-50 rounded-lg p-0.5">
-                        {(['day', 'week'] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            onClick={() => setTodoViewMode(mode)}
-                            className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer transition-colors capitalize ${
-                              todoViewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                          >
-                            {mode}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {todoTasks.length === 0 ? (
-                      <div className="flex items-center gap-2 py-4">
-                        <i className="ri-checkbox-circle-line text-emerald-400"></i>
-                        <p className="text-sm text-gray-400">
-                          Nothing due {todoViewMode === 'day' ? 'today' : 'this week'}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {todoTasks.map((t) => (
-                          <div key={t.id} className="flex items-center gap-2.5 py-1.5">
-                            <button
-                              onClick={() => markTodoDone(t.id)}
-                              className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
-                              title="Mark done"
-                            />
-                            <button type="button" onClick={() => openTodoTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
-                              <p className="text-sm font-medium text-gray-800 truncate hover:text-[#1c2b3a]">{t.title}</p>
-                              {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
-                            </button>
-                            {t.assignee_name && (
-                              <div title={t.assignee_name} className="flex-shrink-0">
-                                <Avatar name={t.assignee_name} url={t.assignee_avatar} size={5} />
-                              </div>
-                            )}
-                            {t.due_date && (
-                              <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
-                                {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>

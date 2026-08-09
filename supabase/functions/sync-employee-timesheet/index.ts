@@ -79,6 +79,19 @@ async function createSpreadsheet(name: string, parentId: string, accessToken: st
   return sheetId;
 }
 
+// Search Drive for an existing timesheet by name before creating a new one —
+// closes the race where two tasks for the same person complete close
+// together and both requests see an empty timesheet_sheet_id.
+async function findExistingSpreadsheet(name: string, parentId: string, accessToken: string): Promise<string | null> {
+  const safeName = name.replace(/['"\\]/g, '');
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='${safeName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false&fields=files(id,createdTime)&orderBy=createdTime`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const data = await res.json();
+  return data.files?.[0]?.id ?? null;
+}
+
 async function appendRow(sheetId: string, row: (string | number)[], accessToken: string): Promise<void> {
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1:append?valueInputOption=USER_ENTERED`,
@@ -135,7 +148,9 @@ Deno.serve(async (req) => {
     for (const employee of employees ?? []) {
       let sheetId = employee.timesheet_sheet_id as string | null;
       if (!sheetId) {
-        sheetId = await createSpreadsheet(`${employee.full_name} — Timesheet`, timesheetsFolder, accessToken);
+        const sheetName = `${employee.full_name} — Timesheet`;
+        sheetId = await findExistingSpreadsheet(sheetName, timesheetsFolder, accessToken);
+        if (!sheetId) sheetId = await createSpreadsheet(sheetName, timesheetsFolder, accessToken);
         await supabase.from('hub_users').update({ timesheet_sheet_id: sheetId }).eq('id', employee.id);
       }
       await appendRow(sheetId, row, accessToken);

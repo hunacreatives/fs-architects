@@ -611,7 +611,7 @@ export default function AdminProjectsPage() {
     const isInternal = form.project_type === 'internal';
     if (!form.project_name.trim()) { setFormError('Project name is required.'); return; }
     if (!isInternal && !form.client_name.trim()) { setFormError('Client name is required.'); return; }
-    if (!form.project_type_code) { setFormError('Project type is required.'); return; }
+    if (!isInternal && !form.project_type_code) { setFormError('Project type is required.'); return; }
     if (form.start_date && form.deadline && form.start_date > form.deadline) {
       setFormError('Start date must be before the deadline.');
       return;
@@ -621,7 +621,7 @@ export default function AdminProjectsPage() {
       project_type: form.project_type,
       client_name: isInternal ? (form.client_name.trim() || 'Internal') : form.client_name.trim(),
       project_name: form.project_name.trim(),
-      project_type_code: form.project_type_code,
+      project_type_code: form.project_type_code || null,
       status: form.status,
       stage: form.stage,
       start_date: form.start_date || null,
@@ -2533,16 +2533,18 @@ export default function AdminProjectsPage() {
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Project Type *</label>
-                <select value={form.project_type_code}
-                  onChange={e => setForm({ ...form, project_type_code: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
-                  <option value="" disabled>Select a type...</option>
-                  {PROJECT_TYPES.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
-                </select>
-                <p className="text-[10px] text-gray-400">A project code is generated automatically and used as the Google Drive folder name.</p>
-              </div>
+              {form.project_type !== 'internal' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Project Type *</label>
+                  <select value={form.project_type_code}
+                    onChange={e => setForm({ ...form, project_type_code: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
+                    <option value="" disabled>Select a type...</option>
+                    {PROJECT_TYPES.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
+                  </select>
+                  <p className="text-[10px] text-gray-400">A project code is generated automatically and used as the Google Drive folder name.</p>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Phase</label>
                 <select value={form.stage} onChange={e => setForm({ ...form, stage: e.target.value })}

@@ -698,6 +698,23 @@ export default function TaskDetailPanel({
     onActivityChange?.();
   }, [currentUserId, currentUserName, onActivityChange]);
 
+  // A task with a Team set but no one assigned yet would otherwise sit
+  // invisible until someone happens to check Team Deadlines — nudge the
+  // team's lead so it doesn't get missed.
+  const notifyTeamLeadIfUnassigned = useCallback(async (taskId: number, teamKey: string, taskTitle: string) => {
+    if (isDemo) return;
+    const lead = teamMeta(teamKey);
+    if (!lead?.leadId) return;
+    await supabase.from('hub_notifications').insert({
+      user_id: lead.leadId,
+      type: 'team',
+      title: 'Task assigned to your team',
+      body: `"${taskTitle}" was assigned to ${lead.label} with no one on it yet.`,
+      link: '/hub/admin/projects',
+      read: false,
+    });
+  }, [isDemo]);
+
   // ── Save ───────────────────────────────────────────────────────────────────
 
   const handleSave = async ({ closeAfterSave = false }: { closeAfterSave?: boolean } = {}) => {
@@ -765,6 +782,8 @@ export default function TaskDetailPanel({
               assigned_by_name: currentUserName,
             },
           }).catch(console.error);
+        } else if (payload.team) {
+          await notifyTeamLeadIfUnassigned(data.id, payload.team, title);
         }
         onClose();
       } else {
@@ -863,6 +882,13 @@ export default function TaskDetailPanel({
               },
             }).catch(console.error);
           }
+        }
+
+        // Team-only, no one assigned yet — nudge the lead so it doesn't sit
+        // invisible. Only fires on the save that actually created this state
+        // (team or assignees just changed), not on every unrelated edit.
+        if (nextTeamKey && nextAssigneeIds.length === 0 && (nextTeamKey !== prevTeamKey || assigneesChanged)) {
+          await notifyTeamLeadIfUnassigned(prev.id, nextTeamKey, title);
         }
 
         // Notify assignees + admins when task is meaningfully changed

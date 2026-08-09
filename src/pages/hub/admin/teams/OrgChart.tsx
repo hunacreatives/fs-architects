@@ -54,8 +54,12 @@ function getDescendantIds(personId: string, all: OrgPerson[]): Set<string> {
   return out;
 }
 
-function OrgNode({ person, all, rootId, teams, depth, readOnly, onAddReport, onEdit, ancestors }: {
-  person: OrgPerson; all: OrgPerson[]; rootId: string; teams: Team[]; depth: number;
+// Branching tree layout: each node is an <li>, its children sit in a nested
+// <ul> below it, and CSS pseudo-elements draw the connecting lines (classic
+// "org chart" technique — a horizontal bar joining siblings, a vertical
+// stub dropping from their parent). See the <style> block in OrgChart below.
+function OrgNode({ person, all, rootId, teams, readOnly, onAddReport, onEdit, ancestors }: {
+  person: OrgPerson; all: OrgPerson[]; rootId: string; teams: Team[];
   readOnly?: boolean;
   onAddReport?: (managerId: string) => void;
   onEdit?: (person: OrgPerson) => void;
@@ -71,50 +75,51 @@ function OrgNode({ person, all, rootId, teams, depth, readOnly, onAddReport, onE
   const isRoot = person.id === rootId;
 
   return (
-    <div className={depth > 0 ? 'pl-6 border-l-2 border-gray-100 ml-3.5' : ''}>
-      <div className="flex items-center gap-2.5 py-2 group">
-        {children.length > 0 ? (
-          <button onClick={() => setExpanded(v => !v)} className="w-5 h-5 flex items-center justify-center text-gray-300 hover:text-gray-600 cursor-pointer flex-shrink-0">
-            <i className={`ri-arrow-${expanded ? 'down' : 'right'}-s-line`}></i>
-          </button>
-        ) : <span className="w-5 flex-shrink-0" />}
+    <li>
+      <div className="org-node group relative inline-flex flex-col items-center gap-1.5 bg-white border border-gray-100 rounded-2xl shadow-sm px-3.5 pt-3 pb-3.5 hover:shadow-md hover:border-gray-200 transition-shadow">
+        {!readOnly && (
+          <div className="absolute -top-2.5 -right-2.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => onAddReport?.(person.id)} title="Add a direct report"
+              className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 text-gray-400 hover:text-[#1c2b3a] rounded-full shadow-sm cursor-pointer">
+              <i className="ri-user-add-line text-[11px]"></i>
+            </button>
+            {person.role !== 'owner' && (
+              <button onClick={() => onEdit?.(person)} title="Edit role, team, or reports-to"
+                className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 text-gray-400 hover:text-[#1c2b3a] rounded-full shadow-sm cursor-pointer">
+                <i className="ri-pencil-line text-[11px]"></i>
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="relative flex-shrink-0">
-          <HubAvatar fullName={person.full_name} avatarUrl={person.avatar_url} size={isRoot ? 'w-10 h-10' : 'w-8 h-8'} />
+          <HubAvatar fullName={person.full_name} avatarUrl={person.avatar_url} size={isRoot ? 'w-12 h-12' : 'w-9 h-9'} />
           {teamMeta && (
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white" style={{ background: teamMeta.color }} title={teamMeta.label}></span>
           )}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className={`font-semibold text-gray-900 truncate ${isRoot ? 'text-base' : 'text-sm'}`}>{person.full_name}</p>
-          <p className="text-xs text-gray-400 truncate">{person.role_title || (person.role === 'owner' ? 'Owner' : person.department || '—')}</p>
+        <div className="max-w-[116px]">
+          <p className={`font-semibold text-gray-900 truncate ${isRoot ? 'text-sm' : 'text-xs'}`}>{person.full_name}</p>
+          <p className="text-[10px] text-gray-400 truncate">{person.role_title || (person.role === 'owner' ? 'Owner' : person.department || '—')}</p>
         </div>
 
-        {!readOnly && (
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => onAddReport?.(person.id)} title="Add a direct report"
-              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-gray-50 rounded-lg cursor-pointer">
-              <i className="ri-user-add-line text-sm"></i>
-            </button>
-            {person.role !== 'owner' && (
-              <button onClick={() => onEdit?.(person)} title="Edit role, team, or reports-to"
-                className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-[#1c2b3a] hover:bg-gray-50 rounded-lg cursor-pointer">
-                <i className="ri-pencil-line text-sm"></i>
-              </button>
-            )}
-          </div>
+        {children.length > 0 && (
+          <button onClick={() => setExpanded(v => !v)} title={expanded ? 'Collapse' : 'Expand'}
+            className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 w-5 h-5 flex items-center justify-center bg-white border border-gray-200 text-gray-400 hover:text-[#1c2b3a] rounded-full shadow-sm cursor-pointer">
+            <i className={`ri-arrow-${expanded ? 'up' : 'down'}-s-line text-xs`}></i>
+          </button>
         )}
       </div>
 
       {expanded && children.length > 0 && (
-        <div>
+        <ul>
           {children.map(child => (
-            <OrgNode key={child.id} person={child} all={all} rootId={rootId} teams={teams} depth={depth + 1} readOnly={readOnly} onAddReport={onAddReport} onEdit={onEdit} ancestors={childAncestors} />
+            <OrgNode key={child.id} person={child} all={all} rootId={rootId} teams={teams} readOnly={readOnly} onAddReport={onAddReport} onEdit={onEdit} ancestors={childAncestors} />
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </li>
   );
 }
 
@@ -227,7 +232,30 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-5 overflow-x-auto">
-      <OrgNode person={root} all={people} rootId={root.id} teams={teams} depth={0} readOnly={readOnly} onAddReport={openAddReport} onEdit={openEdit} ancestors={new Set([root.id])} />
+      <style>{`
+        /* Float-based tree: each level shrink-wraps to its own content width
+           (a row of 3 cards doesn't inherit a narrower "slot" from a
+           shallower level the way nested flex containers can), while
+           display:table + margin:auto centers the whole shrink-wrapped tree. */
+        .org-tree { display: table; margin: 0 auto; }
+        .org-tree ul { padding-top: 28px; position: relative; }
+        .org-tree > ul { padding-top: 0; }
+        .org-tree ul::after { content: ''; display: table; clear: both; }
+        .org-tree li { float: left; list-style: none; text-align: center; position: relative; padding: 28px 10px 0 10px; }
+        .org-tree li::before, .org-tree li::after { content: ''; position: absolute; top: 0; right: 50%; border-top: 2px solid #e5e7eb; width: 50%; height: 28px; }
+        .org-tree li::after { right: auto; left: 50%; border-left: 2px solid #e5e7eb; }
+        .org-tree li:only-child::after, .org-tree li:only-child::before { display: none; }
+        .org-tree li:only-child { padding-top: 0; }
+        .org-tree li:first-child::before, .org-tree li:last-child::after { border: 0 none; }
+        .org-tree li:last-child::before { border-right: 2px solid #e5e7eb; border-radius: 0 6px 0 0; }
+        .org-tree li:first-child::after { border-radius: 6px 0 0 0; }
+        .org-tree ul ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 2px solid #e5e7eb; width: 0; height: 28px; }
+      `}</style>
+      <div className="org-tree">
+        <ul>
+          <OrgNode person={root} all={people} rootId={root.id} teams={teams} readOnly={readOnly} onAddReport={openAddReport} onEdit={openEdit} ancestors={new Set([root.id])} />
+        </ul>
+      </div>
 
       {addReportFor && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">

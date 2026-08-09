@@ -195,7 +195,7 @@ export default function AdminProjectsPage() {
     return w ? parseInt(w) : null;
   });
   // Project form
-  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '', team: '' };
+  const emptyForm = { project_type: 'client' as 'client' | 'internal', client_name: '', project_name: '', project_type_code: '', status: 'ongoing', stage: 'Pre-Design', start_date: '', deadline: '', notes: '', contact_email: '', drive_url: '', team: '', assigneeId: '' };
   const [showForm, setShowForm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -607,6 +607,15 @@ export default function AdminProjectsPage() {
     );
   };
 
+  // Assign one specific person to the project, independent of team — for
+  // when Fretz wants a single individual on a project rather than pulling
+  // in a whole team. Idempotent, same as the team version.
+  const addIndividualToProject = async (projectId: number, contractorId: string) => {
+    const { data: existing } = await supabase.from('hub_project_contractors').select('id').eq('project_id', projectId).eq('contractor_id', contractorId).maybeSingle();
+    if (existing) return;
+    await supabase.from('hub_project_contractors').insert({ project_id: projectId, contractor_id: contractorId, payout_type: 'percentage', percentage: 0 });
+  };
+
   const saveProject = async () => {
     const isInternal = form.project_type === 'internal';
     if (!form.project_name.trim()) { setFormError('Project name is required.'); return; }
@@ -644,6 +653,7 @@ export default function AdminProjectsPage() {
         supabase.functions.invoke('rename-project-drive-folder', { body: { project_id: editingProject.id } }).catch(console.error);
       }
       if (payload.team) await addTeamMembersToProject(editingProject.id, payload.team);
+      if (form.assigneeId) await addIndividualToProject(editingProject.id, form.assigneeId);
     } else {
       const { data, error } = await supabase.from('hub_projects').insert(payload).select('id, project_code').single();
       if (error) { setFormError(error.message); setFormSaving(false); return; }
@@ -668,6 +678,7 @@ export default function AdminProjectsPage() {
         }
       }
       if (data && payload.team) await addTeamMembersToProject(data.id, payload.team);
+      if (data && form.assigneeId) await addIndividualToProject(data.id, form.assigneeId);
       if (data) setActiveId(data.id);
     }
     setFormSaving(false); setShowForm(false); setEditingProject(null); setForm(emptyForm);
@@ -689,6 +700,7 @@ export default function AdminProjectsPage() {
       notes: project.notes ?? '',
       drive_url: (project as any).drive_url ?? '',
       team: project.team ?? '',
+      assigneeId: '',
     });
     setShowForm(true);
   };
@@ -2552,13 +2564,25 @@ export default function AdminProjectsPage() {
                   {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Team</label>
-                <select value={form.team} onChange={e => setForm({ ...form, team: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
-                  <option value="">Unassigned</option>
-                  {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}{t.leadName ? ` (${t.leadName.split(' ')[0]})` : ''}</option>)}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Team</label>
+                  <select value={form.team} onChange={e => setForm({ ...form, team: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
+                    <option value="">Unassigned</option>
+                    {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}{t.leadName ? ` (${t.leadName.split(' ')[0]})` : ''}</option>)}
+                  </select>
+                  <p className="text-[10px] text-gray-400">Adds everyone on the team to the project.</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700">Assign Individual</label>
+                  <select value={form.assigneeId} onChange={e => setForm({ ...form, assigneeId: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none bg-white">
+                    <option value="">None</option>
+                    {assignableContractors.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                  </select>
+                  <p className="text-[10px] text-gray-400">Adds just this one person, team or not.</p>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">

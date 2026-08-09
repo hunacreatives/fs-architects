@@ -9,6 +9,11 @@ import HubAvatar from '@/pages/hub/components/HubAvatar';
 import CommentEditor, { type CommentEditorHandle } from '@/pages/hub/components/CommentEditor';
 import { loadTeams, teamMeta, type TeamMeta } from '@/lib/teams';
 
+function fmtLogDate(d: string | null): string {
+  if (!d) return 'none';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; size?: number }) {
   return <HubAvatar fullName={name} avatarUrl={url} size={`w-${size} h-${size}`} />;
 }
@@ -794,6 +799,48 @@ export default function TaskDetailPanel({
         const statusChanged = prev.status !== status;
         if (statusChanged)
           await logActivity(prev.id, 'status_change', `changed status from ${prev.status.replace('_', ' ')} to ${status.replace('_', ' ')}`);
+
+        const trimmedTitle = title.trim();
+        if (prev.title !== trimmedTitle)
+          await logActivity(prev.id, 'edited', `changed title from "${prev.title}" to "${trimmedTitle}"`);
+
+        const nextDescription = normalizeRichText(descRef.current?.innerHTML ?? description);
+        if ((prev.description ?? '') !== (nextDescription ?? ''))
+          await logActivity(prev.id, 'edited', 'updated the description');
+
+        if (prev.priority !== priority)
+          await logActivity(prev.id, 'edited', `changed priority from ${prev.priority} to ${priority}`);
+
+        const prevDue = prev.due_date ?? null;
+        const nextDue = dueDate || null;
+        if (prevDue !== nextDue)
+          await logActivity(prev.id, 'edited', `changed due date from ${fmtLogDate(prevDue)} to ${fmtLogDate(nextDue)}`);
+
+        const prevStart = prev.start_date ?? null;
+        const nextStart = startDate || null;
+        if (prevStart !== nextStart)
+          await logActivity(prev.id, 'edited', `changed start date from ${fmtLogDate(prevStart)} to ${fmtLogDate(nextStart)}`);
+
+        const prevTeamKey = prev.team ?? null;
+        const nextTeamKey = taskTeam || null;
+        if (prevTeamKey !== nextTeamKey)
+          await logActivity(prev.id, 'edited', `changed team from ${teamMeta(prevTeamKey)?.label ?? 'Unassigned'} to ${teamMeta(nextTeamKey)?.label ?? 'Unassigned'}`);
+
+        const prevHours = prev.hours_spent ?? null;
+        const nextHours = taskHours.trim() ? parseFloat(taskHours) : null;
+        if (prevHours !== nextHours)
+          await logActivity(prev.id, 'edited', `changed hours spent from ${prevHours ?? '—'} to ${nextHours ?? '—'}`);
+
+        const prevChecklistJson = JSON.stringify(normalizeChecklistItems(prev.checklist));
+        const nextChecklistJson = JSON.stringify(normalizeChecklistItems(checklist));
+        if (prevChecklistJson !== nextChecklistJson)
+          await logActivity(prev.id, 'edited', 'updated the checklist');
+
+        const prevColor = prev.color ?? null;
+        const nextColor = taskColor || null;
+        if (prevColor !== nextColor)
+          await logActivity(prev.id, 'edited', 'changed the task color');
+
         const previousAssigneeIds = getTaskAssigneeIds(prev);
         const assigneesChanged = !sameAssigneeIds(previousAssigneeIds, nextAssigneeIds);
         if (assigneesChanged) {

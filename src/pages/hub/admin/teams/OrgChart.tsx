@@ -145,6 +145,7 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
 
   const submitAddReport = async () => {
     if (!addReportFor || !addEmployeeId) return;
+    if (people.find(p => p.id === addEmployeeId)?.role === 'owner') return;
     setSaving(true);
     const managerName = people.find(p => p.id === addReportFor)?.full_name ?? 'someone';
     await supabase.from('hub_users').update({ manager_id: addReportFor, role_title: addRoleTitle.trim() || null }).eq('id', addEmployeeId);
@@ -220,7 +221,9 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
 
   // Exclude self + descendants from the "Reports To" picker to prevent cycles.
   const invalidManagerIds = editing ? new Set([editing.id, ...getDescendantIds(editing.id, people)]) : new Set<string>();
-  const addReportOptions = people.filter(p => p.id !== addReportFor);
+  // The owner is always the chart's root — never offer them as someone
+  // else's direct report.
+  const addReportOptions = people.filter(p => p.id !== addReportFor && p.role !== 'owner');
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-5 overflow-x-auto">

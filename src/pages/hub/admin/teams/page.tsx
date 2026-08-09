@@ -114,9 +114,11 @@ export default function ManageTeamsPage() {
       // someone else (i.e. were on the old lead or had no manager set), and
       // never anyone the new lead already (directly or transitively)
       // reports to — that would create a reporting cycle.
+      // The owner is always the chart's root and must never be given a
+      // manager, even if they're a member of the team being re-led.
       const ancestorsOfNewLead = getAncestorIds(form.lead_id, employees);
       const memberIds = employees
-        .filter(e => e.team === key && e.id !== form.lead_id && (e.manager_id === previousLeadId || !e.manager_id) && !ancestorsOfNewLead.has(e.id))
+        .filter(e => e.team === key && e.id !== form.lead_id && e.role !== 'owner' && (e.manager_id === previousLeadId || !e.manager_id) && !ancestorsOfNewLead.has(e.id))
         .map(e => e.id);
       if (memberIds.length) {
         await supabase.from('hub_users').update({ manager_id: form.lead_id }).in('id', memberIds);
@@ -139,11 +141,13 @@ export default function ManageTeamsPage() {
     if (!employeeId) return;
     setAddingTo(null);
     // Nest them under the team's lead in the org chart too, so the two
-    // views stay in sync — unless they're the lead themself, or the lead
+    // views stay in sync — unless they're the lead themself, the owner
+    // (always the chart's root, never given a manager), or the lead
     // already (transitively) reports to this person, which would cycle.
+    const isOwnerMember = employees.find(e => e.id === employeeId)?.role === 'owner';
     const lead = teams.find(t => t.key === teamKey)?.lead_id ?? null;
     const wouldCycle = !!lead && getAncestorIds(lead, employees).has(employeeId);
-    const managerUpdate = lead && lead !== employeeId && !wouldCycle ? { manager_id: lead } : {};
+    const managerUpdate = lead && lead !== employeeId && !isOwnerMember && !wouldCycle ? { manager_id: lead } : {};
     setEmployees(prev => prev.map(e => e.id === employeeId ? { ...e, team: teamKey, ...managerUpdate } : e));
     const { error: addErr } = await supabase.from('hub_users').update({ team: teamKey, ...managerUpdate }).eq('id', employeeId);
     if (addErr) { alert(`Could not add member: ${addErr.message}`); fetchAll(); return; }

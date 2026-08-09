@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
@@ -11,6 +11,7 @@ import { DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF } from '@/lib/demoData
 import { computeFixedAccrual, computeSplitFixedAccrual, mergeLiveAttendanceIntoDailyHours } from '@/lib/payrollUtils';
 import { fetchUserFinanceMap } from '@/lib/userFinance';
 import OrgChart, { type OrgPerson } from '@/pages/hub/admin/teams/OrgChart';
+import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
 
@@ -317,7 +318,9 @@ export default function ContractorDashboard() {
   const [payoutStatus, setPayoutStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
-  const [todoTasks, setTodoTasks] = useState<{ id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
+  const [todoTasks, setTodoTasks] = useState<{ id: number; project_id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
+  const [detailTask, setDetailTask] = useState<TaskDetailTask | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const myTeamLead = (user as any)?.team_lead_of ?? null;
   const myTeam = (user as any)?.team ?? null;
   const [teamDeadlines, setTeamDeadlines] = useState<{ id: number; title: string; due_date: string | null; priority: string; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
@@ -503,30 +506,46 @@ export default function ContractorDashboard() {
 
   useEffect(() => { fetchData(); }, [user, isDemo]);
 
-  useEffect(() => {
+  const fetchTodo = useCallback(async () => {
     if (isDemo || !user?.id) return;
-    const fetchTodo = async () => {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const { start, end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
-      const { data, error } = await supabase
-        .from('hub_project_tasks')
-        .select('id, title, due_date, status, hub_projects(project_name)')
-        .or(`assigned_to.eq.${user.id},assignee_ids.cs.{${user.id}}`)
-        .neq('status', 'done')
-        .gte('due_date', start)
-        .lte('due_date', end)
-        .order('due_date', { ascending: true });
-      if (!error) {
-        setTodoTasks((data ?? []).map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          due_date: t.due_date,
-          project_name: t.hub_projects?.project_name ?? null,
-        })));
-      }
-    };
-    fetchTodo();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    // Only the far end of the window depends on Day/Week — no lower bound,
+    // so a pending task never silently drops off just because its due date
+    // has passed. It stays until someone marks it done.
+    const { end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
+    const { data, error } = await supabase
+      .from('hub_project_tasks')
+      .select('id, project_id, title, due_date, status, hub_projects(project_name)')
+      .or(`assigned_to.eq.${user.id},assignee_ids.cs.{${user.id}}`)
+      .neq('status', 'done')
+      .lte('due_date', end)
+      .order('due_date', { ascending: true });
+    if (!error) {
+      setTodoTasks((data ?? []).map((t: any) => ({
+        id: t.id,
+        project_id: t.project_id,
+        title: t.title,
+        due_date: t.due_date,
+        project_name: t.hub_projects?.project_name ?? null,
+      })));
+    }
   }, [isDemo, user?.id, todoViewMode]);
+
+  useEffect(() => { fetchTodo(); }, [fetchTodo]);
+
+  const openTodoTask = (t: { id: number; project_id: number; title: string; due_date: string | null }) => {
+    setDetailTask({
+      id: t.id,
+      project_id: t.project_id,
+      title: t.title,
+      description: null,
+      status: 'todo',
+      priority: 'medium',
+      due_date: t.due_date,
+      start_date: null,
+    } as TaskDetailTask);
+    setDetailOpen(true);
+  };
 
   const markTodoDone = async (id: number) => {
     setTodoTasks(prev => prev.filter(t => t.id !== id));
@@ -894,10 +913,10 @@ export default function ContractorDashboard() {
                         className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
                         title="Mark done"
                       />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{t.title}</p>
+                      <button type="button" onClick={() => openTodoTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
+                        <p className="text-sm font-medium text-gray-800 truncate hover:text-[#1c2b3a]">{t.title}</p>
                         {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
-                      </div>
+                      </button>
                       {t.due_date && (
                         <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
                           {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -1054,6 +1073,22 @@ export default function ContractorDashboard() {
           </div>
         </div>
       )}
+
+      <TaskDetailPanel
+        task={detailTask}
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setDetailTask(null); }}
+        onSaved={() => { fetchTodo(); }}
+        onDeleted={() => { setDetailOpen(false); setDetailTask(null); fetchTodo(); }}
+        onArchived={() => { setDetailOpen(false); setDetailTask(null); fetchTodo(); }}
+        projectId={detailTask?.project_id ?? 0}
+        projectName={todoTasks.find(t => t.id === detailTask?.id)?.project_name ?? 'General'}
+        teamMembers={teamOrgPeople.map(p => ({ id: p.id, full_name: p.full_name, avatar_url: p.avatar_url }))}
+        canEdit={true}
+        currentUserId={user?.id ?? ''}
+        currentUserName={user?.full_name ?? 'You'}
+        currentUserAvatarUrl={(user as any)?.avatar_url ?? null}
+      />
     </ContractorLayout>
   );
 }

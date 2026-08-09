@@ -21,6 +21,27 @@ const cors = {
 // integration in this hub uses.
 const SENTRO_ROOT = '1fuX6nxXERGIizoVEJRORUmvlO-auezNt';
 
+// UAP (United Architects of the Philippines) Field of Practice category —
+// mirrors src/lib/uapHours.ts (duplicated here since edge functions run in
+// a separate Deno runtime with no access to the frontend's src/ tree).
+// Default category suggested from a project's current Phase; explicit
+// per-task uap_category always wins when set.
+const PHASE_TO_UAP_CATEGORY: Record<string, string> = {
+  'Pre-Design': 'D',
+  'Schematic Design': 'A',
+  'Design Development': 'A',
+  'Construction Documents': 'B',
+  'Permitting': 'B',
+  'Bidding/Procurement': 'B',
+  'Construction Administration': 'C',
+  'Post-Construction/Closeout': 'C',
+};
+function resolveUapCategory(taskOverride: string | null | undefined, projectPhase: string | null | undefined): string {
+  if (taskOverride) return taskOverride;
+  if (!projectPhase) return '';
+  return PHASE_TO_UAP_CATEGORY[projectPhase] ?? '';
+}
+
 async function getAccessToken(): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -60,7 +81,8 @@ async function createOrGetFolder(name: string, parentId: string, accessToken: st
 // task's existing row when it's re-marked done after being un-done — not
 // meant to be a human-facing column, but Sheets has no easy way to hide a
 // single column via this API without extra formatting calls.
-const TIMESHEET_HEADERS = ['Date', 'Project', 'Task', 'Scope / Description', 'Hours', 'Status', 'Task ID'];
+const TIMESHEET_HEADERS = ['Date', 'Project', 'Task', 'Scope / Description', 'Hours', 'Status', 'UAP Category', 'Task ID'];
+const TASK_ID_COLUMN = 'H'; // keep in sync with TIMESHEET_HEADERS.length
 
 async function createSpreadsheet(name: string, parentId: string, accessToken: string): Promise<string> {
   const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
@@ -116,7 +138,7 @@ async function appendRow(sheetId: string, row: (string | number)[], accessToken:
 // it wrote, or null if no existing row was found (caller should append).
 async function findRowByTaskId(sheetId: string, taskId: number, accessToken: string): Promise<number | null> {
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/G:G`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${TASK_ID_COLUMN}:${TASK_ID_COLUMN}`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   if (!res.ok) return null;
@@ -128,7 +150,7 @@ async function findRowByTaskId(sheetId: string, taskId: number, accessToken: str
 
 async function updateRow(sheetId: string, rowNumber: number, row: (string | number)[], accessToken: string): Promise<void> {
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A${rowNumber}:G${rowNumber}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A${rowNumber}:${TASK_ID_COLUMN}${rowNumber}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -153,7 +175,7 @@ Deno.serve(async (req) => {
 
     const { data: task, error: taskErr } = await supabase
       .from('hub_project_tasks')
-      .select('id, title, description, status, assigned_to, assignee_ids, hours_spent, done_at, hub_projects(project_name)')
+      .select('id, title, description, status, assigned_to, assignee_ids, hours_spent, done_at, uap_category, hub_projects(project_name, stage)')
       .eq('id', task_id)
       .single();
     if (taskErr || !task) throw new Error(`Task not found: ${taskErr?.message}`);
@@ -175,8 +197,10 @@ Deno.serve(async (req) => {
     const timesheetsFolder = await createOrGetFolder('Timesheets', SENTRO_ROOT, accessToken);
 
     const projectName = (task.hub_projects as any)?.project_name ?? 'Unknown Project';
+    const projectPhase = (task.hub_projects as any)?.stage ?? null;
+    const uapCategory = resolveUapCategory(task.uap_category, projectPhase);
     const dateStr = (task.done_at ?? new Date().toISOString()).slice(0, 10);
-    const row = [dateStr, projectName, task.title, task.description ?? '', task.hours_spent ?? '', task.status, task.id];
+    const row = [dateStr, projectName, task.title, task.description ?? '', task.hours_spent ?? '', task.status, uapCategory, task.id];
 
     const results: { employee: string; sheetId: string }[] = [];
     for (const employee of employees ?? []) {

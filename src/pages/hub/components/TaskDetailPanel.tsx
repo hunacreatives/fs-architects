@@ -195,6 +195,7 @@ interface Props {
   onDeleted: (taskId: number) => void;
   onArchived?: (taskId: number) => void;
   onActivityChange?: () => void;
+  onOpenProject?: (projectId: number) => void;
   projectId: number;
   projectName?: string;
   projects?: { id: number; project_name: string; client_name: string; project_type: 'client' | 'internal' }[];
@@ -369,6 +370,7 @@ export default function TaskDetailPanel({
   onDeleted,
   onArchived,
   onActivityChange,
+  onOpenProject,
   projectId,
   projectName = 'General',
   projects,
@@ -1300,9 +1302,16 @@ export default function TaskDetailPanel({
           )}
           <div className="flex items-center gap-2 mt-2.5 flex-wrap pb-2">
             {!isNew && projectName && (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] border border-[#1c2b3a]/10">
-                <i className="ri-folder-3-line text-[11px]"></i>{projectName}
-              </span>
+              onOpenProject ? (
+                <button type="button" onClick={() => onOpenProject(projectId)} title="Open project workspace"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] border border-[#1c2b3a]/10 hover:bg-[#1c2b3a]/10 cursor-pointer transition-colors">
+                  <i className="ri-folder-3-line text-[11px]"></i>{projectName}
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] border border-[#1c2b3a]/10">
+                  <i className="ri-folder-3-line text-[11px]"></i>{projectName}
+                </span>
+              )
             )}
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${sc.bg} ${sc.text}`}>
               <i className={`${sc.icon} text-[11px]`}></i>{sc.label}

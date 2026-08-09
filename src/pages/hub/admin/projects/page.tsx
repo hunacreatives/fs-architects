@@ -2648,6 +2648,14 @@ export default function AdminProjectsPage() {
           setDetailTask(null);
         }}
         onActivityChange={refreshWorkspaceActivity}
+        onOpenProject={(pid) => {
+          setDetailOpen(false); setDetailTask(null);
+          setPendingTaskDate(null); setPendingTaskAssigneeId(null); setPendingTaskTitle(''); setPendingTaskProjectId(null);
+          setPageView('projects');
+          openWorkspaceOnLoad.current = true;
+          setActiveId(pid);
+          setWorkspaceOpen(true);
+        }}
         projectId={detailTask?.project_id ?? pendingTaskProjectId ?? activeId ?? 0}
         projectName={projects.find(p => p.id === (detailTask?.project_id ?? pendingTaskProjectId))?.project_name ?? activeProject?.project_name ?? 'General'}
         projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name, client_name: p.client_name, project_type: p.project_type }))}

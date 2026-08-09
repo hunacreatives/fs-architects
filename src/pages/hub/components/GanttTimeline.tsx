@@ -195,6 +195,11 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
   type LaneEntry = { task: ProjectTask; lane: number; spanStart: boolean; spanEnd: boolean };
   type WeekRow = { dates: (string | null)[]; lanes: LaneEntry[]; overflowByDate: Record<string, number> };
 
+  // Lane a task lands in on one week row is reused the following week
+  // whenever it's still free, so a task's bar doesn't jump between rows
+  // from one week to the next just because that week's task mix differs.
+  const lastLaneByTaskId = new Map<number, number>();
+
   const weekRows: WeekRow[] = [];
   for (let wi = 0; wi < totalCells; wi += 7) {
     const dates: (string | null)[] = [];
@@ -230,9 +235,13 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
     for (const t of weekTasks) {
       const ts = t.start_date ?? t.due_date ?? '';
       const te = t.due_date ?? t.start_date ?? '';
-      let lane = laneEnd.findIndex(e => e < ts);
+      const preferredLane = lastLaneByTaskId.get(t.id);
+      let lane = preferredLane !== undefined && (laneEnd[preferredLane] === undefined || laneEnd[preferredLane] < ts)
+        ? preferredLane
+        : laneEnd.findIndex(e => e < ts);
       if (lane === -1) lane = laneEnd.length;
       laneEnd[lane] = te;
+      lastLaneByTaskId.set(t.id, lane);
 
       if (lane < MAX_LANES) {
         lanes.push({ task: t, lane, spanStart: ts >= weekStart, spanEnd: te <= weekEnd });

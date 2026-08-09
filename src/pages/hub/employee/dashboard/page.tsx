@@ -14,18 +14,16 @@ import OrgChart, { type OrgPerson } from '@/pages/hub/admin/teams/OrgChart';
 
 const REACTIONS = ['👍', '❤️', '😂', '🎉', '🙏'];
 
-// Monday–Sunday range for a given local date — mirrors the admin dashboard's
-// To-Do widget so both behave the same way as the week rolls over.
+// Rolling 7-day window starting today (not the Mon–Sun calendar week) — so
+// checking on a Sunday still shows Monday's task instead of it being
+// excluded until the calendar week rolls over. Mirrors the admin
+// dashboard's To-Do widget so both behave the same way.
 function getWeekRange(todayStr: string): { start: string; end: string } {
   const d = new Date(todayStr + 'T00:00:00');
-  const day = d.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diffToMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  const end = new Date(d);
+  end.setDate(d.getDate() + 6);
   const fmt = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-  return { start: fmt(monday), end: fmt(sunday) };
+  return { start: todayStr, end: fmt(end) };
 }
 
 interface Reaction { emoji: string; user_id: string; }

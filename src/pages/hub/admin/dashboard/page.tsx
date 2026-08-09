@@ -90,19 +90,16 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-// Monday–Sunday range for a given local date — the To-Do widget's "week" view
-// naturally rolls to the next Mon–Sun window on its own once today crosses
-// into a new week, no scheduled refresh needed.
+// Rolling 7-day window starting today (not the Mon–Sun calendar week) — so
+// checking on a Sunday still shows Monday's task instead of it being
+// excluded until the calendar week rolls over. Recomputed fresh on every
+// load, so it naturally slides forward a day at a time on its own.
 function getWeekRange(todayStr: string): { start: string; end: string } {
   const d = new Date(todayStr + 'T00:00:00');
-  const day = d.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diffToMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  const end = new Date(d);
+  end.setDate(d.getDate() + 6);
   const fmt = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-  return { start: fmt(monday), end: fmt(sunday) };
+  return { start: todayStr, end: fmt(end) };
 }
 
 type WidgetKey = 'kpi' | 'teamStatus' | 'payroll' | 'requests' | 'timeOff' | 'announcements' | 'quickActions' | 'outstandingInvoices' | 'birthdays' | 'addTask' | 'todoList';

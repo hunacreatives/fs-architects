@@ -10,6 +10,11 @@
 -- backfill-project-drive-folder-names edge function right after this to
 -- resync every affected project's folder name to its new code.
 
+-- Clear existing codes first — updating in place row-by-row can otherwise
+-- collide with the unique constraint (a new code can transiently match
+-- another row's still-unprocessed old code before its own turn comes up).
+update hub_projects set project_code = null where project_type_code is not null;
+
 do $$
 declare
   r record;

@@ -274,7 +274,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
               <button type="button" id="track_uap_hours" role="switch" aria-checked={trackUapHours}
                 onClick={() => setTrackUapHours(v => !v)}
                 className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${trackUapHours ? 'bg-[#1c2b3a]' : 'bg-gray-200'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${trackUapHours ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${trackUapHours ? 'translate-x-4' : ''}`} />
               </button>
             </div>
 

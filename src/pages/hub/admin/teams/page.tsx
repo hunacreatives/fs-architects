@@ -101,27 +101,30 @@ export default function ManageTeamsPage() {
 
   const filteredUapPeople = uapPeople.filter(p => p.full_name.toLowerCase().includes(uapSearch.trim().toLowerCase()));
 
-  const downloadUapCsv = () => {
+  // Per-employee export — one CSV per person, itemizing every task that
+  // contributed to each category (not just the category totals), since
+  // that's the level of detail this page now tracks.
+  const downloadUapCsvForPerson = (personId: string, personName: string) => {
     const csvCell = (v: unknown) => {
       const s = String(v ?? '');
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Employee', 'Department', ...UAP_CATEGORIES.map(c => c.key), 'Total', 'Required', '% Complete'];
-    const rows = uapPeople.map(p => {
-      const total = UAP_CATEGORIES.reduce((sum, c) => sum + uapHoursForCategory(p.id, c.key), 0);
-      return [
-        p.full_name, p.department ?? '',
-        ...UAP_CATEGORIES.map(c => uapHoursForCategory(p.id, c.key)),
-        total, UAP_TOTAL_REQUIRED_HOURS,
-        `${Math.min(100, Math.round((total / UAP_TOTAL_REQUIRED_HOURS) * 100))}%`,
-      ];
-    });
+    const header = ['Category', 'Category Label', 'Task', 'Project', 'Hours'];
+    const rows: (string | number)[][] = [];
+    for (const c of UAP_CATEGORIES) {
+      const tasks = uapTasksByPerson[personId]?.[c.key] ?? [];
+      if (tasks.length === 0) { rows.push([c.key, c.label, '', '', 0]); continue; }
+      for (const t of tasks) rows.push([c.key, c.label, t.title, t.project_name, t.hours]);
+    }
+    const total = UAP_CATEGORIES.reduce((sum, c) => sum + uapHoursForCategory(personId, c.key), 0);
+    rows.push(['TOTAL', '', '', '', total]);
+    rows.push(['REQUIRED', '', '', '', UAP_TOTAL_REQUIRED_HOURS]);
     const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `uap-hours-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `uap-hours-${personName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -269,12 +272,6 @@ export default function ManageTeamsPage() {
               <i className="ri-add-line"></i> New Team
             </button>
           )}
-          {viewMode === 'uapHours' && uapPeople.length > 0 && (
-            <button onClick={downloadUapCsv}
-              className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 cursor-pointer transition-colors">
-              <i className="ri-download-2-line"></i> Download CSV
-            </button>
-          )}
         </div>
 
         {loading ? (
@@ -307,21 +304,30 @@ export default function ManageTeamsPage() {
                 const expanded = expandedUapId === p.id;
                 return (
                   <div key={p.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden self-start">
-                    <button type="button" onClick={() => { setExpandedUapId(expanded ? null : p.id); setExpandedUapCategory(null); }}
-                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50/60 cursor-pointer text-left">
-                      <HubAvatar fullName={p.full_name} avatarUrl={p.avatar_url} size="w-11 h-11" className="flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-gray-900 truncate">{p.full_name}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{p.department || 'Team'}</p>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} />
+                    <div className="w-full flex items-center gap-2 p-4 hover:bg-gray-50/60 transition-colors">
+                      <button type="button" onClick={() => { setExpandedUapId(expanded ? null : p.id); setExpandedUapCategory(null); }}
+                        className="flex-1 min-w-0 flex items-center gap-3 cursor-pointer text-left">
+                        <HubAvatar fullName={p.full_name} avatarUrl={p.avatar_url} size="w-11 h-11" className="flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 truncate">{p.full_name}</p>
+                          <p className="text-[11px] text-gray-400 truncate">{p.department || 'Team'}</p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-[11px] text-gray-500 flex-shrink-0">{total.toLocaleString()} / {UAP_TOTAL_REQUIRED_HOURS.toLocaleString()} hrs</span>
                           </div>
-                          <span className="text-[11px] text-gray-500 flex-shrink-0">{total.toLocaleString()} / {UAP_TOTAL_REQUIRED_HOURS.toLocaleString()} hrs</span>
                         </div>
-                      </div>
-                      <i className={`ri-arrow-${expanded ? 'up' : 'down'}-s-line text-gray-300 flex-shrink-0`}></i>
-                    </button>
+                      </button>
+                      <button type="button" onClick={() => downloadUapCsvForPerson(p.id, p.full_name)} title="Download this employee's UAP hours as CSV"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#1c2b3a] hover:bg-gray-100 cursor-pointer flex-shrink-0">
+                        <i className="ri-download-2-line text-sm"></i>
+                      </button>
+                      <button type="button" onClick={() => { setExpandedUapId(expanded ? null : p.id); setExpandedUapCategory(null); }}
+                        className="w-6 h-6 flex items-center justify-center text-gray-300 cursor-pointer flex-shrink-0">
+                        <i className={`ri-arrow-${expanded ? 'up' : 'down'}-s-line`}></i>
+                      </button>
+                    </div>
                     {expanded && (
                       <div className="border-t border-gray-100 p-4 space-y-1">
                         {UAP_CATEGORIES.map(c => {

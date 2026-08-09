@@ -2221,10 +2221,10 @@ export default function ContractorProjectsPage() {
                 const isPending = (t: ProjectTask) => t.status !== 'done';
                 const daysOut = (t: ProjectTask) => Math.ceil((new Date(t.due_date! + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000);
                 const windowDays = taskWindow === 'daily' ? 0 : taskWindow === 'weekly' ? 7 : 30;
-                const windowLabel = taskWindow === 'daily' ? 'Due Today' : taskWindow === 'weekly' ? 'Due This Week' : 'Due This Month';
-                const dueGroup = myTasks.filter(t => isPending(t) && t.due_date && t.due_date >= today && daysOut(t) <= windowDays);
-                const laterGroup = myTasks.filter(t => isPending(t) && t.due_date && t.due_date > today && daysOut(t) > windowDays);
-                const noDueDateGroup = myTasks.filter(t => isPending(t) && !t.due_date);
+                // Overdue and no-due-date tasks always show regardless of the
+                // window — only how far into the future counts as "in range"
+                // depends on Daily/Weekly/Monthly.
+                const pendingInWindow = myTasks.filter(t => isPending(t) && (!t.due_date || t.due_date < today || daysOut(t) <= windowDays));
 
                 const getProjectDot = (projectId: number) =>
                   getProjectTypePalette(rows.find(r => r.hub_projects?.id === projectId)?.hub_projects?.project_type_code ?? null).from;
@@ -2255,11 +2255,6 @@ export default function ContractorProjectsPage() {
                           </button>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {t.priority === 'high' && t.status !== 'done' && <span className="w-1.5 h-1.5 rounded-full bg-rose-400" title="High priority"></span>}
-                            {t.due_date && t.status !== 'done' && (
-                              <span className={`text-[10px] font-semibold ${isOverdue ? 'text-rose-500' : t.due_date === today ? 'text-amber-600' : 'text-gray-400'}`}>
-                                {t.due_date === today ? 'Today' : isOverdue ? 'Late' : new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </span>
-                            )}
                           </div>
                         </div>
                       );
@@ -2267,39 +2262,40 @@ export default function ContractorProjectsPage() {
                   </div>
                 );
 
-                const GroupHeader = ({ label, count, dot }: { label: string; count: number; dot: string }) => (
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`}></span>
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{label} <span className="text-gray-300 font-normal">({count})</span></p>
-                  </div>
-                );
+                // Grouped by literal due date (nearest first), same behavior
+                // as the admin Tasks list — not by urgency bucket. No-due-
+                // date tasks get their own group at the end.
+                const dateGroups: Record<string, ProjectTask[]> = {};
+                for (const t of pendingInWindow) {
+                  const key = t.due_date ?? '__none';
+                  (dateGroups[key] ??= []).push(t);
+                }
+                const dateKeys = Object.keys(dateGroups).filter(k => k !== '__none').sort();
+                const orderedDateKeys = dateGroups.__none ? [...dateKeys, '__none'] : dateKeys;
 
                 return (
                   <>
-                    {overdueTasks.length > 0 && (
-                      <div className="space-y-2">
-                        <GroupHeader label="Overdue" count={overdueTasks.length} dot="bg-rose-400" />
-                        <TaskRows list={overdueTasks} />
-                      </div>
-                    )}
-                    {dueGroup.length > 0 && (
-                      <div className="space-y-2">
-                        <GroupHeader label={windowLabel} count={dueGroup.length} dot="bg-amber-400" />
-                        <TaskRows list={dueGroup} />
-                      </div>
-                    )}
-                    {laterGroup.length > 0 && (
-                      <div className="space-y-2">
-                        <GroupHeader label="Later" count={laterGroup.length} dot="bg-gray-300" />
-                        <TaskRows list={laterGroup} />
-                      </div>
-                    )}
-                    {noDueDateGroup.length > 0 && (
-                      <div className="space-y-2">
-                        <GroupHeader label="No Due Date" count={noDueDateGroup.length} dot="bg-gray-200" />
-                        <TaskRows list={noDueDateGroup} />
-                      </div>
-                    )}
+                    {orderedDateKeys.map(key => {
+                      const list = dateGroups[key];
+                      const isNoDate = key === '__none';
+                      const isPast = !isNoDate && key < today;
+                      const isToday = key === today;
+                      const label = isNoDate
+                        ? 'No Due Date'
+                        : isToday ? 'Today'
+                        : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                      return (
+                        <div key={key} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isPast ? 'bg-rose-400' : isNoDate ? 'bg-gray-200' : 'bg-amber-400'}`}></span>
+                            <p className={`text-[11px] font-semibold uppercase tracking-widest ${isPast ? 'text-rose-500' : 'text-gray-400'}`}>
+                              {label} <span className="text-gray-300 font-normal">({list.length})</span>
+                            </p>
+                          </div>
+                          <TaskRows list={list} />
+                        </div>
+                      );
+                    })}
                     {doneTasks.length > 0 && (
                       <div className="space-y-2">
                         <button type="button" onClick={() => setShowCompletedTasks(s => !s)} className="flex items-center gap-2 cursor-pointer">

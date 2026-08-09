@@ -4,6 +4,7 @@ import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { supabase } from '@/lib/supabase';
 import { useDemo } from '@/contexts/DemoContext';
 import OrgChart from './OrgChart';
+import { UAP_CATEGORIES, UAP_TOTAL_REQUIRED_HOURS, resolveUapCategory } from '@/lib/uapHours';
 
 interface Team {
   key: string;
@@ -50,7 +51,71 @@ export default function ManageTeamsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [addingTo, setAddingTo] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'teams' | 'orgchart'>('teams');
+  const [viewMode, setViewMode] = useState<'teams' | 'orgchart' | 'uapHours'>('teams');
+  const [uapPeople, setUapPeople] = useState<{ id: string; full_name: string; avatar_url: string | null; department: string | null }[]>([]);
+  const [uapHoursByPerson, setUapHoursByPerson] = useState<Record<string, Record<string, number>>>({});
+  const [uapLoading, setUapLoading] = useState(false);
+  const [expandedUapId, setExpandedUapId] = useState<string | null>(null);
+
+  const fetchUapHours = async () => {
+    setUapLoading(true);
+    const { data: people } = await supabase
+      .from('hub_users')
+      .select('id, full_name, avatar_url, department')
+      .eq('status', 'active').neq('is_developer', true).eq('track_uap_hours', true)
+      .order('full_name');
+    const peopleList = (people as any[]) ?? [];
+    setUapPeople(peopleList);
+    if (peopleList.length === 0) { setUapHoursByPerson({}); setUapLoading(false); return; }
+
+    const ids = peopleList.map(p => p.id);
+    const { data: taskRows } = await supabase
+      .from('hub_project_tasks')
+      .select('assigned_to, assignee_ids, hours_spent, uap_category, hub_projects(stage)')
+      .not('hours_spent', 'is', null)
+      .or(ids.map(id => `assigned_to.eq.${id},assignee_ids.cs.{${id}}`).join(','));
+
+    const byPerson: Record<string, Record<string, number>> = {};
+    for (const row of (taskRows as any[]) ?? []) {
+      const cat = resolveUapCategory(row.uap_category, row.hub_projects?.stage ?? null);
+      if (!cat || !row.hours_spent) continue;
+      const rowAssignees = new Set<string>([...(row.assignee_ids ?? []), ...(row.assigned_to ? [row.assigned_to] : [])]);
+      for (const personId of ids) {
+        if (!rowAssignees.has(personId)) continue;
+        (byPerson[personId] ??= {})[cat] = (byPerson[personId]?.[cat] ?? 0) + row.hours_spent;
+      }
+    }
+    setUapHoursByPerson(byPerson);
+    setUapLoading(false);
+  };
+
+  useEffect(() => { if (viewMode === 'uapHours') fetchUapHours(); }, [viewMode]);
+
+  const downloadUapCsv = () => {
+    const csvCell = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Employee', 'Department', ...UAP_CATEGORIES.map(c => c.key), 'Total', 'Required', '% Complete'];
+    const rows = uapPeople.map(p => {
+      const hours = uapHoursByPerson[p.id] ?? {};
+      const total = UAP_CATEGORIES.reduce((sum, c) => sum + (hours[c.key] ?? 0), 0);
+      return [
+        p.full_name, p.department ?? '',
+        ...UAP_CATEGORIES.map(c => hours[c.key] ?? 0),
+        total, UAP_TOTAL_REQUIRED_HOURS,
+        `${Math.min(100, Math.round((total / UAP_TOTAL_REQUIRED_HOURS) * 100))}%`,
+      ];
+    });
+    const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `uap-hours-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const fetchAll = async () => {
     setLoading(true);
@@ -182,10 +247,10 @@ export default function ManageTeamsPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="inline-flex items-center bg-gray-50 rounded-xl p-1">
-            {(['teams', 'orgchart'] as const).map(mode => (
+            {(['teams', 'orgchart', 'uapHours'] as const).map(mode => (
               <button key={mode} onClick={() => setViewMode(mode)}
-                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${viewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                {mode === 'teams' ? 'Teams' : 'Org Chart'}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-colors whitespace-nowrap ${viewMode === mode ? 'bg-white text-[#1c2b3a] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                {mode === 'teams' ? 'Teams' : mode === 'orgchart' ? 'Org Chart' : 'UAP Hours'}
               </button>
             ))}
           </div>
@@ -195,12 +260,76 @@ export default function ManageTeamsPage() {
               <i className="ri-add-line"></i> New Team
             </button>
           )}
+          {viewMode === 'uapHours' && uapPeople.length > 0 && (
+            <button onClick={downloadUapCsv}
+              className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 cursor-pointer transition-colors">
+              <i className="ri-download-2-line"></i> Download CSV
+            </button>
+          )}
         </div>
 
         {loading ? (
           <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
         ) : viewMode === 'orgchart' ? (
           <OrgChart people={employees} teams={teams} onChange={fetchAll} />
+        ) : viewMode === 'uapHours' ? (
+          uapLoading ? (
+            <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
+          ) : uapPeople.length === 0 ? (
+            <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
+              <i className="ri-graduation-cap-line text-4xl text-gray-200 mb-3 block"></i>
+              <p className="text-sm font-medium text-gray-500">No one is being tracked yet</p>
+              <p className="text-xs text-gray-400 mt-1">Turn on "Track UAP Hours" from an employee's profile to add them here.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {uapPeople.map(p => {
+                const hours = uapHoursByPerson[p.id] ?? {};
+                const total = UAP_CATEGORIES.reduce((sum, c) => sum + (hours[c.key] ?? 0), 0);
+                const pct = Math.min(100, Math.round((total / UAP_TOTAL_REQUIRED_HOURS) * 100));
+                const expanded = expandedUapId === p.id;
+                return (
+                  <div key={p.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                    <button type="button" onClick={() => setExpandedUapId(expanded ? null : p.id)}
+                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50/60 cursor-pointer text-left">
+                      <HubAvatar fullName={p.full_name} avatarUrl={p.avatar_url} size="w-11 h-11" className="flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-gray-900 truncate">{p.full_name}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{p.department || 'Team'}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[11px] text-gray-500 flex-shrink-0">{total.toLocaleString()} / {UAP_TOTAL_REQUIRED_HOURS.toLocaleString()} hrs</span>
+                        </div>
+                      </div>
+                      <i className={`ri-arrow-${expanded ? 'up' : 'down'}-s-line text-gray-300 flex-shrink-0`}></i>
+                    </button>
+                    {expanded && (
+                      <div className="border-t border-gray-100 p-4 space-y-2">
+                        {UAP_CATEGORIES.map(c => {
+                          const logged = hours[c.key] ?? 0;
+                          const met = logged >= c.requiredHours;
+                          const catPct = Math.min(100, Math.round((logged / c.requiredHours) * 100));
+                          return (
+                            <div key={c.key}>
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <span className="text-[11px] text-gray-600 truncate" title={c.label}><span className="font-semibold">{c.key}</span> — {c.label}</span>
+                                <span className={`text-[11px] font-semibold flex-shrink-0 ${met ? 'text-emerald-600' : 'text-gray-500'}`}>{logged.toLocaleString()}/{c.requiredHours.toLocaleString()}</span>
+                              </div>
+                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${met ? 'bg-emerald-400' : 'bg-sky-300'}`} style={{ width: `${catPct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : teams.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
             <i className="ri-team-line text-4xl text-gray-200 mb-3 block"></i>

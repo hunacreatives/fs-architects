@@ -53,9 +53,12 @@ export default function ManageTeamsPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'teams' | 'orgchart' | 'uapHours'>('teams');
   const [uapPeople, setUapPeople] = useState<{ id: string; full_name: string; avatar_url: string | null; department: string | null }[]>([]);
-  const [uapHoursByPerson, setUapHoursByPerson] = useState<Record<string, Record<string, number>>>({});
+  interface UapTaskContribution { id: number; title: string; project_name: string; hours: number }
+  const [uapTasksByPerson, setUapTasksByPerson] = useState<Record<string, Record<string, UapTaskContribution[]>>>({});
   const [uapLoading, setUapLoading] = useState(false);
   const [expandedUapId, setExpandedUapId] = useState<string | null>(null);
+  const [expandedUapCategory, setExpandedUapCategory] = useState<string | null>(null);
+  const [uapSearch, setUapSearch] = useState('');
 
   const fetchUapHours = async () => {
     setUapLoading(true);
@@ -66,30 +69,37 @@ export default function ManageTeamsPage() {
       .order('full_name');
     const peopleList = (people as any[]) ?? [];
     setUapPeople(peopleList);
-    if (peopleList.length === 0) { setUapHoursByPerson({}); setUapLoading(false); return; }
+    if (peopleList.length === 0) { setUapTasksByPerson({}); setUapLoading(false); return; }
 
     const ids = peopleList.map(p => p.id);
     const { data: taskRows } = await supabase
       .from('hub_project_tasks')
-      .select('assigned_to, assignee_ids, hours_spent, uap_category, hub_projects(stage)')
+      .select('id, title, assigned_to, assignee_ids, hours_spent, uap_category, hub_projects(project_name, stage)')
       .not('hours_spent', 'is', null)
       .or(ids.map(id => `assigned_to.eq.${id},assignee_ids.cs.{${id}}`).join(','));
 
-    const byPerson: Record<string, Record<string, number>> = {};
+    const byPerson: Record<string, Record<string, UapTaskContribution[]>> = {};
     for (const row of (taskRows as any[]) ?? []) {
       const cat = resolveUapCategory(row.uap_category, row.hub_projects?.stage ?? null);
       if (!cat || !row.hours_spent) continue;
       const rowAssignees = new Set<string>([...(row.assignee_ids ?? []), ...(row.assigned_to ? [row.assigned_to] : [])]);
       for (const personId of ids) {
         if (!rowAssignees.has(personId)) continue;
-        (byPerson[personId] ??= {})[cat] = (byPerson[personId]?.[cat] ?? 0) + row.hours_spent;
+        ((byPerson[personId] ??= {})[cat] ??= []).push({
+          id: row.id, title: row.title, project_name: row.hub_projects?.project_name ?? 'Unknown', hours: row.hours_spent,
+        });
       }
     }
-    setUapHoursByPerson(byPerson);
+    setUapTasksByPerson(byPerson);
     setUapLoading(false);
   };
 
   useEffect(() => { if (viewMode === 'uapHours') fetchUapHours(); }, [viewMode]);
+
+  const uapHoursForCategory = (personId: string, category: string) =>
+    (uapTasksByPerson[personId]?.[category] ?? []).reduce((sum, t) => sum + t.hours, 0);
+
+  const filteredUapPeople = uapPeople.filter(p => p.full_name.toLowerCase().includes(uapSearch.trim().toLowerCase()));
 
   const downloadUapCsv = () => {
     const csvCell = (v: unknown) => {
@@ -98,11 +108,10 @@ export default function ManageTeamsPage() {
     };
     const header = ['Employee', 'Department', ...UAP_CATEGORIES.map(c => c.key), 'Total', 'Required', '% Complete'];
     const rows = uapPeople.map(p => {
-      const hours = uapHoursByPerson[p.id] ?? {};
-      const total = UAP_CATEGORIES.reduce((sum, c) => sum + (hours[c.key] ?? 0), 0);
+      const total = UAP_CATEGORIES.reduce((sum, c) => sum + uapHoursForCategory(p.id, c.key), 0);
       return [
         p.full_name, p.department ?? '',
-        ...UAP_CATEGORIES.map(c => hours[c.key] ?? 0),
+        ...UAP_CATEGORIES.map(c => uapHoursForCategory(p.id, c.key)),
         total, UAP_TOTAL_REQUIRED_HOURS,
         `${Math.min(100, Math.round((total / UAP_TOTAL_REQUIRED_HOURS) * 100))}%`,
       ];
@@ -282,15 +291,23 @@ export default function ManageTeamsPage() {
               <p className="text-xs text-gray-400 mt-1">Turn on "Track UAP Hours" from an employee's profile to add them here.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {uapPeople.map(p => {
-                const hours = uapHoursByPerson[p.id] ?? {};
-                const total = UAP_CATEGORIES.reduce((sum, c) => sum + (hours[c.key] ?? 0), 0);
+            <div className="space-y-4">
+              <div className="relative max-w-xs">
+                <i className="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input value={uapSearch} onChange={e => setUapSearch(e.target.value)} placeholder="Search employees..."
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
+              </div>
+              {filteredUapPeople.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">No employees match "{uapSearch}".</p>
+              ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredUapPeople.map(p => {
+                const total = UAP_CATEGORIES.reduce((sum, c) => sum + uapHoursForCategory(p.id, c.key), 0);
                 const pct = Math.min(100, Math.round((total / UAP_TOTAL_REQUIRED_HOURS) * 100));
                 const expanded = expandedUapId === p.id;
                 return (
-                  <div key={p.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-                    <button type="button" onClick={() => setExpandedUapId(expanded ? null : p.id)}
+                  <div key={p.id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden self-start">
+                    <button type="button" onClick={() => { setExpandedUapId(expanded ? null : p.id); setExpandedUapCategory(null); }}
                       className="w-full flex items-center gap-3 p-4 hover:bg-gray-50/60 cursor-pointer text-left">
                       <HubAvatar fullName={p.full_name} avatarUrl={p.avatar_url} size="w-11 h-11" className="flex-shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -306,20 +323,43 @@ export default function ManageTeamsPage() {
                       <i className={`ri-arrow-${expanded ? 'up' : 'down'}-s-line text-gray-300 flex-shrink-0`}></i>
                     </button>
                     {expanded && (
-                      <div className="border-t border-gray-100 p-4 space-y-2">
+                      <div className="border-t border-gray-100 p-4 space-y-1">
                         {UAP_CATEGORIES.map(c => {
-                          const logged = hours[c.key] ?? 0;
+                          const logged = uapHoursForCategory(p.id, c.key);
                           const met = logged >= c.requiredHours;
                           const catPct = Math.min(100, Math.round((logged / c.requiredHours) * 100));
+                          const catKey = `${p.id}:${c.key}`;
+                          const catExpanded = expandedUapCategory === catKey;
+                          const contributingTasks = uapTasksByPerson[p.id]?.[c.key] ?? [];
                           return (
                             <div key={c.key}>
-                              <div className="flex items-center justify-between gap-2 mb-0.5">
-                                <span className="text-[11px] text-gray-600 truncate" title={c.label}><span className="font-semibold">{c.key}</span> — {c.label}</span>
-                                <span className={`text-[11px] font-semibold flex-shrink-0 ${met ? 'text-emerald-600' : 'text-gray-500'}`}>{logged.toLocaleString()}/{c.requiredHours.toLocaleString()}</span>
-                              </div>
-                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${met ? 'bg-emerald-400' : 'bg-sky-300'}`} style={{ width: `${catPct}%` }} />
-                              </div>
+                              <button type="button" onClick={() => setExpandedUapCategory(catExpanded ? null : catKey)}
+                                disabled={contributingTasks.length === 0}
+                                className="w-full text-left py-1.5 cursor-pointer disabled:cursor-default">
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                  <span className="text-[11px] text-gray-600 truncate flex items-center gap-1" title={c.label}>
+                                    <span className="font-semibold">{c.key}</span> — {c.label}
+                                    {contributingTasks.length > 0 && <i className={`ri-arrow-${catExpanded ? 'up' : 'down'}-s-line text-gray-300`}></i>}
+                                  </span>
+                                  <span className={`text-[11px] font-semibold flex-shrink-0 ${met ? 'text-emerald-600' : 'text-gray-500'}`}>{logged.toLocaleString()}/{c.requiredHours.toLocaleString()}</span>
+                                </div>
+                                <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full ${met ? 'bg-emerald-400' : 'bg-sky-300'}`} style={{ width: `${catPct}%` }} />
+                                </div>
+                              </button>
+                              {catExpanded && (
+                                <div className="pl-2 pb-2 pt-1 space-y-1 border-l-2 border-gray-100 ml-1">
+                                  {contributingTasks.map(t => (
+                                    <div key={t.id} className="flex items-center justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <p className="text-[11px] text-gray-700 truncate">{t.title}</p>
+                                        <p className="text-[10px] text-gray-400 truncate">{t.project_name}</p>
+                                      </div>
+                                      <span className="text-[11px] text-gray-500 flex-shrink-0">{t.hours}h</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -328,6 +368,8 @@ export default function ManageTeamsPage() {
                   </div>
                 );
               })}
+              </div>
+              )}
             </div>
           )
         ) : teams.length === 0 ? (

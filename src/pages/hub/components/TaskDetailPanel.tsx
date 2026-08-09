@@ -715,6 +715,44 @@ export default function TaskDetailPanel({
     });
   }, [isDemo]);
 
+  // Quick status change from the header pill — writes straight to the DB
+  // instead of requiring "Edit" first, so it behaves like a one-click
+  // status toggle (Kanban-style) rather than a full form save. Re-fetches
+  // afterward so the form's baseline stays in sync — if the user happens to
+  // also be mid-edit of other fields, the main Save button won't see a
+  // false "status changed" diff against a now-stale snapshot.
+  const quickChangeStatus = async (newStatus: TaskDetailTask['status']) => {
+    setShowStatusDropdown(false);
+    if (!task || isNew) { setStatus(newStatus); return; }
+    const prevStatus = status;
+    if (newStatus === prevStatus) return;
+    if (isDemo) { setStatus(newStatus); onSaved({ ...task, status: newStatus } as TaskDetailTask); return; }
+    setStatus(newStatus);
+    const { data, error } = await supabase
+      .from('hub_project_tasks')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', task.id)
+      .select('*')
+      .single();
+    if (error) { setStatus(prevStatus); return; }
+    await logActivity(task.id, 'status_change', `changed status from ${prevStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
+    supabase.functions.invoke('notify-task-updated', {
+      body: {
+        task_id: task.id,
+        project_id: data.project_id,
+        task_title: data.title,
+        project_name: projectName,
+        updated_by_id: currentUserId,
+        updated_by_name: currentUserName,
+        change_description: `${currentUserName} marked "${data.title}" as ${newStatus.replace('_', ' ')}`,
+      },
+    }).catch(console.error);
+    await fetchTaskData(task.id);
+    const assigneeMember = teamMembers.find(m => m.id === (getTaskAssigneeIds(data)[0] ?? '')) ?? null;
+    const hub_users = assigneeMember ? { id: assigneeMember.id, full_name: assigneeMember.full_name, avatar_url: assigneeMember.avatar_url ?? null } : null;
+    onSaved({ ...data, hub_users } as TaskDetailTask);
+  };
+
   // ── Save ───────────────────────────────────────────────────────────────────
 
   const handleSave = async ({ closeAfterSave = false }: { closeAfterSave?: boolean } = {}) => {
@@ -1339,9 +1377,34 @@ export default function TaskDetailPanel({
                 </span>
               )
             )}
-            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${sc.bg} ${sc.text}`}>
-              <i className={`${sc.icon} text-[11px]`}></i>{sc.label}
-            </span>
+            {canEdit ? (
+              <div className="relative">
+                <button type="button" onClick={() => setShowStatusDropdown(v => !v)}
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${sc.bg} ${sc.text}`}>
+                  <i className={`${sc.icon} text-[11px]`}></i>{sc.label}
+                  <i className="ri-arrow-down-s-line text-[11px] opacity-60"></i>
+                </button>
+                {showStatusDropdown && (
+                  <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-xl shadow-xl z-20 py-1.5 min-w-[160px]">
+                    {Object.entries(STATUS_CFG).map(([k, v]) => (
+                      <button key={k} type="button"
+                        onClick={() => quickChangeStatus(k as TaskDetailTask['status'])}
+                        className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-gray-50 transition-colors cursor-pointer ${status === k ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
+                        <span className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${v.bg}`}>
+                          <i className={`${v.icon} ${v.text} text-xs`}></i>
+                        </span>
+                        {v.label}
+                        {status === k && <i className="ri-check-line ml-auto text-[#1c2b3a]"></i>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${sc.bg} ${sc.text}`}>
+                <i className={`${sc.icon} text-[11px]`}></i>{sc.label}
+              </span>
+            )}
             <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${pc.cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`}></span>{pc.label}
             </span>
@@ -1378,36 +1441,6 @@ export default function TaskDetailPanel({
               </div>
             )}
 
-            {/* Status — only show in body when editing (header already shows it in view mode) */}
-            {editing && (
-              <div className="flex items-center h-8 gap-3">
-                <span className="text-xs text-gray-400 w-24 flex-shrink-0">Status</span>
-                <div className="relative">
-                  <button type="button"
-                    onClick={() => setShowStatusDropdown(v => !v)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer hover:opacity-80 ${sc.bg} ${sc.text}`}>
-                    <i className={`${sc.icon} text-xs`}></i>
-                    {sc.label}
-                    <i className="ri-arrow-down-s-line text-xs ml-0.5 opacity-60"></i>
-                  </button>
-                  {showStatusDropdown && (
-                    <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-xl shadow-xl z-20 py-1.5 min-w-[160px]">
-                      {Object.entries(STATUS_CFG).map(([k, v]) => (
-                        <button key={k} type="button"
-                          onClick={() => { setStatus(k as TaskDetailTask['status']); setShowStatusDropdown(false); }}
-                          className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-gray-50 transition-colors cursor-pointer ${status === k ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
-                          <span className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${v.bg}`}>
-                            <i className={`${v.icon} ${v.text} text-xs`}></i>
-                          </span>
-                          {v.label}
-                          {status === k && <i className="ri-check-line ml-auto text-[#1c2b3a]"></i>}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
             {editing && status === 'blocked' && (
               <div className="flex items-center h-8 gap-3">
                 <span className="text-xs text-gray-400 w-24 flex-shrink-0">Blocked by</span>

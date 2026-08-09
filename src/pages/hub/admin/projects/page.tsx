@@ -188,6 +188,7 @@ export default function AdminProjectsPage() {
   const [taskSearch, setTaskSearch] = useState('');
   const [calendarHiddenProjects, setCalendarHiddenProjects] = useState<Set<number>>(new Set());
   const [showCalendarFilterMenu, setShowCalendarFilterMenu] = useState(false);
+  const [resyncingDrive, setResyncingDrive] = useState(false);
   const [projectTypeFilter, setProjectTypeFilter] = useState<'all' | 'client' | 'internal'>('all');
   const [activeId, setActiveId] = useState<number | null>(() => {
     const w = searchParams.get('w');
@@ -495,6 +496,24 @@ export default function AdminProjectsPage() {
     a.download = `tasks-export-${localToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // One-time maintenance action: renames/moves every project's Drive folder
+  // to match its current project_code. Needed after the project-code
+  // renumbering migration, and safe to re-run any time codes and folder
+  // names drift (e.g. a folder got renamed manually in Drive).
+  const resyncDriveFolderNames = async () => {
+    if (!confirm('Rename every project\'s Google Drive folder to match its current project code? This calls the Drive API for every project and cannot be undone automatically.')) return;
+    setResyncingDrive(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('backfill-project-drive-folder-names');
+      if (error) throw error;
+      alert(`Done. Renamed: ${data.renamed}, skipped (no code/folder yet): ${data.skipped}${data.failed?.length ? `, failed: ${data.failed.length}` : ''}`);
+    } catch (err: any) {
+      alert(`Resync failed: ${err.message ?? err}`);
+    } finally {
+      setResyncingDrive(false);
+    }
   };
 
   const fetchAllTasks = async () => {
@@ -1763,10 +1782,18 @@ export default function AdminProjectsPage() {
             <div className="hidden sm:block flex-1" />
             {pageView === 'projects' ? (
               isFullAccess && (
-              <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
-                className="flex items-center justify-center gap-1.5 w-auto min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
-                <i className="ri-add-line text-sm"></i>New Project
-              </button>
+              <div className="flex items-center gap-2">
+                {['owner', 'admin'].includes(hubUser?.role ?? '') && (
+                  <button onClick={resyncDriveFolderNames} disabled={resyncingDrive} title="Rename every project's Drive folder to match its current project code"
+                    className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-[#1c2b3a] border border-white/80 bg-white/70 backdrop-blur-sm rounded-xl cursor-pointer disabled:opacity-50 flex-shrink-0">
+                    <i className={`ri-refresh-line text-sm ${resyncingDrive ? 'animate-spin' : ''}`}></i>
+                  </button>
+                )}
+                <button onClick={() => { setEditingProject(null); setForm(emptyForm); setShowForm(true); }}
+                  className="flex items-center justify-center gap-1.5 w-auto min-w-[132px] px-3 py-1.5 bg-[#111827] text-white text-xs font-medium rounded-xl border border-transparent hover:bg-gray-800 transition-colors cursor-pointer whitespace-nowrap flex-shrink-0">
+                  <i className="ri-add-line text-sm"></i>New Project
+                </button>
+              </div>
               )
             ) : pageView === 'tasks' ? (
               <button onClick={() => { setPendingTaskDate(null); openNewTask(); }}

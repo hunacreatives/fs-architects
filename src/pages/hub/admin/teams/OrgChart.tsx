@@ -231,13 +231,17 @@ export default function OrgChart({ people, teams, onChange, rootId, readOnly }: 
   const addReportOptions = people.filter(p => p.id !== addReportFor && p.role !== 'owner');
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-5 overflow-x-auto">
+    <div className="bg-white border border-gray-100 rounded-xl p-5 overflow-x-auto text-center">
       <style>{`
         /* Float-based tree: each level shrink-wraps to its own content width
            (a row of 3 cards doesn't inherit a narrower "slot" from a
-           shallower level the way nested flex containers can), while
-           display:table + margin:auto centers the whole shrink-wrapped tree. */
-        .org-tree { display: table; margin: 0 auto; }
+           shallower level the way nested flex containers can). inline-block
+           + the wrapper's text-align:center shrink-wraps and centers the
+           whole tree reliably — display:table's auto width algorithm doesn't
+           always compute the true width of deeply-floated content
+           correctly, capping too narrow and wrapping siblings that should
+           sit on the same row. */
+        .org-tree { display: inline-block; text-align: left; }
         .org-tree ul { padding-top: 28px; position: relative; }
         .org-tree > ul { padding-top: 0; }
         .org-tree ul::after { content: ''; display: table; clear: both; }

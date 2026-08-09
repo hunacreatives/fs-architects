@@ -2017,7 +2017,16 @@ export default function AdminProjectsPage() {
                   const key = taskGroupBy === 'project' ? (t.project?.project_name ?? 'Unknown') : (t.assignee?.full_name ?? 'Unassigned');
                   (groups[key] ??= []).push(t);
                 }
-                return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([grp, gtasks]) => {
+                // Nearest deadline first within each group — tasks with no
+                // due date sort last, done status doesn't affect the order.
+                const byDueDate = (a: any, b: any) => {
+                  if (!a.due_date && !b.due_date) return 0;
+                  if (!a.due_date) return 1;
+                  if (!b.due_date) return -1;
+                  return a.due_date.localeCompare(b.due_date);
+                };
+                return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([grp, gtasksRaw]) => {
+                  const gtasks = [...gtasksRaw].sort(byDueDate);
                   const done = gtasks.filter(t => t.status === 'done').length;
                   const pct = Math.round((done / gtasks.length) * 100);
                   const overdue = gtasks.filter(t => isOver(t)).length;

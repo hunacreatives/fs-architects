@@ -172,7 +172,6 @@ export default function AdminProjectsPage() {
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [allTasksLoading, setAllTasksLoading] = useState(false);
   const [taskStatusFilter, setTaskStatusFilter] = useState('active');
-  const [taskGroupBy, setTaskGroupBy] = useState<'project' | 'assignee'>('project');
   const [pendingTaskDate, setPendingTaskDate] = useState<string | null>(null);
   // Carries a quick-add draft (assignee/title/project) into the full task
   // drawer when someone hits "Add details" instead of the one-line quick add.
@@ -1907,12 +1906,6 @@ export default function AdminProjectsPage() {
                     <option value="todo">To Do</option><option value="in_progress">In Progress</option><option value="in_review">In Review</option><option value="blocked">Blocked</option><option value="done">Done</option>
                   </select>
                 </label>
-                <label className="flex items-center gap-1.5 px-1 flex-shrink-0">
-                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Group by</span>
-                  <select value={taskGroupBy} onChange={e => setTaskGroupBy(e.target.value as 'project' | 'assignee')} title="Group the task list below by project or by assignee" className="px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm focus:outline-none cursor-pointer">
-                    <option value="project">Project</option><option value="assignee">Assignee</option>
-                  </select>
-                </label>
                 <button type="button" onClick={downloadTasksCsv}
                   title="Download all tasks as a CSV file"
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer whitespace-nowrap flex-shrink-0">
@@ -2012,70 +2005,53 @@ export default function AdminProjectsPage() {
                   blocked: { label: 'Blocked', cls: 'bg-rose-100 text-rose-700' },
                   done: { label: 'Done', cls: 'bg-emerald-100 text-emerald-700' },
                 };
-                const groups: Record<string, any[]> = {};
-                for (const t of filt) {
-                  const key = taskGroupBy === 'project' ? (t.project?.project_name ?? 'Unknown') : (t.assignee?.full_name ?? 'Unassigned');
-                  (groups[key] ??= []).push(t);
-                }
-                // Nearest deadline first within each group — tasks with no
-                // due date sort last, done status doesn't affect the order.
+                // Nearest deadline first, flat across all projects/assignees
+                // — tasks with no due date sort last.
                 const byDueDate = (a: any, b: any) => {
                   if (!a.due_date && !b.due_date) return 0;
                   if (!a.due_date) return 1;
                   if (!b.due_date) return -1;
                   return a.due_date.localeCompare(b.due_date);
                 };
-                return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0])).map(([grp, gtasksRaw]) => {
-                  const gtasks = [...gtasksRaw].sort(byDueDate);
-                  const done = gtasks.filter(t => t.status === 'done').length;
-                  const pct = Math.round((done / gtasks.length) * 100);
-                  const overdue = gtasks.filter(t => isOver(t)).length;
-                  return (
-                    <div key={grp} className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 overflow-hidden">
-                      <div className="px-5 py-3 border-b border-gray-100/80 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2 h-2 rounded-full bg-[#1c2b3a]/70 flex-shrink-0"></span>
-                          <h3 className="font-bold text-sm text-gray-800 truncate">{grp}</h3>
-                          <span className="text-xs text-gray-400 flex-shrink-0">{gtasks.length}</span>
-                          {overdue > 0 && <span className="text-[10px] text-rose-500 font-semibold flex-shrink-0">{overdue} overdue</span>}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} /></div>
-                          <span className="text-xs text-gray-400">{done}/{gtasks.length}</span>
-                        </div>
-                      </div>
-                      <div className="divide-y divide-gray-100/80">
-                        {gtasks.map(t => {
-                          const over = isOver(t);
-                          const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
-                          return (
-                            <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
-                              className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer ${over ? 'bg-rose-50/30' : ''}`}>
-                              <button onClick={async e => { e.stopPropagation(); const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
-                                <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
-                              </button>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
-                                {taskGroupBy === 'assignee' && t.project && <p className="text-[11px] text-gray-400 truncate">{t.project.project_name}</p>}
-                              </div>
-                              <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
-                              <span className={`w-12 text-[11px] font-medium flex-shrink-0 text-right ${over ? 'text-rose-500' : 'text-gray-400'}`}>
-                                {t.due_date ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
-                              </span>
-                              <div className="w-6 h-6 flex-shrink-0">
-                                {t.assignee && taskGroupBy === 'project' && (
-                                  t.assignee.avatar_url
-                                    ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover" />
-                                    : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
-                                )}
-                              </div>
+                const sorted = [...filt].sort(byDueDate);
+                if (sorted.length === 0) return null;
+                return (
+                  <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 overflow-hidden">
+                    <div className="divide-y divide-gray-100/80">
+                      {sorted.map(t => {
+                        const over = isOver(t);
+                        const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
+                        return (
+                          <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
+                            className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer ${over ? 'bg-rose-50/30' : ''}`}>
+                            <button onClick={async e => { e.stopPropagation(); const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
+                              <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
                             </div>
-                          );
-                        })}
-                      </div>
+                            {t.project && (
+                              <span className="hidden sm:inline-flex items-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-medium bg-[#1c2b3a]/5 text-[#1c2b3a] flex-shrink-0 max-w-[140px] truncate">
+                                {t.project.project_name}
+                              </span>
+                            )}
+                            <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${scfg.cls}`}>{scfg.label}</span>
+                            <span className={`w-12 text-[11px] font-medium flex-shrink-0 text-right ${over ? 'text-rose-500' : 'text-gray-400'}`}>
+                              {t.due_date ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}
+                            </span>
+                            <div className="w-6 h-6 flex-shrink-0" title={t.assignee?.full_name}>
+                              {t.assignee && (
+                                t.assignee.avatar_url
+                                  ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover" />
+                                  : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                });
+                  </div>
+                );
               })()}
             </div>
             );

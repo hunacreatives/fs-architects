@@ -40,6 +40,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
     team: (contractor as any).team || '',
     team_lead_of: (contractor as any).team_lead_of || '',
   });
+  const [trackUapHours, setTrackUapHours] = useState<boolean>((contractor as any).track_uap_hours || false);
   const [loading, setLoading] = useState(false);
   const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
   useEffect(() => { loadTeams().then(setTeamsList); }, []);
@@ -66,6 +67,7 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
       employee_id: form.employee_id.trim() || null,
       team: form.team || null,
       team_lead_of: form.team_lead_of || null,
+      track_uap_hours: trackUapHours,
       updated_at: new Date().toISOString(),
     }).eq('id', contractor.id);
     if (err) { setError(err.message); setLoading(false); return; }
@@ -262,6 +264,18 @@ export default function EditContractorModal({ contractor, onClose, onSuccess }: 
                 {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
               </select>
               <p className="text-[11px] text-gray-400">Grants access to manage that team's tasks/projects.</p>
+            </div>
+
+            <div className="col-span-2 flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5">
+              <div>
+                <label className="text-xs font-medium text-gray-700 cursor-pointer" htmlFor="track_uap_hours">Track UAP Hours</label>
+                <p className="text-[11px] text-gray-400">Shows a UAP Field of Practice hours tracker on this employee's profile — for junior architects/students working toward the 3,840-hour board exam requirement.</p>
+              </div>
+              <button type="button" id="track_uap_hours" role="switch" aria-checked={trackUapHours}
+                onClick={() => setTrackUapHours(v => !v)}
+                className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${trackUapHours ? 'bg-[#1c2b3a]' : 'bg-gray-200'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${trackUapHours ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+              </button>
             </div>
 
             <div className="space-y-1">

@@ -53,7 +53,7 @@ interface Project {
   }[];
 }
 
-interface Contractor { id: string; full_name: string; avatar_url: string | null; department: string | null; team?: string | null; }
+interface Contractor { id: string; full_name: string; avatar_url: string | null; department: string | null; team?: string | null; track_uap_hours?: boolean; }
 
 interface ProjectTask {
   id: number;
@@ -592,7 +592,7 @@ export default function AdminProjectsPage() {
       supabase.from('hub_projects')
         .select('*, hub_project_contractors(id, project_role, hub_users(id, full_name, avatar_url, email))')
         .order('created_at', { ascending: false }),
-      supabase.from('hub_users').select('id, full_name, avatar_url, department, team')
+      supabase.from('hub_users').select('id, full_name, avatar_url, department, team, track_uap_hours')
         .eq('status', 'active').neq('is_developer', true).order('full_name'),
     ]);
     setProjects((pRes.data as Project[]) ?? []);
@@ -2796,8 +2796,9 @@ export default function AdminProjectsPage() {
         }}
         projectId={detailTask?.project_id ?? pendingTaskProjectId ?? activeId ?? 0}
         projectName={projects.find(p => p.id === (detailTask?.project_id ?? pendingTaskProjectId))?.project_name ?? activeProject?.project_name ?? 'General'}
+        projectPhase={projects.find(p => p.id === (detailTask?.project_id ?? pendingTaskProjectId))?.stage ?? activeProject?.stage ?? null}
         projects={projects.filter(p => p.status !== 'cancelled').map(p => ({ id: p.id, project_name: p.project_name, client_name: p.client_name, project_type: p.project_type }))}
-        teamMembers={assignableContractors.map(c => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url }))}
+        teamMembers={assignableContractors.map(c => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url, track_uap_hours: c.track_uap_hours }))}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}
         currentUserName={hubUser?.full_name ?? 'Admin'}

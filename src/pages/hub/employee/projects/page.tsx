@@ -37,7 +37,7 @@ function normalizeTaskActivityAction(type: string) {
   }
 }
 
-interface TeamMember { id: string; full_name: string; avatar_url: string | null; }
+interface TeamMember { id: string; full_name: string; avatar_url: string | null; track_uap_hours?: boolean; }
 
 interface ProjectRow {
   id: number;
@@ -1013,7 +1013,7 @@ export default function ContractorProjectsPage() {
 
         const allUserIds = [...new Set((pcTeamData ?? []).map((r: any) => r.contractor_id as string))];
         if (allUserIds.length > 0) {
-          const { data: usersData } = await supabase.from('hub_users').select('id, full_name, avatar_url').in('id', allUserIds);
+          const { data: usersData } = await supabase.from('hub_users').select('id, full_name, avatar_url, track_uap_hours').in('id', allUserIds);
           const usersById = Object.fromEntries((usersData ?? []).map((u: any) => [u.id, u]));
           const map: Record<number, TeamMember[]> = {};
           for (const r of (pcTeamData ?? []) as any[]) {
@@ -1158,6 +1158,7 @@ export default function ContractorProjectsPage() {
   // task's own project rather than assuming wsProject/wsTeam are in sync.
   const detailProjectId = editingTask?.project_id ?? wsProject?.id ?? 0;
   const detailProjectName = editingTask ? (getProjectName(editingTask.project_id) || 'General') : (wsProject?.project_name ?? 'General');
+  const detailProjectPhase = editingTask ? (rows.find(r => r.id === editingTask.project_id)?.hub_projects?.stage ?? null) : (wsProject?.stage ?? null);
   const detailTeam = editingTask ? (teamMap[editingTask.project_id] ?? []) : wsTeam;
   const getWorkspaceTaskAssignees = (task: ProjectTask) =>
     getTaskAssigneeIds(task)
@@ -2930,6 +2931,7 @@ export default function ContractorProjectsPage() {
         onActivityChange={refreshWorkspaceActivity}
         projectId={detailProjectId}
         projectName={detailProjectName}
+        projectPhase={detailProjectPhase}
         teamMembers={detailTeam}
         canEdit={true}
         currentUserId={hubUser?.id ?? ''}

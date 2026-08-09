@@ -8,6 +8,7 @@ import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import CommentEditor, { type CommentEditorHandle } from '@/pages/hub/components/CommentEditor';
 import { loadTeams, teamMeta, type TeamMeta } from '@/lib/teams';
+import { UAP_CATEGORIES, resolveUapCategory } from '@/lib/uapHours';
 
 function fmtLogDate(d: string | null): string {
   if (!d) return 'none';
@@ -122,6 +123,7 @@ export interface TaskDetailTask {
   assignee_ids?: string[] | null;
   team?: string | null;
   hours_spent?: number | null;
+  uap_category?: string | null;
   due_date: string | null;
   start_date: string | null;
   checklist?: ChecklistItem[] | null;
@@ -185,6 +187,7 @@ export interface TeamMember {
   id: string;
   full_name: string;
   avatar_url?: string | null;
+  track_uap_hours?: boolean;
 }
 
 interface Props {
@@ -198,6 +201,10 @@ interface Props {
   onOpenProject?: (projectId: number) => void;
   projectId: number;
   projectName?: string;
+  // Current Phase of the project this task belongs to — used to auto-
+  // suggest a UAP category (Schematic Design -> A, etc.) when the task
+  // doesn't have an explicit uap_category override.
+  projectPhase?: string | null;
   projects?: { id: number; project_name: string; client_name: string; project_type: 'client' | 'internal' }[];
   initialDueDate?: string | null;
   initialAssigneeIds?: string[] | null;
@@ -327,6 +334,7 @@ type TaskDraftSource = Pick<TaskDetailTask, 'title' | 'description' | 'status' |
   assignee_ids?: string[] | null;
   team?: string | null;
   hours_spent?: number | null;
+  uap_category?: string | null;
   checklist?: ChecklistItem[] | null;
   color?: string | null;
   meta?: { custom_fields?: { id: string; label: string; value: string }[]; blocked_reason?: string | null } | null;
@@ -352,6 +360,7 @@ function buildTaskDraftSnapshot(task: TaskDraftSource) {
     ...normalizeTaskAssigneePayload(getTaskAssigneeIds(task)),
     team: task.team ?? null,
     hours_spent: task.hours_spent ?? null,
+    uap_category: task.uap_category ?? null,
     due_date: task.due_date ?? null,
     start_date: task.start_date ?? null,
     checklist: normalizeChecklistItems(task.checklist),
@@ -373,6 +382,7 @@ export default function TaskDetailPanel({
   onOpenProject,
   projectId,
   projectName = 'General',
+  projectPhase = null,
   projects,
   initialDueDate = null,
   initialAssigneeIds = null,
@@ -393,6 +403,7 @@ export default function TaskDetailPanel({
   const [priority, setPriority]     = useState<TaskDetailTask['priority']>('medium');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [taskTeam, setTaskTeam] = useState<string>('');
+  const [taskUapCategory, setTaskUapCategory] = useState<string>('');
   const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
   useEffect(() => { loadTeams().then(setTeamsList); }, []);
   const [taskHours, setTaskHours] = useState<string>('');
@@ -464,12 +475,13 @@ export default function TaskDetailPanel({
     ...normalizeTaskAssigneePayload(assigneeIds),
     team: taskTeam || null,
     hours_spent: taskHours.trim() ? parseFloat(taskHours) : null,
+    uap_category: taskUapCategory || null,
     due_date: dueDate || null,
     start_date: startDate || null,
     checklist: normalizeChecklistItems(checklist),
     color: taskColor || null,
     meta: buildTaskMetaPayload(customFields, status, blockedReason),
-  }), [title, description, status, priority, assigneeIds, taskTeam, taskHours, dueDate, startDate, checklist, taskColor, customFields, blockedReason]);
+  }), [title, description, status, priority, assigneeIds, taskTeam, taskUapCategory, taskHours, dueDate, startDate, checklist, taskColor, customFields, blockedReason]);
 
   const initialDraft = task
     ? buildTaskDraftSnapshot(task)
@@ -481,6 +493,7 @@ export default function TaskDetailPanel({
         ...normalizeTaskAssigneePayload([]),
         team: null,
         hours_spent: null,
+        uap_category: null,
         due_date: null,
         start_date: null,
         checklist: [],
@@ -508,6 +521,7 @@ export default function TaskDetailPanel({
       setPriority(task.priority);
       setAssigneeIds(getTaskAssigneeIds(task));
       setTaskTeam(task.team ?? '');
+      setTaskUapCategory(task.uap_category ?? '');
       setTaskHours(task.hours_spent != null ? String(task.hours_spent) : '');
       setDueDate(task.due_date ?? '');
       setStartDate(task.start_date ?? '');
@@ -526,7 +540,7 @@ export default function TaskDetailPanel({
       baselineDraftRef.current = null;
       lastFetchedTaskRef.current = null;
       setTitle(initialTitle); setDesc(''); setStatus('todo'); setPriority('medium');
-      setAssigneeIds(initialAssigneeIds ?? []); setTaskTeam(''); setTaskHours(''); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
+      setAssigneeIds(initialAssigneeIds ?? []); setTaskTeam(''); setTaskUapCategory(''); setTaskHours(''); setDueDate(initialDueDate ?? ''); setStartDate(''); setChecklist([]);
       setComments([]); setAttachments([]); setActivity([]);
       // Clear the contenteditable DOM too — taskDraft() reads from it, so a
       // stale innerHTML would copy the previous task's description into the new one.
@@ -646,7 +660,7 @@ export default function TaskDetailPanel({
     if (isDemo) return;
     const [taskRes, commRes, attRes, actRes] = await Promise.all([
       supabase.from('hub_project_tasks')
-        .select('title, description, status, priority, assigned_to, assignee_ids, team, hours_spent, due_date, start_date, checklist, color, meta, updated_at')
+        .select('title, description, status, priority, assigned_to, assignee_ids, team, hours_spent, uap_category, due_date, start_date, checklist, color, meta, updated_at')
         .eq('id', taskId)
         .single(),
       supabase.from('hub_project_task_comments')
@@ -672,6 +686,7 @@ export default function TaskDetailPanel({
       setPriority(taskRes.data.priority);
       setAssigneeIds(getTaskAssigneeIds(taskRes.data));
       setTaskTeam((taskRes.data as any).team ?? '');
+      setTaskUapCategory((taskRes.data as any).uap_category ?? '');
       setTaskHours((taskRes.data as any).hours_spent != null ? String((taskRes.data as any).hours_spent) : '');
       setDueDate(taskRes.data.due_date ?? '');
       setStartDate(taskRes.data.start_date ?? '');
@@ -847,7 +862,7 @@ export default function TaskDetailPanel({
           // refresh our version marker, and let them decide to save again.
           const { data: freshRow } = await supabase
             .from('hub_project_tasks')
-            .select('title, description, status, priority, assigned_to, assignee_ids, team, hours_spent, due_date, start_date, checklist, color, meta, updated_at')
+            .select('title, description, status, priority, assigned_to, assignee_ids, team, hours_spent, uap_category, due_date, start_date, checklist, color, meta, updated_at')
             .eq('id', prev.id)
             .maybeSingle();
           if (freshRow) lastFetchedTaskRef.current = { id: prev.id, ...freshRow };
@@ -884,6 +899,11 @@ export default function TaskDetailPanel({
         const nextTeamKey = taskTeam || null;
         if (prevTeamKey !== nextTeamKey)
           await logActivity(prev.id, 'edited', `changed team from ${teamMeta(prevTeamKey)?.label ?? 'Unassigned'} to ${teamMeta(nextTeamKey)?.label ?? 'Unassigned'}`);
+
+        const prevUapCategory = prev.uap_category ?? null;
+        const nextUapCategory = taskUapCategory || null;
+        if (prevUapCategory !== nextUapCategory)
+          await logActivity(prev.id, 'edited', `changed UAP category from ${prevUapCategory ?? 'Auto'} to ${nextUapCategory ?? 'Auto'}`);
 
         const prevHours = prev.hours_spent ?? null;
         const nextHours = taskHours.trim() ? parseFloat(taskHours) : null;
@@ -1536,6 +1556,38 @@ export default function TaskDetailPanel({
                 </span>
               ) : <span className="text-[13px] text-gray-300">Empty</span>}
             </div>
+
+            {/* UAP Category — only shown when at least one assignee is
+                tracking UAP board-exam hours. Defaults to whatever the
+                project's current Phase suggests; taskUapCategory is only
+                set when explicitly overridden. */}
+            {selectedAssignees.some(m => m.track_uap_hours) && (() => {
+              const resolved = resolveUapCategory(taskUapCategory || null, projectPhase);
+              const resolvedDef = UAP_CATEGORIES.find(c => c.key === resolved);
+              return (
+                <div className="flex items-center h-8 gap-3">
+                  <span className="text-xs text-gray-400 w-24 flex-shrink-0">UAP Category</span>
+                  {editing ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      <button type="button" onClick={() => setTaskUapCategory('')} title={projectPhase ? `Auto from Phase (${projectPhase})` : 'Auto'}
+                        className={`px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-all cursor-pointer ${taskUapCategory === '' ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
+                        Auto{!taskUapCategory && resolved ? ` (${resolved})` : ''}
+                      </button>
+                      {UAP_CATEGORIES.map(c => (
+                        <button key={c.key} type="button" onClick={() => setTaskUapCategory(c.key)} title={c.label}
+                          className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer ${taskUapCategory === c.key ? 'bg-[#1c2b3a] text-white border-[#1c2b3a]' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>
+                          {c.key}
+                        </button>
+                      ))}
+                    </div>
+                  ) : resolved ? (
+                    <span className="text-[13px] text-gray-700" title={resolvedDef?.label}>
+                      {resolved}{!taskUapCategory && <span className="text-gray-400"> (auto)</span>}
+                    </span>
+                  ) : <span className="text-[13px] text-gray-300">Empty</span>}
+                </div>
+              );
+            })()}
 
             {/* Hours spent — optional, self-reported. Feeds the per-employee
                 Google Sheet timesheet sync when the task is marked done. */}

@@ -16,7 +16,7 @@ export const HUB_USER_SAFE_COLUMNS = [
   'contract_expiry_date', 'dev_toolbar_hidden', 'currency', 'payment_type',
   'avatar_position', 'avatar_scale', 'created_at', 'updated_at', 'last_seen_app_version',
   'team', 'team_lead_of', 'timesheet_sheet_id', 'manager_id', 'role_title',
-  'auto_payroll', 'employee_id', 'employment_classification',
+  'auto_payroll', 'employee_id', 'employment_classification', 'track_uap_hours',
 ].join(', ');
 
 export interface HubUser {
@@ -59,6 +59,7 @@ export interface HubUser {
   team_lead_of?: 'cp' | 'egs' | 'fs' | null;
   timesheet_sheet_id?: string | null;
   auto_payroll?: boolean;
+  track_uap_hours?: boolean;
   last_seen_app_version?: string;
   created_at?: string;
   updated_at?: string;

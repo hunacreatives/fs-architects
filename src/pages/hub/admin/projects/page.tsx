@@ -89,6 +89,7 @@ interface ProjectActivity {
   meta?: Record<string, unknown> | null;
   created_at: string;
   hub_users?: { id: string; full_name: string; avatar_url: string | null } | null;
+  project_name?: string | null;
 }
 
 function normalizeTaskActivityDescription(row: { actor_name: string; type: string; description: string; task_title?: string | null }) {
@@ -403,6 +404,53 @@ export default function AdminProjectsPage() {
     setActivity(mergedActivity);
   }, [activeId, tasks]);
 
+  // Global "view all projects" activity feed — same shape as the per-project
+  // one, but fetched with no project_id/task_id filter, and each entry
+  // carries which project it came from so it reads sensibly out of context.
+  const [showAllActivity, setShowAllActivity] = useState(false);
+  const [allActivity, setAllActivity] = useState<ProjectActivity[]>([]);
+  const [allActivityLoading, setAllActivityLoading] = useState(false);
+
+  const fetchAllActivity = async () => {
+    setAllActivityLoading(true);
+    setShowAllActivity(true);
+    const [projRes, taskRes] = await Promise.all([
+      supabase.from('hub_project_activity')
+        .select('*, hub_users(full_name, avatar_url), hub_projects(project_name)')
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase.from('hub_project_task_activity')
+        .select('id, task_id, actor_name, type, description, created_at, hub_project_tasks(id, title, project_id, hub_projects(project_name))')
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ]);
+    const projRows = ((projRes.data as any[]) ?? []).map((row): ProjectActivity => ({
+      ...row,
+      project_name: row.hub_projects?.project_name ?? null,
+    }));
+    const taskRows = ((taskRes.data as any[]) ?? []).map((row): ProjectActivity => {
+      const task = row.hub_project_tasks;
+      return {
+        id: Number(`9${row.id}`),
+        project_id: task?.project_id ?? 0,
+        actor_name: row.actor_name,
+        description: normalizeTaskActivityDescription({
+          actor_name: row.actor_name,
+          type: row.type,
+          description: row.description,
+          task_title: task?.title ?? null,
+        }),
+        created_at: row.created_at,
+        project_name: task?.hub_projects?.project_name ?? null,
+      };
+    });
+    const merged = [...projRows, ...taskRows]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 100);
+    setAllActivity(merged);
+    setAllActivityLoading(false);
+  };
+
   const logActivity = async (projectId: number, description: string) => {
     if (isDemo) return;
 
@@ -592,8 +640,10 @@ export default function AdminProjectsPage() {
 
   // Assigning a project to a team pulls in everyone on that team as
   // contractors automatically — idempotent, so re-saving with the same team
-  // never double-adds anyone already on the project.
-  const addTeamMembersToProject = async (projectId: number, teamKey: string) => {
+  // never double-adds anyone already on the project. Notifies each newly-
+  // added member, matching how adding someone from the workspace already
+  // works — this path just never had that wired up until now.
+  const addTeamMembersToProject = async (projectId: number, teamKey: string, projectName: string) => {
     const [{ data: members }, { data: existing }] = await Promise.all([
       supabase.from('hub_users').select('id').eq('team', teamKey).eq('status', 'active'),
       supabase.from('hub_project_contractors').select('contractor_id').eq('project_id', projectId),
@@ -604,15 +654,31 @@ export default function AdminProjectsPage() {
     await supabase.from('hub_project_contractors').insert(
       toAdd.map((m: any) => ({ project_id: projectId, contractor_id: m.id, payout_type: 'percentage', percentage: 0 }))
     );
+    await createHubNotifications(toAdd.map((m: any) => ({
+      user_id: m.id, type: 'project_assigned',
+      title: 'New project assigned',
+      body: `You've been added to "${projectName}"`,
+      link: '/hub/employee/projects', read: false,
+    })));
+    toAdd.forEach((m: any) => {
+      supabase.functions.invoke('notify-project-assigned', { body: { project_id: projectId, contractor_id: m.id } }).catch(console.error);
+    });
   };
 
   // Assign one specific person to the project, independent of team — for
   // when Fretz wants a single individual on a project rather than pulling
   // in a whole team. Idempotent, same as the team version.
-  const addIndividualToProject = async (projectId: number, contractorId: string) => {
+  const addIndividualToProject = async (projectId: number, contractorId: string, projectName: string) => {
     const { data: existing } = await supabase.from('hub_project_contractors').select('id').eq('project_id', projectId).eq('contractor_id', contractorId).maybeSingle();
     if (existing) return;
     await supabase.from('hub_project_contractors').insert({ project_id: projectId, contractor_id: contractorId, payout_type: 'percentage', percentage: 0 });
+    await createHubNotifications([{
+      user_id: contractorId, type: 'project_assigned',
+      title: 'New project assigned',
+      body: `You've been added to "${projectName}"`,
+      link: '/hub/employee/projects', read: false,
+    }]);
+    supabase.functions.invoke('notify-project-assigned', { body: { project_id: projectId, contractor_id: contractorId } }).catch(console.error);
   };
 
   const saveProject = async () => {
@@ -651,8 +717,8 @@ export default function AdminProjectsPage() {
       if (data?.drive_url && data.project_code) {
         supabase.functions.invoke('rename-project-drive-folder', { body: { project_id: editingProject.id } }).catch(console.error);
       }
-      if (payload.team) await addTeamMembersToProject(editingProject.id, payload.team);
-      if (form.assigneeId) await addIndividualToProject(editingProject.id, form.assigneeId);
+      if (payload.team) await addTeamMembersToProject(editingProject.id, payload.team, payload.project_name);
+      if (form.assigneeId) await addIndividualToProject(editingProject.id, form.assigneeId, payload.project_name);
     } else {
       const { data, error } = await supabase.from('hub_projects').insert(payload).select('id, project_code').single();
       if (error) { setFormError(error.message); setFormSaving(false); return; }
@@ -676,8 +742,8 @@ export default function AdminProjectsPage() {
           console.error('Auto-create Drive folder failed:', e);
         }
       }
-      if (data && payload.team) await addTeamMembersToProject(data.id, payload.team);
-      if (data && form.assigneeId) await addIndividualToProject(data.id, form.assigneeId);
+      if (data && payload.team) await addTeamMembersToProject(data.id, payload.team, payload.project_name);
+      if (data && form.assigneeId) await addIndividualToProject(data.id, form.assigneeId, payload.project_name);
       if (data) setActiveId(data.id);
     }
     setFormSaving(false); setShowForm(false); setEditingProject(null); setForm(emptyForm);
@@ -1708,7 +1774,10 @@ export default function AdminProjectsPage() {
                   {/* Activity card */}
                   {activity.length > 0 && (
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                      <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Activity</p>
+                      <button type="button" onClick={fetchAllActivity}
+                        className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3 hover:text-[#1c2b3a] cursor-pointer transition-colors">
+                        Activity <span className="normal-case font-normal">· View all projects</span>
+                      </button>
                       <div className="space-y-3">
                         {activity.slice(0, 5).map(a => {
                           const diff = Math.floor((Date.now() - new Date(a.created_at).getTime()) / 1000);
@@ -2630,6 +2699,52 @@ export default function AdminProjectsPage() {
                 className="flex-1 py-2.5 text-sm bg-[#1c2b3a] text-white rounded-xl hover:bg-[#0f1c28] disabled:opacity-40 cursor-pointer">
                 {formSaving ? 'Saving...' : editingProject ? 'Save Changes' : 'Create Project'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAllActivity && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md sm:max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
+              <h2 className="font-semibold text-[#111827]">Activity — All Projects</h2>
+              <button onClick={() => setShowAllActivity(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <i className="ri-close-line text-lg"></i>
+              </button>
+            </div>
+            <div className="p-5 space-y-3 overflow-y-auto">
+              {allActivityLoading ? (
+                <div className="flex justify-center py-12"><i className="ri-loader-4-line animate-spin text-xl text-gray-300"></i></div>
+              ) : allActivity.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-12">Nothing yet.</p>
+              ) : (
+                allActivity.map(a => {
+                  const diff = Math.floor((Date.now() - new Date(a.created_at).getTime()) / 1000);
+                  const time = diff < 60 ? 'just now' : diff < 3600 ? `${Math.floor(diff / 60)}m ago` : diff < 86400 ? `${Math.floor(diff / 3600)}h ago` : new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  const actorName = getProjectActivityActorName(a);
+                  return (
+                    <button key={a.id} type="button"
+                      onClick={() => {
+                        setShowAllActivity(false);
+                        setPageView('projects');
+                        openWorkspaceOnLoad.current = true;
+                        setActiveId(a.project_id);
+                        setWorkspaceOpen(true);
+                      }}
+                      className="w-full flex items-start gap-2.5 text-left hover:bg-gray-50 rounded-xl p-2 -m-2 transition-colors cursor-pointer">
+                      <div className="w-6 h-6 rounded-full bg-slate-50 border border-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-[#1c2b3a]/70 font-bold text-[9px]">{(actorName[0] ?? '?').toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {a.project_name && <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1c2b3a]/50 truncate">{a.project_name}</p>}
+                        <p className="text-xs text-gray-600 leading-snug">{getProjectActivityDescription(a)}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{time}</p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

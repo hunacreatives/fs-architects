@@ -1017,12 +1017,14 @@ export default function TaskDetailPanel({
   const addCheckItem = async () => {
     if (!newCheckItem.trim()) return;
     const previous = checklist;
-    const updated = [...checklist, { id: nanoid(), text: newCheckItem.trim(), done: false, assignee_id: null }];
+    const text = newCheckItem.trim();
+    const updated = [...checklist, { id: nanoid(), text, done: false, assignee_id: null }];
     setChecklist(updated);
     setNewCheckItem('');
     if (!task) return;
     try {
       await saveChecklist(updated);
+      await logActivity(task.id, 'edited', `added checklist item "${text}"`);
     } catch {
       setChecklist(previous);
     }
@@ -1033,11 +1035,13 @@ export default function TaskDetailPanel({
 
   const removeCheckItem = async (id: string) => {
     const previous = checklist;
+    const removedText = checklist.find(i => i.id === id)?.text;
     const updated = checklist.filter(i => i.id !== id);
     setChecklist(updated);
     if (!task) return;
     try {
       await saveChecklist(updated);
+      if (removedText) await logActivity(task.id, 'edited', `removed checklist item "${removedText}"`);
     } catch {
       setChecklist(previous);
     }
@@ -1060,11 +1064,13 @@ export default function TaskDetailPanel({
   };
 
   const handleToggleCheck = async (id: string) => {
+    const item = checklist.find(i => i.id === id);
     const updated = checklist.map(i => i.id === id ? { ...i, done: !i.done } : i);
     setChecklist(updated);
     if (!task) return;
     try {
       await saveChecklist(updated);
+      if (item) await logActivity(task.id, 'edited', `${item.done ? 'unchecked' : 'checked off'} "${item.text}"`);
     } catch {
       setChecklist(checklist);
     }

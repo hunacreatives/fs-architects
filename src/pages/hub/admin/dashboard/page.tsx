@@ -380,6 +380,7 @@ export default function AdminDashboardPage() {
     const { data, error } = await supabase
       .from('hub_project_tasks')
       .select('id, project_id, title, due_date, status, done_at, hub_projects(project_name), hub_users!assigned_to(full_name, avatar_url)')
+      .is('deleted_at', null)
       .lte('due_date', end)
       .order('due_date', { ascending: true });
     if (!error) {
@@ -423,7 +424,11 @@ export default function AdminDashboardPage() {
     const current = todoTasks.find(t => t.id === id);
     const next = current?.status === 'done' ? 'todo' : 'done';
     setTodoTasks(prev => prev.map(t => t.id === id ? { ...t, status: next } : t));
-    await supabase.from('hub_project_tasks').update({ status: next }).eq('id', id);
+    await supabase.from('hub_project_tasks').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id);
+    await supabase.from('hub_project_task_activity').insert({
+      task_id: id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
+      type: 'status_change', description: `changed status from ${(current?.status ?? 'todo').replace('_', ' ')} to ${next.replace('_', ' ')}`,
+    });
   };
 
   const resetQuickAdd = () => {
@@ -962,10 +967,10 @@ export default function AdminDashboardPage() {
                           <div key={t.id} className={`flex items-center gap-2.5 py-1.5 ${done ? 'opacity-50' : ''}`}>
                             <button
                               onClick={() => markTodoDone(t.id)}
-                              className={`w-4.5 h-4.5 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center ${done ? 'bg-emerald-400 border-emerald-400' : 'border-gray-300 hover:border-emerald-400'}`}
+                              className={`w-4 h-4 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center ${done ? 'border-emerald-400' : 'border-gray-300 hover:border-emerald-400'}`}
                               title={done ? 'Mark not done' : 'Mark done'}
                             >
-                              {done && <i className="ri-check-line text-white text-[10px]"></i>}
+                              {done && <i className="ri-check-line text-emerald-500 text-[9px]"></i>}
                             </button>
                             <button type="button" onClick={() => openTodoTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
                               <p className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400' : 'text-gray-800 hover:text-[#1c2b3a]'}`}>{t.title}</p>

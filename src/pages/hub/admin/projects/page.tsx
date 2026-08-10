@@ -482,6 +482,12 @@ export default function AdminProjectsPage() {
     setAllTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     const statusLabel = newStatus.replace('_', ' ');
     await logActivity(task.project_id, `${hubUser?.full_name ?? 'Admin'} moved "${task.title}" to ${statusLabel}`);
+    // Also log to the task's own activity feed (shown in its drawer) — the
+    // project-level log above doesn't surface there.
+    await supabase.from('hub_project_task_activity').insert({
+      task_id: task.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
+      type: 'status_change', description: `changed status from ${task.status.replace('_', ' ')} to ${statusLabel}`,
+    });
     if (newStatus === 'done') fetchTasks(task.project_id);
   };
 
@@ -2085,6 +2091,11 @@ export default function AdminProjectsPage() {
                 if (orderedKeys.length === 0) return null;
                 return (
                   <div className="space-y-4">
+                    <div className="flex items-center gap-2 pt-2">
+                      <i className="ri-flag-2-line text-gray-300 text-xs"></i>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Deadlines</p>
+                      <div className="flex-1 h-px bg-gray-100"></div>
+                    </div>
                     {orderedKeys.map(key => {
                       const gtasks = groups[key];
                       const isNoDate = key === '__none';
@@ -2107,7 +2118,16 @@ export default function AdminProjectsPage() {
                               return (
                                 <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
                                   className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer">
-                                  <button onClick={async e => { e.stopPropagation(); const n = t.status === 'done' ? 'todo' : 'done'; await supabase.from('hub_project_tasks').update({ status: n }).eq('id', t.id); setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x)); }} className="flex-shrink-0 cursor-pointer">
+                                  <button onClick={async e => {
+                                      e.stopPropagation();
+                                      const n = t.status === 'done' ? 'todo' : 'done';
+                                      await supabase.from('hub_project_tasks').update({ status: n, updated_at: new Date().toISOString() }).eq('id', t.id);
+                                      setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x));
+                                      await supabase.from('hub_project_task_activity').insert({
+                                        task_id: t.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
+                                        type: 'status_change', description: `changed status from ${t.status.replace('_', ' ')} to ${n.replace('_', ' ')}`,
+                                      });
+                                    }} className="flex-shrink-0 cursor-pointer">
                                     <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
                                   </button>
                                   <div className="flex-1 min-w-0">

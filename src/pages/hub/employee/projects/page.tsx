@@ -619,8 +619,12 @@ export default function ContractorProjectsPage() {
       return;
     }
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
-    await supabase.from('hub_project_tasks').update({ status: newStatus }).eq('id', task.id);
+    await supabase.from('hub_project_tasks').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', task.id);
     await logActivity('task_status_changed', task.title, task.id, { from: task.status, to: newStatus });
+    await supabase.from('hub_project_task_activity').insert({
+      task_id: task.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Employee',
+      type: 'status_change', description: `changed status from ${task.status.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`,
+    });
   };
 
   const cycleTask = async (task: ProjectTask) => {

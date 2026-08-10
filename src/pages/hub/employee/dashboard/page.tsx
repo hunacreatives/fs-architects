@@ -4,7 +4,7 @@ import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
-import { getPeriods } from '@/lib/formatUtils';
+import { getPeriods, localToday } from '@/lib/formatUtils';
 import { supabase } from '@/lib/supabase';
 import { HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF } from '@/lib/demoData';
@@ -317,8 +317,8 @@ export default function ContractorDashboard() {
   const [teamStatus, setTeamStatus] = useState<SlackTeamRecord[]>([]);
   const [payoutStatus, setPayoutStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
-  const [todoTasks, setTodoTasks] = useState<{ id: number; project_id: number; title: string; due_date: string | null; project_name: string | null }[]>([]);
+  const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('day');
+  const [todoTasks, setTodoTasks] = useState<{ id: number; project_id: number; title: string; due_date: string | null; status: string; project_name: string | null }[]>([]);
   const [detailTask, setDetailTask] = useState<TaskDetailTask | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const myTeamLead = (user as any)?.team_lead_of ?? null;
@@ -508,26 +508,35 @@ export default function ContractorDashboard() {
 
   const fetchTodo = useCallback(async () => {
     if (isDemo || !user?.id) return;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localToday();
     // Only the far end of the window depends on Day/Week — no lower bound,
     // so a pending task never silently drops off just because its due date
     // has passed. It stays until someone marks it done.
     const { end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
+    // Completed tasks stay in the list (crossed out) instead of vanishing —
+    // still bounded by the same due-date window, so it doesn't grow
+    // unbounded over time.
     const { data, error } = await supabase
       .from('hub_project_tasks')
-      .select('id, project_id, title, due_date, status, hub_projects(project_name)')
+      .select('id, project_id, title, due_date, status, done_at, hub_projects(project_name)')
       .or(`assigned_to.eq.${user.id},assignee_ids.cs.{${user.id}}`)
-      .neq('status', 'done')
+      .is('deleted_at', null)
       .lte('due_date', end)
       .order('due_date', { ascending: true });
     if (!error) {
-      setTodoTasks((data ?? []).map((t: any) => ({
-        id: t.id,
-        project_id: t.project_id,
-        title: t.title,
-        due_date: t.due_date,
-        project_name: t.hub_projects?.project_name ?? null,
-      })));
+      setTodoTasks((data ?? [])
+        // A completed task stays crossed-out for the rest of the day it was
+        // finished, then drops off after midnight instead of accumulating
+        // forever.
+        .filter((t: any) => t.status !== 'done' || (t.done_at && new Date(t.done_at).toLocaleDateString('en-CA') === todayStr))
+        .map((t: any) => ({
+          id: t.id,
+          project_id: t.project_id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          project_name: t.hub_projects?.project_name ?? null,
+        })));
     }
   }, [isDemo, user?.id, todoViewMode]);
 
@@ -547,9 +556,17 @@ export default function ContractorDashboard() {
     setDetailOpen(true);
   };
 
+  // Toggles done/not-done in place — completed tasks stay visible (crossed
+  // out) instead of vanishing, and clicking again undoes it.
   const markTodoDone = async (id: number) => {
-    setTodoTasks(prev => prev.filter(t => t.id !== id));
-    await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
+    const current = todoTasks.find(t => t.id === id);
+    const next = current?.status === 'done' ? 'todo' : 'done';
+    setTodoTasks(prev => prev.map(t => t.id === id ? { ...t, status: next } : t));
+    await supabase.from('hub_project_tasks').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id);
+    await supabase.from('hub_project_task_activity').insert({
+      task_id: id, actor_id: user?.id ?? null, actor_name: user?.full_name ?? 'Employee',
+      type: 'status_change', description: `changed status from ${(current?.status ?? 'todo').replace('_', ' ')} to ${next.replace('_', ' ')}`,
+    });
   };
 
   // Any team member (not just the lead) sees their team's open tasks here —
@@ -905,25 +922,34 @@ export default function ContractorDashboard() {
                   <p className="text-sm text-gray-400">Nothing due {todoViewMode === 'day' ? 'today' : 'this week'}</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {todoTasks.map((t) => (
-                    <div key={t.id} className="flex items-center gap-2.5 py-1.5">
+                <div className="space-y-2">
+                  {/* Completed tasks bubble to the top (still crossed
+                      out/grey) instead of staying interspersed by due
+                      date — a stable sort, so due-date order is kept
+                      within each group. */}
+                  {[...todoTasks].sort((a, b) => (a.status === 'done' ? 0 : 1) - (b.status === 'done' ? 0 : 1)).map((t) => {
+                    const done = t.status === 'done';
+                    return (
+                    <div key={t.id} className={`flex items-center gap-2.5 py-1.5 ${done ? 'opacity-50' : ''}`}>
                       <button
                         onClick={() => markTodoDone(t.id)}
-                        className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
-                        title="Mark done"
-                      />
+                        className={`w-4 h-4 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center ${done ? 'border-emerald-400' : 'border-gray-300 hover:border-emerald-400'}`}
+                        title={done ? 'Mark not done' : 'Mark done'}
+                      >
+                        {done && <i className="ri-check-line text-emerald-500 text-[9px]"></i>}
+                      </button>
                       <button type="button" onClick={() => openTodoTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
-                        <p className="text-sm font-medium text-gray-800 truncate hover:text-[#1c2b3a]">{t.title}</p>
+                        <p className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400' : 'text-gray-800 hover:text-[#1c2b3a]'}`}>{t.title}</p>
                         {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
                       </button>
                       {t.due_date && (
-                        <p className={`text-xs whitespace-nowrap flex-shrink-0 ${t.due_date < new Date().toISOString().slice(0, 10) ? 'text-rose-500 font-semibold' : 'text-gray-400'}`}>
+                        <p className={`text-xs whitespace-nowrap flex-shrink-0 ${done ? 'text-gray-400' : t.due_date < new Date().toISOString().slice(0, 10) ? 'text-rose-500 font-semibold' : 'text-gray-400'}`}>
                           {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

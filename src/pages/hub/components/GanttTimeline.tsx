@@ -53,6 +53,7 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
   // Doesn't default to today — there's already a separate "Today" list
   // elsewhere on the page, so auto-opening this drawer on load was redundant.
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [expandedCell, setExpandedCell] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragState = useRef<DragState | null>(null);
   const [localTasks, setLocalTasks] = useState<ProjectTask[]>([]);
@@ -193,13 +194,18 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
   const selectedTasks = selectedDate ? (tasksByDate[selectedDate] ?? []) : [];
 
   // ── Week-row lane assignment (bars span across days in a row) ──────────
+  // A day-by-day sweep, not a one-shot assignment for the whole week: a
+  // task that loses out on a lane because of a conflict on its start day
+  // is re-tried on every later day, so once the conflicting tasks end and
+  // a lane frees up, the task is "promoted" into it for its remaining
+  // days instead of staying invisible behind "+N more" for its entire
+  // span just because of a pileup on day one.
   const MAX_LANES = 3;
-  type LaneEntry = { task: ProjectTask; lane: number; spanStart: boolean; spanEnd: boolean };
-  type WeekRow = { dates: (string | null)[]; lanes: LaneEntry[]; overflowByDate: Record<string, number> };
+  type LaneEntry = { task: ProjectTask; lane: number; segStart: string; segEnd: string; continuesFromPriorWeek: boolean; continuesToNextWeek: boolean };
+  type WeekRow = { dates: (string | null)[]; lanes: LaneEntry[]; overflowByDate: Record<string, number>; overflowTasksByDate: Record<string, ProjectTask[]> };
 
-  // Lane a task lands in on one week row is reused the following week
-  // whenever it's still free, so a task's bar doesn't jump between rows
-  // from one week to the next just because that week's task mix differs.
+  // Preferred lane per task, carried across weeks so a bar doesn't jump
+  // rows from one week to the next just because that week's mix differs.
   const lastLaneByTaskId = new Map<number, number>();
 
   const weekRows: WeekRow[] = [];
@@ -230,36 +236,84 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
         return as_.localeCompare(bs_) || a.id - b.id;
       });
 
-    const laneEnd: string[] = [];
+    const taskById = new Map(weekTasks.map(t => [t.id, t]));
+    const taskRange = (t: ProjectTask) => ({ ts: t.start_date ?? t.due_date!, te: t.due_date ?? t.start_date! });
+
+    const laneOccupant: (number | null)[] = new Array(MAX_LANES).fill(null);
+    const openSeg = new Map<number, { lane: number; segStart: string; continuesFromPriorWeek: boolean }>();
+    const activeOverflowIds = new Set<number>();
     const lanes: LaneEntry[] = [];
     const overflowByDate: Record<string, number> = {};
+    const overflowTasksByDate: Record<string, ProjectTask[]> = {};
 
+    const closeSeg = (taskId: number, segEnd: string, continuesToNextWeek: boolean) => {
+      const seg = openSeg.get(taskId);
+      if (!seg) return;
+      const task = taskById.get(taskId)!;
+      lanes.push({ task, lane: seg.lane, segStart: seg.segStart, segEnd, continuesFromPriorWeek: seg.continuesFromPriorWeek, continuesToNextWeek });
+      openSeg.delete(taskId);
+      laneOccupant[seg.lane] = null;
+      lastLaneByTaskId.set(taskId, seg.lane);
+    };
+
+    const assignLane = (t: ProjectTask, day: string, continuesFromPriorWeek: boolean): boolean => {
+      const preferred = lastLaneByTaskId.get(t.id);
+      let lane = preferred !== undefined && laneOccupant[preferred] === null ? preferred : laneOccupant.findIndex(x => x === null);
+      if (lane === -1) return false;
+      laneOccupant[lane] = t.id;
+      openSeg.set(t.id, { lane, segStart: day, continuesFromPriorWeek });
+      return true;
+    };
+
+    // Prime tasks already in progress before this week started.
     for (const t of weekTasks) {
-      const ts = t.start_date ?? t.due_date ?? '';
-      const te = t.due_date ?? t.start_date ?? '';
-      const preferredLane = lastLaneByTaskId.get(t.id);
-      let lane = preferredLane !== undefined && (laneEnd[preferredLane] === undefined || laneEnd[preferredLane] < ts)
-        ? preferredLane
-        : laneEnd.findIndex(e => e < ts);
-      if (lane === -1) lane = laneEnd.length;
-      laneEnd[lane] = te;
-      lastLaneByTaskId.set(t.id, lane);
-
-      if (lane < MAX_LANES) {
-        lanes.push({ task: t, lane, spanStart: ts >= weekStart, spanEnd: te <= weekEnd });
-      } else {
-        const effStart = ts < weekStart ? weekStart : ts;
-        const effEnd   = te > weekEnd   ? weekEnd   : te;
-        const cur = new Date(effStart + 'T00:00:00');
-        const endD = new Date(effEnd + 'T00:00:00');
-        while (cur <= endD) {
-          const k = dateStr(cur);
-          overflowByDate[k] = (overflowByDate[k] ?? 0) + 1;
-          cur.setDate(cur.getDate() + 1);
-        }
+      const { ts, te } = taskRange(t);
+      if (ts < weekStart && te >= weekStart) {
+        if (!assignLane(t, weekStart, true)) activeOverflowIds.add(t.id);
       }
     }
-    weekRows.push({ dates, lanes, overflowByDate });
+
+    for (const d of weekDates) {
+      // Free/close lanes for tasks that ended before today.
+      for (let lane = 0; lane < MAX_LANES; lane++) {
+        const occId = laneOccupant[lane];
+        if (occId == null) continue;
+        const { te } = taskRange(taskById.get(occId)!);
+        if (te < d) closeSeg(occId, addDays(d, -1), false);
+      }
+      activeOverflowIds.forEach(id => { if (taskRange(taskById.get(id)!).te < d) activeOverflowIds.delete(id); });
+
+      // New arrivals today.
+      for (const t of weekTasks) {
+        if (taskRange(t).ts !== d) continue;
+        if (!assignLane(t, d, false)) activeOverflowIds.add(t.id);
+      }
+
+      // Promote overflowing tasks into any lane that's now free.
+      for (const t of weekTasks) {
+        if (!activeOverflowIds.has(t.id)) continue;
+        if (laneOccupant.every(x => x !== null)) break;
+        if (assignLane(t, d, false)) activeOverflowIds.delete(t.id);
+      }
+
+      activeOverflowIds.forEach(id => {
+        overflowByDate[d] = (overflowByDate[d] ?? 0) + 1;
+        (overflowTasksByDate[d] ??= []).push(taskById.get(id)!);
+      });
+
+      // Close out lanes for tasks ending today so the lane is free tomorrow.
+      for (let lane = 0; lane < MAX_LANES; lane++) {
+        const occId = laneOccupant[lane];
+        if (occId == null) continue;
+        const { te } = taskRange(taskById.get(occId)!);
+        if (te === d) closeSeg(occId, d, false);
+      }
+    }
+
+    // Anything still open at week's end continues into next week.
+    openSeg.forEach((_, taskId) => closeSeg(taskId, weekEnd, true));
+
+    weekRows.push({ dates, lanes, overflowByDate, overflowTasksByDate });
   }
 
   return (
@@ -302,14 +356,11 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
               const isDropTarget = cellDate !== null && cellDate === dragOver;
               const isWeekend = di === 5 || di === 6;
               const overflow = cellDate ? (week.overflowByDate[cellDate] ?? 0) : 0;
-              const weekFirstDay = week.dates.find(Boolean) ?? '';
 
               // Fill 3 fixed lane slots — null renders as spacer to keep alignment
               const slots: (LaneEntry | null)[] = [null, null, null];
               for (const entry of week.lanes) {
-                const ts = entry.task.start_date ?? entry.task.due_date ?? '';
-                const te = entry.task.due_date ?? entry.task.start_date ?? '';
-                if (cellDate && ts <= cellDate && te >= cellDate) {
+                if (cellDate && entry.segStart <= cellDate && entry.segEnd >= cellDate) {
                   slots[entry.lane] = entry;
                 }
               }
@@ -355,11 +406,19 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                     // Multi-day tasks render as one continuous bar spanning their
                     // date range (rounded only at the true start/end, like Google
                     // Calendar's month view) instead of a separate cut-off chip
-                    // repeated on every day. Single-day tasks still list below as
-                    // title chips, capped with a "+N more" overflow.
+                    // repeated on every day. Single-day tasks list below as title
+                    // chips. Everything hidden by either cap (lane overflow +
+                    // single-day overflow) is combined into ONE "+N more" at the
+                    // very bottom of the cell's tasks — clicking it expands the
+                    // cell in place to show all of it, instead of a second cap
+                    // showing up mid-list.
                     const singleDayTasks = cellDate
                       ? (tasksByDate[cellDate] ?? []).filter(t => !(t.start_date && t.due_date && t.start_date !== t.due_date))
                       : [];
+                    const laneOverflowTasks = cellDate ? (week.overflowTasksByDate[cellDate] ?? []) : [];
+                    const isExpanded = cellDate !== null && cellDate === expandedCell;
+                    const visibleSingleDay = isExpanded ? singleDayTasks : singleDayTasks.slice(0, 3);
+                    const hiddenCount = isExpanded ? 0 : overflow + Math.max(0, singleDayTasks.length - 3);
                     return (
                       <>
                         {week.lanes.length > 0 && (
@@ -367,14 +426,12 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                             {slots.map((slot, laneIdx) => {
                               if (!slot || !cellDate) return <div key={laneIdx} className="h-5" />;
                               const t = slot.task;
-                              const ts = t.start_date ?? t.due_date ?? '';
-                              const te = t.due_date ?? t.start_date ?? '';
-                              const isActualStart = cellDate === ts;
-                              const isActualEnd = cellDate === te;
-                              const showLabel = isActualStart || (!slot.spanStart && cellDate === weekFirstDay);
-                              const rl = (slot.spanStart && isActualStart) ? 'rounded-l-md ml-1' : '-ml-px';
-                              const rr = (slot.spanEnd && isActualEnd) ? 'rounded-r-md mr-1' : '-mr-px';
-                              const draggable = !!onTaskUpdate && isActualStart;
+                              const isSegStart = cellDate === slot.segStart;
+                              const isSegEnd = cellDate === slot.segEnd;
+                              const showLabel = isSegStart;
+                              const rl = (!slot.continuesFromPriorWeek && isSegStart) ? 'rounded-l-md ml-1' : '-ml-px';
+                              const rr = (!slot.continuesToNextWeek && isSegEnd) ? 'rounded-r-md mr-1' : '-mr-px';
+                              const draggable = !!onTaskUpdate && !slot.continuesFromPriorWeek && isSegStart;
                               return (
                                 <button key={laneIdx} type="button" title={t.title}
                                   draggable={draggable}
@@ -392,13 +449,10 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                                 </button>
                               );
                             })}
-                            {overflow > 0 && (
-                              <div className="text-[9px] text-gray-400 px-1.5">+{overflow} more</div>
-                            )}
                           </div>
                         )}
                         <div className="flex flex-col gap-0.5 px-1 pb-1 flex-1 min-h-0">
-                          {singleDayTasks.slice(0, 3).map(t => (
+                          {visibleSingleDay.map(t => (
                             <button key={t.id} type="button" title={t.title}
                               draggable={!!onTaskUpdate}
                               onDragStart={onTaskUpdate ? e => { e.stopPropagation(); handleDragStart(e, t, 'move'); } : undefined}
@@ -410,11 +464,27 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                               <span className="truncate">{t.title}</span>
                             </button>
                           ))}
-                          {singleDayTasks.length > 3 && (
+                          {isExpanded && laneOverflowTasks.map(t => (
+                            <button key={`overflow-${t.id}`} type="button" title={t.title}
+                              onClick={e => { e.stopPropagation(); onTaskClick?.(t); }}
+                              style={chipStyle(t)}
+                              className={`w-full flex items-center gap-1 text-left px-1.5 py-[3px] rounded text-[10px] leading-tight transition-opacity ${chipCls(t)} cursor-pointer hover:opacity-80`}>
+                              <i className={`${chipStatusIcon(t)} text-[9px] flex-shrink-0`}></i>
+                              <span className="truncate">{t.title}</span>
+                            </button>
+                          ))}
+                          {hiddenCount > 0 && (
                             <button type="button"
-                              onClick={e => { e.stopPropagation(); cellDate && setSelectedDate(cellDate); }}
+                              onClick={e => { e.stopPropagation(); cellDate && setExpandedCell(cellDate); }}
                               className="text-[9px] text-gray-400 hover:text-gray-600 leading-none px-1.5 text-left cursor-pointer">
-                              +{singleDayTasks.length - 3} more
+                              +{hiddenCount} more
+                            </button>
+                          )}
+                          {isExpanded && (overflow > 0 || singleDayTasks.length > 3) && (
+                            <button type="button"
+                              onClick={e => { e.stopPropagation(); setExpandedCell(null); }}
+                              className="text-[9px] text-gray-400 hover:text-gray-600 leading-none px-1.5 text-left cursor-pointer">
+                              Show less
                             </button>
                           )}
                         </div>
@@ -431,21 +501,24 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                       const te = t.due_date ?? t.start_date ?? '';
                       const isActualStart = cellDate === ts;
                       const isActualEnd   = cellDate === te;
+                      const isSegStart = cellDate === slot.segStart;
+                      const isSegEnd = cellDate === slot.segEnd;
                       const hasRange = t.start_date && t.due_date && t.start_date !== t.due_date;
                       const draggable = !!onTaskUpdate;
-                      const showLabel = isActualStart || (!slot.spanStart && cellDate === weekFirstDay);
-                      const rl = (slot.spanStart && isActualStart) ? 'rounded-l-md ml-1' : '-ml-px';
-                      const rr = (slot.spanEnd && isActualEnd)     ? 'rounded-r-md mr-1' : '-mr-px';
+                      const canMove = !slot.continuesFromPriorWeek && isSegStart;
+                      const showLabel = isSegStart;
+                      const rl = (!slot.continuesFromPriorWeek && isSegStart) ? 'rounded-l-md ml-1' : '-ml-px';
+                      const rr = (!slot.continuesToNextWeek && isSegEnd)     ? 'rounded-r-md mr-1' : '-mr-px';
 
                       return (
                         <div key={laneIdx}
-                          draggable={draggable && isActualStart}
-                          onDragStart={draggable && isActualStart ? e => handleDragStart(e, t, 'move') : undefined}
+                          draggable={draggable && canMove}
+                          onDragStart={draggable && canMove ? e => handleDragStart(e, t, 'move') : undefined}
                           onDragEnd={handleDragEnd}
                           style={chipStyle(t)}
                           className={[
                             `h-6 flex items-center text-[10px] font-medium overflow-hidden select-none group ${chipCls(t)} ${rl} ${rr}`,
-                            draggable && isActualStart ? 'cursor-grab active:cursor-grabbing' : '',
+                            draggable && canMove ? 'cursor-grab active:cursor-grabbing' : '',
                           ].filter(Boolean).join(' ')}
                         >
                           {draggable && isActualStart && hasRange && (
@@ -471,7 +544,11 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
                       );
                     })}
                     {overflow > 0 && (
-                      <div className="text-[10px] text-gray-400 px-1.5">+{overflow} more</div>
+                      <button type="button"
+                        onClick={e => { e.stopPropagation(); cellDate && setSelectedDate(cellDate); }}
+                        className="text-[10px] text-gray-400 hover:text-gray-600 leading-none px-1.5 text-left cursor-pointer">
+                        +{overflow} more
+                      </button>
                     )}
                   </div>
                   )}
@@ -482,13 +559,18 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
         ))}
       </div>
 
-      {/* Selected day task list */}
+      {/* Selected day task list — visually set apart from the calendar grid
+          above (tinted background + heavier top border + an eyebrow label)
+          so it doesn't read as just another calendar row. */}
       {selectedDate && !isDragging && (
-        <div className="border-t border-gray-100 px-5 py-4">
+        <div className="border-t-2 border-gray-100 bg-gray-50/60 px-5 py-4">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-xs font-semibold text-gray-500">
-              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Tasks due</p>
+              <p className="text-xs font-semibold text-gray-600">
+                {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+            </div>
             {(mode === 'dots' ? true : !!onAddTask) && (
               <button onClick={e => mode === 'dots'
                 ? setQuickAdd({ date: selectedDate, rect: e.currentTarget.getBoundingClientRect() })

@@ -50,7 +50,9 @@ export function GanttTimeline({ tasks, projectStart, projectEnd, today, onTaskUp
 
   const anchor = new Date(today + 'T00:00:00');
   const [viewMonth, setViewMonth] = useState<Date>(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
-  const [selectedDate, setSelectedDate] = useState<string | null>(today);
+  // Doesn't default to today — there's already a separate "Today" list
+  // elsewhere on the page, so auto-opening this drawer on load was redundant.
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragState = useRef<DragState | null>(null);
   const [localTasks, setLocalTasks] = useState<ProjectTask[]>([]);

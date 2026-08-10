@@ -967,8 +967,11 @@ export default function AdminDashboardPage() {
                               {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
                             </button>
                             {t.assignee_name && (
-                              <div title={t.assignee_name} className="flex-shrink-0">
+                              <div className="relative group flex-shrink-0">
                                 <Avatar name={t.assignee_name} url={t.assignee_avatar} size={5} />
+                                <div className="pointer-events-none absolute bottom-full right-0 mb-1.5 whitespace-nowrap bg-gray-900 text-white text-[11px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                  {t.assignee_name}
+                                </div>
                               </div>
                             )}
                             {t.due_date && (

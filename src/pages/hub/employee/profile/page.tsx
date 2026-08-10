@@ -5,6 +5,7 @@ import AvatarCropModal from '@/pages/hub/components/AvatarCropModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { fetchUserFinanceMap, UserFinance } from '@/lib/userFinance';
+import { UAP_CATEGORIES, UAP_TOTAL_REQUIRED_HOURS, resolveUapCategory } from '@/lib/uapHours';
 
 export default function ContractorProfilePage() {
   const { user, refreshHubUser, signOut } = useAuth();
@@ -27,6 +28,32 @@ export default function ContractorProfilePage() {
     if (!u?.id) return;
     fetchUserFinanceMap([u.id]).then((m) => { if (m[u.id]) setSelfFin(m[u.id]); });
   }, [u?.id]);
+
+  // UAP Field of Practice hours — same source/shape as the admin contractor
+  // detail page's card, just scoped to the signed-in employee.
+  const [uapTaskRows, setUapTaskRows] = useState<{ hours_spent: number | null; uap_category: string | null; stage: string | null }[]>([]);
+  useEffect(() => {
+    if (!u?.id || !u?.track_uap_hours) return;
+    supabase.from('hub_project_tasks')
+      .select('hours_spent, uap_category, hub_projects(stage)')
+      .or(`assigned_to.eq.${u.id},assignee_ids.cs.{${u.id}}`)
+      .not('hours_spent', 'is', null)
+      .then(({ data }) => {
+        setUapTaskRows(((data ?? []) as any[]).map(r => ({
+          hours_spent: r.hours_spent,
+          uap_category: r.uap_category,
+          stage: r.hub_projects?.stage ?? null,
+        })));
+      });
+  }, [u?.id, u?.track_uap_hours]);
+
+  const uapHoursByCategory: Record<string, number> = {};
+  for (const row of uapTaskRows) {
+    const cat = resolveUapCategory(row.uap_category, row.stage);
+    if (!cat || !row.hours_spent) continue;
+    uapHoursByCategory[cat] = (uapHoursByCategory[cat] ?? 0) + row.hours_spent;
+  }
+  const uapTotalLogged = Object.values(uapHoursByCategory).reduce((sum, h) => sum + h, 0);
 
   const blankForm = () => ({
     full_name: u?.full_name || '',
@@ -160,6 +187,58 @@ export default function ContractorProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* UAP Field of Practice hours — only for employees flagged for it */}
+        {u.track_uap_hours && (
+          <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#111827]">UAP Field of Practice Hours</h3>
+              <p className="text-xs text-gray-400">
+                <span className="font-semibold text-gray-700">{uapTotalLogged.toLocaleString()}</span> / {UAP_TOTAL_REQUIRED_HOURS.toLocaleString()} hrs
+                <span className="ml-1.5">({Math.min(100, Math.round((uapTotalLogged / UAP_TOTAL_REQUIRED_HOURS) * 100))}%)</span>
+              </p>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${Math.min(100, (uapTotalLogged / UAP_TOTAL_REQUIRED_HOURS) * 100)}%` }} />
+            </div>
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-sm min-w-[480px]">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                    <th className="font-medium py-2 px-1">UAP Field of Practice</th>
+                    <th className="font-medium py-2 px-1 text-right">%</th>
+                    <th className="font-medium py-2 px-1 text-right">Required</th>
+                    <th className="font-medium py-2 px-1 text-right">Logged</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {UAP_CATEGORIES.map(c => {
+                    const logged = uapHoursByCategory[c.key] ?? 0;
+                    const met = logged >= c.requiredHours;
+                    return (
+                      <tr key={c.key} className="border-b border-gray-50 last:border-0">
+                        <td className="py-2 px-1 text-xs text-gray-700">
+                          <span className="font-semibold">{c.key}.</span> {c.label}
+                        </td>
+                        <td className="py-2 px-1 text-right text-xs text-gray-500 whitespace-nowrap">{c.percent}%</td>
+                        <td className="py-2 px-1 text-right text-xs text-gray-500 whitespace-nowrap">{c.requiredHours.toLocaleString()} hrs</td>
+                        <td className={`py-2 px-1 text-right text-xs font-semibold whitespace-nowrap ${met ? 'text-emerald-600' : 'text-gray-700'}`}>
+                          {logged.toLocaleString()} hrs
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr>
+                    <td className="py-2 px-1 text-xs font-semibold text-gray-800">TOTAL</td>
+                    <td className="py-2 px-1 text-right text-xs font-semibold text-gray-800">100%</td>
+                    <td className="py-2 px-1 text-right text-xs font-semibold text-gray-800 whitespace-nowrap">{UAP_TOTAL_REQUIRED_HOURS.toLocaleString()} hrs</td>
+                    <td className="py-2 px-1 text-right text-xs font-semibold text-gray-800 whitespace-nowrap">{uapTotalLogged.toLocaleString()} hrs</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">

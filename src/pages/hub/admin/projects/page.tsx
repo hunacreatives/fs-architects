@@ -172,7 +172,7 @@ export default function AdminProjectsPage() {
   const [teamWindow, setTeamWindow] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [allTasksLoading, setAllTasksLoading] = useState(false);
-  const [taskStatusFilter, setTaskStatusFilter] = useState('all');
+  const [taskStatusFilter, setTaskStatusFilter] = useState('active');
   const [pendingTaskDate, setPendingTaskDate] = useState<string | null>(null);
   // Carries a quick-add draft (assignee/title/project) into the full task
   // drawer when someone hits "Add details" instead of the one-line quick add.

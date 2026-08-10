@@ -11,6 +11,7 @@ import { getPeriods } from '@/lib/formatUtils';
 import { DEMO_ATTENDANCE, DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF, DEMO_INVOICES, DEMO_DASHBOARD } from '@/lib/demoData';
 import { mergeLiveAttendanceIntoDailyHours, fetchPayrollTotal } from '@/lib/payrollUtils';
 import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
+import { loadTeams, type TeamMeta } from '@/lib/teams';
 
 function useClock() {
   const [now, setNow] = useState(new Date());
@@ -167,8 +168,11 @@ export default function AdminDashboardPage() {
   const [quickAddTitle, setQuickAddTitle] = useState('');
   const [quickAddProjectId, setQuickAddProjectId] = useState<number | null>(null);
   const [quickAddAssigneeId, setQuickAddAssigneeId] = useState<string>('');
+  const [quickAddTeamKey, setQuickAddTeamKey] = useState<string>('');
   const [quickAddDueDate, setQuickAddDueDate] = useState('');
   const [quickAddSaving, setQuickAddSaving] = useState(false);
+  const [teamsList, setTeamsList] = useState<TeamMeta[]>([]);
+  useEffect(() => { loadTeams().then(setTeamsList); }, []);
   const [widgetPrefs, setWidgetPrefs] = useState<Record<WidgetKey, boolean>>(loadWidgetPrefs);
   const [showCustomize, setShowCustomize] = useState(false);
   const isOwner = effectiveRole === 'owner';
@@ -225,7 +229,7 @@ export default function AdminDashboardPage() {
     }
     const fetchAll = async () => {
       try {
-      const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, clientsResult, usdRateStr, invResult, linkResult, taskProjectsResult] = await Promise.all([
+      const [slackResult, annResult, reqResult, toResult, contractorsResult, hoursResult, projectsResult, clientsResult, usdRateStr, invResult, linkResult, taskProjectsResult, assigneeOptionsResult] = await Promise.all([
         supabase.functions.invoke('slack-attendance'),
         supabase.from('hub_announcements').select('*, hub_users!posted_by(full_name)').order('created_at', { ascending: false }).limit(4),
         supabase.from('hub_requests').select('*, hub_users!contractor_id(full_name, avatar_url)').in('status', ['open', 'in_review']).order('created_at', { ascending: false }),
@@ -238,9 +242,14 @@ export default function AdminDashboardPage() {
         supabase.from('hub_invoice_log').select('id, invoice_number, client_name, project_name, project_id, balance, sent_at').gt('balance', 0).eq('settled', false).order('sent_at', { ascending: false }),
         supabase.from('hub_invoice_payment_links').select('invoice_number, project_id, due_date').order('created_at', { ascending: false }),
         supabase.from('hub_projects').select('id, project_name').neq('status', 'cancelled').order('project_name'),
+        // Separate from contractorsResult (which deliberately excludes
+        // owner/hr so they don't skew payroll estimates) — this one is
+        // just for the assignee picker, where Fretz should absolutely be
+        // selectable for tasks assigned to himself.
+        supabase.from('hub_users').select('id, full_name, avatar_url').eq('status', 'active').in('role', ['contractor', 'admin', 'hr', 'owner']).neq('is_developer', true).order('full_name'),
       ]);
       setQuickAddProjects((taskProjectsResult.data as any[]) ?? []);
-      setQuickAddTeam(((contractorsResult.data as any[]) ?? []).map((c: any) => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url })));
+      setQuickAddTeam(((assigneeOptionsResult.data as any[]) ?? []).map((c: any) => ({ id: c.id, full_name: c.full_name, avatar_url: c.avatar_url })));
       const payrollTotal = await fetchPayrollTotal(cutoffStart, cutoffEnd, parseFloat(usdRateStr || '56')).catch(() => 0);
 
       if (!slackResult.error && slackResult.data?.attendance) {
@@ -413,7 +422,7 @@ export default function AdminDashboardPage() {
   };
 
   const resetQuickAdd = () => {
-    setQuickAddOpen(false); setQuickAddTitle(''); setQuickAddProjectId(null); setQuickAddAssigneeId(''); setQuickAddDueDate('');
+    setQuickAddOpen(false); setQuickAddTitle(''); setQuickAddProjectId(null); setQuickAddAssigneeId(''); setQuickAddTeamKey(''); setQuickAddDueDate('');
   };
 
   const quickAddTask = async () => {
@@ -426,6 +435,7 @@ export default function AdminDashboardPage() {
       priority: 'medium',
       assignee_ids: quickAddAssigneeId ? [quickAddAssigneeId] : null,
       assigned_to: quickAddAssigneeId || null,
+      team: quickAddTeamKey || null,
       due_date: quickAddDueDate || null,
       start_date: null,
       checklist: [],
@@ -877,6 +887,11 @@ export default function AdminDashboardPage() {
                             {quickAddTeam.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
                           </select>
                         </div>
+                        <select value={quickAddTeamKey} onChange={e => setQuickAddTeamKey(e.target.value)}
+                          className="w-full px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer">
+                          <option value="">No Team</option>
+                          {teamsList.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                        </select>
                         <input type="date" value={quickAddDueDate} onChange={e => setQuickAddDueDate(e.target.value)}
                           className="w-full px-3 py-2.5 sm:px-2 sm:py-1.5 text-sm sm:text-[11px] border border-violet-200 rounded-lg bg-white focus:outline-none cursor-pointer" />
                         <div className="flex items-center justify-between gap-2 pt-1 sm:pt-0.5">
@@ -932,7 +947,11 @@ export default function AdminDashboardPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {todoTasks.map((t) => {
+                        {/* Completed tasks bubble to the top (still crossed
+                            out/grey) instead of staying interspersed by due
+                            date — a stable sort, so due-date order is kept
+                            within each group. */}
+                        {[...todoTasks].sort((a, b) => (a.status === 'done' ? 0 : 1) - (b.status === 'done' ? 0 : 1)).map((t) => {
                           const done = t.status === 'done';
                           return (
                           <div key={t.id} className={`flex items-center gap-2.5 py-1.5 ${done ? 'opacity-50' : ''}`}>

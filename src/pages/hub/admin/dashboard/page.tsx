@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
   const [birthdays, setBirthdays] = useState<BirthdayPerson[]>(_cache?.birthdays ?? []);
   const [outstandingInvoices, setOutstandingInvoices] = useState<OutstandingInvoice[]>(_cache?.outstandingInvoices ?? []);
   const [loading, setLoading] = useState(!_cache);
-  const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
+  const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('day');
   const [todoTasks, setTodoTasks] = useState<{ id: number; project_id: number; title: string; due_date: string | null; status: string; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
   const [detailTask, setDetailTask] = useState<TaskDetailTask | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1137,6 +1137,7 @@ export default function AdminDashboardPage() {
         onSaved={() => { fetchTodo(); }}
         onDeleted={() => { setDetailOpen(false); setDetailTask(null); fetchTodo(); }}
         onArchived={() => { setDetailOpen(false); setDetailTask(null); fetchTodo(); }}
+        onOpenProject={(pid) => { setDetailOpen(false); setDetailTask(null); navigate(`/hub/admin/projects?w=${pid}&ws=1`); }}
         projectId={detailTask?.project_id ?? 0}
         projectName={todoTasks.find(t => t.id === detailTask?.id)?.project_name ?? quickAddProjects.find(p => p.id === detailTask?.project_id)?.project_name ?? 'General'}
         teamMembers={quickAddTeam}

@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
   const [outstandingInvoices, setOutstandingInvoices] = useState<OutstandingInvoice[]>(_cache?.outstandingInvoices ?? []);
   const [loading, setLoading] = useState(!_cache);
   const [todoViewMode, setTodoViewMode] = useState<'day' | 'week'>('week');
-  const [todoTasks, setTodoTasks] = useState<{ id: number; project_id: number; title: string; due_date: string | null; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
+  const [todoTasks, setTodoTasks] = useState<{ id: number; project_id: number; title: string; due_date: string | null; status: string; project_name: string | null; assignee_name: string | null; assignee_avatar: string | null }[]>([]);
   const [detailTask, setDetailTask] = useState<TaskDetailTask | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   // Quick "Add Task" popover on the dashboard tile — mirrors the inline
@@ -364,12 +364,13 @@ export default function AdminDashboardPage() {
     // so a pending task never silently drops off the list just because its
     // due date has passed. It stays until someone marks it done.
     const { end } = todoViewMode === 'week' ? getWeekRange(todayStr) : { start: todayStr, end: todayStr };
-    // Team-wide pending task list, not just this admin's own tasks —
-    // meant to be a quick scan of what the whole team has due.
+    // Team-wide task list, not just this admin's own tasks — meant to be a
+    // quick scan of what the whole team has due. Completed tasks stay in
+    // the list (crossed out) instead of disappearing — still bounded by
+    // the same due-date window, so it doesn't grow unbounded over time.
     const { data, error } = await supabase
       .from('hub_project_tasks')
       .select('id, project_id, title, due_date, status, hub_projects(project_name), hub_users!assigned_to(full_name, avatar_url)')
-      .neq('status', 'done')
       .lte('due_date', end)
       .order('due_date', { ascending: true });
     if (!error) {
@@ -378,6 +379,7 @@ export default function AdminDashboardPage() {
         project_id: t.project_id,
         title: t.title,
         due_date: t.due_date,
+        status: t.status,
         project_name: t.hub_projects?.project_name ?? null,
         assignee_name: t.hub_users?.full_name ?? null,
         assignee_avatar: t.hub_users?.avatar_url ?? null,
@@ -401,9 +403,13 @@ export default function AdminDashboardPage() {
     setDetailOpen(true);
   };
 
+  // Toggles done/not-done in place — completed tasks stay visible (crossed
+  // out) instead of vanishing, and clicking again undoes it.
   const markTodoDone = async (id: number) => {
-    setTodoTasks(prev => prev.filter(t => t.id !== id));
-    await supabase.from('hub_project_tasks').update({ status: 'done' }).eq('id', id);
+    const current = todoTasks.find(t => t.id === id);
+    const next = current?.status === 'done' ? 'todo' : 'done';
+    setTodoTasks(prev => prev.map(t => t.id === id ? { ...t, status: next } : t));
+    await supabase.from('hub_project_tasks').update({ status: next }).eq('id', id);
   };
 
   const resetQuickAdd = () => {
@@ -925,16 +931,20 @@ export default function AdminDashboardPage() {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {todoTasks.map((t) => (
-                          <div key={t.id} className="flex items-center gap-2.5 py-1.5">
+                      <div className="space-y-2">
+                        {todoTasks.map((t) => {
+                          const done = t.status === 'done';
+                          return (
+                          <div key={t.id} className={`flex items-center gap-2.5 py-1.5 ${done ? 'opacity-50' : ''}`}>
                             <button
                               onClick={() => markTodoDone(t.id)}
-                              className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex-shrink-0 cursor-pointer transition-colors"
-                              title="Mark done"
-                            />
+                              className={`w-4.5 h-4.5 rounded-full border-2 flex-shrink-0 cursor-pointer transition-colors flex items-center justify-center ${done ? 'bg-emerald-400 border-emerald-400' : 'border-gray-300 hover:border-emerald-400'}`}
+                              title={done ? 'Mark not done' : 'Mark done'}
+                            >
+                              {done && <i className="ri-check-line text-white text-[10px]"></i>}
+                            </button>
                             <button type="button" onClick={() => openTodoTask(t)} className="flex-1 min-w-0 text-left cursor-pointer">
-                              <p className="text-sm font-medium text-gray-800 truncate hover:text-[#1c2b3a]">{t.title}</p>
+                              <p className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400' : 'text-gray-800 hover:text-[#1c2b3a]'}`}>{t.title}</p>
                               {t.project_name && <p className="text-xs text-gray-400 truncate">{t.project_name}</p>}
                             </button>
                             {t.assignee_name && (
@@ -943,12 +953,13 @@ export default function AdminDashboardPage() {
                               </div>
                             )}
                             {t.due_date && (
-                              <p className={`text-xs whitespace-nowrap flex-shrink-0 ${t.due_date < new Date().toISOString().slice(0, 10) ? 'text-rose-500 font-semibold' : 'text-gray-400'}`}>
+                              <p className={`text-xs whitespace-nowrap flex-shrink-0 ${done ? 'text-gray-400' : t.due_date < new Date().toISOString().slice(0, 10) ? 'text-rose-500 font-semibold' : 'text-gray-400'}`}>
                                 {new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                               </p>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

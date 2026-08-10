@@ -7,7 +7,7 @@ import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import { HubUser, HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { getSetting } from '@/lib/settings';
-import { getPeriods } from '@/lib/formatUtils';
+import { getPeriods, localToday } from '@/lib/formatUtils';
 import { DEMO_ATTENDANCE, DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF, DEMO_INVOICES, DEMO_DASHBOARD } from '@/lib/demoData';
 import { mergeLiveAttendanceIntoDailyHours, fetchPayrollTotal } from '@/lib/payrollUtils';
 import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
@@ -368,7 +368,7 @@ export default function AdminDashboardPage() {
 
   const fetchTodo = useCallback(async () => {
     if (isDemo || !hubUser?.id) return;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localToday();
     // Only the far end of the window depends on Day/Week — no lower bound,
     // so a pending task never silently drops off the list just because its
     // due date has passed. It stays until someone marks it done.
@@ -379,20 +379,25 @@ export default function AdminDashboardPage() {
     // the same due-date window, so it doesn't grow unbounded over time.
     const { data, error } = await supabase
       .from('hub_project_tasks')
-      .select('id, project_id, title, due_date, status, hub_projects(project_name), hub_users!assigned_to(full_name, avatar_url)')
+      .select('id, project_id, title, due_date, status, done_at, hub_projects(project_name), hub_users!assigned_to(full_name, avatar_url)')
       .lte('due_date', end)
       .order('due_date', { ascending: true });
     if (!error) {
-      setTodoTasks((data ?? []).map((t: any) => ({
-        id: t.id,
-        project_id: t.project_id,
-        title: t.title,
-        due_date: t.due_date,
-        status: t.status,
-        project_name: t.hub_projects?.project_name ?? null,
-        assignee_name: t.hub_users?.full_name ?? null,
-        assignee_avatar: t.hub_users?.avatar_url ?? null,
-      })));
+      setTodoTasks((data ?? [])
+        // A completed task stays crossed-out for the rest of the day it was
+        // finished, then drops off after midnight instead of accumulating
+        // forever.
+        .filter((t: any) => t.status !== 'done' || (t.done_at && new Date(t.done_at).toLocaleDateString('en-CA') === todayStr))
+        .map((t: any) => ({
+          id: t.id,
+          project_id: t.project_id,
+          title: t.title,
+          due_date: t.due_date,
+          status: t.status,
+          project_name: t.hub_projects?.project_name ?? null,
+          assignee_name: t.hub_users?.full_name ?? null,
+          assignee_avatar: t.hub_users?.avatar_url ?? null,
+        })));
     }
   }, [isDemo, hubUser?.id, todoViewMode]);
 

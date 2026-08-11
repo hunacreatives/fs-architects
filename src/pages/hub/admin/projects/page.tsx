@@ -9,6 +9,7 @@ import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import { logAudit } from '@/lib/audit';
 import { localToday, isTaskOverdue } from '@/lib/formatUtils';
+import { taskStatusLabel } from '@/lib/taskStatus';
 import { DEMO_PROJECTS, DEMO_CONTRACTORS } from '@/lib/demoData';
 import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
@@ -480,13 +481,13 @@ export default function AdminProjectsPage() {
     await supabase.from('hub_project_tasks').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', task.id);
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     setAllTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
-    const statusLabel = newStatus.replace('_', ' ');
+    const statusLabel = taskStatusLabel(newStatus);
     await logActivity(task.project_id, `${hubUser?.full_name ?? 'Admin'} moved "${task.title}" to ${statusLabel}`);
     // Also log to the task's own activity feed (shown in its drawer) — the
     // project-level log above doesn't surface there.
     await supabase.from('hub_project_task_activity').insert({
       task_id: task.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
-      type: 'status_change', description: `changed status from ${task.status.replace('_', ' ')} to ${statusLabel}`,
+      type: 'status_change', description: `changed status from ${taskStatusLabel(task.status)} to ${statusLabel}`,
     });
     if (newStatus === 'done') fetchTasks(task.project_id);
   };
@@ -2125,7 +2126,7 @@ export default function AdminProjectsPage() {
                                       setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x));
                                       await supabase.from('hub_project_task_activity').insert({
                                         task_id: t.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
-                                        type: 'status_change', description: `changed status from ${t.status.replace('_', ' ')} to ${n.replace('_', ' ')}`,
+                                        type: 'status_change', description: `changed status from ${taskStatusLabel(t.status)} to ${taskStatusLabel(n)}`,
                                       });
                                     }} className="flex-shrink-0 cursor-pointer">
                                     <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>

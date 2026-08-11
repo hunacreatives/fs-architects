@@ -9,6 +9,7 @@ import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import WhatsNewModal from './WhatsNewModal';
+import PullToRefresh from './PullToRefresh';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const EMPLOYEE_BOTTOM_NAV = [
@@ -48,9 +49,11 @@ interface Props {
   titleContent?: ReactNode;
   actions?: ReactNode;
   hideGlobalSearch?: boolean;
+  /** Mobile pull-to-refresh handler. Defaults to a full page reload when omitted. */
+  onRefresh?: () => void | Promise<void>;
 }
 
-export default function ContractorLayout({ children, title, titleContent, actions, hideGlobalSearch }: Props) {
+export default function ContractorLayout({ children, title, titleContent, actions, hideGlobalSearch, onRefresh }: Props) {
   const { loading, session, signOut } = useAuth();
   const { hubUser } = useHubAuth();
   const { isDemo, demoRole, demoSignOut, setDemoRole } = useDemo();
@@ -66,6 +69,7 @@ export default function ContractorLayout({ children, title, titleContent, action
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const bottomNavScrollRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   // AdminLayout/ContractorLayout remount on every route change (each page wraps
   // itself in the layout), so the horizontally-scrollable bottom nav loses its
@@ -397,8 +401,9 @@ export default function ContractorLayout({ children, title, titleContent, action
 
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
+          <main ref={mainRef} className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
             {!isDemo && <WhatsNewModal />}
+            <PullToRefresh scrollRef={mainRef} onRefresh={onRefresh ?? (() => window.location.reload())}>
             <div className="max-w-7xl mx-auto">
               {!isDemo && (
                 <PushNotificationPrompt
@@ -412,6 +417,7 @@ export default function ContractorLayout({ children, title, titleContent, action
               )}
               {children}
             </div>
+            </PullToRefresh>
           </main>
 
           {/* Mobile bottom tab bar — inside the glass panel (the backdrop-filter

@@ -9,6 +9,7 @@ import HubAvatar from '@/pages/hub/components/HubAvatar';
 import CommentEditor, { type CommentEditorHandle } from '@/pages/hub/components/CommentEditor';
 import { loadTeams, teamMeta, type TeamMeta } from '@/lib/teams';
 import { UAP_CATEGORIES, resolveUapCategory } from '@/lib/uapHours';
+import { taskStatusLabel } from '@/lib/taskStatus';
 
 function fmtLogDate(d: string | null): string {
   if (!d) return 'none';
@@ -750,7 +751,7 @@ export default function TaskDetailPanel({
       .select('*')
       .single();
     if (error) { setStatus(prevStatus); return; }
-    await logActivity(task.id, 'status_change', `changed status from ${prevStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
+    await logActivity(task.id, 'status_change', `changed status from ${taskStatusLabel(prevStatus)} to ${taskStatusLabel(newStatus)}`);
     supabase.functions.invoke('notify-task-updated', {
       body: {
         task_id: task.id,
@@ -759,7 +760,7 @@ export default function TaskDetailPanel({
         project_name: projectName,
         updated_by_id: currentUserId,
         updated_by_name: currentUserName,
-        change_description: `${currentUserName} marked "${data.title}" as ${newStatus.replace('_', ' ')}`,
+        change_description: `${currentUserName} marked "${data.title}" as ${taskStatusLabel(newStatus)}`,
       },
     }).catch(console.error);
     await fetchTaskData(task.id);
@@ -872,7 +873,7 @@ export default function TaskDetailPanel({
         // Log meaningful changes
         const statusChanged = prev.status !== status;
         if (statusChanged)
-          await logActivity(prev.id, 'status_change', `changed status from ${prev.status.replace('_', ' ')} to ${status.replace('_', ' ')}`);
+          await logActivity(prev.id, 'status_change', `changed status from ${taskStatusLabel(prev.status)} to ${taskStatusLabel(status)}`);
 
         const trimmedTitle = title.trim();
         if (prev.title !== trimmedTitle)
@@ -952,7 +953,7 @@ export default function TaskDetailPanel({
         // Notify assignees + admins when task is meaningfully changed
         if (statusChanged || assigneesChanged) {
           const notifBody = statusChanged
-            ? `${currentUserName} marked "${title}" as ${status.replace('_', ' ')}`
+            ? `${currentUserName} marked "${title}" as ${taskStatusLabel(status)}`
             : `${currentUserName} updated assignments on "${title}"`;
           supabase.functions.invoke('notify-task-updated', {
             body: {

@@ -12,6 +12,7 @@ import { localToday, slugify } from '@/lib/formatUtils';
 import { createTaskAttachment } from '@/lib/taskAttachments';
 import { getTaskDescriptionPreview } from '@/pages/hub/utils/taskPreview';
 import { getPrimaryTaskAssigneeId, getTaskAssigneeIds, normalizeTaskAssigneePayload } from '@/lib/taskAssignments';
+import { taskStatusLabel } from '@/lib/taskStatus';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { getProjectTypeLabel, getProjectTypePalette } from '@/lib/projectTypes';
 
@@ -623,7 +624,7 @@ export default function ContractorProjectsPage() {
     await logActivity('task_status_changed', task.title, task.id, { from: task.status, to: newStatus });
     await supabase.from('hub_project_task_activity').insert({
       task_id: task.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Employee',
-      type: 'status_change', description: `changed status from ${task.status.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`,
+      type: 'status_change', description: `changed status from ${taskStatusLabel(task.status)} to ${taskStatusLabel(newStatus)}`,
     });
   };
 
@@ -918,7 +919,7 @@ export default function ContractorProjectsPage() {
     const actionLabels: Record<string, string> = {
       task_created: `created task "${entityTitle}"`,
       task_updated: `updated task "${entityTitle}"`,
-      task_status_changed: `moved "${entityTitle}" to ${(meta?.to as string)?.replace('_',' ') ?? ''}`,
+      task_status_changed: `moved "${entityTitle}" to ${meta?.to ? taskStatusLabel(meta.to as string) : ''}`,
       task_deleted: `deleted task "${entityTitle}"`,
       comment_added: `commented on "${entityTitle}"`,
       task_assigned: `assigned "${entityTitle}"`,
@@ -2013,7 +2014,7 @@ export default function ContractorProjectsPage() {
                         const labels: Record<string, (a: typeof activityLog[0]) => string> = {
                           task_created: (a) => `created "${a.entity_title}"`,
                           task_updated: (a) => `updated "${a.entity_title}"`,
-                          task_status_changed: (a) => `moved "${a.entity_title}" to ${(a.meta as any)?.to?.replace('_', ' ') ?? ''}`,
+                          task_status_changed: (a) => `moved "${a.entity_title}" to ${(a.meta as any)?.to ? taskStatusLabel((a.meta as any).to) : ''}`,
                           task_deleted: (a) => `deleted "${a.entity_title}"`,
                           comment_added: (a) => `commented on "${a.entity_title}"`,
                           comment_deleted: (a) => `deleted a comment on "${a.entity_title}"`,
@@ -2476,7 +2477,7 @@ export default function ContractorProjectsPage() {
                       const labels: Record<string, (a: typeof activityLog[0]) => string> = {
                         task_created: (a) => `created "${a.entity_title}"`,
                         task_updated: (a) => `updated "${a.entity_title}"`,
-                        task_status_changed: (a) => `moved "${a.entity_title}" to ${(a.meta as any)?.to?.replace('_', ' ') ?? ''}`,
+                        task_status_changed: (a) => `moved "${a.entity_title}" to ${(a.meta as any)?.to ? taskStatusLabel((a.meta as any).to) : ''}`,
                         task_deleted: (a) => `deleted "${a.entity_title}"`,
                         comment_added: (a) => `commented on "${a.entity_title}"`,
                         comment_deleted: (a) => `deleted a comment on "${a.entity_title}"`,

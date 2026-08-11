@@ -8,6 +8,7 @@ import { useDemo } from '@/contexts/DemoContext';
 import { HubUser, HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { getSetting } from '@/lib/settings';
 import { getPeriods, localToday } from '@/lib/formatUtils';
+import { taskStatusLabel } from '@/lib/taskStatus';
 import { DEMO_ATTENDANCE, DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF, DEMO_INVOICES, DEMO_DASHBOARD } from '@/lib/demoData';
 import { mergeLiveAttendanceIntoDailyHours, fetchPayrollTotal } from '@/lib/payrollUtils';
 import TaskDetailPanel, { type TaskDetailTask } from '@/pages/hub/components/TaskDetailPanel';
@@ -404,6 +405,18 @@ export default function AdminDashboardPage() {
 
   useEffect(() => { fetchTodo(); }, [fetchTodo]);
 
+  // Live updates — any task insert/update/delete anywhere refetches the
+  // To-Do list, so a task Fretz assigns (or someone else completes) shows
+  // up without needing a manual refresh.
+  useEffect(() => {
+    if (isDemo) return;
+    const channel = supabase
+      .channel('dashboard-todo-tasks')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hub_project_tasks' }, () => fetchTodo())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isDemo, fetchTodo]);
+
   const openTodoTask = (t: { id: number; project_id: number; title: string; due_date: string | null }) => {
     setDetailTask({
       id: t.id,
@@ -427,7 +440,7 @@ export default function AdminDashboardPage() {
     await supabase.from('hub_project_tasks').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id);
     await supabase.from('hub_project_task_activity').insert({
       task_id: id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
-      type: 'status_change', description: `changed status from ${(current?.status ?? 'todo').replace('_', ' ')} to ${next.replace('_', ' ')}`,
+      type: 'status_change', description: `changed status from ${taskStatusLabel(current?.status ?? 'todo')} to ${taskStatusLabel(next)}`,
     });
   };
 
@@ -503,7 +516,7 @@ export default function AdminDashboardPage() {
   const absentList = attendance.filter(r => r.status === 'absent');
 
   return (
-    <AdminLayout title="Dashboard">
+    <AdminLayout title="Dashboard" onRefresh={fetchTodo}>
       <div className="space-y-4">
 
         {/* Customize drawer */}

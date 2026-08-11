@@ -5,6 +5,7 @@ import { useHubAuth as useAuth } from '@/hooks/useHubAuth';
 import { useDemo } from '@/contexts/DemoContext';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
 import { getPeriods, localToday } from '@/lib/formatUtils';
+import { taskStatusLabel } from '@/lib/taskStatus';
 import { supabase } from '@/lib/supabase';
 import { HubAnnouncement, HubRequest, HubTimeOff } from '@/lib/types';
 import { DEMO_ANNOUNCEMENTS, DEMO_REQUESTS, DEMO_TIME_OFF } from '@/lib/demoData';
@@ -542,6 +543,17 @@ export default function ContractorDashboard() {
 
   useEffect(() => { fetchTodo(); }, [fetchTodo]);
 
+  // Live updates — any task insert/update/delete refetches the To-Do list,
+  // so a newly-assigned task shows up without needing a manual refresh.
+  useEffect(() => {
+    if (isDemo) return;
+    const channel = supabase
+      .channel('employee-dashboard-todo-tasks')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hub_project_tasks' }, () => fetchTodo())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isDemo, fetchTodo]);
+
   const openTodoTask = (t: { id: number; project_id: number; title: string; due_date: string | null }) => {
     setDetailTask({
       id: t.id,
@@ -565,7 +577,7 @@ export default function ContractorDashboard() {
     await supabase.from('hub_project_tasks').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id);
     await supabase.from('hub_project_task_activity').insert({
       task_id: id, actor_id: user?.id ?? null, actor_name: user?.full_name ?? 'Employee',
-      type: 'status_change', description: `changed status from ${(current?.status ?? 'todo').replace('_', ' ')} to ${next.replace('_', ' ')}`,
+      type: 'status_change', description: `changed status from ${taskStatusLabel(current?.status ?? 'todo')} to ${taskStatusLabel(next)}`,
     });
   };
 
@@ -640,7 +652,7 @@ export default function ContractorDashboard() {
   const onlineCount = teamStatus.filter(t => t.status === 'on').length;
 
   return (
-    <ContractorLayout title="Dashboard">
+    <ContractorLayout title="Dashboard" onRefresh={fetchTodo}>
       {loading ? (
         <div className="flex justify-center py-20"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
       ) : (

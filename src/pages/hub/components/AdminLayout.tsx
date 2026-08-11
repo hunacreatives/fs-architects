@@ -8,6 +8,7 @@ import NotificationBell from './NotificationBell';
 import DevToolbar from './DevToolbar';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import WhatsNewModal from './WhatsNewModal';
+import PullToRefresh from './PullToRefresh';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const ADMIN_BOTTOM_NAV = [
@@ -33,6 +34,8 @@ interface Props {
   actions?: ReactNode;
   /** Skip the default max-w-7xl centered column — for views (like a full calendar) that want the entire content area. */
   fullWidth?: boolean;
+  /** Mobile pull-to-refresh handler. Defaults to a full page reload when omitted. */
+  onRefresh?: () => void | Promise<void>;
 }
 
 interface SearchResult {
@@ -214,7 +217,7 @@ function GlobalSearch() {
   );
 }
 
-export default function AdminLayout({ children, title, titleContent, actions, fullWidth }: Props) {
+export default function AdminLayout({ children, title, titleContent, actions, fullWidth, onRefresh }: Props) {
   const { hubUser, loading, session, signOut } = useAuth();
   const { isDemo, demoRole, demoSignOut, setDemoRole } = useDemo();
   const push = usePushNotifications();
@@ -222,6 +225,7 @@ export default function AdminLayout({ children, title, titleContent, actions, fu
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
   const bottomNavScrollRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   // AdminLayout remounts on every route change (each page wraps itself in the
   // layout), so the horizontally-scrollable bottom nav loses its scroll
@@ -326,8 +330,9 @@ export default function AdminLayout({ children, title, titleContent, actions, fu
 
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
+        <main ref={mainRef} className="flex-1 overflow-y-auto overscroll-none p-4 md:p-6 bg-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px) + 5rem)' }}>
           {!isDemo && <WhatsNewModal />}
+          <PullToRefresh scrollRef={mainRef} onRefresh={onRefresh ?? (() => window.location.reload())}>
           <div className={fullWidth ? '' : 'max-w-7xl mx-auto'}>
             {!isDemo && (
               <PushNotificationPrompt
@@ -341,6 +346,7 @@ export default function AdminLayout({ children, title, titleContent, actions, fu
             )}
             {children}
           </div>
+          </PullToRefresh>
         </main>
 
         {/* Mobile bottom tab bar — inside the glass panel (the backdrop-filter

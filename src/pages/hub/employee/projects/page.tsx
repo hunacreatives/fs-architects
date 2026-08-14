@@ -443,7 +443,10 @@ function ProjectCard({ row, projectTasks, onClick }: {
   const daysLeft = p.deadline
     ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000)
     : null;
-  const isOverdue = !!(p.deadline && p.deadline < today && p.status !== 'completed');
+  // A blown deadline with every task already done isn't actionable overdue work —
+  // it's just a project whose status hasn't been flipped to Completed yet.
+  const allTasksDone = projectTasks.length > 0 && tasksDone === projectTasks.length;
+  const isOverdue = !!(p.deadline && p.deadline < today && p.status !== 'completed' && !allTasksDone);
   const palette = getProjectTypePalette(p.project_type_code);
   const typeLabel = getProjectTypeLabel(p.project_type_code);
 
@@ -1577,7 +1580,8 @@ export default function ContractorProjectsPage() {
             const statusColors: Record<string, string> = { ongoing: 'bg-emerald-100 text-emerald-700', completed: 'bg-blue-100 text-blue-700', paused: 'bg-amber-100 text-amber-700', cancelled: 'bg-gray-100 text-gray-500' };
             const statusLabels: Record<string, string> = { ongoing: 'Active', completed: 'Completed', paused: 'Paused', cancelled: 'Archived' };
             const daysLeft = wsProject.deadline ? Math.ceil((new Date(wsProject.deadline + 'T00:00:00').getTime() - new Date(wsToday + 'T00:00:00').getTime()) / 86400000) : null;
-            const isDeadlineOver = daysLeft !== null && daysLeft < 0 && wsProject.status !== 'completed';
+            const wsAllTasksDone = wsTasks.length > 0 && wsTasks.every(t => t.status === 'done');
+            const isDeadlineOver = daysLeft !== null && daysLeft < 0 && wsProject.status !== 'completed' && !wsAllTasksDone;
             const folderIdMatch = wsProject.drive_url?.match(/folders\/([a-zA-Z0-9_-]+)/);
             const folderId = folderIdMatch?.[1];
             const embedUrl = folderId

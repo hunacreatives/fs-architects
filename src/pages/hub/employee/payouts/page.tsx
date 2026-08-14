@@ -56,13 +56,14 @@ function generatePayslipHTML(opts: {
   basePay: number;
   overtimePay: number;
   totalPay: number;
+  adjustments: { label: string; amount: number; type?: string }[];
   generatedDate: string;
   logoUrl: string;
   iconUrl: string;
 }) {
   const { name, department, period, days, paymentType, hourlyRate, monthlyRate, currency,
     totalDaysWorked, totalHoursRaw, totalHoursBillable, totalOvertime,
-    basePay, overtimePay, totalPay, generatedDate, logoUrl, iconUrl } = opts;
+    basePay, overtimePay, totalPay, adjustments, generatedDate, logoUrl, iconUrl } = opts;
 
   const isUSD = currency === 'USD';
   const fmt = (val: number) => isUSD
@@ -212,6 +213,11 @@ function generatePayslipHTML(opts: {
           <td style="padding:10px 14px;color:#374151;border-bottom:1px solid #f0f0f0;font-size:12px;">Overtime Compensation <span style="color:#9ca3af;font-size:11px;margin-left:6px;">${Number(totalOvertime.toFixed(2))} hrs × ${isUSD ? '$' : '₱'}${hourlyRate}/hr</span></td>
           <td style="padding:10px 14px;text-align:right;font-weight:600;color:#374151;border-bottom:1px solid #f0f0f0;font-size:12px;">+ ${fmt(overtimePay)}</td>
         </tr>` : ''}
+        ${adjustments.map((a) => `
+        <tr>
+          <td style="padding:10px 14px;color:#374151;border-bottom:1px solid #f0f0f0;font-size:12px;">${a.label} <span style="color:#9ca3af;font-size:11px;margin-left:6px;text-transform:capitalize;">${a.type || 'adjustment'}</span></td>
+          <td style="padding:10px 14px;text-align:right;font-weight:600;color:${a.amount >= 0 ? '#059669' : '#dc2626'};border-bottom:1px solid #f0f0f0;font-size:12px;">${a.amount > 0 ? '+' : ''} ${fmt(a.amount)}</td>
+        </tr>`).join('')}
         <tr style="background:#1c2b3a;">
           <td style="padding:13px 14px;font-weight:700;font-size:12px;color:#fff;text-transform:uppercase;letter-spacing:0.08em;">
             Net Compensation
@@ -648,6 +654,9 @@ export default function ContractorPayoutsPage() {
       basePay: displayBasePay,
       overtimePay: displayOvertimePay,
       totalPay: displayTotalPay,
+      adjustments: Array.isArray(submittedPayout?.adjustments)
+        ? submittedPayout.adjustments
+        : (Array.isArray(existingPayout?.adjustments) ? existingPayout.adjustments : []),
       generatedDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       logoUrl: logoDataUrl,
       iconUrl: iconDataUrl,

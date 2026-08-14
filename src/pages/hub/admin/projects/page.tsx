@@ -1154,7 +1154,13 @@ export default function AdminProjectsPage() {
 
   const renderProjectRow = (p: Project) => {
     const cfg = statusCfg[p.status] ?? statusCfg.ongoing;
-    const dl = deadlineStatus(p.deadline, p.status);
+    const pTasks = allTasks.filter((t: any) => t.project_id === p.id);
+    const pTasksDone = pTasks.filter((t: any) => t.status === 'done').length;
+    const pPct = pTasks.length > 0 ? Math.round((pTasksDone / pTasks.length) * 100) : 0;
+    const allTasksDone = pTasks.length > 0 && pTasksDone === pTasks.length;
+    // A blown deadline with every task already done isn't actionable overdue
+    // work — it's just a project whose status hasn't been flipped to Completed yet.
+    const dl = allTasksDone ? null : deadlineStatus(p.deadline, p.status);
     const pal = getProjectTypePalette(p.project_type_code);
     const team = p.hub_project_contractors.map((pc: any) => pc.hub_users).filter(Boolean);
     const projTeam = teamMeta(p.team);
@@ -1163,9 +1169,6 @@ export default function AdminProjectsPage() {
     const badge = dl ?? (p.status !== 'ongoing' ? cfg : null);
     const panelOpen = activeId === p.id && !workspaceOpen;
     const anyPanelOpen = activeId !== null && !workspaceOpen;
-    const pTasks = allTasks.filter((t: any) => t.project_id === p.id);
-    const pTasksDone = pTasks.filter((t: any) => t.status === 'done').length;
-    const pPct = pTasks.length > 0 ? Math.round((pTasksDone / pTasks.length) * 100) : 0;
     return (
       <div key={p.id} role="button" tabIndex={0}
         onClick={() => { openWorkspaceOnLoad.current = true; setActiveId(p.id); setWorkspaceOpen(true); }}
@@ -1291,7 +1294,8 @@ export default function AdminProjectsPage() {
         const statusLabels: Record<string, string> = { ongoing: 'Active', completed: 'Completed', paused: 'Paused', cancelled: 'Archived' };
         const wsTeam = p.hub_project_contractors.map(pc => pc.hub_users).filter(Boolean) as { id: string; full_name: string; avatar_url: string | null }[];
         const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline + 'T00:00:00').getTime() - new Date(wsToday + 'T00:00:00').getTime()) / 86400000) : null;
-        const isDeadlineOver = daysLeft !== null && daysLeft < 0 && p.status !== 'completed';
+        const wsAllTasksDone = tasks.length > 0 && tasks.every(t => t.status === 'done');
+        const isDeadlineOver = daysLeft !== null && daysLeft < 0 && p.status !== 'completed' && !wsAllTasksDone;
         // Map tasks for GanttTimeline (admin tasks have assignee_id, no start_date — compatible via any cast)
         const ganttTasks = tasks.map(t => ({
           id: t.id,

@@ -74,15 +74,24 @@ export default function RequestsPage() {
         const newAdj = { label: `Reimbursement: ${selected.title}`, amount: Number(selected.amount), type: 'reimbursement' };
         const { data: payout } = await supabase
           .from('hub_payouts')
-          .select('id, adjustments, status')
+          .select('id, adjustments, status, base_pay, overtime_pay')
           .eq('contractor_id', selected.contractor_id)
           .eq('cutoff_start', period.start)
           .maybeSingle();
         if (payout && payout.status !== 'paid') {
           const already = (payout.adjustments || []).some((a: any) => a.label === newAdj.label && a.amount === newAdj.amount);
           if (!already) {
+            const nextAdjustments = [...(payout.adjustments || []), newAdj];
+            // Already-submitted payouts have a persisted final_payout snapshot —
+            // recompute it here too, or the employee's total goes stale until HR
+            // reprocesses payroll even though the itemized adjustment now shows.
+            const update: Record<string, any> = { adjustments: nextAdjustments };
+            if (payout.status !== 'pending') {
+              const adjTotal = nextAdjustments.reduce((sum: number, a: any) => sum + Number(a?.amount || 0), 0);
+              update.final_payout = Number(payout.base_pay || 0) + Number(payout.overtime_pay || 0) + adjTotal;
+            }
             const { error: adjErr } = await supabase.from('hub_payouts')
-              .update({ adjustments: [...(payout.adjustments || []), newAdj] })
+              .update(update)
               .eq('id', payout.id);
             if (adjErr) throw adjErr;
           }

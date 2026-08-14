@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import { supabase } from '@/lib/supabase';
 import { HubRequest, HubUser } from '@/lib/types';
@@ -177,7 +178,7 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      {selected && (
+      {selected && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md space-y-4">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -229,7 +230,8 @@ export default function RequestsPage() {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   );

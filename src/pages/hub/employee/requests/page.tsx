@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ContractorLayout from '@/pages/hub/components/ContractorLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -136,7 +137,7 @@ export default function ContractorRequestsPage() {
         )}
       </div>
 
-      {showModal && (
+      {showModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -199,10 +200,11 @@ export default function ContractorRequestsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {selected && (
+      {selected && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -250,7 +252,8 @@ export default function ContractorRequestsPage() {
               <p className="text-xs text-gray-400">Submitted {new Date(selected.created_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </ContractorLayout>
   );

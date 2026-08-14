@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
 import HubAvatar from '@/pages/hub/components/HubAvatar';
@@ -299,6 +300,7 @@ export default function AdminPayrollPage() {
   const [editAdjType, setEditAdjType] = useState('bonus');
   const [editAdjSign, setEditAdjSign] = useState<'+' | '-'>('+');
   const [editSaving, setEditSaving] = useState(false);
+  const [editAdjSaving, setEditAdjSaving] = useState(false);
 
   const ADJ_TYPES = [
     { value: 'bonus', label: 'Bonus' },
@@ -366,15 +368,64 @@ export default function AdminPayrollPage() {
     setEditOTEntries(entries);
   };
 
-  const addEditAdjItem = () => {
+  // Writes just the adjustments list (+ the total it implies) straight to
+  // hub_payouts, without touching OT entries or closing the modal. "Add" used
+  // to only stage the item in local state until the separate footer "Save"
+  // button was clicked — admins were closing the modal after "Add" thinking
+  // it had already saved, silently losing the addition/deduction.
+  const persistEditAdjItems = async (contractorId: string, items: { label: string; amount: number; type: string }[]) => {
+    const row = rows.find(r => r.contractor.id === contractorId);
+    const override = rowOverrides[contractorId];
+    const h = parseFloat(editHours);
+    const p = parseFloat(editPay);
+    const basePay = !isNaN(p) ? p : (override?.pay ?? row?.pay ?? 0);
+    const otRate = row?.derivedHourlyRate ?? 0;
+    const activeEntries = editOTEntries.filter(e => !e.toDelete);
+    const computedOTPay = activeEntries.reduce(
+      (sum, e) => sum + e.hours * otRate * getOTMultiplier(e.date, e.is_rest_day),
+      0
+    );
+    const adjTotal = items.reduce((s, i) => s + i.amount, 0);
+    const finalPay = basePay + computedOTPay + adjTotal;
+    const existing = payoutsMap[contractorId];
+    const { error } = await supabase.from('hub_payouts').upsert({
+      ...(existing ? { id: existing.id } : {}),
+      contractor_id: contractorId,
+      cutoff_start: selectedPeriod.start,
+      cutoff_end: selectedPeriod.end,
+      base_pay: basePay,
+      approved_hours: isNaN(h) ? (existing?.approved_hours ?? null) : h,
+      final_payout: finalPay,
+      overtime_pay: computedOTPay,
+      status: existing?.status || 'pending',
+      locked: existing?.locked ?? false,
+      adjustments: items,
+      manual_override: true,
+    }, { onConflict: 'contractor_id,cutoff_start' });
+    if (error) {
+      console.error('Failed to save addition/deduction', error);
+      alert('Could not save this addition/deduction. Please try again.');
+      return false;
+    }
+    await fetchPayroll();
+    return true;
+  };
+
+  const addEditAdjItem = async () => {
     const amt = parseFloat(editAdjAmount);
     if (isNaN(amt)) return;
     const label = editAdjLabel.trim() || ADJ_TYPES.find(t => t.value === editAdjType)?.label || editAdjType;
     const signedAmt = editAdjSign === '-' ? -Math.abs(amt) : Math.abs(amt);
-    setEditAdjItems(prev => [...prev, { label, amount: signedAmt, type: editAdjType }]);
+    const nextItems = [...editAdjItems, { label, amount: signedAmt, type: editAdjType }];
+    setEditAdjItems(nextItems);
     setEditAdjLabel('');
     setEditAdjAmount('');
     setEditAdjSign('+');
+    if (editRowId) {
+      setEditAdjSaving(true);
+      await persistEditAdjItems(editRowId, nextItems);
+      setEditAdjSaving(false);
+    }
   };
 
   const saveEditRow = async (contractorId: string) => {
@@ -2536,7 +2587,7 @@ export default function AdminPayrollPage() {
         const otHoursVal = activeOTEntries.reduce((s, e) => s + e.hours, 0);
         const otPay = activeOTEntries.reduce((s, e) => s + e.hours * otRateVal * getOTMultiplier(e.date, e.is_rest_day), 0);
         const grandTotal = basePay + otPay + adjTotal;
-        return (
+        return createPortal(
           <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={() => setEditRowId(null)}>
             <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
@@ -2751,9 +2802,9 @@ export default function AdminPayrollPage() {
                         onChange={e => setEditAdjLabel(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addEditAdjItem()}
                         className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]" />
-                      <button onClick={addEditAdjItem}
-                        className="px-3 py-2 bg-[#111827] text-white text-xs rounded-lg hover:bg-gray-700 cursor-pointer whitespace-nowrap">
-                        Add
+                      <button onClick={addEditAdjItem} disabled={editAdjSaving}
+                        className="px-3 py-2 bg-[#111827] text-white text-xs rounded-lg hover:bg-gray-700 cursor-pointer whitespace-nowrap disabled:opacity-40">
+                        {editAdjSaving ? 'Saving…' : 'Add'}
                       </button>
                     </div>
                   </div>
@@ -2800,12 +2851,13 @@ export default function AdminPayrollPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 
       {/* Bank details modal */}
-      {bankInfoContractor && (
+      {bankInfoContractor && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4" onClick={() => setBankInfoContractor(null)}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -2839,11 +2891,12 @@ export default function AdminPayrollPage() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Approve transfer + optional proof-of-transfer screenshot */}
-      {approveProofOpen && batch && (
+      {approveProofOpen && batch && createPortal(
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -2879,7 +2932,8 @@ export default function AdminPayrollPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   );

@@ -85,10 +85,8 @@ create table if not exists hub_payouts (
 );
 alter table hub_payouts enable row level security;
 create policy "hub_payouts_own_view" on hub_payouts for select to authenticated using (contractor_id=auth.uid());
-create policy "hub_payouts_admin_view" on hub_payouts for select to authenticated
-  using (exists (select 1 from hub_users where id=auth.uid() and role in ('admin','owner')));
-create policy "hub_payouts_admin_all" on hub_payouts for all to authenticated
-  using (exists (select 1 from hub_users where id=auth.uid() and role in ('admin','owner')));
+create policy "hub_payouts_admin_view" on hub_payouts for select to authenticated using (is_hub_admin());
+create policy "hub_payouts_admin_all" on hub_payouts for all to authenticated using (is_hub_admin());
 create policy "hub_payouts_own_insert" on hub_payouts for insert to authenticated with check (contractor_id=auth.uid());
 create policy "hub_payouts_own_update" on hub_payouts for update to authenticated
   using (contractor_id=auth.uid() and coalesce(locked,false)=false) with check (contractor_id=auth.uid());

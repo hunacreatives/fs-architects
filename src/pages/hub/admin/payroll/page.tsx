@@ -49,6 +49,15 @@ interface DayHours {
   isRestDay: boolean;      // Sat/Sun (or explicit is_rest_day override) — 30% OT premium, no regular pay
 }
 
+// A payroll addition/deduction line. `recurring` items are re-created on the
+// next cutoff automatically (statutory benefits: SSS, PagIBIG, PHIC, …).
+interface AdjItem {
+  label: string;
+  amount: number;
+  type: string;
+  recurring?: boolean;
+}
+
 interface PayRow {
   contractor: Contractor;
   hours: number;
@@ -268,6 +277,10 @@ export default function AdminPayrollPage() {
 
   // Payout workflow state
   const [payoutsMap, setPayoutsMap] = useState<Record<string, any>>({});
+  // Recurring adjustments carried over from an employee's most recent prior
+  // payout that aren't on this period's payout yet. Shown in the UI and folded
+  // into totals immediately; written to hub_payouts when the row is approved.
+  const [carriedAdjMap, setCarriedAdjMap] = useState<Record<string, any[]>>({});
   const [batch, setBatch] = useState<any>(null);
   const [workflowLoading, setWorkflowLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -294,11 +307,14 @@ export default function AdminPayrollPage() {
   const [editOTNewHours, setEditOTNewHours] = useState('');
   const [editOTNewRestDay, setEditOTNewRestDay] = useState(false);
   const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }>>({});
-  const [editAdjItems, setEditAdjItems] = useState<{ label: string; amount: number; type: string }[]>([]);
+  const [editAdjItems, setEditAdjItems] = useState<AdjItem[]>([]);
   const [editAdjLabel, setEditAdjLabel] = useState('');
   const [editAdjAmount, setEditAdjAmount] = useState('');
   const [editAdjType, setEditAdjType] = useState('bonus');
   const [editAdjSign, setEditAdjSign] = useState<'+' | '-'>('+');
+  // Recurring items (SSS/PagIBIG/PHIC and the like) are re-created automatically
+  // on each new cutoff so HR stops re-entering them every period by hand.
+  const [editAdjRecurring, setEditAdjRecurring] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editAdjSaving, setEditAdjSaving] = useState(false);
 
@@ -318,11 +334,17 @@ export default function AdminPayrollPage() {
     const p = payoutsMap[r.contractor.id];
     setEditHours(String(override?.hours ?? r.cappedHours));
     setEditPay(String(override?.pay !== undefined ? override.pay : parseFloat(r.pay.toFixed(2))));
-    setEditAdjItems((p?.adjustments || []).map((a: any) => ({ ...a, type: a.type || 'other' })));
+    // Include recurring items carried over from the prior cutoff so the modal
+    // shows (and saves) the same lines the row total is already counting.
+    setEditAdjItems(
+      [...(p?.adjustments || []), ...(carriedAdjMap[r.contractor.id] || [])]
+        .map((a: any) => ({ ...a, type: a.type || 'other' }))
+    );
     setEditAdjLabel('');
     setEditAdjAmount('');
     setEditAdjType('bonus');
     setEditAdjSign('+');
+    setEditAdjRecurring(false);
     setEditOTNewDate('');
     setEditOTNewHours('');
     setEditOTNewRestDay(false);
@@ -373,7 +395,7 @@ export default function AdminPayrollPage() {
   // to only stage the item in local state until the separate footer "Save"
   // button was clicked — admins were closing the modal after "Add" thinking
   // it had already saved, silently losing the addition/deduction.
-  const persistEditAdjItems = async (contractorId: string, items: { label: string; amount: number; type: string }[]) => {
+  const persistEditAdjItems = async (contractorId: string, items: AdjItem[]) => {
     const row = rows.find(r => r.contractor.id === contractorId);
     const override = rowOverrides[contractorId];
     const h = parseFloat(editHours);
@@ -416,11 +438,12 @@ export default function AdminPayrollPage() {
     if (isNaN(amt)) return;
     const label = editAdjLabel.trim() || ADJ_TYPES.find(t => t.value === editAdjType)?.label || editAdjType;
     const signedAmt = editAdjSign === '-' ? -Math.abs(amt) : Math.abs(amt);
-    const nextItems = [...editAdjItems, { label, amount: signedAmt, type: editAdjType }];
+    const nextItems = [...editAdjItems, { label, amount: signedAmt, type: editAdjType, recurring: editAdjRecurring }];
     setEditAdjItems(nextItems);
     setEditAdjLabel('');
     setEditAdjAmount('');
     setEditAdjSign('+');
+    setEditAdjRecurring(false);
     if (editRowId) {
       setEditAdjSaving(true);
       await persistEditAdjItems(editRowId, nextItems);
@@ -437,7 +460,7 @@ export default function AdminPayrollPage() {
     if (!isNaN(pendingAmt)) {
       const label = editAdjLabel.trim() || ADJ_TYPES.find(t => t.value === editAdjType)?.label || editAdjType;
       const signedAmt = editAdjSign === '-' ? -Math.abs(pendingAmt) : Math.abs(pendingAmt);
-      finalAdjItems = [...finalAdjItems, { label, amount: signedAmt, type: editAdjType }];
+      finalAdjItems = [...finalAdjItems, { label, amount: signedAmt, type: editAdjType, recurring: editAdjRecurring }];
     }
 
     const h = parseFloat(editHours);
@@ -594,6 +617,39 @@ export default function AdminPayrollPage() {
     }
     setRowOverrides(restored);
 
+    // Carry forward recurring adjustments (statutory benefits etc.) from each
+    // employee's most recent earlier payout. Only for a period that is still
+    // open — a closed period must keep exactly what was paid. An item already
+    // present on this period's payout (matched by label) is never duplicated.
+    // Read the batch directly rather than the closedPeriods set, which may not
+    // have loaded yet on first render — a stale "open" read would briefly show
+    // carried items on an already-closed period.
+    const isClosedPeriod =
+      closedPeriods.has(selectedPeriod.start) || batchRes.data?.status === 'closed';
+    if (!isPastPeriod && !isClosedPeriod) {
+      const { data: priorPayouts } = await supabase
+        .from('hub_payouts')
+        .select('contractor_id, cutoff_start, adjustments')
+        .lt('cutoff_start', selectedPeriod.start)
+        .order('cutoff_start', { ascending: false });
+      const latestPrior: Record<string, any[]> = {};
+      for (const p of priorPayouts || []) {
+        if (latestPrior[p.contractor_id] !== undefined) continue; // newest wins
+        latestPrior[p.contractor_id] = (p.adjustments || []).filter((a: any) => a?.recurring);
+      }
+      const carried: Record<string, any[]> = {};
+      for (const [contractorId, items] of Object.entries(latestPrior)) {
+        const currentLabels = new Set(
+          ((map[contractorId]?.adjustments || []) as any[]).map((a: any) => a?.label)
+        );
+        const missing = items.filter((a: any) => !currentLabels.has(a.label));
+        if (missing.length > 0) carried[contractorId] = missing;
+      }
+      setCarriedAdjMap(carried);
+    } else {
+      setCarriedAdjMap({});
+    }
+
     // Fetch open disputes for this period's payouts
     const payoutIds = (payoutsRes.data || []).map((p: any) => p.id);
     if (payoutIds.length > 0) {
@@ -625,13 +681,13 @@ export default function AdminPayrollPage() {
     const override = rowOverrides[contractorId];
     const basePay = override?.pay !== undefined ? override.pay : computedPay;
     const otPay = row?.overtimePay ?? 0;
-    const adjs: any[] = payoutsMap[contractorId]?.adjustments || [];
+    const adjs: any[] = effectiveAdjustments(contractorId);
     const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
     const finalPay = basePay + otPay + adjTotal;
     const existing = payoutsMap[contractorId];
     const contractorName = rows.find(r => r.contractor.id === contractorId)?.contractor.full_name ?? contractorId;
     const { error: approveErr } = existing
-      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay, overtime_pay: otPay }).eq('id', existing.id)
+      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay, overtime_pay: otPay, adjustments: adjs }).eq('id', existing.id)
       : await supabase.from('hub_payouts').insert({
           contractor_id: contractorId,
           cutoff_start: selectedPeriod.start,
@@ -676,24 +732,59 @@ export default function AdminPayrollPage() {
       return !isAutoPayrollContractor(r.contractor) && !batch && (!p || p.status === 'pending' || p.status === 'submitted');
     });
     if (toApprove.length === 0) return;
+
+    // Approving snapshots hours into hub_payouts, and Slack punches for a day
+    // land hours after the fact. Approving on the cutoff's final workday — before
+    // that day has synced — permanently bakes in one day fewer than worked
+    // (a fixed-rate employee silently loses 1/scheduled-days of the period).
+    // Warn while it's still correctable rather than after payment.
+    const lastWorkday = (() => {
+      const limit = localToday() < selectedPeriod.end ? localToday() : selectedPeriod.end;
+      const cur = new Date(`${limit}T12:00:00`);
+      const start = new Date(`${selectedPeriod.start}T12:00:00`);
+      while (cur >= start) {
+        const dow = cur.getDay();
+        if (dow !== 0 && dow !== 6) {
+          return `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+        }
+        cur.setDate(cur.getDate() - 1);
+      }
+      return null;
+    })();
+    if (lastWorkday) {
+      const missing = toApprove.filter(r => !r.dailyBreakdown.some(d => d.date === lastWorkday));
+      if (missing.length > 0) {
+        const names = missing.map(r => r.contractor.full_name).join(', ');
+        const proceed = window.confirm(
+          `No attendance is logged yet for ${lastWorkday} (the last workday of ${selectedPeriod.label}) for:\n\n${names}\n\n` +
+          `Approving now snapshots their hours one day short, which underpays fixed-rate employees and cannot be corrected after the batch is paid.\n\n` +
+          `Run "Sync Slack" first, or approve anyway?`
+        );
+        if (!proceed) return;
+      }
+    }
+
     setWorkflowLoading(true);
     const now = new Date().toISOString();
     const approveResults = await Promise.all(toApprove.map(async r => {
       const override = rowOverrides[r.contractor.id];
       const basePay = override?.pay !== undefined ? override.pay : r.pay;
       const otPay = r.overtimePay;
-      const adjs: any[] = payoutsMap[r.contractor.id]?.adjustments || [];
+      // Write carried-over recurring items through, so the payout row and the
+      // payslip carry the same additions the page has been showing.
+      const adjs: any[] = effectiveAdjustments(r.contractor.id);
       const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
       const finalPay = basePay + otPay + adjTotal;
       const existing = payoutsMap[r.contractor.id];
       const { error } = existing
-        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay, overtime_pay: otPay }).eq('id', existing.id)
+        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay, overtime_pay: otPay, adjustments: adjs }).eq('id', existing.id)
         : await supabase.from('hub_payouts').insert({
             contractor_id: r.contractor.id,
             cutoff_start: selectedPeriod.start,
             cutoff_end: selectedPeriod.end,
             final_payout: finalPay,
             overtime_pay: otPay,
+            adjustments: adjs,
             status: 'hr_approved',
             approved_at: now,
           });
@@ -739,12 +830,8 @@ export default function AdminPayrollPage() {
     // Auto-included staff (admins/HR) are paid every cutoff without per-row
     // approval, but their pay must still be part of the transfer total + count.
     const autoIncluded = rows.filter(r => isAutoPayrollContractor(r.contractor));
-    const rowAmount = (r: PayRow) => {
-      const p = payoutsMap[r.contractor.id];
-      const adjs: any[] = p?.adjustments || [];
-      const adjTotal = adjs.reduce((a: number, x: any) => a + (x.amount || 0), 0);
-      return r.pay + r.overtimePay + adjTotal;
-    };
+    const rowAmount = (r: PayRow) =>
+      r.pay + r.overtimePay + sumAdjustments(r.contractor.id);
     const approvedTotal = approved.reduce((s, r) => s + (payoutsMap[r.contractor.id]?.final_payout ?? r.pay), 0);
     const autoTotal = autoIncluded.reduce((s, r) => s + rowAmount(r), 0);
     const total = approvedTotal + autoTotal;
@@ -807,7 +894,12 @@ export default function AdminPayrollPage() {
     const autoIncluded = rows.filter(r => isAutoPayrollContractor(r.contractor));
     for (const r of autoIncluded) {
       const existingPayout = payoutsMap[r.contractor.id];
-      const finalPay = r.pay + r.overtimePay;
+      // Include additions/deductions — statutory benefits (SSS/PagIBIG/PHIC) and
+      // one-off items live in adjustments, and omitting them here paid auto-included
+      // staff their base only, with the shortfall invisible on the payslip.
+      const autoAdjs: any[] = effectiveAdjustments(r.contractor.id);
+      const autoAdjTotal = autoAdjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
+      const finalPay = r.pay + r.overtimePay + autoAdjTotal;
       let payoutId: string | null = existingPayout?.id ?? null;
       if (!payoutId) {
         const { data: inserted } = await supabase.from('hub_payouts').insert({
@@ -817,6 +909,10 @@ export default function AdminPayrollPage() {
           final_payout: finalPay,
           overtime_pay: r.overtimePay,
           approved_hours: r.cappedHours,
+          approved_days: r.days ?? null,
+          overtime_hours: r.overtimeHours ?? null,
+          base_pay: r.pay,
+          prorated_note: r.proratedNote ?? null,
           status: 'paid',
           approved_at: now,
           payment_date: today,
@@ -829,6 +925,11 @@ export default function AdminPayrollPage() {
           status: 'paid',
           final_payout: finalPay,
           overtime_pay: r.overtimePay,
+          approved_hours: r.cappedHours,
+          approved_days: r.days ?? null,
+          overtime_hours: r.overtimeHours ?? null,
+          base_pay: r.pay,
+          prorated_note: r.proratedNote ?? null,
           payment_date: today,
           paid_at: now,
           batch_id: batch.id,
@@ -1013,8 +1114,7 @@ export default function AdminPayrollPage() {
       const basePay = override?.pay !== undefined ? override.pay : r.pay;
       const displayOTHours = r.overtimeHours;
       const displayOTPay = r.overtimePay;
-      const p = payoutsMap[c.id];
-      const adjs: { amount: number }[] = p?.adjustments || [];
+      const adjs: { amount: number }[] = effectiveAdjustments(c.id);
       const adjTotal = adjs.reduce((sum, item) => sum + item.amount, 0);
       const total = getRowDisplayTotal(r);
       return `
@@ -1266,7 +1366,7 @@ export default function AdminPayrollPage() {
 
     // Payroll reads from hub_daily_hours, so sync Slack punches first for the live cutoff.
     const isPastPeriod = today > selectedPeriod.end;
-    const [slackRes, contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes, leaveRes] = await Promise.all([
+    const [slackRes, contractorsRes, hoursRes, paidPayoutsRes, otRequestsRes, leaveRes, batchStatusRes] = await Promise.all([
       isCurrentPeriod ? supabase.functions.invoke('slack-attendance') : Promise.resolve({ data: null } as any),
       supabase
         .from('hub_users')
@@ -1276,7 +1376,7 @@ export default function AdminPayrollPage() {
         .select('id, full_name, role, auto_payroll, avatar_url, department, currency, payment_type, start_date, work_days')
         // For past closed periods include inactive/deleted users so historical rows aren't lost
         .in('status', isPastPeriod ? ['active', 'inactive'] : ['active'])
-        .in('role', ['contractor', 'admin'])
+        .in('role', ['contractor', 'admin', 'hr'])
         .neq('is_developer', true),
       supabase
         .from('hub_daily_hours')
@@ -1300,7 +1400,20 @@ export default function AdminPayrollPage() {
         .eq('status', 'approved')
         .lte('start_date', selectedPeriod.end)
         .gte('end_date', selectedPeriod.start),
+      supabase
+        .from('hub_payroll_batches')
+        .select('status')
+        .eq('period_start', selectedPeriod.start)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
+
+    // Once the batch is closed the period is history: every hours row belongs to
+    // it, and pay is read from the hub_payouts snapshot rather than recomputed.
+    // Suppressing hours here would only blank the Hours column and the
+    // daily-hours breakdown for a period that is already settled.
+    const periodSettled = batchStatusRes.data?.status === 'closed';
 
     // Approved paid leave per contractor, used to credit leave days as paid below.
     const leavesByUser: Record<string, any[]> = {};
@@ -1346,9 +1459,14 @@ export default function AdminPayrollPage() {
       // to appear in the new period at 1–8 AM PHT when the periods roll over.
       if (h.date < selectedPeriod.start || h.date > selectedPeriod.end) continue;
 
-      // Skip hours already covered by a paid payout (on or before payment_date)
+      // Skip hours already covered by a paid payout (on or before payment_date),
+      // so an early/off-cycle payout inside an OPEN period isn't counted twice.
+      // Never applies once the batch is closed: there, every row belongs to the
+      // settled period, and skipping blanked the Hours column and the
+      // daily-hours breakdown (and made the Edit Payroll modal read
+      // "Computed: ₱0.00" against hand-typed values).
       const paymentDate = paidPaymentDateMap[h.user_id];
-      if (paymentDate && h.date <= paymentDate) continue;
+      if (!periodSettled && paymentDate && h.date <= paymentDate) continue;
 
       // Weekend clock-ins never earn regular pay — Sat/Sun hours only count
       // toward pay once an OT request for that date is approved (overtimeByDate).
@@ -1640,14 +1758,19 @@ export default function AdminPayrollPage() {
     }
   };
 
+  // Adjustments in effect for a row: those saved on the payout, plus recurring
+  // items carried over from a prior period that haven't been written yet.
+  const effectiveAdjustments = (contractorId: string): any[] => [
+    ...((payoutsMap[contractorId]?.adjustments || []) as any[]),
+    ...(carriedAdjMap[contractorId] || []),
+  ];
+  const sumAdjustments = (contractorId: string) =>
+    effectiveAdjustments(contractorId).reduce((s: number, a: any) => s + (a.amount || 0), 0);
+
   const totalPay = rows.reduce((s, r) => {
-    const p = payoutsMap[r.contractor.id];
     const override = rowOverrides[r.contractor.id];
     const basePay = override?.pay !== undefined ? override.pay : r.pay;
-    const otPay = r.overtimePay;
-    const adjs: any[] = p?.adjustments || [];
-    const adjTotal = adjs.reduce((as: number, a: any) => as + (a.amount || 0), 0);
-    return s + basePay + otPay + adjTotal;
+    return s + basePay + r.overtimePay + sumAdjustments(r.contractor.id);
   }, 0);
   const isSelectedPeriodClosed = closedPeriods.has(selectedPeriod.start);
   const getRowDisplayTotal = (row: PayRow) => {
@@ -1658,10 +1781,7 @@ export default function AdminPayrollPage() {
 
     const override = rowOverrides[row.contractor.id];
     const basePay = override?.pay !== undefined ? override.pay : row.pay;
-    const otPay = row.overtimePay;
-    const adjs: any[] = payout?.adjustments || [];
-    const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
-    return basePay + otPay + adjTotal;
+    return basePay + row.overtimePay + sumAdjustments(row.contractor.id);
   };
   const displayTotalPay = isSelectedPeriodClosed && batch?.total_amount != null
     ? Number(batch.total_amount)
@@ -1926,8 +2046,7 @@ export default function AdminPayrollPage() {
                     const headers = ['Employee', 'Department', 'Type', 'Rate', 'Days', 'Raw Hours', 'Billed Hours', 'Overtime Hours', 'Overtime Pay (PHP)', 'Pay (PHP)'];
                     const csvRows = rows.map(r => {
                       const c = r.contractor;
-                      const p = payoutsMap[c.id];
-                      const adjs: any[] = p?.adjustments || [];
+                      const adjs: any[] = effectiveAdjustments(c.id);
                       const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
                       const override = rowOverrides[c.id];
                       const displayPay = override?.pay !== undefined ? override.pay : r.pay;
@@ -2049,7 +2168,7 @@ export default function AdminPayrollPage() {
               const p = payoutsMap[c.id];
               // If already paid but new hours exist (post-payment), reset to pending so admin can approve the new hours
               const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
-              const adjs: { label: string; amount: number }[] = p?.adjustments || [];
+              const adjs: { label: string; amount: number }[] = effectiveAdjustments(c.id);
               const adjTotal = adjs.reduce((s, i) => s + i.amount, 0);
               const displayOTPay = r.overtimePay;
               const total = getRowDisplayTotal(r);
@@ -2249,7 +2368,7 @@ export default function AdminPayrollPage() {
                     const displayProratedNote = override?.proratedNote !== undefined ? override.proratedNote : r.proratedNote;
                     const p = payoutsMap[c.id];
                     const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
-                    const adjs: { label: string; amount: number }[] = p?.adjustments || [];
+                    const adjs: { label: string; amount: number }[] = effectiveAdjustments(c.id);
                     const adjTotal = adjs.reduce((s: number, i: { label: string; amount: number }) => s + i.amount, 0);
                     const displayOTPay = r.overtimePay;
                     const total = getRowDisplayTotal(r);
@@ -2758,7 +2877,15 @@ export default function AdminPayrollPage() {
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
                             item.type === 'deduction' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-700'
                           }`}>{ADJ_TYPES.find(t => t.value === item.type)?.label ?? item.type}</span>
-                          <span className="text-xs text-gray-700 flex-1">{item.label}</span>
+                          <span className="text-xs text-gray-700 flex-1">
+                            {item.label}
+                            {item.recurring && (
+                              <span title="Repeats automatically every cutoff"
+                                className="ml-1.5 text-[10px] text-gray-400 whitespace-nowrap">
+                                <i className="ri-repeat-line"></i> repeats
+                              </span>
+                            )}
+                          </span>
                           <span className={`text-xs font-semibold ${item.amount >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
                             {item.amount > 0 ? '+' : ''}{fmt(item.amount, 'PHP')}
                           </span>
@@ -2807,6 +2934,12 @@ export default function AdminPayrollPage() {
                         {editAdjSaving ? 'Saving…' : 'Add'}
                       </button>
                     </div>
+                    <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer select-none">
+                      <input type="checkbox" checked={editAdjRecurring}
+                        onChange={e => setEditAdjRecurring(e.target.checked)}
+                        className="rounded border-gray-300 cursor-pointer" />
+                      Repeat every cutoff — for SSS, PagIBIG, PHIC and other fixed items
+                    </label>
                   </div>
                 </div>
 

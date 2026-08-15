@@ -349,7 +349,7 @@ export async function fetchPayrollTotal(periodStart: string, periodEnd: string, 
       // hourly_rate/monthly_rate are finance-locked columns, merged in below via fetchUserFinanceMap.
       .select('id, full_name, role, currency, payment_type, start_date, work_days')
       .eq('status', 'active')
-      .in('role', ['contractor', 'admin'])
+      .in('role', ['contractor', 'admin', 'hr'])
       .neq('is_developer', true),
     supabase
       .from('hub_daily_hours')

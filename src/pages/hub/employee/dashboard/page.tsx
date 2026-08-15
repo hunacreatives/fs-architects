@@ -388,7 +388,7 @@ export default function ContractorDashboard() {
           .lte('effective_date', periodEndStr)
           .order('effective_date', { ascending: true }),
         supabase.from('hub_payouts')
-          .select('status')
+          .select('status, adjustments')
           .eq('contractor_id', user.id)
           .eq('cutoff_start', periodStartStr)
           .maybeSingle(),
@@ -463,7 +463,9 @@ export default function ContractorDashboard() {
           estimated = totalHours * hourly + totalOT * hourly;
         }
       }
-      setEstimatedPayout(parseFloat(estimated.toFixed(2)));
+      const adjs: any[] = payoutRes.data?.adjustments || [];
+      const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
+      setEstimatedPayout(parseFloat((estimated + adjTotal).toFixed(2)));
 
       if (!slackResult.error && slackResult.data?.attendance) {
         const all: any[] = slackResult.data.attendance;

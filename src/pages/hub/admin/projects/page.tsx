@@ -58,7 +58,7 @@ interface Contractor { id: string; full_name: string; avatar_url: string | null;
 
 interface ProjectTask {
   id: number;
-  project_id: number;
+  project_id: number | null;   // null = standalone task, not tied to a project
   title: string;
   description: string | null;
   status: 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done';
@@ -75,6 +75,7 @@ interface ProjectTask {
   archived_at?: string | null;
   deleted_at?: string | null;
   sort_order?: number | null;
+  time_est?: number | null;
 }
 
 interface ProjectActivity {
@@ -189,6 +190,69 @@ export default function AdminProjectsPage() {
   const [taskSearch, setTaskSearch] = useState('');
   const [calendarHiddenProjects, setCalendarHiddenProjects] = useState<Set<number>>(new Set());
   const [showCalendarFilterMenu, setShowCalendarFilterMenu] = useState(false);
+  // The Tasks subtab leads with the task list. The calendar is opt-in and the
+  // choice is remembered so it doesn't have to be re-opened every visit.
+  const [showTaskCalendar, setShowTaskCalendar] = useState(
+    () => localStorage.getItem('fsa_tasks_calendar') === '1'
+  );
+  // Board-style task list: collapsible groups + inline time-estimate editing.
+  const [collapsedTaskGroups, setCollapsedTaskGroups] = useState<Set<string>>(new Set());
+  const [editingTimeEst, setEditingTimeEst] = useState<number | null>(null);
+  const [timeEstDraft, setTimeEstDraft] = useState('');
+  // Inline "+ Add" row, per group. Project is required on a task, so the row
+  // carries a compact project picker that remembers the last one used.
+  const [addingInGroup, setAddingInGroup] = useState<string | null>(null);
+  const [inlineTitle, setInlineTitle] = useState('');
+  const [inlineProjectId, setInlineProjectId] = useState<number | null>(null);
+  const [inlineProjectQuery, setInlineProjectQuery] = useState('');
+  const [inlineProjectOpen, setInlineProjectOpen] = useState(false);
+  const [inlineSaving, setInlineSaving] = useState(false);
+  // Which cell has its dropdown open, so Status/Priority/Owner are editable in place.
+  const [openCell, setOpenCell] = useState<{ taskId: number; col: 'status' | 'priority' | 'owner' } | null>(null);
+
+  // Patch a task from the board and log it, without opening the drawer.
+  const patchTaskInline = async (task: any, patch: Record<string, any>, description: string) => {
+    setAllTasks(prev => prev.map(t => t.id === task.id ? { ...t, ...patch } : t));
+    setOpenCell(null);
+    await supabase.from('hub_project_tasks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', task.id);
+    await supabase.from('hub_project_task_activity').insert({
+      task_id: task.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
+      type: 'update', description,
+    });
+  };
+
+  const addTaskInline = async (groupKey: string) => {
+    const title = inlineTitle.trim();
+    if (!title || inlineSaving) return;
+    setInlineSaving(true);
+    const { data, error } = await supabase.from('hub_project_tasks').insert({
+      title, description: null, status: 'todo', priority: 'medium',
+      assignee_ids: [], assigned_to: null,
+      due_date: groupKey === '__none' ? null : groupKey,
+      start_date: null, checklist: [], color: null, meta: null,
+      project_id: inlineProjectId,   // null = standalone task, no project
+    }).select('id, project_id, title, status, priority, assigned_to, assignee_ids, team, due_date, start_date, color, archived, done_at, time_est').single();
+    setInlineSaving(false);
+    if (error) { console.error('Inline add task error:', error); return; }
+    // Drop the new row straight into the board instead of refetching, so the
+    // input keeps focus and you can keep typing the next one.
+    const proj = inlineProjectId ? projects.find(p => p.id === inlineProjectId) ?? null : null;
+    setAllTasks(prev => [...prev, { ...data, project: proj, assignee: null, assignees: [] }]);
+    setInlineTitle('');
+  };
+  const saveTimeEst = async (taskId: number, raw: string) => {
+    const trimmed = raw.trim();
+    // Accept "2", "2.5" or "2.5h"; blank clears the estimate back to null.
+    const parsed = trimmed === '' ? null : Number(trimmed.replace(/h$/i, ''));
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) { setEditingTimeEst(null); return; }
+    setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, time_est: parsed } : t));
+    setEditingTimeEst(null);
+    await supabase.from('hub_project_tasks').update({ time_est: parsed }).eq('id', taskId);
+  };
+  const toggleTaskCalendar = () => setShowTaskCalendar(v => {
+    localStorage.setItem('fsa_tasks_calendar', v ? '0' : '1');
+    return !v;
+  });
   const [resyncingDrive, setResyncingDrive] = useState(false);
   const [projectTypeFilter, setProjectTypeFilter] = useState<'all' | 'client' | 'internal'>('all');
   const [activeId, setActiveId] = useState<number | null>(() => {
@@ -273,7 +337,7 @@ export default function AdminProjectsPage() {
   // navigating into that project's workspace — used by the Tasks subtab
   // list/calendar so clicking a task just opens the sidebar in place.
   const openTaskDetailInPlace = (t: {
-    id: number; project_id: number; title: string; status: string; priority: string;
+    id: number; project_id: number | null; title: string; status: string; priority: string;
     due_date: string | null; start_date?: string | null; assigned_to?: string | null; assignee_ids?: string[] | null;
   }) => {
     openTaskDetail({
@@ -573,7 +637,7 @@ export default function AdminProjectsPage() {
   const fetchAllTasks = async () => {
     setAllTasksLoading(true);
     const [tasksRes, projectsRes] = await Promise.all([
-      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, team, due_date, start_date, color, archived, done_at').is('deleted_at', null).order('due_date', { ascending: true, nullsFirst: false }),
+      supabase.from('hub_project_tasks').select('id, project_id, title, status, priority, assigned_to, assignee_ids, team, due_date, start_date, color, archived, done_at, time_est').is('deleted_at', null).order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('hub_projects').select('id, project_name, client_name, project_type'),
     ]);
     if (tasksRes.error) {
@@ -585,6 +649,16 @@ export default function AdminProjectsPage() {
     const userIds = [...new Set((tasksRes.data ?? []).flatMap((t: any) => getTaskAssigneeIds(t)).filter(Boolean))];
     const usersRes = userIds.length ? await supabase.from('hub_users').select('id, full_name, avatar_url, is_developer').in('id', userIds) : { data: [] };
     const userMap: Record<string, any> = Object.fromEntries((usersRes.data ?? []).map((u: any) => [u.id, u]));
+    // Comment counts for the whole board — the per-project fetch only covers
+    // the project currently open in the workspace.
+    const taskIds = (tasksRes.data ?? []).map((t: any) => t.id);
+    if (taskIds.length) {
+      const { data: cRows } = await supabase
+        .from('hub_project_task_comments').select('task_id').in('task_id', taskIds);
+      const counts: Record<number, number> = {};
+      for (const c of cRows ?? []) counts[c.task_id] = (counts[c.task_id] ?? 0) + 1;
+      setCommentCounts(prev => ({ ...prev, ...counts }));
+    }
     setAllTasks((tasksRes.data ?? []).map((t: any) => ({
       ...t,
       project: projectMap[t.project_id] ?? null,
@@ -1992,9 +2066,18 @@ export default function AdminProjectsPage() {
                   <i className="ri-download-2-line text-gray-400"></i>
                   Download
                 </button>
+                <button type="button" onClick={toggleTaskCalendar}
+                  title={showTaskCalendar ? 'Hide the task calendar' : 'Show the task calendar'}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-xl backdrop-blur-sm cursor-pointer whitespace-nowrap flex-shrink-0 transition-colors ${
+                    showTaskCalendar
+                      ? 'border-[#1c2b3a] bg-[#1c2b3a] text-white hover:bg-[#16232f]'
+                      : 'border-white/80 bg-white/70 text-gray-600 hover:bg-white'}`}>
+                  <i className={`ri-calendar-line ${showTaskCalendar ? 'text-white/80' : 'text-gray-400'}`}></i>
+                  Calendar
+                </button>
                 <div className="relative flex-shrink-0">
                   <button type="button" onClick={() => setShowCalendarFilterMenu(v => !v)}
-                    title="Show or hide specific projects' tasks on the calendar"
+                    title="Show or hide specific projects' tasks"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-white/80 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white cursor-pointer whitespace-nowrap">
                     <i className="ri-calendar-2-line text-gray-400"></i>
                     Projects
@@ -2008,7 +2091,7 @@ export default function AdminProjectsPage() {
                       <div className="fixed inset-0 z-10" onClick={() => setShowCalendarFilterMenu(false)} />
                       <div className="absolute z-20 top-full left-0 mt-1.5 w-64 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg p-2">
                         <div className="flex items-center justify-between px-2 py-1.5">
-                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Show on calendar</p>
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Show tasks from</p>
                           <button type="button" onClick={() => setCalendarHiddenProjects(new Set())}
                             className="text-[10px] text-[#1c2b3a] hover:underline cursor-pointer">Show all</button>
                         </div>
@@ -2033,9 +2116,351 @@ export default function AdminProjectsPage() {
                 </div>
                 </div>
               </div>
-              {allTasksLoading ? (
+              {allTasksLoading && (
                 <div className="flex justify-center py-16"><i className="ri-loader-4-line animate-spin text-2xl text-gray-300"></i></div>
-              ) : (
+              )}
+              {allTasksLoading ? null : (() => {
+                // monday.com-style board: one colored group per due date, columns
+                // filling their cell with the status/priority colour.
+                const STATUS_CFG: Record<string, { label: string; bg: string }> = {
+                  todo: { label: 'Not Started', bg: '#c4c4c4' },
+                  in_progress: { label: 'Working on it', bg: '#fdab3d' },
+                  in_review: { label: 'In Review', bg: '#a25ddc' },
+                  blocked: { label: 'Stuck', bg: '#e2445c' },
+                  done: { label: 'Done', bg: '#00c875' },
+                };
+                const PRIORITY_CFG: Record<string, { label: string; bg: string }> = {
+                  high: { label: 'High', bg: '#e2445c' },
+                  medium: { label: 'Medium', bg: '#a25ddc' },
+                  low: { label: 'Low', bg: '#579bfc' },
+                };
+                // Group accent colours cycle for ordinary dates; overdue/today/undated
+                // keep a fixed meaning so the colour still tells you something.
+                const GROUP_COLORS = ['#579bfc', '#a25ddc', '#00c875', '#fdab3d', '#ff6d3b'];
+                const today = localToday();
+                const groups: Record<string, any[]> = {};
+                for (const t of filt) {
+                  const key = t.due_date ?? '__none';
+                  (groups[key] ??= []).push(t);
+                }
+                const dateKeys = Object.keys(groups).filter(k => k !== '__none').sort();
+                const orderedKeys = groups.__none ? [...dateKeys, '__none'] : dateKeys;
+                if (orderedKeys.length === 0) return null;
+
+                // Shared column track so the header row and the task rows line up.
+                const COLS = 'grid grid-cols-[minmax(200px,1fr)_44px_60px_104px_124px_120px_130px_88px] items-stretch';
+
+                return (
+                  <div className="space-y-6">
+                    {orderedKeys.map((key, gi) => {
+                      const gtasks = groups[key];
+                      const isNoDate = key === '__none';
+                      const isPast = !isNoDate && key < today;
+                      const isToday = key === today;
+                      const color = isPast ? '#e2445c'
+                        : isToday ? '#579bfc'
+                        : isNoDate ? '#9ca3af'
+                        : GROUP_COLORS[gi % GROUP_COLORS.length];
+                      const label = isNoDate
+                        ? 'No Due Date'
+                        : isToday ? 'Today'
+                        : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+                      const collapsed = collapsedTaskGroups.has(key);
+                      const estSum = gtasks.reduce((n: number, t: any) => n + (Number(t.time_est) || 0), 0);
+                      return (
+                        <div key={key}>
+                          {/* Group heading */}
+                          <button type="button"
+                            onClick={() => setCollapsedTaskGroups(prev => {
+                              const next = new Set(prev);
+                              if (collapsed) next.delete(key); else next.add(key);
+                              return next;
+                            })}
+                            className="flex items-center gap-2 mb-1.5 cursor-pointer group/head">
+                            <i className={`text-sm transition-transform ${collapsed ? 'ri-arrow-right-s-fill' : 'ri-arrow-down-s-fill'}`} style={{ color }}></i>
+                            <h3 className="font-bold text-[15px]" style={{ color }}>{label}</h3>
+                            {isPast && <span className="text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">Overdue</span>}
+                            <span className="text-xs text-gray-400">{gtasks.length}</span>
+                          </button>
+
+                          {!collapsed && (
+                          <div className="overflow-x-auto sm:overflow-visible">
+                            <div className="min-w-[900px]">
+                              {/* Column headers */}
+                              <div className={`${COLS} text-[11px] text-gray-400 font-medium`}>
+                                <div className="pl-4 py-1.5"></div>
+                                <div></div>
+                                <div className="py-1.5 text-center">Owner</div>
+                                <div className="py-1.5 text-center">Priority</div>
+                                <div className="py-1.5 text-center">Status</div>
+                                <div className="py-1.5 text-center">Date</div>
+                                <div className="py-1.5 text-center">Client</div>
+                                <div className="py-1.5 text-center">Time Est.</div>
+                              </div>
+
+                              {/* Rows */}
+                              <div className="border border-gray-200 bg-white">
+                                {gtasks.map((t: any, ri: number) => {
+                                  const scfg = STATUS_CFG[t.status] ?? STATUS_CFG.todo;
+                                  const pcfg = PRIORITY_CFG[t.priority] ?? PRIORITY_CFG.medium;
+                                  const done = t.status === 'done';
+                                  const overdue = !done && t.due_date && t.due_date < today;
+                                  const cCount = commentCounts[t.id] ?? 0;
+                                  return (
+                                    <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
+                                      className={`${COLS} cursor-pointer ${ri > 0 ? 'border-t border-gray-200' : ''} ${openCell?.taskId === t.id ? 'relative z-50' : ''}`}>
+                                      {/* Name + group colour bar */}
+                                      <div className="flex items-center gap-2.5 pr-3 bg-[#f5f6f8] min-h-[36px]">
+                                        <span className="w-1.5 self-stretch flex-shrink-0" style={{ backgroundColor: color }}></span>
+                                        <button onClick={async e => {
+                                            e.stopPropagation();
+                                            const n = done ? 'todo' : 'done';
+                                            await supabase.from('hub_project_tasks').update({ status: n, updated_at: new Date().toISOString() }).eq('id', t.id);
+                                            setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x));
+                                            await supabase.from('hub_project_task_activity').insert({
+                                              task_id: t.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
+                                              type: 'status_change', description: `changed status from ${taskStatusLabel(t.status)} to ${taskStatusLabel(n)}`,
+                                            });
+                                          }} className="flex-shrink-0 cursor-pointer" title={done ? 'Mark as not done' : 'Mark as done'}>
+                                          <i className={`text-base ${done ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
+                                        </button>
+                                        <span className={`text-[13px] truncate ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
+                                      </div>
+                                      {/* Comments */}
+                                      <div className="flex items-center justify-center bg-[#f5f6f8]" title={cCount ? `${cCount} comment${cCount !== 1 ? 's' : ''}` : 'No comments'}>
+                                        <span className="relative">
+                                          <i className={`ri-chat-3-line text-base ${cCount ? 'text-[#579bfc]' : 'text-gray-300'}`}></i>
+                                          {cCount > 0 && <span className="absolute -top-1 -right-1.5 text-[9px] font-bold text-[#579bfc]">{cCount}</span>}
+                                        </span>
+                                      </div>
+                                      {/* Owner */}
+                                      <div className="relative group/owner flex items-center justify-center bg-[#f5f6f8] border-l border-gray-200 cursor-pointer hover:bg-gray-100"
+                                        onClick={e => { e.stopPropagation(); setOpenCell(openCell?.taskId === t.id && openCell.col === 'owner' ? null : { taskId: t.id, col: 'owner' }); }}>
+                                        {t.assignee ? (
+                                          t.assignee.avatar_url
+                                            ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover" />
+                                            : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
+                                        ) : <i className="ri-user-line text-gray-300 text-base"></i>}
+                                        {/* Name on hover — no delay, and anchored inside the row's
+                                            vertical band so it can't be clipped by the scroller. */}
+                                        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-1.5 whitespace-nowrap bg-gray-900 text-white text-[11px] font-medium px-2 py-1 rounded-md opacity-0 group-hover/owner:opacity-100 z-40 shadow-lg">
+                                          {t.assignee?.full_name ?? 'Unassigned'}
+                                        </div>
+                                        {openCell?.taskId === t.id && openCell.col === 'owner' && (
+                                          <>
+                                            <div className="fixed inset-0 z-20" onClick={e => { e.stopPropagation(); setOpenCell(null); }} />
+                                            <div className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 w-52 max-h-64 overflow-y-auto bg-white rounded-md shadow-xl border border-gray-200 py-1">
+                                              <button type="button"
+                                                onClick={e => { e.stopPropagation(); patchTaskInline(t, { assigned_to: null, assignee_ids: [] }, 'cleared the assignee'); }}
+                                                className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-gray-500 hover:bg-gray-50 cursor-pointer">
+                                                <i className="ri-user-unfollow-line text-gray-300"></i>Unassigned
+                                              </button>
+                                              {assignableContractors.map(c => (
+                                                <button key={c.id} type="button"
+                                                  onClick={e => { e.stopPropagation(); patchTaskInline(t, { assigned_to: c.id, assignee_ids: [c.id] }, `assigned the task to ${c.full_name}`); }}
+                                                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 cursor-pointer">
+                                                  {c.avatar_url
+                                                    ? <img src={c.avatar_url} alt={c.full_name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                                                    : <div className="w-5 h-5 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">{c.full_name[0]}</div>}
+                                                  <span className="truncate">{c.full_name}</span>
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                      {/* Priority — click to change */}
+                                      <div className="relative flex items-center justify-center min-h-[36px] text-white text-[12px] font-medium leading-none border-l border-white/25 cursor-pointer hover:opacity-90"
+                                        style={{ backgroundColor: pcfg.bg }}
+                                        onClick={e => { e.stopPropagation(); setOpenCell(openCell?.taskId === t.id && openCell.col === 'priority' ? null : { taskId: t.id, col: 'priority' }); }}>
+                                        <span className="px-1 truncate">{pcfg.label}</span>
+                                        {openCell?.taskId === t.id && openCell.col === 'priority' && (
+                                          <>
+                                            <div className="fixed inset-0 z-20" onClick={e => { e.stopPropagation(); setOpenCell(null); }} />
+                                            <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white rounded-md shadow-xl border border-gray-200 overflow-hidden">
+                                              {Object.entries(PRIORITY_CFG).map(([val, cfg]) => (
+                                                <button key={val} type="button"
+                                                  onClick={e => { e.stopPropagation(); patchTaskInline(t, { priority: val }, `changed priority from ${t.priority} to ${val}`); }}
+                                                  className="block w-full text-white text-[12px] font-medium py-1.5 cursor-pointer hover:opacity-90"
+                                                  style={{ backgroundColor: cfg.bg }}>{cfg.label}</button>
+                                              ))}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                      {/* Status — click to change */}
+                                      <div className="relative flex items-center justify-center min-h-[36px] text-white text-[12px] font-medium leading-none border-l border-white/25 cursor-pointer hover:opacity-90"
+                                        style={{ backgroundColor: scfg.bg }}
+                                        onClick={e => { e.stopPropagation(); setOpenCell(openCell?.taskId === t.id && openCell.col === 'status' ? null : { taskId: t.id, col: 'status' }); }}>
+                                        <span className="px-1 truncate">{scfg.label}</span>
+                                        {openCell?.taskId === t.id && openCell.col === 'status' && (
+                                          <>
+                                            <div className="fixed inset-0 z-20" onClick={e => { e.stopPropagation(); setOpenCell(null); }} />
+                                            <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white rounded-md shadow-xl border border-gray-200 overflow-hidden">
+                                              {Object.entries(STATUS_CFG).map(([val, cfg]) => (
+                                                <button key={val} type="button"
+                                                  onClick={e => { e.stopPropagation(); patchTaskInline(t, { status: val, ...(val === 'done' ? { done_at: new Date().toISOString() } : {}) }, `changed status from ${taskStatusLabel(t.status)} to ${taskStatusLabel(val)}`); }}
+                                                  className="block w-full text-white text-[12px] font-medium py-1.5 cursor-pointer hover:opacity-90"
+                                                  style={{ backgroundColor: cfg.bg }}>{cfg.label}</button>
+                                              ))}
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                      {/* Date */}
+                                      <div className="flex items-center justify-center gap-1.5 bg-[#f5f6f8] border-l border-gray-200 px-2">
+                                        {done ? <i className="ri-checkbox-circle-fill text-emerald-500 text-sm"></i>
+                                          : overdue ? <i className="ri-error-warning-fill text-rose-500 text-sm"></i> : null}
+                                        <span className={`text-[12px] truncate ${done ? 'line-through text-gray-400' : overdue ? 'text-rose-600' : 'text-gray-600'}`}>
+                                          {isNoDate ? '—' : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </span>
+                                      </div>
+                                      {/* Client */}
+                                      <div className="flex items-center justify-center bg-[#f5f6f8] border-l border-gray-200 px-2" title={t.project?.project_name}>
+                                        <span className={`text-[12px] truncate ${t.project ? 'text-gray-600' : 'text-gray-300 italic'}`}>
+                                          {t.project?.client_name ?? 'No project'}
+                                        </span>
+                                      </div>
+                                      {/* Time estimate — click to edit */}
+                                      <div className="flex items-center justify-center bg-[#f5f6f8] border-l border-gray-200 px-1.5"
+                                        onClick={e => { e.stopPropagation(); setEditingTimeEst(t.id); setTimeEstDraft(t.time_est != null ? String(t.time_est) : ''); }}>
+                                        {editingTimeEst === t.id ? (
+                                          <input autoFocus value={timeEstDraft}
+                                            onChange={e => setTimeEstDraft(e.target.value)}
+                                            onBlur={() => saveTimeEst(t.id, timeEstDraft)}
+                                            onKeyDown={e => {
+                                              if (e.key === 'Enter') saveTimeEst(t.id, timeEstDraft);
+                                              if (e.key === 'Escape') setEditingTimeEst(null);
+                                            }}
+                                            placeholder="2.5"
+                                            className="w-full text-[12px] text-center bg-white border border-[#579bfc] rounded px-1 py-0.5 focus:outline-none" />
+                                        ) : (
+                                          <span className={`text-[12px] ${t.time_est != null ? 'text-gray-600' : 'text-gray-300'}`}>
+                                            {t.time_est != null ? `${t.time_est}h` : '+'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {/* Add row — creates the task right here, no drawer */}
+                                <div className={`${COLS} border-t border-gray-200 bg-white`}>
+                                  {addingInGroup === key ? (
+                                    <>
+                                      <div className="flex items-center gap-2.5 pr-2 min-h-[34px]">
+                                        <span className="w-1.5 self-stretch flex-shrink-0 opacity-40" style={{ backgroundColor: color }}></span>
+                                        <input autoFocus value={inlineTitle}
+                                          onChange={e => setInlineTitle(e.target.value)}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter') addTaskInline(key);
+                                            if (e.key === 'Escape') { setAddingInGroup(null); setInlineTitle(''); }
+                                          }}
+                                          placeholder="Task name, then Enter"
+                                          className="flex-1 min-w-0 text-[13px] py-1 bg-transparent focus:outline-none placeholder:text-gray-300" />
+                                      </div>
+                                      <div className="col-span-4 flex items-center gap-2 px-2">
+                                        {/* Type-to-search project. Empty = standalone task. */}
+                                        <div className="relative flex-1 min-w-0">
+                                          <input
+                                            value={inlineProjectQuery}
+                                            onChange={e => { setInlineProjectQuery(e.target.value); setInlineProjectOpen(true); setInlineProjectId(null); }}
+                                            onFocus={() => setInlineProjectOpen(true)}
+                                            onKeyDown={e => {
+                                              if (e.key === 'Escape') { setInlineProjectOpen(false); e.stopPropagation(); }
+                                              if (e.key === 'Enter') {
+                                                // Enter picks the top match when the list is open,
+                                                // otherwise it falls through and saves the task.
+                                                const top = projects.filter(p => p.status !== 'cancelled')
+                                                  .filter(p => `${p.project_name} ${p.client_name}`.toLowerCase().includes(inlineProjectQuery.toLowerCase()))[0];
+                                                if (inlineProjectOpen && inlineProjectQuery.trim() && top) {
+                                                  e.preventDefault();
+                                                  setInlineProjectId(top.id); setInlineProjectQuery(top.project_name); setInlineProjectOpen(false);
+                                                }
+                                              }
+                                            }}
+                                            placeholder="No project — type to search"
+                                            className={`w-full text-[11px] border rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[#579bfc] ${inlineProjectId ? 'border-[#579bfc] text-gray-700' : 'border-gray-200 text-gray-500'}`} />
+                                          {inlineProjectId && (
+                                            <button type="button" title="Detach from project"
+                                              onClick={() => { setInlineProjectId(null); setInlineProjectQuery(''); }}
+                                              className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                                              <i className="ri-close-circle-fill text-xs"></i>
+                                            </button>
+                                          )}
+                                          {inlineProjectOpen && (
+                                            <>
+                                              <div className="fixed inset-0 z-20" onClick={() => setInlineProjectOpen(false)} />
+                                              <div className="absolute z-30 top-full left-0 mt-0.5 w-64 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                                                <button type="button"
+                                                  onClick={() => { setInlineProjectId(null); setInlineProjectQuery(''); setInlineProjectOpen(false); }}
+                                                  className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[11px] text-gray-500 hover:bg-gray-50 cursor-pointer">
+                                                  <i className="ri-close-circle-line text-gray-300"></i>No project
+                                                </button>
+                                                {projects.filter(p => p.status !== 'cancelled')
+                                                  .filter(p => `${p.project_name} ${p.client_name}`.toLowerCase().includes(inlineProjectQuery.toLowerCase()))
+                                                  .slice(0, 30)
+                                                  .map(p => (
+                                                    <button key={p.id} type="button"
+                                                      onClick={() => { setInlineProjectId(p.id); setInlineProjectQuery(p.project_name); setInlineProjectOpen(false); }}
+                                                      className="block w-full text-left px-2.5 py-1.5 hover:bg-gray-50 cursor-pointer">
+                                                      <span className="block text-[11px] text-gray-700 truncate">{p.project_name}</span>
+                                                      <span className="block text-[10px] text-gray-400 truncate">{p.client_name}</span>
+                                                    </button>
+                                                  ))}
+                                                {projects.filter(p => p.status !== 'cancelled')
+                                                  .filter(p => `${p.project_name} ${p.client_name}`.toLowerCase().includes(inlineProjectQuery.toLowerCase())).length === 0 && (
+                                                  <p className="px-2.5 py-1.5 text-[11px] text-gray-400">No match — leave blank for a standalone task.</p>
+                                                )}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                        <button type="button" onClick={() => addTaskInline(key)}
+                                          disabled={!inlineTitle.trim() || inlineSaving}
+                                          className="text-[11px] px-2 py-1 rounded bg-[#0073ea] text-white font-medium disabled:opacity-30 cursor-pointer whitespace-nowrap">
+                                          {inlineSaving ? '…' : 'Add'}
+                                        </button>
+                                        <button type="button" onClick={() => { setAddingInGroup(null); setInlineTitle(''); }}
+                                          title="Cancel" className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                                          <i className="ri-close-line"></i>
+                                        </button>
+                                      </div>
+                                      <div className="col-span-3"></div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button type="button"
+                                        onClick={() => { setAddingInGroup(key); setInlineTitle(''); }}
+                                        className="flex items-center gap-2.5 pr-3 min-h-[34px] text-[13px] text-gray-400 hover:text-gray-600 cursor-pointer">
+                                        <span className="w-1.5 self-stretch flex-shrink-0 opacity-40" style={{ backgroundColor: color }}></span>
+                                        + Add
+                                      </button>
+                                      <div className="col-span-7"></div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Time estimate sum */}
+                              {estSum > 0 && (
+                                <div className={COLS}>
+                                  <div className="col-span-7"></div>
+                                  <div className="flex flex-col items-center justify-center py-1.5 bg-[#f5f6f8] border border-t-0 border-gray-200">
+                                    <span className="text-[13px] font-semibold text-gray-700">{estSum}h</span>
+                                    <span className="text-[9px] text-gray-400 -mt-0.5">sum</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {!allTasksLoading && showTaskCalendar && (
                 <GanttTimeline
                   tasks={filt.map((t: any) => ({
                     id: t.id,
@@ -2077,88 +2502,6 @@ export default function AdminProjectsPage() {
                   }}
                 />
               )}
-              {allTasksLoading ? null : (() => {
-                const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-                  todo: { label: 'To Do', cls: 'bg-gray-100 text-gray-600' },
-                  in_progress: { label: 'In Progress', cls: 'bg-sky-100 text-sky-700' },
-                  in_review: { label: 'In Review', cls: 'bg-violet-100 text-violet-700' },
-                  blocked: { label: 'Blocked', cls: 'bg-rose-100 text-rose-700' },
-                  done: { label: 'Done', cls: 'bg-emerald-100 text-emerald-700' },
-                };
-                const today = localToday();
-                const groups: Record<string, any[]> = {};
-                for (const t of filt) {
-                  const key = t.due_date ?? '__none';
-                  (groups[key] ??= []).push(t);
-                }
-                const dateKeys = Object.keys(groups).filter(k => k !== '__none').sort();
-                const orderedKeys = groups.__none ? [...dateKeys, '__none'] : dateKeys;
-                if (orderedKeys.length === 0) return null;
-                return (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 pt-2">
-                      <i className="ri-flag-2-line text-gray-300 text-xs"></i>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Deadlines</p>
-                      <div className="flex-1 h-px bg-gray-100"></div>
-                    </div>
-                    {orderedKeys.map(key => {
-                      const gtasks = groups[key];
-                      const isNoDate = key === '__none';
-                      const isPast = !isNoDate && key < today;
-                      const isToday = key === today;
-                      const label = isNoDate
-                        ? 'No Due Date'
-                        : isToday ? 'Today'
-                        : new Date(key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-                      return (
-                        <div key={key} className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/80 overflow-hidden">
-                          <div className="px-5 py-3 border-b border-gray-100/80 flex items-center gap-2">
-                            <h3 className={`font-bold text-sm ${isPast ? 'text-rose-600' : 'text-gray-800'}`}>{label}</h3>
-                            {isPast && <span className="text-[10px] text-rose-500 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">Overdue</span>}
-                            <span className="text-xs text-gray-400 flex-shrink-0">{gtasks.length}</span>
-                          </div>
-                          <div className="divide-y divide-gray-100/80">
-                            {gtasks.map((t: any) => {
-                              const scfg = STATUS_LABEL[t.status] ?? STATUS_LABEL.todo;
-                              return (
-                                <div key={t.id} onClick={() => openTaskDetailInPlace(t)}
-                                  className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50/60 cursor-pointer">
-                                  <button onClick={async e => {
-                                      e.stopPropagation();
-                                      const n = t.status === 'done' ? 'todo' : 'done';
-                                      await supabase.from('hub_project_tasks').update({ status: n, updated_at: new Date().toISOString() }).eq('id', t.id);
-                                      setAllTasks(prev => prev.map(x => x.id === t.id ? { ...x, status: n } : x));
-                                      await supabase.from('hub_project_task_activity').insert({
-                                        task_id: t.id, actor_id: hubUser?.id ?? null, actor_name: hubUser?.full_name ?? 'Admin',
-                                        type: 'status_change', description: `changed status from ${taskStatusLabel(t.status)} to ${taskStatusLabel(n)}`,
-                                      });
-                                    }} className="flex-shrink-0 cursor-pointer">
-                                    <i className={`text-base ${t.status === 'done' ? 'ri-checkbox-circle-fill text-emerald-500' : 'ri-checkbox-blank-circle-line text-gray-300 hover:text-emerald-400'}`}></i>
-                                  </button>
-                                  <div className="flex-1 min-w-0">
-                                    {t.project && (
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#1c2b3a]/60 truncate">{t.project.project_name}</p>
-                                    )}
-                                    <p className={`text-sm truncate ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
-                                  </div>
-                                  <span className={`hidden sm:flex items-center justify-center whitespace-nowrap text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 w-24 ${scfg.cls}`}>{scfg.label}</span>
-                                  <div className="w-6 h-6 flex-shrink-0" title={t.assignee?.full_name}>
-                                    {t.assignee && (
-                                      t.assignee.avatar_url
-                                        ? <img src={t.assignee.avatar_url} alt={t.assignee.full_name} className="w-6 h-6 rounded-full object-cover" />
-                                        : <div className="w-6 h-6 rounded-full bg-[#1c2b3a] flex items-center justify-center text-white text-[9px] font-bold">{t.assignee.full_name[0]}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
             </div>
             );
           })()}

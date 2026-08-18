@@ -151,7 +151,7 @@ async function sendEmail(to: string, subject: string, heading: string, subheadin
 }
 
 // ── Core ─────────────────────────────────────────────────────────────────────
-interface Staff { id: string; full_name: string; email: string | null; slack_id: string | null; work_days: string[] | null; }
+interface Staff { id: string; full_name: string; email: string | null; slack_id: string | null; work_days: string[] | null; email_notifications?: boolean | null; }
 
 async function run() {
   // Evaluate the last fully-completed day (yesterday PHT) and the pay period it
@@ -175,9 +175,10 @@ async function run() {
 
   const { data: recipients } = await supabase
     .from('hub_users')
-    .select('id, full_name, email, slack_id')
+    .select('id, full_name, email, slack_id, email_notifications')
     .in('role', ['owner', 'admin', 'hr'])
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .neq('is_developer', true);
   const managers = (recipients ?? []) as Staff[];
 
   for (const emp of (employees ?? []) as Staff[]) {
@@ -245,7 +246,7 @@ async function run() {
       const mgrEmailHtml = `<strong>${emp.full_name}</strong> has logged undertime — fewer than ${UNDERTIME_THRESHOLD_HOURS} clocked hours — on <strong>${count} scheduled work days</strong> during the pay period <strong>${label}</strong>:${breakdownHtml}<br>They have been asked to explain. Review their attendance below.`;
       for (const m of managers) {
         if (m.slack_id) await slackDm(m.slack_id, `:warning: *Undertime alert — ${emp.full_name}*\n${count} undertime days (under ${UNDERTIME_THRESHOLD_HOURS} hours) this pay period (*${label}*): ${breakdown}. They've been asked to explain.`);
-        if (m.email) await sendEmail(m.email, `Undertime alert — ${emp.full_name} (${label})`, mgrTitle, label, mgrEmailHtml, 'Review Attendance →', adminUrl);
+        if (m.email && m.email_notifications !== false) await sendEmail(m.email, `Undertime alert — ${emp.full_name} (${label})`, mgrTitle, label, mgrEmailHtml, 'Review Attendance →', adminUrl);
         await inApp(m.id, mgrTitle, mgrBody, adminPath);
         await sendPush(m.id, mgrTitle, mgrBody, adminUrl);
       }

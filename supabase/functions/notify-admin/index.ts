@@ -64,11 +64,17 @@ async function notifyAdmins(notifType: string, title: string, body: string, path
 }
 
 async function getAdminEmails(): Promise<string[]> {
+  // Developer accounts are excluded here the same way they are from staff
+  // lists elsewhere — they hold the role for access, not to action requests.
+  // email_notifications = false additionally lets a real admin opt out.
+  // Slack/push below are deliberately unfiltered.
   const { data } = await supabase
     .from('hub_users')
     .select('email')
     .in('role', ['admin', 'owner', 'hr'])
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .neq('is_developer', true)
+    .eq('email_notifications', true);
   return (data || []).map((u: any) => u.email).filter(Boolean);
 }
 

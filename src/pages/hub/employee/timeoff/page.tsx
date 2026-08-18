@@ -8,9 +8,9 @@ import { HubTimeOff } from '@/lib/types';
 // their profile's annual_pto_days / annual_sick_days (set by admin).
 const DEFAULT_VL = 15;
 const DEFAULT_SL = 10;
-// Handbook: planned leave (PTO/vacation) must be submitted ≥ 3 business days ahead.
-const ADVANCE_BUSINESS_DAYS = 3;
-const MAX_CONSECUTIVE = 3;
+// VL and SL carry no filing restrictions — no tenure gate, no advance notice,
+// no consecutive-day cap, no blackout block. The only limit is the employee's
+// annual allowance, which HR/admin sets per person on their profile.
 
 const typeLabels: Record<string, string> = {
   pto: 'Vacation Leave (VL)',
@@ -52,22 +52,6 @@ const statusLabels: Record<string, string> = {
 };
 
 const today = () => new Date().toISOString().split('T')[0];
-const addDays = (date: string, n: number) => {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
-};
-// Earliest allowed date that is `n` business days (Mon–Fri) after `date`.
-const addBusinessDays = (date: string, n: number) => {
-  const d = new Date(date + 'T00:00:00');
-  let added = 0;
-  while (added < n) {
-    d.setDate(d.getDate() + 1);
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) added++;
-  }
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 const WEEKDAY_TOKENS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const DEFAULT_WORK_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
 
@@ -133,15 +117,7 @@ export default function ContractorTimeOffPage() {
   const ptoLeft = Math.max(0, ptoLimit - ptoUsed);
   const sickLeft = Math.max(0, sickLimit - sickUsed);
 
-  // Eligibility: 6 months from start_date
-  const startDateUser = user && (user as any).start_date;
-  const ptoEligibleDate = startDateUser
-    ? new Date(new Date(startDateUser).setMonth(new Date(startDateUser).getMonth() + 6))
-    : null;
-  const isEligibleForPTO = ptoEligibleDate ? new Date() >= ptoEligibleDate : false;
-  const ptoEligibleLabel = ptoEligibleDate
-    ? ptoEligibleDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    : null;
+  // VL and SL are open to everyone from day one — no tenure gate.
 
   const effectiveDays = halfDay ? 0.5 : (startDate && endDate ? workingDaysBetween(startDate, endDate, workDays) : 0);
 
@@ -152,25 +128,19 @@ export default function ContractorTimeOffPage() {
     const effectiveEnd = halfDay ? startDate : endDate;
     if (!halfDay && new Date(endDate) < new Date(startDate)) return 'End date must be after start date.';
 
+    // The annual allowance is the only VL/SL limit left.
     if (type === 'pto') {
-      if (!isEligibleForPTO) return 'You are not yet eligible for PTO. Available 6 months after your start date.';
-      if (ptoLeft <= 0) return 'You have no PTO days remaining for this year.';
-      if (effectiveDays > ptoLeft) return `You only have ${ptoLeft} PTO day${ptoLeft !== 1 ? 's' : ''} left.`;
-      // Advance-notice rule (handbook: at least 3 business days ahead)
-      const advanceDate = addBusinessDays(today(), ADVANCE_BUSINESS_DAYS);
-      if (startDate < advanceDate) return `PTO must be submitted at least ${ADVANCE_BUSINESS_DAYS} business days in advance. Earliest start: ${advanceDate}.`;
-      // Max 3 consecutive days
-      if (!halfDay && effectiveDays > MAX_CONSECUTIVE) return `PTO cannot exceed ${MAX_CONSECUTIVE} consecutive days in a month.`;
+      if (ptoLeft <= 0) return 'You have no VL days remaining for this year.';
+      if (effectiveDays > ptoLeft) return `You only have ${ptoLeft} VL day${ptoLeft !== 1 ? 's' : ''} left.`;
     }
 
     if (type === 'sick') {
-      if (!isEligibleForPTO) return 'Sick leave is available 6 months after your start date.';
-      if (sickLeft <= 0) return 'You have no sick leave days remaining for this year.';
-      if (effectiveDays > sickLeft) return `You only have ${sickLeft} sick day${sickLeft !== 1 ? 's' : ''} left.`;
+      if (sickLeft <= 0) return 'You have no SL days remaining for this year.';
+      if (effectiveDays > sickLeft) return `You only have ${sickLeft} SL day${sickLeft !== 1 ? 's' : ''} left.`;
     }
 
-    // Blackout check (skip for emergency)
-    if (type !== 'emergency') {
+    // Blackout check (skip for emergency, VL and SL)
+    if (type !== 'emergency' && type !== 'pto' && type !== 'sick') {
       for (const b of blackouts) {
         const overlap = startDate <= b.end_date && effectiveEnd >= b.start_date;
         if (overlap) return `Your dates overlap with a blackout period${b.reason ? `: "${b.reason}"` : '.'}`;
@@ -227,22 +197,15 @@ export default function ContractorTimeOffPage() {
     fetchAll();
   };
 
-  // Advance notice check for display
-  const advanceWarning = type === 'pto' && startDate && startDate < addBusinessDays(today(), ADVANCE_BUSINESS_DAYS)
-    ? `Earliest PTO start date is ${addBusinessDays(today(), ADVANCE_BUSINESS_DAYS)}.` : null;
-
   return (
     <ContractorLayout title="Time Off">
       <div className="space-y-5">
 
         {/* Balance cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className={`border border-gray-100 rounded-xl p-4 ${isEligibleForPTO ? 'bg-sky-50' : 'bg-gray-50'}`}>
+          <div className="bg-sky-50 border border-gray-100 rounded-xl p-4">
             <p className="text-xs text-gray-400 mb-1">VL Remaining</p>
-            {isEligibleForPTO
-              ? <p className="text-2xl font-bold text-sky-600">{ptoLeft}<span className="text-sm font-normal text-gray-300">/{ptoLimit}</span></p>
-              : <p className="text-sm font-semibold text-gray-400">Unlocks {ptoEligibleLabel}</p>
-            }
+            <p className="text-2xl font-bold text-sky-600">{ptoLeft}<span className="text-sm font-normal text-gray-300">/{ptoLimit}</span></p>
           </div>
           <div className="bg-white border border-gray-100 rounded-xl p-4">
             <p className="text-xs text-gray-400 mb-1">VL Used</p>
@@ -275,11 +238,11 @@ export default function ContractorTimeOffPage() {
         <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-1.5">
           <p className="text-xs font-semibold text-gray-500 flex items-center gap-1.5"><i className="ri-information-line"></i>Leave Policy</p>
           <ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
-            <li>VL: 6 days/year · available after 6 months · no carryover</li>
-            <li>SL: 4 days/year · available after 6 months · separate from VL</li>
+            <li>VL: annual allowance set by HR · available from day one · no carryover</li>
+            <li>SL: annual allowance set by HR · available from day one · separate from VL</li>
             <li>Birthday Leave: 1 paid day · file 3 days in advance</li>
             <li>SIL: 5 days/year · available after 1 year of service</li>
-            <li>VL must be filed <strong className="text-gray-500">30 days in advance</strong> · max 3 consecutive days per month</li>
+            <li>VL and SL can be filed any time, for any length, up to your remaining balance</li>
             <li>Maternity (105d), Paternity (7d), Solo Parent (7d), Women's Special (60d), VAWC (10d) — statutory; HR approval required with documentation</li>
             <li>Emergency leave: notify HR immediately, no advance notice required</li>
             <li>Unpaid leave: subject to approval based on workload</li>
@@ -375,14 +338,9 @@ export default function ContractorTimeOffPage() {
                   onChange={(e) => { setType(e.target.value); setFormError(''); }}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a] bg-white"
                 >
-                  {Object.entries(typeLabels).map(([val, label]) => {
-                    const locked = val === 'pto' && !isEligibleForPTO;
-                    return (
-                      <option key={val} value={val} disabled={locked}>
-                        {label}{locked ? ` — unlocks ${ptoEligibleLabel}` : ''}
-                      </option>
-                    );
-                  })}
+                  {Object.entries(typeLabels).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
                 </select>
                 {(type === 'pto' || type === 'sick') && (
                   <p className="text-xs text-gray-400">
@@ -488,7 +446,7 @@ export default function ContractorTimeOffPage() {
                   <input
                     type="date"
                     value={startDate}
-                    min={type === 'emergency' ? undefined : type === 'pto' ? addBusinessDays(today(), ADVANCE_BUSINESS_DAYS) : today()}
+                    min={type === 'emergency' || type === 'pto' || type === 'sick' ? undefined : today()}
                     onChange={(e) => { setStartDate(e.target.value); setFormError(''); }}
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                   />
@@ -500,7 +458,6 @@ export default function ContractorTimeOffPage() {
                       type="date"
                       value={endDate}
                       min={startDate || today()}
-                      max={type === 'pto' && startDate ? addDays(startDate, MAX_CONSECUTIVE - 1) : undefined}
                       onChange={(e) => { setEndDate(e.target.value); setFormError(''); }}
                       className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c2b3a]/30 focus:border-[#1c2b3a]"
                     />
@@ -521,17 +478,10 @@ export default function ContractorTimeOffPage() {
               )}
 
               {/* Blackout warning when selected dates overlap */}
-              {startDate && type !== 'emergency' && blackouts.some(b => startDate <= b.end_date && (halfDay ? startDate : endDate || startDate) >= b.start_date) && (
+              {startDate && type !== 'emergency' && type !== 'pto' && type !== 'sick' && blackouts.some(b => startDate <= b.end_date && (halfDay ? startDate : endDate || startDate) >= b.start_date) && (
                 <div className="flex items-start gap-2 p-3 bg-rose-50 border border-rose-100 rounded-lg">
                   <i className="ri-calendar-close-line text-rose-500 text-sm mt-0.5 flex-shrink-0"></i>
                   <p className="text-xs text-rose-600">Your selected dates fall within a blackout period. Please choose different dates.</p>
-                </div>
-              )}
-
-              {advanceWarning && (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                  <i className="ri-calendar-line text-amber-500 text-sm mt-0.5 flex-shrink-0"></i>
-                  <p className="text-xs text-amber-700">{advanceWarning}</p>
                 </div>
               )}
 

@@ -151,10 +151,7 @@ export default function AdminTimeOffPage() {
         .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : workingDaysBetween(l.start_date, l.end_date, u.work_days)), 0);
       const sickUsed = leaves.filter((l: any) => l.type === 'sick')
         .reduce((s: number, l: any) => s + (l.half_day ? 0.5 : workingDaysBetween(l.start_date, l.end_date, u.work_days)), 0);
-      const ptoEligible = u.start_date
-        ? new Date() >= new Date(new Date(u.start_date).setMonth(new Date(u.start_date).getMonth() + 6))
-        : false;
-      return { ...u, ptoUsed, sickUsed, ptoLimit, sickLimit, ptoLeft: Math.max(0, ptoLimit - ptoUsed), sickLeft: Math.max(0, sickLimit - sickUsed), ptoEligible };
+      return { ...u, ptoUsed, sickUsed, ptoLimit, sickLimit, ptoLeft: Math.max(0, ptoLimit - ptoUsed), sickLeft: Math.max(0, sickLimit - sickUsed) };
     });
 
     setBalances(result);
@@ -595,7 +592,7 @@ export default function AdminTimeOffPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Employee', 'VL Used', 'VL Left', 'SL Used', 'SL Left', 'Eligibility'].map(h => (
+                      {['Employee', 'VL Used', 'VL Left', 'SL Used', 'SL Left'].map(h => (
                         <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3">{h}</th>
                       ))}
                     </tr>
@@ -633,13 +630,6 @@ export default function AdminTimeOffPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <span className={`text-sm font-semibold ${b.sickLeft === 0 ? 'text-gray-300' : 'text-rose-600'}`}>{b.sickLeft}d</span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {b.ptoEligible ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Eligible</span>
-                          ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">Not yet</span>
-                          )}
                         </td>
                       </tr>
                     ))}

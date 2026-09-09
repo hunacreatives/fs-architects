@@ -36,8 +36,20 @@ const STAGES = [
   'Permitting', 'Bidding/Procurement', 'Construction Administration', 'Post-Construction/Closeout',
 ];
 
+// Stage is a tag on the row now rather than the grouping, so each one gets its
+// own colour — a list mixing every stage is unreadable in a single violet.
+const STAGE_BADGES: Record<string, string> = {
+  'Pre-Design': 'bg-slate-100 text-slate-600',
+  'Schematic Design': 'bg-sky-50 text-sky-700',
+  'Design Development': 'bg-indigo-50 text-indigo-700',
+  'Construction Documents': 'bg-violet-50 text-violet-700',
+  'Permitting': 'bg-amber-50 text-amber-700',
+  'Bidding/Procurement': 'bg-orange-50 text-orange-700',
+  'Construction Administration': 'bg-teal-50 text-teal-700',
+  'Post-Construction/Closeout': 'bg-emerald-50 text-emerald-700',
+};
 const stageCfg: Record<string, { badge: string }> = Object.fromEntries(
-  STAGES.map(s => [s, { badge: 'bg-violet-50 text-violet-700' }])
+  STAGES.map(s => [s, { badge: STAGE_BADGES[s] ?? 'bg-violet-50 text-violet-700' }])
 );
 const getStageCfg = (stage: string | null | undefined) => stageCfg[stage ?? ''] ?? stageCfg['Pre-Design'];
 
@@ -1226,39 +1238,68 @@ export default function AdminProjectsPage() {
     );
   };
 
-  const renderProjectRow = (p: Project) => {
-    const cfg = statusCfg[p.status] ?? statusCfg.ongoing;
+  // Single source of truth for how a project's deadline reads — used by the row
+  // and by the grouping above it, so a project can never sit under "Overdue"
+  // while its own caption claims it's on track.
+  type DueBucket = 'overdue' | 'due_soon' | 'on_track' | 'done' | 'none';
+  const projectDue = (p: Project) => {
     const pTasks = allTasks.filter((t: any) => t.project_id === p.id);
     const pTasksDone = pTasks.filter((t: any) => t.status === 'done').length;
-    const pPct = pTasks.length > 0 ? Math.round((pTasksDone / pTasks.length) * 100) : 0;
     const allTasksDone = pTasks.length > 0 && pTasksDone === pTasks.length;
-    // A blown deadline with every task already done isn't actionable overdue
-    // work — it's just a project whose status hasn't been flipped to Completed yet.
-    const dl = allTasksDone ? null : deadlineStatus(p.deadline, p.status);
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+    const dueDate = p.deadline ? new Date(p.deadline + 'T00:00:00') : null;
+    const daysLeft = dueDate ? Math.ceil((dueDate.getTime() - today0.getTime()) / 86400000) : null;
+    const closed = p.status === 'completed' || p.status === 'cancelled';
+    const date = dueDate ? dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+    const days = (n: number) => `${n} ${n === 1 ? 'Day' : 'Days'}`;
+    const base = { pTasks, pTasksDone, allTasksDone, date };
+    if (!dueDate) return { ...base, bucket: 'none' as DueBucket, note: null, tone: '', dateTone: '', accent: null as string | null };
+    if (closed) return { ...base, bucket: 'done' as DueBucket, note: p.status === 'completed' ? 'Completed' : 'Cancelled', tone: 'text-gray-400', dateTone: 'text-gray-400', accent: null as string | null };
+    if (allTasksDone) return { ...base, bucket: 'done' as DueBucket, note: 'Tasks Done', tone: 'text-emerald-600', dateTone: 'text-emerald-600', accent: null as string | null };
+    if (daysLeft! < 0) return { ...base, bucket: 'overdue' as DueBucket, note: `${days(Math.abs(daysLeft!))} Overdue`, tone: 'text-rose-500', dateTone: 'text-rose-600', accent: '#e11d48' as string | null };
+    if (daysLeft === 0) return { ...base, bucket: 'due_soon' as DueBucket, note: 'Due Today', tone: 'text-amber-600', dateTone: 'text-amber-600', accent: '#f59e0b' as string | null };
+    if (daysLeft! <= 7) return { ...base, bucket: 'due_soon' as DueBucket, note: `${days(daysLeft!)} Left`, tone: 'text-amber-500', dateTone: 'text-amber-600', accent: '#f59e0b' as string | null };
+    return { ...base, bucket: 'on_track' as DueBucket, note: 'On Track', tone: 'text-gray-400', dateTone: 'text-gray-700', accent: null as string | null };
+  };
+
+  const renderProjectRow = (p: Project) => {
+    const cfg = statusCfg[p.status] ?? statusCfg.ongoing;
+    const due = projectDue(p);
+    const { pTasks, pTasksDone, allTasksDone } = due;
+    const pPct = pTasks.length > 0 ? Math.round((pTasksDone / pTasks.length) * 100) : 0;
+    const accent = due.accent;
     const pal = getProjectTypePalette(p.project_type_code);
     const team = p.hub_project_contractors.map((pc: any) => pc.hub_users).filter(Boolean);
     const projTeam = teamMeta(p.team);
     const rowLabel = p.project_type === 'internal' ? 'Internal' : p.client_name;
     const typeLabel = getProjectTypeLabel(p.project_type_code);
-    const badge = dl ?? (p.status !== 'ongoing' ? cfg : null);
+    const statusBadge = p.status !== 'ongoing' ? cfg : null;
     const panelOpen = activeId === p.id && !workspaceOpen;
     const anyPanelOpen = activeId !== null && !workspaceOpen;
     return (
       <div key={p.id} role="button" tabIndex={0}
         onClick={() => { openWorkspaceOnLoad.current = true; setActiveId(p.id); setWorkspaceOpen(true); }}
         onKeyDown={e => { if (e.key === 'Enter') { openWorkspaceOnLoad.current = true; setActiveId(p.id); setWorkspaceOpen(true); } }}
-        className={`w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors cursor-pointer group ${
+        className={`relative w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors cursor-pointer group ${
           panelOpen ? 'bg-slate-50' : 'hover:bg-white/50'
         }`}>
+        {accent && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: accent }}></span>}
         <div className="w-[42px] h-[42px] rounded-2xl flex items-center justify-center flex-shrink-0 text-white font-extrabold text-[15px] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.25)]"
           style={{ background: `linear-gradient(135deg, ${pal.from}, ${pal.to})` }}>
           {p.project_name.charAt(0).toUpperCase()}
         </div>
-        <div className="flex-1 min-w-0">
-          {p.project_code && (
-            <span className="block text-[10px] font-semibold tracking-widest uppercase mb-0.5 text-[#1c2b3a]">
-              {p.project_code}
-            </span>
+        <div className="flex-1 min-w-0 min-h-[58px] flex flex-col justify-center">
+          {/* Tag row: code + stage, above the name — keeps both clear of the
+              client line, which truncates. */}
+          {(p.project_code || p.stage) && (
+            <div className="flex items-center gap-2 mb-1 min-w-0">
+              {p.project_code && (
+                <span className="text-[10px] font-semibold tracking-widest uppercase text-[#1c2b3a] flex-shrink-0">{p.project_code}</span>
+              )}
+              {p.stage && (
+                <span className={`text-[9.5px] px-1.5 py-0.5 rounded-full font-medium truncate ${getStageCfg(p.stage).badge}`}>{p.stage}</span>
+              )}
+            </div>
           )}
           <h3 className="text-sm font-bold text-[#111827] truncate leading-snug">{p.project_name}</h3>
           <p className="text-xs text-gray-400 truncate mt-0.5 mb-2">{rowLabel}{typeLabel ? ` · ${typeLabel}` : ''}</p>
@@ -1271,7 +1312,7 @@ export default function AdminProjectsPage() {
             </div>
           )}
         </div>
-        <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+        <div className="hidden sm:flex items-center justify-end flex-shrink-0 w-[84px]">
           <div className="flex -space-x-1.5">
             {team.slice(0, 3).map((u: any, i: number) => (
               u?.avatar_url
@@ -1281,14 +1322,25 @@ export default function AdminProjectsPage() {
             {team.length === 0 && <div className="w-[26px] h-[26px] rounded-full bg-gray-100 flex items-center justify-center"><i className="ri-user-line text-[9px] text-gray-400"></i></div>}
           </div>
         </div>
-        {badge ? (
-          <span className={`text-[11px] px-3 py-1.5 rounded-full font-bold flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
-        ) : (
-          <span className="text-[11px] text-gray-400 flex-shrink-0 font-medium">Active</span>
+        {statusBadge && (
+          <span className={`hidden md:inline text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${statusBadge.cls}`}>{statusBadge.label}</span>
         )}
-        {projTeam && (
-          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: projTeam.color }} title={projTeam.label}></span>
-        )}
+        {/* Deadline — the column the list is ordered by, so it's spelled out. */}
+        <div className="flex flex-col items-end justify-center flex-shrink-0 w-[104px] leading-tight">
+          {due.date ? (
+            <>
+              <span className={`text-[12px] font-semibold whitespace-nowrap ${due.dateTone}`}>{due.date}</span>
+              <span className={`text-[10px] whitespace-nowrap ${due.tone}`}>{due.note}</span>
+            </>
+          ) : (
+            <span className="text-[11px] text-gray-300 whitespace-nowrap">No Deadline</span>
+          )}
+        </div>
+        <span className="w-2.5 flex-shrink-0 flex items-center justify-center">
+          {projTeam && (
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: projTeam.color }} title={projTeam.label}></span>
+          )}
+        </span>
         <button
           onClick={e => { e.stopPropagation(); setActiveId(prev => prev === p.id ? null : p.id); }}
           title="Project details"
@@ -2705,28 +2757,51 @@ export default function AdminProjectsPage() {
             ) : (
               <div className="flex-1 flex flex-col space-y-5">
                 {(() => {
-                  const internalGroup = filtered.filter(p => p.project_type === 'internal');
-                  const clientGroups = STAGES
-                    .map(stage => ({ stage, projects: filtered.filter(p => p.project_type !== 'internal' && (p.stage ?? 'Pre-Design') === stage) }))
+                  // Grouped by urgency, and inside each group the nearest
+                  // deadline comes first. Undated projects can't be urgent, so
+                  // they sit at the bottom in their own group.
+                  const byDeadline = (a: Project, b: Project) => {
+                    if (a.deadline && b.deadline) return a.deadline.localeCompare(b.deadline) || a.project_name.localeCompare(b.project_name);
+                    if (a.deadline) return -1;
+                    if (b.deadline) return 1;
+                    return a.project_name.localeCompare(b.project_name);
+                  };
+                  const BUCKETS: { key: DueBucket; label: string; dot: string; text: string }[] = [
+                    { key: 'overdue',  label: 'Overdue',      dot: 'bg-rose-500',    text: 'text-rose-500' },
+                    { key: 'due_soon', label: 'Due This Week', dot: 'bg-amber-500',  text: 'text-amber-600' },
+                    { key: 'on_track', label: 'On Track',     dot: 'bg-gray-300',    text: 'text-gray-400' },
+                    { key: 'done',     label: 'Finished',     dot: 'bg-emerald-500', text: 'text-emerald-600' },
+                    { key: 'none',     label: 'No Deadline',  dot: 'bg-gray-200',    text: 'text-gray-400' },
+                  ];
+                  // Client work drives the urgency groups; internal projects sit
+                  // in their own section underneath, still deadline-ordered.
+                  const clientProjects = filtered.filter(p => p.project_type !== 'internal');
+                  const internalGroup = filtered.filter(p => p.project_type === 'internal').sort(byDeadline);
+                  const groups = BUCKETS
+                    .map(b => ({ ...b, projects: clientProjects.filter(p => projectDue(p).bucket === b.key).sort(byDeadline) }))
                     .filter(g => g.projects.length > 0);
                   return (
                     <>
-                      {clientGroups.map(({ stage, projects }) => (
-                        <div key={stage}>
+                      {groups.map(g => (
+                        <div key={g.key}>
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#1c2b3a]/70"></span>
-                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{stage} <span className="text-gray-300 font-normal">({projects.length})</span></p>
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${g.dot}`}></span>
+                            <p className={`text-[11px] font-semibold uppercase tracking-widest ${g.text}`}>{g.label}</p>
+                            <span className="text-[11px] text-gray-300 font-normal">{g.projects.length}</span>
+                            <div className="flex-1 h-px bg-gray-100"></div>
                           </div>
                           <div className="rounded-3xl bg-white/70 backdrop-blur-sm border border-white/80 divide-y divide-gray-100/80 overflow-hidden">
-                            {projects.map(p => renderProjectRow(p))}
+                            {g.projects.map(p => renderProjectRow(p))}
                           </div>
                         </div>
                       ))}
                       {internalGroup.length > 0 && (
-                        <div>
+                        <div className="pt-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#1c2b3a]/70"></span>
-                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Internal <span className="text-gray-300 font-normal">({internalGroup.length})</span></p>
+                            <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#1c2b3a]/60"></span>
+                            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">Internal</p>
+                            <span className="text-[11px] text-gray-300 font-normal">{internalGroup.length}</span>
+                            <div className="flex-1 h-px bg-gray-100"></div>
                           </div>
                           <div className="rounded-3xl bg-white/70 backdrop-blur-sm border border-white/80 divide-y divide-gray-100/80 overflow-hidden">
                             {internalGroup.map(p => renderProjectRow(p))}

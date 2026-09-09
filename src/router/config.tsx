@@ -1,7 +1,6 @@
 import { lazy, ReactNode, Suspense } from 'react';
 import type { RouteObject } from "react-router-dom";
 import HubRouteGate from '@/components/feature/HubRouteGate';
-import SiteGate from '@/components/feature/SiteGate';
 import NotFound from "../pages/NotFound";
 import Home from "../pages/home/page";
 import Projects from "../pages/projects/page";
@@ -65,10 +64,6 @@ const HubAdminProjectRedirect = lazy(() => import('../pages/hub/admin/project-re
 // const HubDemoPage = lazy(() => import('../pages/hub/demo/page'));
 const PublicPaymentPage = lazy(() => import('../pages/pay/page'));
 
-const withSiteGate = (element: ReactNode) => (
-  <SiteGate>{element}</SiteGate>
-);
-
 const withAdminGate = (element: ReactNode) => (
   <HubRouteGate allowedRoles={['owner', 'admin', 'hr']}>{element}</HubRouteGate>
 );
@@ -94,16 +89,16 @@ const S = ({ children }: { children: ReactNode }) => (
 );
 
 const routes: RouteObject[] = [
-  // Marketing site — homepage is public, all other pages are password-gated
+  // Marketing site — all pages public
   { path: "/", element: <Home /> },
-  { path: "/projects", element: withSiteGate(<Projects />) },
-  { path: "/projects/:slug", element: withSiteGate(<ProjectDetail />) },
-  { path: "/studio", element: withSiteGate(<Studio />) },
-  { path: "/process", element: withSiteGate(<Process />) },
-  { path: "/contact", element: withSiteGate(<Contact />) },
-  { path: "/careers", element: withSiteGate(<Careers />) },
-  { path: "/consultation", element: withSiteGate(<Consultation />) },
-  { path: "/privacy", element: withSiteGate(<Privacy />) },
+  { path: "/projects", element: <Projects /> },
+  { path: "/projects/:slug", element: <ProjectDetail /> },
+  { path: "/studio", element: <Studio /> },
+  { path: "/process", element: <Process /> },
+  { path: "/contact", element: <Contact /> },
+  { path: "/careers", element: <Careers /> },
+  { path: "/consultation", element: <Consultation /> },
+  { path: "/privacy", element: <Privacy /> },
 
   // Hub — auth
   { path: '/hub/login', element: <S><HubLoginPage /></S> },

@@ -599,13 +599,20 @@ export default function AdminPayrollPage() {
     setBatch(batchRes.data ?? null);
 
     // Restore persisted row overrides for this period.
-    // - Past closed periods: restore approved_hours for ALL payouts so the Hours
-    //   column shows what was actually paid, not a live recompute (which may be 0).
-    // - Current period: only restore rows where admin explicitly edited (manual_override).
+    // - Closed periods: restore the snapshot for ALL payouts so the row shows
+    //   what was actually paid, not a live recompute.
+    // - Open periods (even once the cutoff date has passed, while HR is still
+    //   paying it out): only restore rows an admin explicitly edited
+    //   (manual_override). Keying this off the date instead of the batch status
+    //   meant that on the 1st/16th every payout row became an "edit" — rows
+    //   created just to hold a reimbursement carry base_pay 0 / approved_hours 0
+    //   (column defaults), which zeroed the employee's base pay.
     const isPastPeriod = localToday() > selectedPeriod.end;
+    const isClosedPeriod =
+      closedPeriods.has(selectedPeriod.start) || batchRes.data?.status === 'closed';
     const restored: Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }> = {};
     for (const p of payoutsRes.data || []) {
-      if (isPastPeriod || p.manual_override) {
+      if (isClosedPeriod || p.manual_override) {
         restored[p.contractor_id] = {
           hours: p.approved_hours != null ? Number(p.approved_hours) : undefined,
           pay: p.base_pay != null ? Number(p.base_pay) : undefined,
@@ -621,11 +628,9 @@ export default function AdminPayrollPage() {
     // employee's most recent earlier payout. Only for a period that is still
     // open — a closed period must keep exactly what was paid. An item already
     // present on this period's payout (matched by label) is never duplicated.
-    // Read the batch directly rather than the closedPeriods set, which may not
-    // have loaded yet on first render — a stale "open" read would briefly show
-    // carried items on an already-closed period.
-    const isClosedPeriod =
-      closedPeriods.has(selectedPeriod.start) || batchRes.data?.status === 'closed';
+    // isClosedPeriod reads the batch directly rather than only the closedPeriods
+    // set, which may not have loaded yet on first render — a stale "open" read
+    // would briefly show carried items on an already-closed period.
     if (!isPastPeriod && !isClosedPeriod) {
       const { data: priorPayouts } = await supabase
         .from('hub_payouts')
@@ -675,6 +680,21 @@ export default function AdminPayrollPage() {
     }
   };
 
+  // Snapshot the figures behind final_payout onto the payout row at approval.
+  // Approve used to write only final_payout, leaving base_pay/approved_hours at
+  // whatever the row was created with — 0 for a row first created to hold a
+  // reimbursement — and closed periods restore their display from these columns.
+  const approvalSnapshot = (row: PayRow | undefined, basePay: number) => {
+    const override = row ? rowOverrides[row.contractor.id] : undefined;
+    return {
+      base_pay: parseFloat(basePay.toFixed(2)),
+      approved_hours: override?.hours ?? row?.cappedHours ?? null,
+      approved_days: override?.days ?? row?.days ?? null,
+      overtime_hours: override?.overtimeHours ?? row?.overtimeHours ?? null,
+      prorated_note: override?.proratedNote ?? row?.proratedNote ?? null,
+    };
+  };
+
   const approvePayout = async (contractorId: string, computedPay: number) => {
     setWorkflowLoading(true);
     const row = rows.find(r => r.contractor.id === contractorId);
@@ -686,14 +706,17 @@ export default function AdminPayrollPage() {
     const finalPay = basePay + otPay + adjTotal;
     const existing = payoutsMap[contractorId];
     const contractorName = rows.find(r => r.contractor.id === contractorId)?.contractor.full_name ?? contractorId;
+    const snapshot = approvalSnapshot(row, basePay);
     const { error: approveErr } = existing
-      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay, overtime_pay: otPay, adjustments: adjs }).eq('id', existing.id)
+      ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: new Date().toISOString(), final_payout: finalPay, overtime_pay: otPay, adjustments: adjs, ...snapshot }).eq('id', existing.id)
       : await supabase.from('hub_payouts').insert({
           contractor_id: contractorId,
           cutoff_start: selectedPeriod.start,
           cutoff_end: selectedPeriod.end,
           final_payout: finalPay,
           overtime_pay: otPay,
+          adjustments: adjs,
+          ...snapshot,
           status: 'hr_approved',
           approved_at: new Date().toISOString(),
         });
@@ -776,8 +799,9 @@ export default function AdminPayrollPage() {
       const adjTotal = adjs.reduce((s: number, a: any) => s + (a.amount || 0), 0);
       const finalPay = basePay + otPay + adjTotal;
       const existing = payoutsMap[r.contractor.id];
+      const snapshot = approvalSnapshot(r, basePay);
       const { error } = existing
-        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay, overtime_pay: otPay, adjustments: adjs }).eq('id', existing.id)
+        ? await supabase.from('hub_payouts').update({ status: 'hr_approved', approved_at: now, final_payout: finalPay, overtime_pay: otPay, adjustments: adjs, ...snapshot }).eq('id', existing.id)
         : await supabase.from('hub_payouts').insert({
             contractor_id: r.contractor.id,
             cutoff_start: selectedPeriod.start,
@@ -785,6 +809,7 @@ export default function AdminPayrollPage() {
             final_payout: finalPay,
             overtime_pay: otPay,
             adjustments: adjs,
+            ...snapshot,
             status: 'hr_approved',
             approved_at: now,
           });
@@ -1422,11 +1447,16 @@ export default function AdminPayrollPage() {
       leavesByUser[lv.contractor_id].push(lv);
     }
 
-    // Map contractor_id → payment_date for already-paid payouts this period.
+    // Map contractor_id → payment_date for early (mid-period) payouts this period.
     // Hours on or before payment_date are already settled — exclude them from the live count.
+    // A payout paid on or after the cutoff's last day (HR paying on the 1st/16th)
+    // covers the whole period, so it must not suppress anything — otherwise
+    // marking it paid wipes every hour in the period and zeroes the base pay.
     const paidPaymentDateMap: Record<string, string> = {};
     for (const p of paidPayoutsRes.data || []) {
-      if (p.payment_date) paidPaymentDateMap[p.contractor_id] = p.payment_date;
+      if (p.payment_date && p.payment_date < selectedPeriod.end) {
+        paidPaymentDateMap[p.contractor_id] = p.payment_date;
+      }
     }
 
     // Salary/bank columns are no longer directly selectable; merge them in from
@@ -2700,7 +2730,10 @@ export default function AdminPayrollPage() {
         if (!editRow) return null;
         const c = editRow.contractor;
         const adjTotal = editAdjItems.reduce((s, i) => s + i.amount, 0);
-        const basePay = parseFloat(editPay) || editRow.pay;
+        // Mirror saveEditRow exactly: a typed 0 is a real ₱0 base. `|| editRow.pay`
+        // used to show the computed base here while Save wrote ₱0.
+        const parsedEditPay = parseFloat(editPay);
+        const basePay = isNaN(parsedEditPay) ? editRow.pay : parsedEditPay;
         const otRateVal = editRow.derivedHourlyRate;
         const activeOTEntries = editOTEntries.filter(e => !e.toDelete);
         const otHoursVal = activeOTEntries.reduce((s, e) => s + e.hours, 0);

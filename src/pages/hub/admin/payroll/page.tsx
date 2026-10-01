@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 import AdminLayout from '@/pages/hub/components/AdminLayout';
@@ -306,6 +306,8 @@ export default function AdminPayrollPage() {
   const [editOTNewDate, setEditOTNewDate] = useState('');
   const [editOTNewHours, setEditOTNewHours] = useState('');
   const [editOTNewRestDay, setEditOTNewRestDay] = useState(false);
+  const payrollRequestRef = useRef(0);
+  const workflowRequestRef = useRef(0);
   const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }>>({});
   const [editAdjItems, setEditAdjItems] = useState<AdjItem[]>([]);
   const [editAdjLabel, setEditAdjLabel] = useState('');
@@ -580,6 +582,10 @@ export default function AdminPayrollPage() {
   };
 
   const fetchWorkflow = async () => {
+    // Same latest-call-wins guard as fetchPayroll: a slower fetch for the
+    // previously selected period must not overwrite this period's payouts.
+    const requestId = ++workflowRequestRef.current;
+    const isStale = () => requestId !== workflowRequestRef.current;
     const [payoutsRes, batchRes] = await Promise.all([
       supabase
         .from('hub_payouts')
@@ -593,6 +599,7 @@ export default function AdminPayrollPage() {
         .limit(1)
         .maybeSingle(),
     ]);
+    if (isStale()) return;
     const map: Record<string, any> = {};
     for (const p of payoutsRes.data || []) map[p.contractor_id] = p;
     setPayoutsMap(map);
@@ -637,6 +644,7 @@ export default function AdminPayrollPage() {
         .select('contractor_id, cutoff_start, adjustments')
         .lt('cutoff_start', selectedPeriod.start)
         .order('cutoff_start', { ascending: false });
+      if (isStale()) return;
       const latestPrior: Record<string, any[]> = {};
       for (const p of priorPayouts || []) {
         if (latestPrior[p.contractor_id] !== undefined) continue; // newest wins
@@ -663,6 +671,7 @@ export default function AdminPayrollPage() {
         .select('id, payout_id, reason, status, admin_notes')
         .in('payout_id', payoutIds)
         .eq('status', 'open');
+      if (isStale()) return;
       const dm: Record<string, any> = {};
       for (const d of disputes || []) dm[d.payout_id] = d;
       setDisputesMap(dm);
@@ -1383,6 +1392,12 @@ export default function AdminPayrollPage() {
   }, [isDemo, selectedPeriod, usdRate]);
 
   const fetchPayroll = async () => {
+    // Only the most recent call may write state. The current cutoff's fetch also
+    // runs a live Slack sync and is slow — switching periods while it was still
+    // in flight let it land last and paint Oct 1–15's in-progress hours (0.00h,
+    // 1 day, ₱0) under the Sep 16–30 heading.
+    const requestId = ++payrollRequestRef.current;
+    const isStale = () => requestId !== payrollRequestRef.current;
     setLoading(true);
     setPayrollError(null);
     try {
@@ -1779,12 +1794,14 @@ export default function AdminPayrollPage() {
     });
 
     result.sort((a, b) => b.pay - a.pay);
+    if (isStale()) return;
     setRows(result);
     } catch (e) {
+      if (isStale()) return;
       console.error('Payroll calculation failed:', e);
       setPayrollError('Could not calculate payroll — the figures below may be stale or incomplete. Refresh to retry.');
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
   };
 

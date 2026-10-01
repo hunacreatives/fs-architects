@@ -178,9 +178,11 @@ Deno.serve(async (req) => {
       .eq('status', 'active')
       .neq('is_developer', true);
 
-    // Fetch approved OT for today + yesterday — past-midnight shifts start on the previous date
-    // so shiftDate may be yesterday even when the function runs today.
-    const yesterdayDate = new Date(phNow.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Fetch approved OT for the sync date + the day before — past-midnight shifts start on the
+    // previous date so shiftDate may be the day before todayDate. Anchored on todayDate (the
+    // backfill date when one is given), not the real clock: a manual re-sync of an older date
+    // used to search an empty range and overwrite that date's approved OT with 0.
+    const yesterdayDate = new Date(new Date(`${todayDate}T12:00:00Z`).getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const { data: approvedOTRows } = await supabase
       .from('hub_overtime_requests')
       .select('contractor_id, hours, date')

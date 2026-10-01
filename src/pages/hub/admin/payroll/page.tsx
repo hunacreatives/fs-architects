@@ -308,6 +308,11 @@ export default function AdminPayrollPage() {
   const [editOTNewRestDay, setEditOTNewRestDay] = useState(false);
   const payrollRequestRef = useRef(0);
   const workflowRequestRef = useRef(0);
+  // The period currently on screen. Fetch closures capture the period they were
+  // created with (some run after a slow Drive upload), so a response is only
+  // applied if it is the latest call AND still for the period being shown.
+  const selectedPeriodRef = useRef(selectedPeriod.start);
+  selectedPeriodRef.current = selectedPeriod.start;
   const [rowOverrides, setRowOverrides] = useState<Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }>>({});
   const [editAdjItems, setEditAdjItems] = useState<AdjItem[]>([]);
   const [editAdjLabel, setEditAdjLabel] = useState('');
@@ -584,12 +589,16 @@ export default function AdminPayrollPage() {
   const fetchWorkflow = async () => {
     // Same latest-call-wins guard as fetchPayroll: a slower fetch for the
     // previously selected period must not overwrite this period's payouts.
+    const requestedPeriod = selectedPeriod.start;
+    // A call built for a period no longer on screen does nothing — and must not
+    // bump the counter, or it would invalidate the current period's own fetch.
+    if (requestedPeriod !== selectedPeriodRef.current) return;
     const requestId = ++workflowRequestRef.current;
-    const isStale = () => requestId !== workflowRequestRef.current;
+    const isStale = () => requestId !== workflowRequestRef.current || requestedPeriod !== selectedPeriodRef.current;
     const [payoutsRes, batchRes] = await Promise.all([
       supabase
         .from('hub_payouts')
-        .select('id, contractor_id, status, final_payout, payment_date, batch_id, adjustments, payslip_sent_at, overtime_pay, base_pay, approved_hours, approved_days, overtime_hours, prorated_note, manual_override')
+        .select('id, contractor_id, status, final_payout, payment_date, batch_id, adjustments, payslip_sent_at, overtime_pay, base_pay, approved_hours, approved_days, overtime_hours, prorated_note, manual_override, locked')
         .eq('cutoff_start', selectedPeriod.start),
       supabase
         .from('hub_payroll_batches')
@@ -614,7 +623,6 @@ export default function AdminPayrollPage() {
     //   meant that on the 1st/16th every payout row became an "edit" — rows
     //   created just to hold a reimbursement carry base_pay 0 / approved_hours 0
     //   (column defaults), which zeroed the employee's base pay.
-    const isPastPeriod = localToday() > selectedPeriod.end;
     const isClosedPeriod =
       closedPeriods.has(selectedPeriod.start) || batchRes.data?.status === 'closed';
     const restored: Record<string, { hours?: number; pay?: number; days?: number; overtimeHours?: number; proratedNote?: string }> = {};
@@ -635,10 +643,13 @@ export default function AdminPayrollPage() {
     // employee's most recent earlier payout. Only for a period that is still
     // open — a closed period must keep exactly what was paid. An item already
     // present on this period's payout (matched by label) is never duplicated.
+    // Keyed off closed, not the date: HR approves on the 1st/16th, after the
+    // cutoff ends, and gating on the date dropped carried SSS/PagIBIG/PHIC lines
+    // from exactly the approvals that write final_payout and the payslip.
     // isClosedPeriod reads the batch directly rather than only the closedPeriods
     // set, which may not have loaded yet on first render — a stale "open" read
     // would briefly show carried items on an already-closed period.
-    if (!isPastPeriod && !isClosedPeriod) {
+    if (!isClosedPeriod) {
       const { data: priorPayouts } = await supabase
         .from('hub_payouts')
         .select('contractor_id, cutoff_start, adjustments')
@@ -696,6 +707,11 @@ export default function AdminPayrollPage() {
   const approvalSnapshot = (row: PayRow | undefined, basePay: number) => {
     const override = row ? rowOverrides[row.contractor.id] : undefined;
     return {
+      // Locks the row against the employee's own "Submit" (RLS lets employees
+      // update only unlocked rows of their own). Without it, a payouts tab
+      // opened before approval could resubmit and flip an approved/paid row
+      // back to 'submitted' with the employee's figures. Admins are unaffected.
+      locked: true,
       base_pay: parseFloat(basePay.toFixed(2)),
       approved_hours: override?.hours ?? row?.cappedHours ?? null,
       approved_days: override?.days ?? row?.days ?? null,
@@ -1090,12 +1106,15 @@ export default function AdminPayrollPage() {
       status: 'paid',
       payment_date: new Date().toISOString().slice(0, 10),
       paid_at: new Date().toISOString(),
-      approved_hours: row?.cappedHours ?? existing.approved_hours ?? 0,
-      approved_days: row?.days ?? null,
-      overtime_hours: row?.overtimeHours ?? null,
-      // Manual edits already persisted the exact OT pay — don't clobber them
-      overtime_pay: existing.manual_override ? (existing.overtime_pay ?? 0) : (row?.overtimePay ?? existing.overtime_pay ?? 0),
-      prorated_note: row?.proratedNote ?? null,
+      // Approve already snapshotted the figures behind final_payout — keep them,
+      // so a Slack sync landing between Approve and Mark Paid (or an HR edit)
+      // can't make the stored hours/OT disagree with what is being paid. Live
+      // values only fill fields an older approval never wrote.
+      approved_hours: existing.approved_hours ?? row?.cappedHours ?? 0,
+      approved_days: existing.approved_days ?? row?.days ?? null,
+      overtime_hours: existing.overtime_hours ?? row?.overtimeHours ?? null,
+      overtime_pay: existing.overtime_pay ?? row?.overtimePay ?? 0,
+      prorated_note: existing.prorated_note ?? row?.proratedNote ?? null,
     }).eq('id', existing.id);
     if (paidErr) {
       console.error('Mark paid failed:', paidErr);
@@ -1396,8 +1415,12 @@ export default function AdminPayrollPage() {
     // runs a live Slack sync and is slow — switching periods while it was still
     // in flight let it land last and paint Oct 1–15's in-progress hours (0.00h,
     // 1 day, ₱0) under the Sep 16–30 heading.
+    const requestedPeriod = selectedPeriod.start;
+    // A call built for a period no longer on screen does nothing — and must not
+    // bump the counter, or it would invalidate the current period's own fetch.
+    if (requestedPeriod !== selectedPeriodRef.current) return;
     const requestId = ++payrollRequestRef.current;
-    const isStale = () => requestId !== payrollRequestRef.current;
+    const isStale = () => requestId !== payrollRequestRef.current || requestedPeriod !== selectedPeriodRef.current;
     setLoading(true);
     setPayrollError(null);
     try {
@@ -2213,8 +2236,9 @@ export default function AdminPayrollPage() {
               const displayOTHours = override?.overtimeHours !== undefined ? override.overtimeHours : r.overtimeHours;
               const displayProratedNote = override?.proratedNote !== undefined ? override.proratedNote : r.proratedNote;
               const p = payoutsMap[c.id];
-              // If already paid but new hours exist (post-payment), reset to pending so admin can approve the new hours
-              const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
+              // An EARLY (mid-period) payout followed by new hours resets to pending so admin can approve
+              // the new hours. A payout paid on/after the cutoff's last day covers the whole period and stays paid.
+              const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0 && !!p.payment_date && p.payment_date < selectedPeriod.end) ? null : p;
               const adjs: { label: string; amount: number }[] = effectiveAdjustments(c.id);
               const adjTotal = adjs.reduce((s, i) => s + i.amount, 0);
               const displayOTPay = r.overtimePay;
@@ -2414,7 +2438,7 @@ export default function AdminPayrollPage() {
                     const displayOTHours = override?.overtimeHours !== undefined ? override.overtimeHours : r.overtimeHours;
                     const displayProratedNote = override?.proratedNote !== undefined ? override.proratedNote : r.proratedNote;
                     const p = payoutsMap[c.id];
-                    const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0) ? null : p;
+                    const effectivePayout = (p?.status === 'paid' && r.cappedHours > 0 && !!p.payment_date && p.payment_date < selectedPeriod.end) ? null : p;
                     const adjs: { label: string; amount: number }[] = effectiveAdjustments(c.id);
                     const adjTotal = adjs.reduce((s: number, i: { label: string; amount: number }) => s + i.amount, 0);
                     const displayOTPay = r.overtimePay;

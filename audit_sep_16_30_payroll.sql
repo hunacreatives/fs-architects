@@ -1,55 +1,76 @@
 -- ============================================================
--- READ-ONLY AUDIT — Sep 16–30, 2026 payroll ("base pay disappeared
--- on Oct 1").
+-- READ-ONLY AUDIT — Sep 16–30, 2026 payroll.
 --
--- Symptom: once the date passed Sep 30 the payroll page restored
--- every hub_payouts row as an "edit". Rows created only to hold a
--- reimbursement carry base_pay 0 / approved_hours 0, so the card
--- showed OT + adjustments only (Prince: ₱1,144.03 instead of
--- ₱4,006.01). Approving in that state writes the wrong final_payout.
+-- One row per employee: their rates (profile + rate history in
+-- effect), what attendance logged, every OT request in the period
+-- (any status), and the payout row. Used to check the payroll page
+-- figures line by line before Approve.
 --
--- Safe to run: SELECTs only, no writes.
+-- Safe to run: a single SELECT, no writes.
 -- ============================================================
 
--- Every payout row for the period, with what was logged.
--- Look for: base_pay = 0 with logged hours, manual_override = true on
--- rows nobody hand-edited, and any status past 'pending' (already
--- approved/paid with a possibly-wrong final_payout).
-with logged as (
-  select d.user_id,
-         count(*) filter (where extract(dow from d.date) between 1 and 5) as weekdays_logged,
-         round(sum(d.hours_capped) filter (where extract(dow from d.date) between 1 and 5)::numeric, 2) as capped_hours,
-         sum(d.overtime_hours) as ot_hours
-  from hub_daily_hours d
-  where d.date between '2026-09-16' and '2026-09-30'
-  group by d.user_id
+with emp as (
+  select id, full_name, role, payment_type, monthly_rate, hourly_rate
+  from hub_users
+  where status = 'active'
+    and role in ('contractor', 'admin', 'hr')
+    and coalesce(is_developer, false) = false
+),
+rate_in_effect as (
+  select distinct on (contractor_id)
+         contractor_id, effective_date, payment_type, monthly_rate, hourly_rate
+  from hub_rate_history
+  where effective_date <= '2026-09-30'
+  order by contractor_id, effective_date desc
+),
+hours as (
+  select user_id,
+         count(*) filter (where extract(dow from date) between 1 and 5 and hours_capped > 0) as days_logged,
+         round(sum(hours_capped) filter (where extract(dow from date) between 1 and 5)::numeric, 2) as capped_hours,
+         round(sum(hours_raw)::numeric, 2) as raw_hours,
+         sum(overtime_hours) as ot_hours_credited,
+         jsonb_object_agg(date, jsonb_build_object('raw', round(hours_raw::numeric, 2), 'ot', overtime_hours))
+           filter (where coalesce(overtime_hours, 0) > 0) as ot_days_credited
+  from hub_daily_hours
+  where date between '2026-09-16' and '2026-09-30'
+  group by user_id
+),
+ot_requests as (
+  select contractor_id,
+         sum(hours) filter (where status = 'approved') as ot_approved,
+         sum(hours) filter (where status = 'pending')  as ot_pending,
+         sum(hours) filter (where status = 'rejected') as ot_rejected,
+         jsonb_agg(jsonb_build_object('date', date, 'hours', hours, 'status', status, 'rest_day', is_rest_day)
+                   order by date) as ot_request_list
+  from hub_overtime_requests
+  where date between '2026-09-16' and '2026-09-30'
+  group by contractor_id
 )
-select u.full_name,
-       u.payment_type,
-       p.status,
+select e.full_name,
+       e.payment_type,
+       e.monthly_rate          as profile_monthly,
+       e.hourly_rate           as profile_hourly,
+       r.effective_date        as rate_effective,
+       r.monthly_rate          as history_monthly,
+       r.hourly_rate           as history_hourly,
+       h.days_logged,
+       h.capped_hours,
+       h.raw_hours,
+       h.ot_hours_credited,
+       o.ot_approved,
+       o.ot_pending,
+       o.ot_rejected,
+       h.ot_days_credited,
+       o.ot_request_list,
+       p.status                as payout_status,
        p.manual_override,
        p.base_pay,
        p.overtime_pay,
-       (select coalesce(sum((a->>'amount')::numeric), 0)
-          from jsonb_array_elements(coalesce(p.adjustments, '[]'::jsonb)) a) as adjustments_total,
        p.final_payout,
-       p.approved_hours,
-       p.approved_days,
-       l.weekdays_logged,
-       l.capped_hours,
-       l.ot_hours,
-       p.payment_date,
-       p.created_at,
-       p.approved_at
-from hub_payouts p
-join hub_users u on u.id = p.contractor_id
-left join logged l on l.user_id = p.contractor_id
-where p.cutoff_start = '2026-09-16'
-order by u.full_name;
-
-
--- Batch state for the period (is it still open?).
-select id, status, total_amount, contractor_count, created_at, approved_at, closed_at
-from hub_payroll_batches
-where period_start = '2026-09-16'
-order by created_at desc;
+       p.adjustments
+from emp e
+left join rate_in_effect r on r.contractor_id = e.id
+left join hours h          on h.user_id = e.id
+left join ot_requests o    on o.contractor_id = e.id
+left join hub_payouts p    on p.contractor_id = e.id and p.cutoff_start = '2026-09-16'
+order by e.full_name;

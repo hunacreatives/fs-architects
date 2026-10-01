@@ -299,16 +299,14 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Weekdays: OT kicks in after 9 raw hours (8 billable + 1h lunch already
-      // paid as regular time) — actual clocked time still caps the payout.
-      // Weekends: regular pay is zeroed out entirely (see payroll aggregation),
-      // so an approved OT request IS the day's entire pay, not just a ceiling
-      // reconciled against exact clock-out timing — once approved, the
-      // requested hours are what pays out.
+      // An approved OT request pays in full, weekday or weekend — HR has
+      // already reviewed the hours, and OT is often worked after clocking out
+      // (off-site, late-night drafting). Weekday OT used to be capped at raw
+      // clocked time past 9h, which silently cut Neil's approved 5h on
+      // Sep 30, 2026 to 0.5h while the Edit Payroll modal paid the full 5h.
+      // No approved request → no OT, regardless of clocked hours.
       const approvedOT = hubUser ? (approvedOTMap[hubUser.id]?.[shiftDate] || 0) : 0;
-      const actualOT = approvedOT > 0
-        ? (isShiftWeekend ? approvedOT : parseFloat(Math.min(Math.max(0, hoursRaw - 9), approvedOT).toFixed(2)))
-        : 0;
+      const actualOT = approvedOT;
 
       const workLocation = firstOn?.location ?? null;
 
@@ -350,8 +348,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Upsert daily hours — do NOT touch overtime_hours column (managed by OT approval flow)
-    // Also never overwrite rows that were manually edited by an admin (is_manual = true)
+    // Upsert daily hours. overtime_hours is written as the day's total approved
+    // OT, the same value the OT approval flow writes, so the two never disagree.
+    // Never overwrite rows that were manually edited by an admin (is_manual = true)
     if (hoursUpserts.length > 0) {
       const userDatePairs = hoursUpserts.map((r: any) => `and(user_id.eq.${r.user_id},date.eq.${r.date})`);
       const { data: manualRows, error: manualErr } = await supabase

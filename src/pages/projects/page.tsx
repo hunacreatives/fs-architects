@@ -655,6 +655,8 @@ function ProjectCard({ project, delay, navigate, t }: {
         <img
           src={project.image.endsWith('.jpg') ? project.image : project.image.replace('-thumb.webp', '-hero.webp')}
           alt={project.name}
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           style={{ opacity: hasVideo && hovering ? 0 : 1, transition: 'opacity 0.5s, transform 0.7s' }}
         />
@@ -664,6 +666,7 @@ function ProjectCard({ project, delay, navigate, t }: {
             muted
             playsInline
             loop
+            preload="none"
             className="absolute inset-0 w-full h-full object-cover"
             style={{ opacity: hovering ? 1 : 0, transition: 'opacity 0.5s' }}
           >

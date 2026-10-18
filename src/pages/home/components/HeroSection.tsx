@@ -64,6 +64,12 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
   // Tracks which slides have completed at least one full animation run.
   // Used to park the slide at kb.to (its end position) instead of kb.from.
   const activatedRef = useRef<boolean[]>(new Array(SLIDES.length).fill(false));
+  // Slides are only put in the DOM once they're active or up next, so the page
+  // doesn't download every image and video up front. Once mounted they stay
+  // mounted, so later loops are instant.
+  const mountedRef = useRef<boolean[]>(new Array(SLIDES.length).fill(false));
+  mountedRef.current[activeSlide] = true;
+  mountedRef.current[(activeSlide + 1) % SLIDES.length] = true;
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -150,6 +156,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         style={{ backgroundColor: '#1a2028', zIndex: 0 }}
       >
         {SLIDES.map((slide, i) => {
+          if (!mountedRef.current[i]) return null;
           const kb = KENBURNS[i % KENBURNS.length];
           const isActive = i === activeSlide;
           const sharedStyle: React.CSSProperties = {
@@ -166,6 +173,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 muted
                 playsInline
                 loop
+                poster={slide.src}
                 className="absolute inset-0 w-full h-full object-cover object-center"
                 style={sharedStyle}
               >
@@ -180,6 +188,8 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               key={i}
               src={slide.src}
               alt={`Architectural work ${i + 1}`}
+              fetchPriority={i === 0 ? 'high' : 'auto'}
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover object-center"
               style={{
                 ...sharedStyle,

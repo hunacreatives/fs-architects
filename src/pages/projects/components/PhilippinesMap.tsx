@@ -203,6 +203,24 @@ export default function PhilippinesMap({
 
   // ── Pins visibility for entrance animation ──
   const mapColRef = useRef<HTMLDivElement>(null);
+
+  // ── Phones: fit the country and its city labels to the screen width ──
+  // The column fills the screen's height, which on a phone makes it ~1.9× wider than the screen, so at the
+  // desktop scale Palawan and the Mindanao labels (Butuan, Tagum, Davao) were cut off at the edges.
+  const MAP_SPAN = [0.24, 0.83]; // the land plus its labels, as fractions of the column's width
+  const [phoneFit, setPhoneFit] = useState<{ s: number; dx: number } | null>(null);
+  useEffect(() => {
+    const fit = () => {
+      const el = mapColRef.current;
+      if (!el || window.innerWidth >= 768) { setPhoneFit(null); return; }
+      const colW = el.offsetWidth;
+      const s = Math.min(1.14, (window.innerWidth - 28) / ((MAP_SPAN[1] - MAP_SPAN[0]) * colW));
+      setPhoneFit({ s, dx: -((MAP_SPAN[0] + MAP_SPAN[1]) / 2 - 0.5) * colW * s });
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
   const [pinsVisible, setPinsVisible] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
 
@@ -340,9 +358,11 @@ export default function PhilippinesMap({
         style={{
           aspectRatio: '7 / 9',
           left: '50%',
-          transform: mapMounted
-            ? 'translateX(-50%) scale(1.14)'
-            : 'translateX(-50%) scale(1.08)',
+          transform: phoneFit
+            ? `translateX(calc(-50% + ${phoneFit.dx}px)) scale(${mapMounted ? phoneFit.s : phoneFit.s * 0.95})`
+            : mapMounted
+              ? 'translateX(-50%) scale(1.14)'
+              : 'translateX(-50%) scale(1.08)',
           transformOrigin: 'center center',
           opacity: mapMounted ? 1 : 0,
           transition: 'opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.25s, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.25s',

@@ -1,179 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
+import { useSiteTeam, type SiteTeamMember } from '@/lib/site/content';
 
-const TEAM = [
-  // Principal Architect
-  {
-    key: 'fretz',
-    nameKey: 'studio_team_fretz_name',
-    titleKey: 'studio_team_fretz_title',
-    bioKey: 'studio_team_fretz_bio',
-    img: '/images/team/fretz.webp',
-    imgShift: '-19%',
-    credentials: [
-      { label: 'Education', value: 'B.S. Architecture, University of San Carlos' },
-      { label: 'License', value: 'PRC Licensed Architect' },
-      { label: 'Experience', value: '18+ years' },
-      { label: 'Specialization', value: 'Mixed-Use & Civic Design' },
-    ],
-  },
-  // Design Lead
-  {
-    key: 'dan',
-    nameKey: 'studio_team_dan_name',
-    titleKey: 'studio_team_dan_title',
-    bioKey: 'studio_team_dan_bio',
-    img: '/images/team/dan.webp',
-    imgShift: '-16%',
-    credentials: [
-      { label: 'Role', value: 'Design Lead' },
-    ],
-  },
-  // Junior Architects
-  {
-    key: 'john',
-    nameKey: 'studio_team_john_name',
-    titleKey: 'studio_team_john_title',
-    bioKey: 'studio_team_john_bio',
-    img: '/images/team/john.webp',
-    imgShift: '-24%',
-    imgScale: 1.7,
-    credentials: [
-      { label: 'Role', value: 'Junior Architect' },
-    ],
-  },
-  {
-    key: 'jan',
-    nameKey: 'studio_team_jan_name',
-    titleKey: 'studio_team_jan_title',
-    bioKey: 'studio_team_jan_bio',
-    img: '/images/team/jan.webp',
-    imgShift: '-20%',
-    imgScale: 1.8,
-    credentials: [
-      { label: 'Role', value: 'Junior Architect' },
-    ],
-  },
-  {
-    key: 'raul',
-    nameKey: 'studio_team_raul_name',
-    titleKey: 'studio_team_raul_title',
-    bioKey: 'studio_team_raul_bio',
-    img: '/images/team/raul.webp',
-    imgShift: '-13%',
-    credentials: [
-      { label: 'Role', value: 'Junior Architect' },
-    ],
-  },
-  {
-    key: 'gab',
-    nameKey: 'studio_team_gab_name',
-    titleKey: 'studio_team_gab_title',
-    bioKey: 'studio_team_gab_bio',
-    img: '/images/team/gab.webp',
-    imgShift: '-20%',
-    imgShiftX: '3%',
-    imgScale: 1.85,
-    credentials: [
-      { label: 'Role', value: 'Junior Architect' },
-    ],
-  },
-  {
-    key: 'mikee',
-    nameKey: 'studio_team_mikee_name',
-    titleKey: 'studio_team_mikee_title',
-    bioKey: 'studio_team_mikee_bio',
-    img: '/images/team/mikee.webp',
-    imgShift: '-24%',
-    imgScale: 1.8,
-    credentials: [
-      { label: 'Education', value: 'B.S. Architecture' },
-      { label: 'License', value: 'PRC Licensed Architect' },
-      { label: 'Role', value: 'Junior Architect' },
-    ],
-  },
-  // Architectural Apprentices
-  {
-    key: 'neil',
-    nameKey: 'studio_team_neil_name',
-    titleKey: 'studio_team_neil_title',
-    bioKey: 'studio_team_neil_bio',
-    img: '/images/team/neil.webp',
-    imgShift: '-27%',
-    imgScale: 1.8,
-    credentials: [
-      { label: 'Role', value: 'Architectural Apprentice' },
-    ],
-  },
-  {
-    key: 'chico',
-    nameKey: 'studio_team_chico_name',
-    titleKey: 'studio_team_chico_title',
-    bioKey: 'studio_team_chico_bio',
-    img: '/images/team/chico.webp',
-    imgShift: '-22%',
-    imgScale: 1.85,
-    credentials: [
-      { label: 'Role', value: 'Architectural Apprentice' },
-    ],
-  },
-  {
-    key: 'servacio',
-    nameKey: 'studio_team_servacio_name',
-    titleKey: 'studio_team_servacio_title',
-    bioKey: 'studio_team_servacio_bio',
-    img: '/images/team/servacio.webp',
-    imgShift: '-13%',
-    credentials: [
-      { label: 'Role', value: 'Architectural Apprentice' },
-    ],
-  },
-  {
-    key: 'juls',
-    nameKey: 'studio_team_juls_name',
-    titleKey: 'studio_team_juls_title',
-    bioKey: 'studio_team_juls_bio',
-    img: '/images/team/juls.webp',
-    imgShift: '-17%',
-    credentials: [
-      { label: 'Role', value: 'Architectural Apprentice' },
-    ],
-  },
-  // Architectural Interns
-  {
-    key: 'villarin',
-    nameKey: 'studio_team_villarin_name',
-    titleKey: 'studio_team_villarin_title',
-    bioKey: 'studio_team_villarin_bio',
-    img: '/images/team/villarin.webp',
-    imgShift: '-17%',
-    credentials: [
-      { label: 'Role', value: 'Architectural Intern' },
-    ],
-  },
-  {
-    key: 'iligan',
-    nameKey: 'studio_team_iligan_name',
-    titleKey: 'studio_team_iligan_title',
-    bioKey: 'studio_team_iligan_bio',
-    img: '/images/team/iligan.webp',
-    imgShift: '-17%',
-    credentials: [
-      { label: 'Role', value: 'Architectural Intern' },
-    ],
-  },
-  {
-    key: 'divinigracia',
-    nameKey: 'studio_team_divinigracia_name',
-    titleKey: 'studio_team_divinigracia_title',
-    bioKey: 'studio_team_divinigracia_bio',
-    img: '/images/team/divinigracia.webp',
-    imgShift: '-14%',
-    credentials: [
-      { label: 'Role', value: 'Architectural Intern' },
-    ],
-  },
-];
 
 const COLS_DESKTOP = 4;
 const COLS_MOBILE = 2;
@@ -204,6 +32,7 @@ function useReveal(threshold = 0.15) {
 }
 
 export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps) {
+  const TEAM = useSiteTeam();
   const { t } = useTranslation();
   const headingRef = useReveal(0.2);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -225,7 +54,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Build rows based on current cols
-  const rows: typeof TEAM[] = [];
+  const rows: SiteTeamMember[][] = [];
   for (let i = 0; i < TEAM.length; i += cols) {
     rows.push(TEAM.slice(i, i + cols));
   }
@@ -461,7 +290,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && handleOpen(member.key)}
-                      aria-label={`View bio for ${t(member.nameKey)}`}
+                      aria-label={`View bio for ${member.name}`}
                       aria-expanded={isActive}
                     >
                       {/* Photo */}
@@ -469,11 +298,11 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         {!member.img.includes('placeholder') && (
                           <img
                             src={member.img}
-                            alt={t(member.nameKey)}
+                            alt={member.name}
                             draggable={false}
                             style={{
                               objectPosition: 'top center',
-                              transform: `scale(${member.imgScale ?? 1.5}) translateX(${member.imgShiftX ?? '0%'}) translateY(${member.imgShift})`,
+                              transform: `scale(${member.imgScale ?? 1.5}) translateX(${member.imgShiftX ?? '0%'}) translateY(${member.imgShift ?? "0%"})`,
                               transformOrigin: 'top center',
                             }}
                           />
@@ -496,7 +325,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           lineHeight: 1.3,
                           transition: 'color 0.35s ease',
                         }}>
-                          {t(member.nameKey)}
+                          {member.name}
                         </p>
                         <p style={{
                           fontFamily: 'Geist, sans-serif',
@@ -507,7 +336,7 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                           margin: 0,
                           transition: 'color 0.35s ease',
                         }}>
-                          {t(member.titleKey)}
+                          {member.title}
                         </p>
                       </div>
                     </div>
@@ -542,13 +371,13 @@ export default function MeetTheTeam({ selectedKey, onSelect }: MeetTheTeamProps)
                         {/* LEFT — Name, Title, Bio, Close */}
                         <div style={{ flex: '1 1 0', minWidth: 0 }}>
                           <h3 style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(17px, 1.8vw, 24px)', letterSpacing: '-0.01em', color: 'rgba(255,255,255,0.90)', lineHeight: 1.2, margin: '0 0 6px 0' }}>
-                            {t(activeMember.nameKey)}
+                            {activeMember.name}
                           </h3>
                           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '8px', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', margin: '0 0 24px 0' }}>
-                            {t(activeMember.titleKey)}
+                            {activeMember.title}
                           </p>
                           <div style={{ margin: '0 0 32px 0' }}>
-                            {t(activeMember.bioKey).split('\n\n').map((para, i) => (
+                            {activeMember.bio.split('\n\n').map((para, i) => (
                               <p key={i} style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(13px, 1vw, 14px)', lineHeight: 1.9, color: 'rgba(255,255,255,0.50)', letterSpacing: '0.01em', margin: i === 0 ? 0 : '16px 0 0 0', textAlign: 'justify' }}>
                                 {para}
                               </p>

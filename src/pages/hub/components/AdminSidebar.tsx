@@ -30,6 +30,7 @@ const navItems = [
   { to: '/hub/admin/payroll', label: 'Payroll', icon: 'ri-bar-chart-2-line' },
   { to: '/hub/admin/documents', label: 'Documents', icon: 'ri-file-text-line' },
   { divider: true, label: 'Content' },
+  { to: '/hub/admin/website', label: 'Website', icon: 'ri-global-line' },
   { to: '/hub/admin/sop', label: 'SOP Library', icon: 'ri-book-open-line' },
   { to: '/hub/admin/announcements', label: 'Announcements', icon: 'ri-megaphone-line' },
   { to: '/hub/admin/assets', label: 'Asset Access', icon: 'ri-key-2-line' },

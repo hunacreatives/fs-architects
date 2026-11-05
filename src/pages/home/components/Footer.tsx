@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useSiteContact } from '@/lib/site/content';
 
 
 export default function Footer() {
@@ -23,11 +24,8 @@ export default function Footer() {
     { label: t('nav_contact'),         href: '/contact', hash: '' },
   ];
 
-  const socialLinks = [
-    { icon: 'ri-instagram-line',    label: 'Instagram', href: 'https://www.instagram.com/fsarchitects.ph' },
-    { icon: 'ri-facebook-line',     label: 'Facebook',  href: 'https://www.facebook.com/fsdesignstudio/' },
-    { icon: 'ri-linkedin-box-line', label: 'LinkedIn',  href: 'https://www.linkedin.com/in/fretzsuralta/' },
-  ];
+  const contact = useSiteContact();
+  const socialLinks = contact.socials;
 
   const handleStudioLink = (href: string, hash: string) => {
     navigate(href);
@@ -93,8 +91,8 @@ export default function Footer() {
             <p className="text-white/70 text-[10px] tracking-widest uppercase" style={headingStyle}>
               {t('footer_get_in_touch')}
             </p>
-            <a href="mailto:info@fsarchitects.ph" className={linkClass} style={linkStyle}>
-              info@fsarchitects.ph
+            <a href={`mailto:${contact.email}`} className={linkClass} style={linkStyle}>
+              {contact.email}
             </a>
             <div className="flex items-center gap-3 mt-1">
               {socialLinks.map(({ icon, label, href }) => (
@@ -138,11 +136,11 @@ export default function Footer() {
                 {t('footer_get_in_touch')}
               </p>
               <a
-                href="mailto:info@fsarchitects.ph"
+                href={`mailto:${contact.email}`}
                 className="text-white/30 text-[11px] hover:text-white/65 transition-colors duration-300 cursor-pointer"
                 style={linkStyle}
               >
-                info@fsarchitects.ph
+                {contact.email}
               </a>
               <div className="flex items-center gap-3">
                 {socialLinks.map(({ icon, label, href }) => (

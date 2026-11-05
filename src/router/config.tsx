@@ -60,6 +60,7 @@ const HubAdminInvoiceLog = lazy(() => import('../pages/hub/admin/invoice-log/pag
 const HubAdminClients = lazy(() => import('../pages/hub/admin/clients/page'));
 const HubAdminApplications = lazy(() => import('../pages/hub/admin/applications/page'));
 const HubAdminContact = lazy(() => import('../pages/hub/admin/contact/page'));
+const HubAdminWebsite = lazy(() => import('../pages/hub/admin/website/page'));
 const HubAdminProjectRedirect = lazy(() => import('../pages/hub/admin/project-redirect/page'));
 // const HubDemoPage = lazy(() => import('../pages/hub/demo/page'));
 const PublicPaymentPage = lazy(() => import('../pages/pay/page'));
@@ -134,6 +135,7 @@ const routes: RouteObject[] = [
   { path: '/hub/admin/tasks', element: <S>{withAdminGate(<HubAdminTasks />)}</S> },
   { path: '/hub/admin/applications', element: <S>{withAdminGate(<HubAdminApplications />)}</S> },
   { path: '/hub/admin/contact', element: <S>{withAdminGate(<HubAdminContact />)}</S> },
+  { path: '/hub/admin/website', element: <S>{withAdminGate(<HubAdminWebsite />)}</S> },
   { path: '/hub/admin/project/:slug', element: <S>{withAdminGate(<HubAdminProjectRedirect />)}</S> },
   // { path: '/hub/demo', element: <S><HubDemoPage /></S> },
   { path: '/pay/:token', element: <S><PublicPaymentPage /></S> },

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useSiteContact } from '@/lib/site/content';
 
 interface ContactFooterProps {
   hideContactBar?: boolean;
@@ -17,11 +18,10 @@ export default function ContactFooter({ hideContactBar = false }: ContactFooterP
     { label: t('nav_contact'), href: '/contact' },
   ];
 
-  const socials = [
-    { icon: 'ri-facebook-fill', label: 'Facebook', href: '#' },
-    { icon: 'ri-instagram-line', label: 'Instagram', href: '#' },
-    { icon: 'ri-linkedin-fill', label: 'LinkedIn', href: '#' },
-  ];
+  // the same links as every other footer (these used to be placeholders); this footer draws them in its filled icon style
+  const contact = useSiteContact();
+  const FILLED: Record<string, string> = { Facebook: 'ri-facebook-fill', Instagram: 'ri-instagram-line', LinkedIn: 'ri-linkedin-fill' };
+  const socials = contact.socials.map((s) => ({ ...s, icon: FILLED[s.label] ?? s.icon }));
 
   return (
     <footer className="w-full bg-white">
@@ -99,11 +99,11 @@ export default function ContactFooter({ hideContactBar = false }: ContactFooterP
             {t('footer_get_in_touch')}
           </p>
           <a
-            href="mailto:info@fsarchitects.ph"
+            href={`mailto:${contact.email}`}
             className="text-xs text-black/50 hover:text-black transition-colors duration-200 cursor-pointer"
             style={{ fontFamily: 'Geist, sans-serif' }}
           >
-            info@fsarchitects.ph
+            {contact.email}
           </a>
           <div className="flex items-center gap-3 mt-0.5">
             {socials.map(({ icon, label, href }) => (

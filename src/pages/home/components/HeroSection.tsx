@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navigation from '../../../components/feature/Navigation';
+import { useHeroSlides } from '@/lib/site/content';
 
 interface HeroSectionProps {
   isVisible: boolean;
@@ -16,20 +17,6 @@ interface Slide {
   videoMp4?: string;
 }
 
-const SLIDES: Slide[] = [
-  { src: "/images/hero-denza-greenhills.webp",        title: "Denza Greenhills",           location: "Mandaluyong City",        year: "2025" },
-  { src: "/images/hero-blush-mandaue.webp",           title: "Blush Prestige Clinic",      location: "Mandaue City",            year: "2025", video: "/images/projects/blush-video.webm", videoMp4: "/images/projects/blush-video.mp4" },
-  { src: "/images/hero-byd-butuan.webp",              title: "BYD Butuan",                 location: "Butuan City",             year: "2025" },
-  { src: "/images/hero-byd-c5-acropolis.webp",        title: "BYD C5 Acropolis",           location: "Quezon City",             year: "2025", video: "/images/projects/byd-c5-acropolis-video.webm", videoMp4: "/images/projects/byd-c5-acropolis-video.mp4" },
-  { src: "/images/hero-byd-marikina.webp",            title: "BYD Marikina",               location: "Marikina City",           year: "2025" },
-  { src: "/images/hero-byd-marikina-interiors.webp",  title: "BYD Marikina Interiors",     location: "Marikina City",           year: "2025" },
-  { src: "/images/hero-byd-zamboanga.webp",           title: "BYD Zamboanga",              location: "Zamboanga City",          year: "2024" },
-  { src: "/images/hero-byd-zamboanga-interiors.webp", title: "BYD Zamboanga Interiors",    location: "Zamboanga City",          year: "2024" },
-  { src: "/images/hero-graphic-gadget.webp",          title: "Graphic Gadget Store",       location: "Cagayan de Oro",          year: "2025", video: "/images/projects/graphic-annex-video.webm", videoMp4: "/images/projects/graphic-annex-video.mp4" },
-  { src: "/images/hero-mixed-use-car-showroom.webp",  title: "Mixed Use Car Showroom",     location: "San Fernando, Pampanga",  year: "2025" },
-  { src: "/images/hero-sorana-cafe.webp",             title: "Sorana Cafe",                location: "Bantayan, Cebu",          year: "2025" },
-  { src: "/images/hero-yang-residence-cebu.webp",     title: "Yang Residence",             location: "Consolacion, Cebu",       year: "2025" },
-];
 
 const TAGLINES = [
   'Guided by intent.',
@@ -53,6 +40,10 @@ const HOLD_REST_MS  = 6000;
 
 
 export default function HeroSection({ isVisible }: HeroSectionProps) {
+  // the slides come from the hub (Website → Homepage); the count can change once they load
+  const SLIDES = useHeroSlides();
+  const slideCountRef = useRef(SLIDES.length);
+  slideCountRef.current = SLIDES.length;
   const [showContent, setShowContent] = useState(false);
   const [taglineIndex, setTaglineIndex] = useState(0);
   const [taglineVisible, setTaglineVisible] = useState(false);
@@ -68,8 +59,9 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
   // doesn't download every image and video up front. Once mounted they stay
   // mounted, so later loops are instant.
   const mountedRef = useRef<boolean[]>(new Array(SLIDES.length).fill(false));
-  mountedRef.current[activeSlide] = true;
-  mountedRef.current[(activeSlide + 1) % SLIDES.length] = true;
+  const current = activeSlide % SLIDES.length;
+  mountedRef.current[current] = true;
+  mountedRef.current[(current + 1) % SLIDES.length] = true;
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -101,7 +93,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
       setActiveSlide(prev => {
         // Mark the outgoing slide as having completed so it parks at kb.to
         activatedRef.current[prev] = true;
-        const next = (prev + 1) % SLIDES.length;
+        const next = (prev + 1) % slideCountRef.current;
         activeSlideRef.current = next;
         return next;
       });
@@ -122,9 +114,9 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     SLIDES.forEach((slide, i) => {
       const vid = videoRefs.current[i];
       if (!slide.video || !vid) return;
-      if (i === activeSlide) { vid.currentTime = 0; vid.play().catch(() => {}); }
+      if (i === current) { vid.currentTime = 0; vid.play().catch(() => {}); }
     });
-  }, [activeSlide]);
+  }, [current, SLIDES]);
 
   const goToSlide = (i: number) => {
     if (i === activeSlideRef.current) return;
@@ -137,7 +129,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
     intervalRef.current = setInterval(() => {
       setActiveSlide(prev => {
         activatedRef.current[prev] = true;
-        const next = (prev + 1) % SLIDES.length;
+        const next = (prev + 1) % slideCountRef.current;
         activeSlideRef.current = next;
         return next;
       });
@@ -158,7 +150,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
         {SLIDES.map((slide, i) => {
           if (!mountedRef.current[i]) return null;
           const kb = KENBURNS[i % KENBURNS.length];
-          const isActive = i === activeSlide;
+          const isActive = i === current;
           const sharedStyle: React.CSSProperties = {
             opacity: isActive ? 1 : 0,
             transition: `opacity ${CROSSFADE_MS}ms cubic-bezier(0.45, 0, 0.55, 1)`,
@@ -239,10 +231,10 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '15px', fontWeight: 400, letterSpacing: '0.01em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.4, margin: 0 }}>
-                {SLIDES[activeSlide].title}
+                {SLIDES[current].title}
               </p>
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '10px', letterSpacing: '0.04em', color: 'rgba(255,255,255,0.85)', lineHeight: 1.4, margin: 0 }}>
-                {SLIDES[activeSlide].location} • {SLIDES[activeSlide].year}
+                {SLIDES[current].location} • {SLIDES[current].year}
               </p>
             </div>
           </div>
@@ -259,7 +251,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 <div style={{
                   width: '100%',
                   height: '1px',
-                  backgroundColor: i === activeSlide ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  backgroundColor: i === current ? '#ffffff' : 'rgba(255,255,255,0.55)',
                   transition: 'background-color 500ms',
                 }} />
               </button>
@@ -305,10 +297,10 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: 'clamp(1.25rem, 2vw, 1.85rem)', fontWeight: 400, letterSpacing: '0.01em', color: 'rgba(255,255,255,0.95)', lineHeight: 1.3, margin: 0 }}>
-                {SLIDES[activeSlide].title}
+                {SLIDES[current].title}
               </p>
               <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '14px', letterSpacing: '0.02em', color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, margin: 0 }}>
-                {SLIDES[activeSlide].location} • {SLIDES[activeSlide].year}
+                {SLIDES[current].location} • {SLIDES[current].year}
               </p>
             </div>
           </div>
@@ -325,7 +317,7 @@ export default function HeroSection({ isVisible }: HeroSectionProps) {
                 <div style={{
                   width: '100%',
                   height: '1px',
-                  backgroundColor: i === activeSlide ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                  backgroundColor: i === current ? '#ffffff' : 'rgba(255,255,255,0.55)',
                   transition: 'background-color 500ms',
                 }} />
               </button>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { useSiteContact } from '@/lib/site/content';
 
 export default function ContactForm() {
   const { t } = useTranslation();
@@ -62,9 +63,11 @@ export default function ContactForm() {
 
   const labelClass = 'text-xs text-black/40 tracking-wider uppercase';
 
+  const contact = useSiteContact();
   const contactDetails = [
-    { label: t('contact_info_address'), icon: 'ri-map-pin-line', lines: ['Cebu City, Philippines'] },
-    { label: t('contact_info_email'),   icon: 'ri-mail-line',    lines: ['info@fsarchitects.ph'] },
+    { label: t('contact_info_address'), icon: 'ri-map-pin-line', lines: [contact.address] },
+    { label: t('contact_info_email'),   icon: 'ri-mail-line',    lines: [contact.email] },
+    ...(contact.phone ? [{ label: t('contact_info_phone', { defaultValue: 'Phone' }), icon: 'ri-phone-line', lines: [contact.phone] }] : []),
   ];
 
   return (

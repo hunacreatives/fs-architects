@@ -1,34 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useJobPosts } from '@/lib/site/content';
 
-export const OPEN_ROLES = [
-  {
-    titleKey: 'careers_role_arch_title',
-    typeKey: 'careers_role_arch_type',
-    locationKey: 'careers_role_arch_location',
-    deptKey: 'careers_role_arch_dept',
-    expKey: 'careers_role_arch_exp',
-    responsibilitiesKey: 'careers_role_arch_responsibilities',
-    requirementsKey: 'careers_role_arch_requirements',
-  },
-  {
-    titleKey: 'careers_role_apprent_title',
-    typeKey: 'careers_role_apprent_type',
-    locationKey: 'careers_role_apprent_location',
-    deptKey: 'careers_role_apprent_dept',
-    expKey: 'careers_role_apprent_exp',
-    responsibilitiesKey: 'careers_role_apprent_responsibilities',
-    requirementsKey: 'careers_role_apprent_requirements',
-  },
-];
 
 interface OpenRolesProps {
-  onApply: (titleKey: string) => void;
+  onApply: (title: string) => void;
   sectionRef?: React.RefObject<HTMLDivElement>;
 }
 
-function BulletList({ text }: { text: string }) {
-  const items = text.split(' · ').map(s => s.trim()).filter(Boolean);
+function BulletList({ items }: { items: string[] }) {
   return (
     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {items.map((item, i) => (
@@ -43,6 +23,7 @@ function BulletList({ text }: { text: string }) {
 
 export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
   const { t } = useTranslation();
+  const roles = useJobPosts();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggle = (i: number) => setOpenIndex(prev => (prev === i ? null : i));
@@ -68,15 +49,15 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
       <div ref={sectionRef} className="w-full px-4 md:px-16 lg:px-24 mb-20">
         {/* Header */}
         <p style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(20px, 2vw, 28px)', letterSpacing: '-0.02em', color: 'rgba(0,0,0,0.82)', marginBottom: '32px', lineHeight: 1.15 }}>
-          {OPEN_ROLES.length} {t('careers_open_positions')}
+          {roles.length} {t('careers_open_positions')}
         </p>
 
         {/* Roles list */}
         <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-          {OPEN_ROLES.map((role, i) => {
+          {roles.map((role, i) => {
             const isOpen = openIndex === i;
             return (
-              <div key={i} style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+              <div key={role.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 {/* Row — clickable */}
                 <button
                   onClick={() => toggle(i)}
@@ -91,12 +72,12 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
                   {/* Title + meta */}
                   <div className="flex-1 min-w-0">
                     <p style={{ fontFamily: 'Marcellus, serif', fontSize: 'clamp(16px, 1.6vw, 22px)', color: 'rgba(0,0,0,0.85)', letterSpacing: '-0.01em', marginBottom: '6px', lineHeight: 1.15 }}>
-                      {t(role.titleKey)}
+                      {role.title}
                     </p>
                     <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      {[`${t(role.locationKey)}, PH`, t(role.typeKey), t(role.deptKey)].map((tag, ti) => (
+                      {[`${role.location}, PH`, role.type, role.department].filter(Boolean).map((tag, ti, tags) => (
                         <span key={ti} style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.30)' }}>
-                          {tag}{ti < 2 ? <>&nbsp;&nbsp;·</> : null}
+                          {tag}{ti < tags.length - 1 ? <>&nbsp;&nbsp;·</> : null}
                         </span>
                       ))}
                     </div>
@@ -122,7 +103,7 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
                     <div className="pl-0 md:pl-9" style={{ paddingBottom: '32px' }}>
                       {/* Description */}
                       <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '12px', lineHeight: 1.9, color: 'rgba(0,0,0,0.45)', letterSpacing: '0.01em', maxWidth: '600px', marginBottom: '32px' }}>
-                        {t(role.expKey)}
+                        {role.summary}
                       </p>
 
                       {/* Two-column detail grid */}
@@ -131,19 +112,19 @@ export default function OpenRoles({ onApply, sectionRef }: OpenRolesProps) {
                           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)', marginBottom: '14px' }}>
                             {t('careers_responsibilities')}
                           </p>
-                          <BulletList text={t(role.responsibilitiesKey)} />
+                          <BulletList items={role.responsibilities} />
                         </div>
                         <div>
                           <p style={{ fontFamily: 'Geist, sans-serif', fontSize: '9px', letterSpacing: '0.24em', textTransform: 'uppercase', color: 'rgba(0,0,0,0.28)', marginBottom: '14px' }}>
                             {t('careers_looking_for')}
                           </p>
-                          <BulletList text={t(role.requirementsKey)} />
+                          <BulletList items={role.requirements} />
                         </div>
                       </div>
 
                       {/* Apply */}
                       <button
-                        onClick={(e) => { e.stopPropagation(); onApply(role.titleKey); }}
+                        onClick={(e) => { e.stopPropagation(); onApply(role.title); }}
                         className="flex items-center gap-2 group cursor-pointer"
                         style={{ background: 'none', border: 'none', outline: 'none', padding: 0 }}
                       >

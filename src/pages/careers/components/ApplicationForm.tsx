@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 interface ApplicationFormProps {
   dark?: boolean;
   positions?: string[];
+  positionIds?: Record<string, string>;   // a hub posting's title → its id
   selectedPosition?: string | null;
 }
 
@@ -18,7 +19,7 @@ interface FormErrors {
   portfolio?: string;
 }
 
-export default function ApplicationForm({ dark = false, positions = [], selectedPosition = null }: ApplicationFormProps) {
+export default function ApplicationForm({ dark = false, positions = [], positionIds = {}, selectedPosition = null }: ApplicationFormProps) {
   const { t } = useTranslation();
 
   const [formData, setFormData] = useState({
@@ -99,6 +100,7 @@ export default function ApplicationForm({ dark = false, positions = [], selected
           name,
           email: formData.email.trim(),
           role: formData.position || 'Open Application',
+          job_id: positionIds[formData.position] || undefined,
           message: formData.message.trim(),
           resume_base64,
           resume_filename,

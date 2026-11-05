@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import Navigation from '../../components/feature/Navigation';
 import ContactFooter from '../contact/components/ContactFooter';
 import StudioCTA from '../studio/components/StudioCTA';
-import OpenRoles, { OPEN_ROLES } from './components/OpenRoles';
+import OpenRoles from './components/OpenRoles';
+import { useJobPosts } from '@/lib/site/content';
 import ValuesSection from './components/ValuesSection';
 import ApplicationForm from './components/ApplicationForm';
 
@@ -12,10 +13,13 @@ export default function CareersPage() {
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  const positionOptions = OPEN_ROLES.map(r => t(r.titleKey));
+  const jobs = useJobPosts();
+  const positionOptions = jobs.map(j => j.title);
+  // a posting from the hub carries its id onto the application, so Applications can show which posting it came from
+  const positionIds = Object.fromEntries(jobs.filter(j => /^[0-9a-f-]{36}$/.test(j.id)).map(j => [j.title, j.id]));
 
-  const handleApply = (titleKey: string) => {
-    setSelectedPosition(t(titleKey));
+  const handleApply = (title: string) => {
+    setSelectedPosition(title);
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
@@ -65,7 +69,7 @@ export default function CareersPage() {
           boxShadow: '0 8px 48px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
           padding: 'clamp(32px, 4vw, 56px)',
         }}>
-          <ApplicationForm positions={positionOptions} selectedPosition={selectedPosition} dark />
+          <ApplicationForm positions={positionOptions} positionIds={positionIds} selectedPosition={selectedPosition} dark />
         </div>
       </div>
 

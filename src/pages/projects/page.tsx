@@ -5,619 +5,13 @@ import Navigation from '../../components/feature/Navigation';
 import ContactFooter from '../contact/components/ContactFooter';
 import PhilippinesMap from './components/PhilippinesMap';
 import StudioCTA from '../studio/components/StudioCTA';
+import { useSiteProjects, type SiteProject } from '@/lib/site/content';
 
-const mockProjects = [
-  {
-    id: 1,
-    slug: 'mallberry-platinum-hall-lounge',
-    translationKey: 'proj_mallberry_platinum_hall_lounge',
-    name: 'Mallberry Platinum Hall & Lounge',
-    year: '2023',
-    address: 'Cagayan de Oro City',
-    category: 'Interior Design',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/mallberry-thumb.webp',
-  },
-  {
-    id: 2,
-    slug: 'abucay-beach-house',
-    translationKey: 'proj_abucay_beach_house',
-    name: 'Abucay Beach House',
-    year: '2024',
-    address: 'Abucay, Bataan',
-    category: 'Residential',
-    location: 'Bataan',
-    lat: 14.7270,
-    lng: 120.5332,
-    image: '/images/projects/abucay-thumb.webp',
-  },
-  {
-    id: 3,
-    slug: 'amelia-nail-salon',
-    translationKey: 'proj_amelia_nail_salon',
-    name: 'Amelia Nail Salon',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Interior Design',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/amelia-nail-salon-thumb.webp',
-  },
-  {
-    id: 4,
-    slug: 'bacolod-showroom',
-    translationKey: 'proj_bacolod_showroom',
-    name: 'Bacolod Showroom',
-    year: '2024',
-    address: 'Bacolod City',
-    category: 'Retail',
-    location: 'Bacolod',
-    lat: 10.6768,
-    lng: 122.9564,
-    image: '/images/projects/bacolod-showroom-thumb.webp',
-  },
-  {
-    id: 5,
-    slug: 'bc-cdo',
-    translationKey: 'proj_bc_cdo',
-    name: 'BC CDO',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Mixed Use',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/bc-cdo-thumb.webp',
-  },
-  {
-    id: 6,
-    slug: 'byd-cdo',
-    translationKey: 'proj_byd_cdo',
-    name: 'BYD CDO',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Retail',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/byd-cdo-thumb.webp',
-  },
-  {
-    id: 7,
-    slug: 'byd-tagum',
-    translationKey: 'proj_byd_tagum',
-    name: 'BYD Tagum',
-    year: '2024',
-    address: 'Tagum City, Davao del Norte',
-    category: 'Retail',
-    location: 'Tagum',
-    lat: 7.4478,
-    lng: 125.8086,
-    image: '/images/projects/byd-tagum-thumb.webp',
-  },
-  {
-    id: 8,
-    slug: 'byd-zamboanga',
-    translationKey: 'proj_byd_zamboanga',
-    name: 'BYD Zamboanga',
-    year: '2024',
-    address: 'Zamboanga City',
-    category: 'Retail',
-    location: 'Zamboanga',
-    lat: 6.9214,
-    lng: 122.079,
-    image: '/images/projects/byd-zamboanga-thumb.webp',
-  },
-  {
-    id: 9,
-    slug: 'chiong-clinic',
-    translationKey: 'proj_chiong_clinic',
-    name: 'Chiong Clinic',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Healthcare',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/chiong-clinic-thumb.webp',
-  },
-  {
-    id: 10,
-    slug: 'chiu-office',
-    translationKey: 'proj_chiu_office',
-    name: 'Chiu Office',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Offices',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/chiu-office-thumb.webp',
-  },
-  {
-    id: 11,
-    slug: 'davao-showroom',
-    translationKey: 'proj_davao_showroom',
-    name: 'Davao Showroom',
-    year: '2024',
-    address: 'Davao City',
-    category: 'Retail',
-    location: 'Davao',
-    lat: 7.1907,
-    lng: 125.4553,
-    image: '/images/projects/davao-showroom-thumb.webp',
-  },
-  {
-    id: 12,
-    slug: 'foxhome',
-    translationKey: 'proj_foxhome',
-    name: 'Foxhome Projects',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/foxhome-thumb.webp',
-  },
-  {
-    id: 13,
-    slug: 'kaway-resort',
-    translationKey: 'proj_kaway_resort',
-    name: 'Kaway Resort',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Hospitality',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/kaway-resort-thumb.webp',
-  },
-  {
-    id: 14,
-    slug: 'palm-residences',
-    translationKey: 'proj_palm_residences',
-    name: 'Palm Residences',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/palm-residences-thumb.webp',
-  },
-  {
-    id: 15,
-    slug: 'palm-sands',
-    translationKey: 'proj_palm_sands',
-    name: 'Palm Sands Pool & Lounge',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Hospitality',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/palm-sands-thumb.webp',
-  },
-  {
-    id: 16,
-    slug: 'rc-mandani-loft',
-    translationKey: 'proj_rc_mandani_loft',
-    name: 'RC Mandani Loft',
-    year: '2024',
-    address: 'Mandaue City, Cebu',
-    category: 'Residential',
-    location: 'Cebu',
-    lat: 10.3157,
-    lng: 123.9223,
-    image: '/images/projects/rc-mandani-loft-thumb.webp',
-  },
-  {
-    id: 17,
-    slug: 'rosales-residence',
-    translationKey: 'proj_rosales_residence',
-    name: 'Rosales Residence',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/rosales-residence-thumb.webp',
-  },
-  {
-    id: 18,
-    slug: 'squareview',
-    translationKey: 'proj_squareview',
-    name: 'Squareview',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Mixed Use',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/squareview-thumb.webp',
-  },
-  {
-    id: 19,
-    slug: 'vmc-admin',
-    translationKey: 'proj_vmc_admin',
-    name: 'VMC Administration Interiors',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Offices',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/vmc-admin-thumb.webp',
-  },
-  {
-    id: 20,
-    slug: 'vmc-housing',
-    translationKey: 'proj_vmc_housing',
-    name: 'VMC Housing',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/vmc-housing-thumb.webp',
-  },
-  {
-    id: 21,
-    slug: 'vmc-projects',
-    translationKey: 'proj_vmc_projects',
-    name: 'VMC Projects',
-    year: '2024',
-    address: 'Cagayan de Oro City',
-    category: 'Mixed Use',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/vmc-projects-thumb.webp',
-  },
-  {
-    id: 22,
-    slug: 'choa-unit-16c',
-    translationKey: 'proj_choa_unit_16c',
-    name: 'CHOA Condominium Unit 16C',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/choa-unit-16c-thumb.webp',
-  },
-  {
-    id: 23,
-    slug: 'graphic-junior-hotel',
-    translationKey: 'proj_graphic_junior_hotel',
-    name: 'Graphic Junior Hotel CDO',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Hospitality',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/graphic-junior-hotel-thumb.webp',
-  },
-  {
-    id: 24,
-    slug: 'cafe-207',
-    translationKey: 'proj_cafe_207',
-    name: '207 Cafe',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Hospitality',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/cafe-207-thumb.webp',
-  },
-  {
-    id: 25,
-    slug: 'byd-butuan',
-    translationKey: 'proj_byd_butuan',
-    name: 'BYD Butuan',
-    year: '2025',
-    address: 'Butuan City',
-    category: 'Retail',
-    location: 'Butuan',
-    lat: 8.9475,
-    lng: 125.5406,
-    image: '/images/projects/byd-butuan-thumb.webp',
-  },
-  {
-    id: 26,
-    slug: 'byd-c5-acropolis',
-    translationKey: 'proj_byd_c5_acropolis',
-    name: 'BYD C5 Acropolis',
-    year: '2025',
-    address: 'Quezon City',
-    category: 'Retail',
-    location: 'Manila',
-    lat: 14.5995,
-    lng: 120.9842,
-    image: '/images/projects/byd-c5-acropolis-thumb-video.jpg',
-    video: '/images/projects/byd-c5-acropolis-video.webm',
-    videoMp4: '/images/projects/byd-c5-acropolis-video.mp4',
-  },
-  {
-    id: 27,
-    slug: 'byd-iligan',
-    translationKey: 'proj_byd_iligan',
-    name: 'BYD Iligan',
-    year: '2025',
-    address: 'Iligan City',
-    category: 'Retail',
-    location: 'Iligan',
-    lat: 8.228,
-    lng: 124.2452,
-    image: '/images/projects/byd-iligan-thumb.webp',
-  },
-  {
-    id: 28,
-    slug: 'byd-marikina',
-    translationKey: 'proj_byd_marikina',
-    name: 'BYD Marikina',
-    year: '2025',
-    address: 'Marikina City',
-    category: 'Retail',
-    location: 'Manila',
-    lat: 14.5995,
-    lng: 120.9842,
-    image: '/images/projects/byd-marikina-thumb.webp',
-  },
-  {
-    id: 29,
-    slug: 'balisbis-residence',
-    translationKey: 'proj_balisbis_residence',
-    name: 'Balisbis Residence',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/balisbis-residence-thumb.webp',
-  },
-  {
-    id: 30,
-    slug: 'bellarie-office',
-    translationKey: 'proj_bellarie_office',
-    name: 'Bellarie Office',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Offices',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/bellarie-office-thumb.webp',
-  },
-  {
-    id: 31,
-    slug: 'blush',
-    translationKey: 'proj_blush',
-    name: 'Blush',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Interior Design',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/blush-thumb-video.jpg',
-    video: '/images/projects/blush-video.webm',
-    videoMp4: '/images/projects/blush-video.mp4',
-  },
-  {
-    id: 32,
-    slug: 'dasmarinas-residence',
-    translationKey: 'proj_dasmarinas_residence',
-    name: 'Dasmarinas Cavite Residence',
-    year: '2025',
-    address: 'Dasmarinas, Cavite',
-    category: 'Residential',
-    location: 'Cavite',
-    lat: 14.3294,
-    lng: 120.9367,
-    image: '/images/projects/dasmarinas-residence-thumb.webp',
-  },
-  {
-    id: 33,
-    slug: 'denza-showroom',
-    translationKey: 'proj_denza_showroom',
-    name: 'Denza Showroom',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Retail',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/denza-showroom-thumb.webp',
-  },
-  {
-    id: 34,
-    slug: 'foxhomes-2025',
-    translationKey: 'proj_foxhomes_2025',
-    name: 'Foxhomes 2025',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/foxhomes-2025-thumb.webp',
-  },
-  {
-    id: 35,
-    slug: 'graphic-annex',
-    translationKey: 'proj_graphic_annex',
-    name: 'Graphic Annex',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Hospitality',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/graphic-annex-thumb-video.jpg',
-    video: '/images/projects/graphic-annex-video.webm',
-    videoMp4: '/images/projects/graphic-annex-video.mp4',
-  },
-  {
-    id: 36,
-    slug: 'ozamiz-dialysis-center',
-    translationKey: 'proj_ozamiz_dialysis_center',
-    name: 'Ozamiz Dialysis Center',
-    year: '2025',
-    address: 'Ozamiz City',
-    category: 'Healthcare',
-    location: 'Ozamiz',
-    lat: 8.15,
-    lng: 123.85,
-    image: '/images/projects/ozamiz-dialysis-center-thumb.webp',
-  },
-  {
-    id: 37,
-    slug: 'raintree-beauty-clinic',
-    translationKey: 'proj_raintree_beauty_clinic',
-    name: 'Raintree Mall Beauty Clinic',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Interior Design',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/raintree-beauty-clinic-thumb.webp',
-  },
-  {
-    id: 38,
-    slug: 'sanjus-diagnostics',
-    translationKey: 'proj_sanjus_diagnostics',
-    name: 'Sanjus Diagnostics',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Healthcare',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/sanjus-diagnostics-thumb.webp',
-  },
-  {
-    id: 39,
-    slug: 'sorana-island-villas',
-    translationKey: 'proj_sorana_island_villas',
-    name: 'Sorana Island Villas',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Hospitality',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/sorana-island-villas-thumb.webp',
-  },
-  {
-    id: 40,
-    slug: 'sytin-projects',
-    translationKey: 'proj_sytin_projects',
-    name: 'Sytin Projects',
-    year: '2025',
-    address: 'Metro Manila',
-    category: 'Retail',
-    location: 'Manila',
-    lat: 14.5995,
-    lng: 120.9842,
-    image: '/images/projects/sytin-projects-thumb.webp',
-  },
-  {
-    id: 41,
-    slug: 'tabas',
-    translationKey: 'proj_tabas',
-    name: 'Tabas',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/tabas-thumb.webp',
-  },
-  {
-    id: 42,
-    slug: 'vmc-projects-2025',
-    translationKey: 'proj_vmc_projects_2025',
-    name: 'VMC Sugar Milling Projects',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Mixed Use',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/vmc-projects-2025-thumb.webp',
-  },
-  {
-    id: 43,
-    slug: 'yang-residence',
-    translationKey: 'proj_yang_residence',
-    name: 'Yang Residence',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/yang-residence-thumb.webp',
-  },
-  {
-    id: 44,
-    slug: 'yap-residences-interiors',
-    translationKey: 'proj_yap_residences_interiors',
-    name: 'Yap Residences Interiors',
-    year: '2025',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/yap-residences-interiors-thumb.webp',
-  },
-  {
-    id: 45,
-    slug: 'baic-radar-cdo',
-    translationKey: 'proj_baic_radar_cdo',
-    name: 'BAIC Radar CDO',
-    year: '2026',
-    address: 'Cagayan de Oro City',
-    category: 'Retail',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/baic-radar-cdo-thumb.webp',
-  },
-  {
-    id: 46,
-    slug: 'chen-residence',
-    translationKey: 'proj_chen_residence',
-    name: 'Chen Residence',
-    year: '2026',
-    address: 'Cagayan de Oro City',
-    category: 'Residential',
-    location: 'CDO',
-    lat: 8.4797,
-    lng: 124.6525,
-    image: '/images/projects/chen-residence-thumb.webp',
-  },
-];
 
-function ProjectCard({ project, delay, navigate, t }: {
-  project: (typeof mockProjects)[number];
+function ProjectCard({ project, delay, navigate }: {
+  project: SiteProject;
   delay: string;
   navigate: (path: string) => void;
-  t: (key: string) => string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hovering, setHovering] = useState(false);
@@ -653,7 +47,7 @@ function ProjectCard({ project, delay, navigate, t }: {
     >
       <div className="w-full aspect-[4/3] overflow-hidden relative">
         <img
-          src={project.image.endsWith('.jpg') ? project.image : project.image.replace('-thumb.webp', '-hero.webp')}
+          src={project.video ? project.thumb : project.hero || project.thumb}
           alt={project.name}
           loading="lazy"
           decoding="async"
@@ -671,19 +65,19 @@ function ProjectCard({ project, delay, navigate, t }: {
             style={{ opacity: hovering ? 1 : 0, transition: 'opacity 0.5s' }}
           >
             <source src={project.video} type="video/webm" />
-            {'videoMp4' in project && <source src={(project as any).videoMp4} type="video/mp4" />}
+            {project.videoMp4 && <source src={project.videoMp4} type="video/mp4" />}
           </video>
         )}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent px-3 pt-8 pb-3 pointer-events-none">
           <h3
             className="text-sm font-medium text-white mb-0.5 tracking-wide truncate"
             style={{ fontFamily: 'Marcellus, serif', maxWidth: '200px' }}
-            title={t(`${project.translationKey}_name`)}
+            title={project.name}
           >
-            {t(`${project.translationKey}_name`)}
+            {project.name}
           </h3>
           <p className="text-xs text-white/55 tracking-wide" style={{ fontFamily: 'Geist, sans-serif' }}>
-            {project.year} · {t(`${project.translationKey}_address`)}
+            {project.year} · {project.address}
           </p>
         </div>
       </div>
@@ -695,6 +89,7 @@ export default function ProjectsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
+  const { projects: allProjects } = useSiteProjects();
 
   // ── Page entrance ──
   const [pageLoaded, setPageLoaded] = useState(false);
@@ -749,16 +144,18 @@ export default function ProjectsPage() {
   const projectCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     locations.filter((l) => l !== 'all').forEach((loc) => {
-      counts[loc] = mockProjects.filter((p) => {
+      counts[loc] = allProjects.filter((p) => {
         const matchesCat = activeCategory === 'all' || p.category === activeCategory;
         const matchesSearch =
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.address.toLowerCase().includes(searchQuery.toLowerCase());
+          p.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.addressEn.toLowerCase().includes(searchQuery.toLowerCase());
         return p.location === loc && matchesCat && matchesSearch;
       }).length;
     });
     return counts;
-  }, [activeCategory, searchQuery]);
+  }, [allProjects, activeCategory, searchQuery]);
 
   // Full (unfiltered) per-city data for the map hover cards
   const cityProjectData = useMemo(() => {
@@ -769,7 +166,7 @@ export default function ProjectsPage() {
       yearRange: { min: string; max: string };
     }> = {};
     locations.filter((l) => l !== 'all').forEach((loc) => {
-      const cityProjs = mockProjects.filter((p) => p.location === loc);
+      const cityProjs = allProjects.filter((p) => p.location === loc);
       const years = cityProjs.map((p) => p.year);
       data[loc] = {
         count: cityProjs.length,
@@ -786,7 +183,7 @@ export default function ProjectsPage() {
       };
     });
     return data;
-  }, []);
+  }, [allProjects]);
 
   // Scroll to grid when returning from a project detail page
   useEffect(() => {
@@ -816,18 +213,18 @@ export default function ProjectsPage() {
   }, [searchParams]);
 
 
-  const filteredProjects = useMemo(() => mockProjects.filter((project) => {
+  const filteredProjects = useMemo(() => allProjects.filter((project) => {
     const matchesLocation = activeLocation === 'all' || project.location === activeLocation;
     const matchesCategory = activeCategory === 'all' || project.category === activeCategory;
-    const translatedName = t(`${project.translationKey}_name`);
-    const translatedAddress = t(`${project.translationKey}_address`);
+    const translatedName = project.name;
+    const translatedAddress = project.address;
     const matchesSearch =
       translatedName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
       translatedAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.address.toLowerCase().includes(searchQuery.toLowerCase());
+      project.addressEn.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesLocation && matchesCategory && matchesSearch;
-  }), [activeLocation, activeCategory, searchQuery, t]);
+  }), [allProjects, activeLocation, activeCategory, searchQuery]);
 
   const sortedProjects = useMemo(() => [...filteredProjects].sort((a, b) => {
     if (sortBy === 'date') {
@@ -1104,11 +501,10 @@ export default function ProjectsPage() {
                 const delay = batchIdx >= 0 ? `${Math.min(batchIdx * 0.06, 0.28)}s` : '0s';
                 return (
                   <ProjectCard
-                    key={project.id}
+                    key={project.slug}
                     project={project}
                     delay={delay}
                     navigate={navigate}
-                    t={t}
                   />
                 );
               })}

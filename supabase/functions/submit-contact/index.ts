@@ -9,6 +9,24 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
+const esc = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+// The hub's bell and a push to every active admin, owner and HR, the way job applications already do.
+async function notifyAdmins(name: string, topic: string) {
+  const { data: admins } = await supabase.from('hub_users').select('id').in('role', ['admin', 'owner', 'hr']).eq('status', 'active');
+  if (!admins?.length) return;
+  const body = `${name}${topic ? ` — ${topic}` : ''}`;
+  await supabase.from('hub_notifications').insert(
+    admins.map((a: { id: string }) => ({ user_id: a.id, type: 'contact_inquiry', title: 'New inquiry', body, link: '/hub/admin/contact' })),
+  );
+  await Promise.allSettled(admins.map((a: { id: string }) =>
+    fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: a.id, title: 'New inquiry', body, url: 'https://fsarchitects.ph/hub/admin/contact' }),
+    })));
+}
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -55,13 +73,13 @@ Deno.serve(async (req) => {
           </div>
           <div style="padding:24px;color:#1a1a1a">
             <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin:0 0 20px">New Contact Form Submission</p>
-            <h2 style="margin:0 0 20px;font-size:20px">${name}</h2>
+            <h2 style="margin:0 0 20px;font-size:20px">${esc(name)}</h2>
             <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
-              <tr><td style="padding:8px 0;color:#666;width:100px">From</td><td style="padding:8px 0">${email}</td></tr>
-              ${service ? `<tr><td style="padding:8px 0;color:#666">Service</td><td style="padding:8px 0">${service}</td></tr>` : ''}
-              ${subject ? `<tr><td style="padding:8px 0;color:#666">Subject</td><td style="padding:8px 0">${subject}</td></tr>` : ''}
+              <tr><td style="padding:8px 0;color:#666;width:100px">From</td><td style="padding:8px 0">${esc(email)}</td></tr>
+              ${service ? `<tr><td style="padding:8px 0;color:#666">Service</td><td style="padding:8px 0">${esc(service)}</td></tr>` : ''}
+              ${subject ? `<tr><td style="padding:8px 0;color:#666">Subject</td><td style="padding:8px 0">${esc(subject)}</td></tr>` : ''}
             </table>
-            <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</div>
+            <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(message)}</div>
           </div>
           <div style="padding:16px 24px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af">
             Submitted via <a href="https://fsarchitects.ph" style="color:#9ca3af;text-decoration:none">fsarchitects.ph</a> · © ${new Date().getFullYear()} FS Architects
@@ -81,6 +99,8 @@ Deno.serve(async (req) => {
         html,
       }),
     });
+
+    await notifyAdmins(name, service || subject || '').catch((err) => console.error('Inquiry notification failed:', err));
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

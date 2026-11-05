@@ -7,6 +7,9 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
 const GOOGLE_REFRESH_TOKEN = Deno.env.get('GOOGLE_REFRESH_TOKEN')!;
 
 const SENTRO_ROOT = '1fuX6nxXERGIizoVEJRORUmvlO-auezNt';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
+const NOTIFY_EMAIL = 'info@fsarchitects.ph';
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'noreply@fsarchitects.ph';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -91,6 +94,65 @@ async function uploadToDrive(
   });
 
   return { fileId: result.id, url: `https://drive.google.com/file/d/${result.id}/view` };
+}
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+// The application to the firm's inbox too (same look as the contact form's email), the applicant as reply-to and the
+// résumé attached, so it arrives even when the Drive upload didn't.
+async function emailInbox(a: {
+  name: string; email: string; role: string; message: string; expectedRate?: string;
+  resumeLink: string | null; portfolioLink: string | null;
+  resume?: { filename: string; base64: string };
+}) {
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:8px 0;color:#666;width:110px">${label}</td><td style="padding:8px 0">${value}</td></tr>`;
+  const link = (url: string, text: string) => `<a href="${esc(url)}" style="color:#1c2b3a">${text}</a>`;
+  const html = `
+      <style>
+        .logo-dark { display: none; }
+        @media (prefers-color-scheme: dark) { .logo-light { display: none !important; } .logo-dark { display: block !important; } }
+        [data-ogsc] .logo-light { display: none !important; }
+        [data-ogsc] .logo-dark { display: block !important; }
+      </style>
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;padding:32px;margin:0">
+        <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
+          <div style="background:#1c2b3a;padding:20px 24px;">
+            <img class="logo-light" src="https://fsarchitects.ph/images/fs-architects-logo-white.png" alt="FS Architects" height="48" style="display:block;" />
+            <img class="logo-dark" src="https://fsarchitects.ph/images/fs-architects-logo-horizontal.png" alt="FS Architects" height="48" style="display:none;" />
+          </div>
+          <div style="padding:24px;color:#1a1a1a">
+            <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#999;margin:0 0 20px">New Job Application</p>
+            <h2 style="margin:0 0 20px;font-size:20px">${esc(a.name)}</h2>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px">
+              ${row('Role', esc(a.role))}
+              ${row('Email', esc(a.email))}
+              ${a.expectedRate ? row('Expected rate', esc(a.expectedRate)) : ''}
+              ${a.resumeLink ? row('Résumé', link(a.resumeLink, 'Open résumé')) : a.resume ? row('Résumé', 'Attached') : ''}
+              ${a.portfolioLink ? row('Portfolio', link(a.portfolioLink, 'Open portfolio')) : ''}
+            </table>
+            <div style="background:#f5f5f5;border-radius:8px;padding:16px 20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(a.message)}</div>
+            <p style="font-size:13px;color:#666;margin:20px 0 0">Also in the hub under ${link('https://fsarchitects.ph/hub/admin/applications', 'Applications')}.</p>
+          </div>
+          <div style="padding:16px 24px;border-top:1px solid #f3f4f6;font-size:11px;color:#9ca3af">
+            Submitted via <a href="https://fsarchitects.ph/careers" style="color:#9ca3af;text-decoration:none">fsarchitects.ph/careers</a> · © ${new Date().getFullYear()} FS Architects
+          </div>
+        </div>
+      </div>
+    `;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: [NOTIFY_EMAIL],
+      reply_to: a.email,
+      subject: `New application from ${a.name} — ${a.role}`,
+      html,
+      ...(a.resume ? { attachments: [{ filename: a.resume.filename, content: a.resume.base64 }] } : {}),
+    }),
+  });
+  if (!res.ok) console.error('Application email failed:', res.status, await res.text());
 }
 
 async function notifyAdmins(
@@ -216,6 +278,12 @@ Deno.serve(async (req) => {
     }
 
     await notifyAdmins(supabase, name.trim(), role.trim()).catch(() => {});
+    await emailInbox({
+      name: name.trim(), email: email.trim().toLowerCase(), role: role.trim(), message: message.trim(),
+      expectedRate: expected_rate?.trim() || undefined,
+      resumeLink: finalResumeLink, portfolioLink: finalPortfolioLink,
+      resume: resume_base64 && resume_filename ? { filename: resume_filename, base64: resume_base64 } : undefined,
+    }).catch((err) => console.error('Application email failed:', err));
 
     return new Response(JSON.stringify({ ok: true }), { headers: cors });
   } catch (err) {

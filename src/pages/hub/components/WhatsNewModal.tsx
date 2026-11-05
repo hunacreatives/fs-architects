@@ -5,34 +5,42 @@ import { useDemo } from '@/contexts/DemoContext';
 import { supabase } from '@/lib/supabase';
 import { CURRENT_APP_VERSION } from '@/lib/appVersion';
 
-const SLIDES = [
+// The walkthrough for this version, and who sees it (owner/admin: it's about running the website).
+const AUDIENCE = ['owner', 'admin'];
+const SLIDES: { icon: string; title: string; body: string; link?: string }[] = [
   {
     icon: 'ri-sparkling-2-line',
-    title: "What's New in Sentro Hub",
-    body: `Version ${CURRENT_APP_VERSION} brings a clearer project workflow and a couple of things that now just happen automatically. Here's a quick look.`,
+    title: "What's new in the hub",
+    body: 'This update puts the FS Architects website in your hands. Here is a quick look.',
   },
   {
-    icon: 'ri-route-line',
-    title: 'Project Stages',
-    body: 'Every project now shows what phase it\'s in — Pre-Design, Schematic Design, Design Development, Construction Documents, Permitting, Bidding, Construction Administration, or Post-Construction. The project list groups by stage automatically.',
-    showProjectsLink: true,
+    icon: 'ri-global-line',
+    title: 'Edit the website from here',
+    body: 'Projects, the team, the homepage slides, contact details and job posts are now under Website in the sidebar. Changes go live on fsarchitects.ph as soon as you save.',
+    link: '/hub/admin/website',
   },
   {
-    icon: 'ri-layout-4-line',
-    title: 'A Cleaner Task Workspace',
-    body: 'One unified tasks panel replaces the old overlapping ones, with consistent filters and less clutter — the same information, easier to scan.',
-    showProjectsLink: true,
+    icon: 'ri-download-2-line',
+    title: 'One step before you start',
+    body: 'On each Website tab, click "Import from the live website" once. It copies what is on the site today, in English, Spanish and Chinese, so you edit from exactly what visitors see.',
+    link: '/hub/admin/website',
   },
   {
-    icon: 'ri-drive-line',
-    title: 'Automatic Drive Folders',
-    body: 'New projects now get a Google Drive folder automatically. Files attached to tasks save straight into that project\'s own folder — no more hunting for the right place to put things.',
-    showProjectsLink: true,
+    icon: 'ri-briefcase-line',
+    title: 'Open and close job posts',
+    body: 'Post a role, close it when it is filled, or reopen it later. You can see how many people applied to each post, and every application shows which post it came from.',
+    link: '/hub/admin/website?tab=careers',
+  },
+  {
+    icon: 'ri-notification-3-line',
+    title: 'Every applicant and inquiry, everywhere',
+    body: 'New job applications and contact form messages now notify you here and on your phone, and arrive at info@fsarchitects.ph. Applications come with the résumé attached.',
   },
   {
     icon: 'ri-check-double-line',
     title: "You're all set",
-    body: 'That\'s everything for this update. You can jump right back into your projects now.',
+    body: "That's everything in this update. Head to Website to import your content and start editing.",
+    link: '/hub/admin/website',
   },
 ];
 
@@ -47,13 +55,13 @@ export default function WhatsNewModal() {
     !isDemo &&
     !!hubUser &&
     hubUser.onboarding_completed !== false &&
+    AUDIENCE.includes(hubUser.role) &&
     hubUser.last_seen_app_version !== CURRENT_APP_VERSION;
 
   if (!shouldShow || hidden) return null;
 
   const isLast = step === SLIDES.length - 1;
   const slide = SLIDES[step];
-  const projectsPath = hubUser?.role === 'contractor' ? '/hub/employee/projects' : '/hub/admin/projects';
 
   const dismiss = async () => {
     setHidden(true);
@@ -66,9 +74,9 @@ export default function WhatsNewModal() {
     await refreshHubUser();
   };
 
-  const goToProjects = async () => {
+  const goTo = async (path: string) => {
     await dismiss();
-    navigate(projectsPath);
+    navigate(path);
   };
 
   return (
@@ -104,9 +112,9 @@ export default function WhatsNewModal() {
             <h2 className="text-lg font-bold text-[#111827]">{slide.title}</h2>
             <p className="text-sm text-gray-500 mt-2 leading-relaxed">{slide.body}</p>
           </div>
-          {slide.showProjectsLink && (
+          {slide.link && (
             <button
-              onClick={goToProjects}
+              onClick={() => goTo(slide.link!)}
               className="text-sm font-semibold text-[#1c2b3a] hover:underline cursor-pointer inline-flex items-center gap-1"
             >
               Take me there <i className="ri-arrow-right-line"></i>

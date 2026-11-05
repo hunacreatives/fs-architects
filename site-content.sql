@@ -1,6 +1,6 @@
 -- Website content managed from the hub (Admin → Website): projects, team, homepage hero, contact details, job posts.
--- The public site reads published rows; owner/admin/HR (is_hub_admin) manage them. While a table is empty the site
--- keeps showing its built-in content, so running this changes nothing on the live site until the hub imports or edits.
+-- The public site reads published rows; owner/admin/HR (is_hub_admin) manage them. The site keeps showing its built-in
+-- content until the hub imports a section (site_settings 'live'), so running this changes nothing on the live site.
 -- Text that the site shows in three languages lives in i18n jsonb: {"en": {...}, "es": {...}, "zh": {...}}; a blank
 -- Spanish or Chinese field falls back to English. Safe to run more than once.
 
